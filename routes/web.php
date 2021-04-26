@@ -24,9 +24,7 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard','DashboardController@index')->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::any('/account', 'AccountController@index')->middleware(['auth', 'verified'])->name('account');   
 Route::patch('/account/update', 'AccountController@update')->middleware(['auth', 'verified'])->name('account.update');   
@@ -48,7 +46,7 @@ Route::get('/events', 'EventsController@index')->middleware(['auth', 'verified']
 Route::get('/events/create', 'EventsController@create')->middleware(['auth', 'verified'])->name('events.create');
 Route::post('/events', 'EventsController@store')->middleware(['auth', 'verified'])->name('events.store');
 Route::get('/events/{key}/edit', 'EventsController@edit')->middleware(['auth', 'verified'])->name('events.edit');
-Route::patch('/events/{band}', 'EventsController@update')->middleware(['auth', 'verified'])->name('events.update');
+Route::patch('/events/{key}', 'EventsController@update')->middleware(['auth', 'verified'])->name('events.update');
 Route::delete('/events/{key}', 'EventsController@destroy')->middleware(['auth', 'verified'])->name('events.destroy');
 
 require __DIR__.'/auth.php';

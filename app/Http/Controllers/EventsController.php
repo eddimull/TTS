@@ -27,9 +27,8 @@ class EventsController extends Controller
                                 FROM band_events 
                                 JOIN band_owners BO ON BO.band_id = band_events.band_id 
                                 JOIN event_types ET ON ET.id = band_events.event_type_id 
-                                WHERE BO.user_id = ?'),[Auth::id()]);
+                                WHERE BO.user_id = ? AND band_events.deleted_at IS NULL'),[Auth::id()]);
 
-                                
         return Inertia::render('Events/Index',[
             'events'=>$events
         ]);
@@ -121,7 +120,6 @@ class EventsController extends Controller
         $event = BandEvents::where('event_key',$key)->first();
         $states = State::where('country_id',231)->get();
         $bands = Bands::select('bands.*')->join('band_owners','bands.id','=','band_owners.band_id')->where('user_id',Auth::id())->get();
-        
         return Inertia::render('Events/Edit',[
             'event'=>$event,
             'eventTypes' => $eventTypes,
@@ -145,33 +143,33 @@ class EventsController extends Controller
         // dd($request);
         $strtotime = strtotime($request->event_time);
         $formattedTime = date('Y-m-d',$strtotime);
-        BandEvents::create([
-            'band_id' => $request->band_id,
-            'event_name' => $request->event_name,
-            'venue_name' => $request->venue_name,
-            'first_dance' => $request->first_dance,
-            'second_dance' => $request->second_dance,
-            'money_dance' => $request->money_dance,
-            'bouquet_dance' => $request->bouquet_dance,
-            'address_street' => $request->address_street,
-            'zip' => $request->zip,
-            'notes' => $request->notes,
-            'event_time' => $formattedTime,
-            'band_loadin_time' => $formattedTime,
-            'finish_time' => $formattedTime,
-            'rhythm_loadin_time' => $formattedTime,
-            'production_loadin_time' => $formattedTime,
-            'pay' => $request->pay,
-            'depositReceived' => $request->depositReceived,
-            'event_key' => $request->event_key,
-            'created_at' => $request->created_at,
-            'updated_at' => $request->updated_at,
-            'public' => $request->public,
-            'event_type_id' => $request->event_type_id,
-            'lodging' => $request->lodging,
-            'state_id' => $request->state_id,
-            'event_key'=>Str::uuid()
-        ]);
+        $event = BandEvents::where('event_key',$request->event_key)->first();
+        
+        $event->band_id = $request->band_id;
+        $event->event_name = $request->event_name;
+        $event->venue_name = $request->venue_name;
+        $event->first_dance = $request->first_dance;
+        $event->second_dance = $request->second_dance;
+        $event->money_dance = $request->money_dance;
+        $event->bouquet_dance = $request->bouquet_dance;
+        $event->address_street = $request->address_street;
+        $event->zip = $request->zip;
+        $event->notes = $request->notes;
+        $event->event_time = $formattedTime;
+        $event->band_loadin_time = $formattedTime;
+        $event->finish_time = $formattedTime;
+        $event->rhythm_loadin_time = $formattedTime;
+        $event->production_loadin_time = $formattedTime;
+        $event->pay = $request->pay;
+        $event->depositReceived = $request->depositReceived;
+        $event->event_key = $request->event_key;
+        $event->created_at = $request->created_at;
+        $event->updated_at = $request->updated_at;
+        $event->public = $request->public;
+        $event->event_type_id = $request->event_type_id;
+        $event->lodging = $request->lodging;
+        $event->state_id = $request->state_id;
+        $event->save();
 
         return redirect()->route('events')->with('successMessage',$request->event_name . ' was successfully updated');
     }
@@ -185,6 +183,9 @@ class EventsController extends Controller
     public function destroy($key)
     {
         //
-        dd('destroy event');
+        $event = BandEvents::where('event_key',$key)->first();
+        $event->delete();
+
+        return redirect()->route('events')->with('successMessage',$event->event_name . ' was successfully deleted');
     }
 }

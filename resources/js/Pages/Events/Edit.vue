@@ -12,7 +12,7 @@
                     </ul>
                 </div>
                                     
-                <form action="/events" method="POST" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" @submit.prevent="createEvent">
+                <form :action="'/events/' + form.even_key" method="PATCH" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" @submit.prevent="updateEvent">
                     <div class="bg-white w-full rounded-lg shadow-xl">
                             <div class="p-4 border-b">
                                 <h2 class="text-2xl ">
@@ -215,12 +215,12 @@
                         <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">
                             Update Event
                         </button>
-                       
-                    </div>
-                </form>
-                 <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" v-on:click="showAlert">
+                        <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" v-on:click="showAlert">
                             Delete Event
                         </button>
+                    </div>
+                </form>
+
             </div>
         </div>
     </breeze-authenticated-layout>
@@ -234,8 +234,8 @@
     export default {
         props:['event','eventTypes','bands','states','errors'],
         components: {
-            BreezeAuthenticatedLayout,Datepicker,VueTimepicker,VueSweetalert2
-        },
+            BreezeAuthenticatedLayout,Datepicker,VueTimepicker
+        }, 
         data(){
             return{
                 form:{
@@ -268,15 +268,27 @@
         },
         methods:{
             updateEvent(){
+                console.log('should update?');
                 this.$inertia.patch('/events/'+ this.event.event_key,this.form)
                     .then(()=>{
                         // alert('created');
                     })
             },
             showAlert() {
-                console.log('should show alert');
-                // Use sweetalert2
-                this.$swal('Hello Vue world!!!');
+                this.$swal.fire({
+                    title: 'Are you sure you want to delete ' + this.form.event_name,
+                    text: "You won't be able to revert this!",
+                    type: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Yes, delete it!'
+                }).then((result) => {
+                    if(result.value)
+                    {
+                        this.deleteEvent();
+                    }
+                })
             },
             deleteEvent(){
                 this.$inertia.delete('/events/' + this.event.event_key,this.form)

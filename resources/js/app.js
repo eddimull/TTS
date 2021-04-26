@@ -18,7 +18,8 @@ createApp({
         }),
 })
     .mixin({ methods: { route } })
-    .use([InertiaPlugin,VueSweetalert2])
+    .use(InertiaPlugin)
+    .use(VueSweetalert2)
     .mount(el);
 
 InertiaProgress.init({ color: '#4B5563' });
