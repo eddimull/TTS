@@ -23,6 +23,9 @@
                                 </breeze-nav-link>                  
                                 <breeze-nav-link :href="route('events')" :active="route().current('events')">
                                     Events
+                                </breeze-nav-link> 
+                                <breeze-nav-link :href="route('colors')" :active="route().current('colors')">
+                                    Colors
                                 </breeze-nav-link>                    
                             </div>
                         </div>

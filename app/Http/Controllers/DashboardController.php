@@ -33,7 +33,7 @@ class DashboardController extends Controller
         $state = State::where('state_id',$user->StateID)->first();
         // $userGeoCode = \GoogleMaps::load('geocoding')
         //                 ->setParamByKey('address', $user->Address1 . ' ' . $user->City . ' ' . $state->state_name . ' ' . $user->Zip)->get();
-
+        $stats = ['miles'=>0];
         // dd($userGeoCode);
         foreach($events as $event)
         {
@@ -53,11 +53,14 @@ class DashboardController extends Controller
 
 
             $event->miles = $mileage->miles;
+
+            $stats['miles'] = $stats['miles'] + $event->miles;
             
         }
         return Inertia::render('Dashboard',
         [
-            'events'=>$events
+            'events'=>$events,
+            'stats'=>$stats
         ]);
     }
 }
