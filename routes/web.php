@@ -50,5 +50,8 @@ Route::patch('/events/{key}', 'EventsController@update')->middleware(['auth', 'v
 Route::delete('/events/{key}', 'EventsController@destroy')->middleware(['auth', 'verified'])->name('events.destroy');
 
 Route::get('/colors','ColorsController@index')->middleware(['auth', 'verified'])->name('colors');
+Route::put('/colors','ColorsController@store')->middleware(['auth', 'verified'])->name('colors.store');
+
+Route::get('/images/{uri}','ImageController@index');
 
 require __DIR__.'/auth.php';

@@ -16,21 +16,7 @@
             'md:pt-':true}">
 
         <!-- modal -->
-        <div id="modal" :class="{'opacity-0':!show,
-            'transform':true,
-            '-translate-y-full':!show,
-            'scale-150 ':!show,
-            'relative':true,
-            'w-10/12':true,
-            'md:w-1/2':true,
-            'h-1/2':true,
-            'md:h-3/4':true,
-            'bg-white':true,
-            'rounded':true,
-            'shadow-lg':true,
-            'transition-opacity':true,
-            'transition-transform':true,
-            'duration-300':true}">
+        <div id="modal" :class="[{'opacity-0':!show, '-translate-y-full':!show,'scale-150 ':!show},'transform','relative','w-10/12','md:w-1/2','h-1/2','md:h-3/4','bg-white','rounded','shadow-lg','transition-opacity','transition-transform','duration-300']">
 
             <!-- button close -->
             <button 
@@ -46,12 +32,11 @@
 
             <!-- body -->
             <div class="w-full p-3">
-            Lorem ipsum, dolor sit amet consectetur adipisicing elit. Asperiores, quis tempora! Similique, explicabo quaerat maxime corrupti tenetur blanditiis voluptas molestias totam? Quaerat laboriosam suscipit repellat aliquam blanditiis eum quos nihil.
+                <slot name="body"></slot>
             </div>
-
             <!-- footer -->
             <div class="absolute bottom-0 left-0 px-4 py-3 border-t border-gray-200 w-full flex justify-end items-center gap-3">
-            <button class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded text-white focus:outline-none">Save</button>
+            <button v-on:click="emitSave" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded text-white focus:outline-none">Save</button>
             <button 
                 v-on:click="closeModal()"
                 class="bg-red-500 hover:bg-red-600 px-4 py-2 rounded text-white focus:outline-none"
@@ -86,6 +71,9 @@ export default {
       this.show = true;
       console.log('should open modal')
     //   document.querySelector("body").classList.add("overflow-hidden");
+    },
+    emitSave(){
+      this.$emit('save');
     }
   }
 };

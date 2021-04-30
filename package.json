@@ -29,10 +29,14 @@
     "dependencies": {
         "@babel/plugin-syntax-dynamic-import": "^7.8.3",
         "moment": "^2.29.1",
+        "smart-tagz": "^0.2.0",
         "v-calendar": "^3.0.0-alpha.3",
         "vue-moment": "^4.1.0",
         "vue-sweetalert2": "^4.3.1",
+        "vue-upload-drop-images": "^1.0.4",
+        "vue2-dropzone": "^3.6.0",
         "vue3-datepicker": "^0.2.4",
+        "vue3-dropzone": "^0.0.7",
         "vue3-timepicker": "*"
     }
 }

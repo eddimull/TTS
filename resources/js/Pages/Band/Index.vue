@@ -24,12 +24,14 @@
                                 <thead class="bg-gray-800 text-white">
                                     <tr>
                                         <th scope="w-1/3 text-left py-3 uppercase font-semibold text-sm">Name</th>
+                                        <th scope="w-1/3 text-left py-3 uppercase font-semibold text-sm">Site Name</th>
                                         <th scope="w-1/3 text-left py-3 uppercase font-semibold text-sm"></th>
                                     </tr>
                                 </thead>  
                                 <tbody class="text-gray-700">
                                     <tr :class="{'bg-gray-100': $index % 2 === 0, 'border-b': $index % 2 !== 0 }" v-for="band in bands" :key="band.id">
-                                        <td class="w-1/3 text-left py-3 px-4">{{band.name}}</td>
+                                        <td class="w-1/3 text-center py-3 px-4">{{band.name}}</td>
+                                        <td class="w-1/3 text-center py-3 px-4">{{band.site_name}}</td>
                                         <td>
                                             <inertia-link class="border bg-white hover:bg-blue-500 rounded p-1" :href="`/bands/${band.id}/edit`">
                                                 Edit

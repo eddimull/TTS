@@ -45,7 +45,8 @@ class BandsController extends Controller
     {
         //
         $request->validate([
-            'name'=>'required'
+            'name'=>'required',
+            'site_name'=>'required|unique:bands,site_name'
         ]);
 
         $createdBand = Bands::create([
@@ -95,12 +96,14 @@ class BandsController extends Controller
     public function update(Request $request, $id)
     {
         $request->validate([
-            'name'=>'required'
+            'name'=>'required',
+            'site_name'=>'required|unique:bands,site_name'
         ]);
         
         $band = Bands::find($id);
 
         $band->name = $request->name;
+        $band->site_name = $request->site_name;
         
         $band->save();
 

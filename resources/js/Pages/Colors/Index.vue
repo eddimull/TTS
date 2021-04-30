@@ -5,54 +5,42 @@
                 Colorways
             </h2>
         </template>
-        <card-modal ref="modalName">
+        <card-modal @save="saveColor" ref="modalName">
             <template v-slot:header>
                 <h1>Add Colorway</h1>
             </template>
 
             <template v-slot:body>
-                Pictures:
-                Title:
-                Hashtags:
-
+                
+                    <UploadImages @change="handleImages" />
+                    Title:  <div>
+                            <input type="text" v-model="form.color_title"/>
+                            </div>
+                    Description:  <div>
+                            <textarea class="min-w-full" v-model="form.colorway_description" placeholder=""></textarea>
+                            </div>
+                    Hashtags: <div>
+                                <smart-tagz :on-changed="tagsUpdate" :allow-duplicates="false"  inputPlaceholder="Describe Attire" />
+                            </div>
+                
             </template>
 
             <template v-slot:footer>
                 <div>
-                <button @click="$refs.modalName.closeModal()">Cancel</button>
-                <button @click="$refs.modalName.closeModal()">Save</button>
+                <!-- <button @click="$refs.modalName.closeModal()">Cancel</button>
+                <button @click="$refs.modalName.closeModal()">Save</button> -->
                 </div>
             </template>
          </card-modal>
         <div class="md:container md:mx-auto">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
-                    <h4>Band Name</h4>
+                <div v-for="band in bands" :key="band.name" class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
+                    <h4>{{band.name}}</h4>
                    
                     <div class="grid grid-cols-3 gap-4">
-                        <card :title="'Rock Star'" :description="'rock your socks off'" :hashTags="['party','rockStar','80s']"></card>
-                        <card :picture="'https://scontent-dfw5-2.xx.fbcdn.net/v/t1.6435-9/121157072_3555312407832603_6378580396635833956_n.jpg?_nc_cat=106&ccb=1-3&_nc_sid=174925&_nc_ohc=DEn4CBKJz2UAX9xUANE&_nc_ht=scontent-dfw5-2.xx&oh=5212e61e18bb5212991c26bdd5491953&oe=60AD86BB'" title="Pinks" description="A fantastic pink starburst" :hashTags="['patrick','chest']"></card>
-                        <card></card>
-                        <card></card>
-                        <div class="inline-block">  
-                            <!--Card 1-->
-                            <div class="max-w-sm rounded overflow-hidden shadow-lg">
-                            <img class="w-full" src="https://scontent-dfw5-2.xx.fbcdn.net/v/t1.6435-9/121157072_3555312407832603_6378580396635833956_n.jpg?_nc_cat=106&ccb=1-3&_nc_sid=174925&_nc_ohc=DEn4CBKJz2UAX9xUANE&_nc_ht=scontent-dfw5-2.xx&oh=5212e61e18bb5212991c26bdd5491953&oe=60AD86BB" alt="Mountain">
-                            <div class="px-6 py-4">
-                                <div class="font-bold text-xl mb-2">Pinks</div>
-                                <p class="text-gray-700 text-base">
-                                    Look at that pink star burst bustin' out
-                                </p>
-                            </div>
-                            <div class="px-6 pt-4 pb-2">
-                                <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">#pink</span>
-                                <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">#patrick</span>
-                                <span class="inline-block bg-gray-200 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 mr-2 mb-2">#chest</span>
-                            </div>
-                            </div>
-                        </div>
-
-                        <div v-on:click="$refs.modalName.openModal()" class="cursor-pointer transition-colors flex content-center justify-center max-w-sm rounded overflow-hidden shadow-lg border-2 hover:bg-green-100">
+                        
+                      
+                        <div v-on:click="$refs.modalName.openModal(); setBandID(band.id)" class="h-56 m-10 cursor-pointer transition-colors flex content-center justify-center max-w-sm rounded overflow-hidden shadow-lg border-2 hover:bg-green-100">
                             <div class="flex flex-wrap content-center justify-center">
                                 <div>
                                 Create new
@@ -72,23 +60,69 @@
 
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
-
+    import UploadImages from "vue-upload-drop-images"
+    import { SmartTagz } from "smart-tagz";
+    import "smart-tagz/dist/smart-tagz.css";
+     
     export default {
-        props:['colors','successMessage'],
+        props:['bands','colors','successMessage'],
         components: {
             BreezeAuthenticatedLayout,
-            
+            UploadImages,
+            SmartTagz
         },
         data(){
             return{
-                showModal:false
+                showModal:false,
+                form: this.$inertia.form({
+                    '_method': 'PUT',
+                    color_title:'',
+                    color_tags:'',
+                    color_photos:[],
+                    colorway_description:'',
+                    band_id:''
+                }),
+                uploadedFiles:null
             }
         },
         methods:{
             toggleModal(){
                 console.log('togglin');
                 this.showModal = !this.showModal
+            },
+            handleImages(files){
+                // this.uploadedFiles = files;
+                if(!files.target)
+                {
+                    // console.log(files);
+                    this.form.color_photos = []
+                    files.forEach(file=>this.form.color_photos.push(file));
+                }
+                // console.log(this.form.color_photos);
+                
+            },
+            updatePreview(file)
+            {
+                console.log(file)
+            },
+            setBandID(id)
+            {
+                this.form.band_id = id
+            },
+            tagsUpdate(tags)
+            {
+                this.form.color_tags = tags;
+            },
+            saveColor()
+            {
+               
+               
+                this.form.post('/colors',this.form,{preserveState:true})
+
+      
+                
             }
+
         }
     }
 </script>
