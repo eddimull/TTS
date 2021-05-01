@@ -47,4 +47,9 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    public function bandOwner()
+    {
+        return $this->belongsToMany(Bands::class,'band_owners','user_id','band_id');
+    }
 }

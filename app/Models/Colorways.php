@@ -11,4 +11,14 @@ class Colorways extends Model
 
     protected $table = "colorways";
     protected $fillable = ['band_id','color_title','color_tags','colorway_description'];
+
+    public function band()
+    {
+        return $this->belongsTo(Bands::class,'band_id');
+    }
+
+    public function photos()
+    {
+        return $this->hasMany(ColorwayPhotos::class,'colorway_id');
+    }
 }

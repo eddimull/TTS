@@ -12,4 +12,9 @@ class ColorwayPhotos extends Model
     protected $table = 'colorway_photos';
 
     protected $fillable = ['colorway_id','photo_name'];
+
+    public function color()
+    {
+        return $this->belongsTo(Colorways::class);
+    }
 }

@@ -2,49 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ProposalPhases;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
-class ImageController extends Controller
+class ProposalPhasesController extends Controller
 {
     /**
      * Display a listing of the resource.
      *
      * @return \Illuminate\Http\Response
      */
-    public function index($file)
+    public function index()
     {
-        dd($file);
-        if (Storage::disk('s3')->exists($file)) {
-            $storage = Storage::disk('s3')->url($file);
-        }
-        else
-        {
-            $storage = Storage::disk('s3')->url('strauss.jpg');
-        }
-        // $contents = 
-        
-        // $handle = fopen($storage);
-
-        
-        return redirect($storage);
+        //
     }
-    public function siteImages($band_site,$uri)
-    {
-        if (Storage::disk('s3')->exists($band_site.'/'.$uri)) {
-            $storage = Storage::disk('s3')->url($band_site.'/'.$uri);
-        }
-        else
-        {
-            $storage = Storage::disk('s3')->url('strauss.jpg');
-        }
-        // $contents = 
-        
-        // $handle = fopen($storage);
-
-        
-        return redirect($storage);
-    }    
 
     /**
      * Show the form for creating a new resource.
@@ -70,10 +41,10 @@ class ImageController extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  int  $id
+     * @param  \App\Models\ProposalPhases  $proposalPhases
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show(ProposalPhases $proposalPhases)
     {
         //
     }
@@ -81,10 +52,10 @@ class ImageController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  int  $id
+     * @param  \App\Models\ProposalPhases  $proposalPhases
      * @return \Illuminate\Http\Response
      */
-    public function edit($id)
+    public function edit(ProposalPhases $proposalPhases)
     {
         //
     }
@@ -93,10 +64,10 @@ class ImageController extends Controller
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
+     * @param  \App\Models\ProposalPhases  $proposalPhases
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, $id)
+    public function update(Request $request, ProposalPhases $proposalPhases)
     {
         //
     }
@@ -104,10 +75,10 @@ class ImageController extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param  int  $id
+     * @param  \App\Models\ProposalPhases  $proposalPhases
      * @return \Illuminate\Http\Response
      */
-    public function destroy($id)
+    public function destroy(ProposalPhases $proposalPhases)
     {
         //
     }

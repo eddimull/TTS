@@ -36,10 +36,12 @@
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <div v-for="band in bands" :key="band.name" class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
                     <h4>{{band.name}}</h4>
-                   
+                    
                     <div class="grid grid-cols-3 gap-4">
+                        <div v-for="(color,id) in getColors(band.id)" :key="id">
+                            <card :title="color.color_title" :description="color.colorway_description" :picture="'https://bandapp.s3.us-east-2.amazonaws.com/' + color.photos[0]['photo_name']" :hashTags="color.color_tags.split(',')"/>
+                        </div>    
                         
-                      
                         <div v-on:click="$refs.modalName.openModal(); setBandID(band.id)" class="h-56 m-10 cursor-pointer transition-colors flex content-center justify-center max-w-sm rounded overflow-hidden shadow-lg border-2 hover:bg-green-100">
                             <div class="flex flex-wrap content-center justify-center">
                                 <div>
@@ -112,6 +114,11 @@
             tagsUpdate(tags)
             {
                 this.form.color_tags = tags;
+            },
+            getColors(band_id)
+            {
+                const colors = this.colors.filter(color=>color.band_id == band_id);
+                return colors;
             },
             saveColor()
             {

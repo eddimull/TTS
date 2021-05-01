@@ -53,5 +53,7 @@ Route::get('/colors','ColorsController@index')->middleware(['auth', 'verified'])
 Route::put('/colors','ColorsController@store')->middleware(['auth', 'verified'])->name('colors.store');
 
 Route::get('/images/{uri}','ImageController@index');
+Route::get('/images/{band_site}/{uri}','ImageController@index');
+
 
 require __DIR__.'/auth.php';

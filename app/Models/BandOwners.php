@@ -9,4 +9,10 @@ class BandOwners extends Model
 {
     protected $fillable = ['user_id','band_id'];
     use HasFactory;
+
+
+    public function bands()
+    {
+        return $this->belongsTo(Bands::class);
+    }
 }

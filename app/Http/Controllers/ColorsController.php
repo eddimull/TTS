@@ -21,25 +21,34 @@ class ColorsController extends Controller
      */
     public function index()
     {
-        $bands = Bands::select('bands.*')->join('band_owners','bands.id','=','band_owners.band_id')->where('user_id',Auth::id())->get();
-        $colors = DB::select(DB::raw('SELECT B.name AS band_name, B.id AS band_id, CW.color_title, CW.color_tags,CP.photo_name FROM colorways CW 
-        JOIN colorway_photos CP ON CP.colorway_id = CW.id
-        JOIN band_owners BO ON BO.band_id = CW.band_id
-        JOIN bands B ON B.id = BO.band_id
-        WHERE user_id = ?'),[Auth::id()]);
+        $user = Auth::user();
+        $bands = $user->bandOwner;
+        
+        // dd($bands);
+        // $test = Bands::first();
+        $colors = [];
+        foreach($bands as $band)
+        {
+            // dd($band->colorways);
+            // dd($band->colorways());
+            $bandColor = $band->colorways;
+            foreach($bandColor as $color)
+            {
+                // dd($color);
+                $photos = $color->photos;
+                $color->photos = $photos;
+                array_push($colors,$color);
+            }
 
+        }
 
-        // foreach($colors as $color)
-        // {
-
-        // }
         return Inertia::render('Colors/Index',[
-            'bands'=>$bands,
+            'bands'=>$user->bandOwner,
             'colors'=>$colors
         ]);
     }
 
-    /**
+    /** 
      * Show the form for creating a new resource.
      *
      * @return \Illuminate\Http\Response
@@ -68,17 +77,17 @@ class ColorsController extends Controller
         $images = $request->file('color_photos');
         foreach($images as $image)
         {
-            $path = Storage::disk('s3')->put($band->site_name . '/' . urlencode($image->getClientOriginalName()),
+            $imagePath = $band->site_name . '/' . time() . str_replace($image->getClientOriginalName(),' ','_');
+            
+            $path = Storage::disk('s3')->put($imagePath,
                             file_get_contents($image),
                             ['visibility'=>'public']);
             $color_photo = ColorwayPhotos::create([
                 'colorway_id'=>$colorway->id,
-                'photo_name'=>$path
+                'photo_name'=>$imagePath
             ]);
         }
-        return response()->json([
-            'message' => 'Successfully added color',
-        ]);
+        redirect()->route('Colors/Index')->with('successMessage','Color was successfully added');
     }
 
     /**
@@ -87,9 +96,30 @@ class ColorsController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show($request)
     {
-        //
+        $band = Bands::find($request->band_id);
+        $colorway = Colorways::create([
+            'band_id' => $request->band_id,
+            'color_title' => $request->color_title,
+            'color_tags' => implode(',',$request->color_tags),
+            'colorway_description' => $request->colorway_description
+        ]);
+
+        $images = $request->file('color_photos');
+        foreach($images as $image)
+        {
+            $imagePath = $band->site_name . '/' . time() . str_replace($image->getClientOriginalName(),' ','_');
+            
+            $path = Storage::disk('s3')->put($imagePath,
+                            file_get_contents($image),
+                            ['visibility'=>'public']);
+            $color_photo = ColorwayPhotos::create([
+                'colorway_id'=>$colorway->id,
+                'photo_name'=>$imagePath
+            ]);
+        }
+        redirect()->route('Colors/Index')->with('successMessage',$request->color_title . 'was successfully edited');
     }
 
     /**

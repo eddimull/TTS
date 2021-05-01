@@ -17,10 +17,12 @@ class BandsController extends Controller
      */
     public function index()
     {
-        $bands = Bands::select('bands.*')->join('band_owners','bands.id','=','band_owners.band_id')->where('user_id',Auth::id())->get();
+        // $bands = Bands::select('bands.*')->join('band_owners','bands.id','=','band_owners.band_id')->where('user_id',Auth::id())->get();
+        $user = Auth::user();
+        // $bandOwner = $user->ban
         // ddd(Auth::id());
         return Inertia::render('Band/Index',[
-            'bands'=>$bands
+            'bands'=>$user->bandOwner
         ]);
     }
 
@@ -48,9 +50,11 @@ class BandsController extends Controller
             'name'=>'required',
             'site_name'=>'required|unique:bands,site_name'
         ]);
-
+        
+        // dd($request);
         $createdBand = Bands::create([
-            'name'=>$request->name
+            'name'=>$request->name,
+            'site_name'=>$request->site_name
         ]);
 
         BandOwners::create([
