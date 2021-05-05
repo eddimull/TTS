@@ -28,7 +28,8 @@ class EventsController extends Controller
                                 FROM band_events 
                                 JOIN band_owners BO ON BO.band_id = band_events.band_id 
                                 JOIN event_types ET ON ET.id = band_events.event_type_id 
-                                WHERE BO.user_id = ? AND band_events.deleted_at IS NULL'),[Auth::id()]);
+                                WHERE BO.user_id = ? AND band_events.deleted_at IS NULL 
+                                ORDER BY event_time ASC'),[Auth::id()]);
 
         return Inertia::render('Events/Index',[
             'events'=>$events
@@ -232,6 +233,7 @@ class EventsController extends Controller
         $event->state_id = $request->state_id;
         $event->outside = $request->outside;
         $event->quiet_time = date('Y-m-d H:i:s',strtotime($request->quiet_time));
+        $event->onsite = $request->onsite;
         $event->save();
 
         return redirect()->route('events')->with('successMessage',$request->event_name . ' was successfully updated');
