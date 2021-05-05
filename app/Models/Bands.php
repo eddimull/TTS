@@ -20,6 +20,10 @@ class Bands extends Model
         return $this->hasMany(BandMembers::class);
     }
 
+    public function events()
+    {
+        return $this->hasMany(BandEvents::class,'band_id');
+    }
     public function colorways()
     {
         // belongsToMany(Bands::class,'band_owners','user_id','band_id')

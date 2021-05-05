@@ -11,8 +11,7 @@
                         <li>{{ errors.name }}</li>
                     </ul>
                 </div>
-                                    
-                <form :action="'/events/' + form.even_key" method="PATCH" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" @submit.prevent="updateEvent">
+                <form :action="'f/events/' + form.even_key" method="PATCH" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" @submit.prevent="updateEvent">
                     <div class="bg-white w-full rounded-lg shadow-xl">
                             <div class="p-4 border-b">
                                 <h2 class="text-2xl ">
@@ -28,7 +27,7 @@
                                         <label for="name">Band</label>
                                     </p>
                                     <div>
-                                        <select v-model="form.band_id" class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded" id="grid-state">
+                                        <select v-on:change="colorsForBand()" v-model="form.band_id" class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded" id="grid-state">
                                             <option v-for="band in bands" :key="band.id" :value="band.id">{{band.name}}</option>
                                         </select>
                                     </div>
@@ -38,6 +37,7 @@
                                         <label for="name">Name</label>
                                     </p>
                                     <div class="mb-4">
+                                        <p-inputtext v-model="form.event_name"></p-inputtext>
                                         <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="name" placeholder="Event Name" v-model="form.event_name">
                                     </div>
                                 </div>
@@ -113,6 +113,15 @@
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
 
                                     <p class="text-gray-600">
+                                        <label for="zipCode">City</label>
+                                    </p>
+                                    <p>
+                                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="city" placeholder="Townsville" v-model="form.city">
+                                    </p>
+                                </div>                                 
+                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+
+                                    <p class="text-gray-600">
                                         <label for="state">State</label>
                                     </p>
                                     <p>
@@ -139,26 +148,53 @@
                                 </div>
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                                     <p class="text-gray-600">
-                                        Event Date
+                                        Color
                                     </p>
                                     <p>
-                                        <datepicker v-model="form.event_time" />
+                                        <select v-model="form.colorway_id" class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded" id="colorway">
+                                            <option v-for="color in colors" :key="color.id" :value="color.id">{{color.color_title}}</option>
+                                        </select> 
                                     </p>
                                 </div>
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                                     <p class="text-gray-600">
-                                        Event Time
+                                        Event Date
                                     </p>
                                     <p>
-                                        <VueTimepicker v-model="form.eventTime" />
+                                        <calendar v-on:date-select="setDate()" v-model="form.event_time" />
                                     </p>
                                 </div>
+                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                    <p class="text-gray-600">
+                                        Show Time
+                                    </p>
+                                    <p>
+                                        <calendar v-on:date-select="setDate()" v-model="form.event_time" :showTime="true" :timeOnly="true" hourFormat="12" />
+                                    </p>
+                                </div>
+                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                    <p class="text-gray-600">
+                                        Quiet Time
+                                    </p>
+                                    <p>
+                                        <calendar v-model="form.quiet_time" :step-minute="15" :showTime="true" :timeOnly="true" hourFormat="12" />
+                                    </p>
+                                </div>   
+                                <div v-if="form.event_type_id === 1" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                    <p class="text-gray-600">
+                                        Ceremony Time
+                                    </p>
+                                    <p>
+                                        <calendar v-model="form.ceremony_time" :step-minute="15" :showTime="true" :timeOnly="true" hourFormat="12" />
+                                        On Site: <input type="checkbox" v-model="form.onsite"/>
+                                    </p>
+                                </div>                               
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                                     <p class="text-gray-600">
                                         End Time
                                     </p>
                                     <p>
-                                        <VueTimepicker v-model="form.finish_time" />
+                                        <calendar v-model="form.end_time" :step-minute="15" :showTime="true" :timeOnly="true" hourFormat="12" />
                                     </p>
                                 </div>   
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -166,7 +202,7 @@
                                         Production Load In Time
                                     </p>
                                     <p>
-                                        <VueTimepicker v-model="form.production_loadin_time" />
+                                        <calendar v-model="form.production_loadin_time" :step-minute="15" :showTime="true" :timeOnly="true" hourFormat="12" />
                                     </p>
                                 </div>  
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -174,7 +210,7 @@
                                         Rhythm Load In Time
                                     </p>
                                     <p>
-                                        <VueTimepicker v-model="form.rhythm_loadin_time" />
+                                        <calendar v-model="form.rhythm_loadin_time" :step-minute="15" :showTime="true" :timeOnly="true" hourFormat="12" />
                                     </p>
                                 </div>                                                                 
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -182,7 +218,7 @@
                                         Band Load In Time
                                     </p>
                                     <p>
-                                        <VueTimepicker v-model="form.band_loadin_time" />
+                                        <calendar v-model="form.band_loadin_time" :step-minute="15" :showTime="true" :timeOnly="true" hourFormat="12" />
                                     </p>
                                 </div>              
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -208,7 +244,23 @@
                                     <p>
                                         <input type="checkbox" v-model="form.lodging"/>
                                     </p>
-                                </div>                                                                                                          
+                                </div>  
+                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                    <p class="text-gray-600">
+                                       Outside
+                                    </p>
+                                    <p>
+                                        <input type="checkbox" v-model="form.outside"/>
+                                    </p>
+                                </div>     
+                                <div v-if="form.event_type_id === 1" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                    <p class="text-gray-600">
+                                       Second Line
+                                    </p>
+                                    <p>
+                                        <input type="checkbox" v-model="form.second_line"/>
+                                    </p>
+                                </div>                                                                                                                                            
                             </div>
                         </div>
                     <div class="flex items-center justify-between">
@@ -231,6 +283,7 @@
     import Datepicker from 'vue3-datepicker'
     import VueTimepicker from 'vue3-timepicker'
     import 'vue3-timepicker/dist/VueTimepicker.css'
+    import moment from 'moment';
     export default {
         props:['event','eventTypes','bands','states','errors'],
         components: {
@@ -248,27 +301,36 @@
                     bouquet_dance:this.event.bouquet_dance,
                     address_street:this.event.address_street,
                     zip:this.event.zip,
+                    city:this.event.city,
+                    colorway_id:this.event.colorway_id,
+                    ceremony_time:new Date(moment(this.event.ceremony_time)),
+                    quiet_time:new Date(moment(this.event.quiet_time)),
+                    onsite:this.event.onsite ? true : false,
                     notes:this.event.notes,
-                    event_time:this.event.event_time,
-                    band_loadin_time:this.event.band_loadin_time,
-                    finish_time:this.event.finish_time,
-                    rhythm_loadin_time:this.event.rhythm_loadin_time,
-                    production_loadin_time:this.event.production_loadin_time,
-                    pay:this.event.pay,
-                    depositReceived:this.event.depositReceived,
+                    event_time:new Date(moment(this.event.event_time)),
+                    end_time:new Date(moment(this.event.end_time)),
+                    band_loadin_time:new Date(moment(this.event.band_loadin_time)),
+                    rhythm_loadin_time:new Date(moment(this.event.rhythm_loadin_time)),
+                    production_loadin_time:new Date(moment(this.event.production_loadin_time)),
+                    pay:this.event.pay, 
+                    depositReceived:this.event.depositReceived ? true : false,
                     event_key:this.event.event_key,
                     created_at:this.event.created_at,
                     updated_at:this.event.updated_at,
-                    public:this.event.public,
+                    public:this.event.public ? true : false,
                     event_type_id:this.event.event_type_id,
-                    lodging:this.event.lodging,
+                    lodging:this.event.lodging ? true : false,
                     state_id:this.event.state_id,
+                    outside:this.event.outside ? true : false
                 }
             }
         },
+        created(){
+            this.colorsForBand()
+            console.log(this.event.ceremony_time);
+        },
         methods:{
             updateEvent(){
-                console.log('should update?');
                 this.$inertia.patch('/events/'+ this.event.event_key,this.form)
                     .then(()=>{
                         // alert('created');
@@ -289,6 +351,18 @@
                         this.deleteEvent();
                     }
                 })
+            },
+            
+            colorsForBand(){
+                // const band = this.bands.filter(band=>band.id == this.form.band_id);
+                for(const i in this.bands)
+                {
+                    console.log(this.form.band_id,this.bands[i].id )
+                    if(this.bands[i].id === this.form.band_id)
+                    {
+                        this.colors = this.bands[i].colors;
+                    }
+                }
             },
             deleteEvent(){
                 this.$inertia.delete('/events/' + this.event.event_key,this.form)

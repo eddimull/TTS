@@ -79,6 +79,12 @@
                         <breeze-responsive-nav-link :href="route('bands')" :active="route().current('bands')">
                             Bands
                         </breeze-responsive-nav-link>
+                        <breeze-responsive-nav-link :href="route('events')" :active="route().current('events')">
+                            Events
+                        </breeze-responsive-nav-link> 
+                        <breeze-responsive-nav-link :href="route('colors')" :active="route().current('colors')">
+                            Colors
+                        </breeze-responsive-nav-link>   
                     </div>
 
                     <!-- Responsive Settings Options -->

@@ -6,6 +6,7 @@ use App\Models\EventTypes;
 use App\Models\State;
 use App\Models\Bands;
 use App\Models\BandEvents;
+use PDF;
 use Doctrine\DBAL\Events;
 use Illuminate\Support\Facades\DB;
 use Faker\Provider\Uuid;
@@ -44,12 +45,58 @@ class EventsController extends Controller
         $eventTypes = EventTypes::orderBy('name')->get();
         $states = State::where('country_id',231)->get();
         $bands = Bands::select('bands.*')->join('band_owners','bands.id','=','band_owners.band_id')->where('user_id',Auth::id())->get();
+        foreach($bands as $band)
+        {
+            $colors = $band->colorways;
+            $band->colors = $colors;
+        }
         return Inertia::render('Events/Create',[
             'eventTypes' => $eventTypes,
             'states'=>$states,
             'bands'=>$bands
         ]);
     }
+    public function advance($key)
+    {
+        $event = BandEvents::where('event_key',$key)->first();
+        $event->band = $event->band;
+        $event->event_type_name = $event->event_type;
+        compact($event->state);
+        compact($event->colorway);
+        
+
+        // dd($event->event_type_name);
+        return Inertia::render('Events/Advance',[
+            'event'=>$event            
+        ]);
+
+    }
+    public function createPDF($id)
+    {
+        $event = BandEvents::where('id',$id)->first();
+        $event->band = $event->band;
+        $event->event_type_name = $event->event_type;
+        
+
+        // dd($event->event_type_name);
+        return view('events',['event'=>$event]);
+
+    }
+
+    public function downloadPDF($id)
+    {
+        $event = BandEvents::where('id',$id)->first();
+        $event->band = $event->band;
+        $event->event_type_name = $event->event_type;
+        
+        $pdf = PDF::loadView('events',['event'=>$event]);
+        
+        return $pdf->download($event->band->name . ' - ' . $event->event_name . '.pdf');
+
+
+        // dd($event->event_type_name);
+
+    }    
 
     /**
      * Store a newly created resource in storage.
@@ -66,6 +113,7 @@ class EventsController extends Controller
         // dd($request);
         $strtotime = strtotime($request->event_time);
         $formattedTime = date('Y-m-d',$strtotime);
+        // dd($request->end_time);
         BandEvents::create([
             'band_id' => $request->band_id,
             'event_name' => $request->event_name,
@@ -77,11 +125,10 @@ class EventsController extends Controller
             'address_street' => $request->address_street,
             'zip' => $request->zip,
             'notes' => $request->notes,
-            'event_time' => $formattedTime,
-            'band_loadin_time' => $formattedTime,
-            'finish_time' => $formattedTime,
-            'rhythm_loadin_time' => $formattedTime,
-            'production_loadin_time' => $formattedTime,
+            'event_time' => date('Y-m-d H:i:s',strtotime($request->event_time)),
+            'band_loadin_time' =>  date('Y-m-d H:i:s',strtotime($request->band_loadin_time)),
+            'rhythm_loadin_time' => date('Y-m-d H:i:s',strtotime($request->rhythm_loadin_time)),
+            'production_loadin_time' => date('Y-m-d H:i:s',strtotime($request->production_loadin_time)),
             'pay' => $request->pay,
             'depositReceived' => $request->depositReceived,
             'event_key' => $request->event_key,
@@ -91,6 +138,14 @@ class EventsController extends Controller
             'event_type_id' => $request->event_type_id,
             'lodging' => $request->lodging,
             'state_id' => $request->state_id,
+            'city' => $request->city,
+            'colorway_id'=>$request->colorway_id,
+            'quiet_time'=> date('Y-m-d H:i:s',strtotime($request->quiet_time)),
+            'end_time'=> date('Y-m-d H:i:s',strtotime($request->end_time)),
+            'ceremony_time'=> date('Y-m-d H:i:s',strtotime($request->ceremony_time)),
+            'outside'=>$request->outside,
+            'second_line'=>$request->second_line,
+            'onsite'=>$request->onsite,
             'event_key'=>Str::uuid()
         ]);
 
@@ -120,6 +175,11 @@ class EventsController extends Controller
         $event = BandEvents::where('event_key',$key)->first();
         $states = State::where('country_id',231)->get();
         $bands = Bands::select('bands.*')->join('band_owners','bands.id','=','band_owners.band_id')->where('user_id',Auth::id())->get();
+        foreach($bands as $band)
+        {
+            $colors = $band->colorways;
+            $band->colors = $colors;
+        }
         return Inertia::render('Events/Edit',[
             'event'=>$event,
             'eventTypes' => $eventTypes,
@@ -144,7 +204,7 @@ class EventsController extends Controller
         $strtotime = strtotime($request->event_time);
         $formattedTime = date('Y-m-d',$strtotime);
         $event = BandEvents::where('event_key',$request->event_key)->first();
-        
+        // dd( date('Y-m-d H:i:s',strtotime('-7 hour',$request->end_time)) );
         $event->band_id = $request->band_id;
         $event->event_name = $request->event_name;
         $event->venue_name = $request->venue_name;
@@ -155,11 +215,12 @@ class EventsController extends Controller
         $event->address_street = $request->address_street;
         $event->zip = $request->zip;
         $event->notes = $request->notes;
-        $event->event_time = $formattedTime;
-        $event->band_loadin_time = $formattedTime;
-        $event->finish_time = $formattedTime;
-        $event->rhythm_loadin_time = $formattedTime;
-        $event->production_loadin_time = $formattedTime;
+        $event->event_time = date('Y-m-d H:i:s',strtotime($request->event_time));
+        $event->band_loadin_time = date('Y-m-d H:i:s',strtotime($request->band_loadin_time));
+        $event->end_time = date('Y-m-d H:i:s',strtotime($request->end_time));
+        $event->rhythm_loadin_time = date('Y-m-d H:i:s',strtotime($request->rhythm_loadin_time));
+        $event->production_loadin_time = date('Y-m-d H:i:s',strtotime($request->production_loadin_time));
+        $event->ceremony_time = date('Y-m-d H:i:s',strtotime($request->ceremony_time));
         $event->pay = $request->pay;
         $event->depositReceived = $request->depositReceived;
         $event->event_key = $request->event_key;
@@ -169,6 +230,8 @@ class EventsController extends Controller
         $event->event_type_id = $request->event_type_id;
         $event->lodging = $request->lodging;
         $event->state_id = $request->state_id;
+        $event->outside = $request->outside;
+        $event->quiet_time = date('Y-m-d H:i:s',strtotime($request->quiet_time));
         $event->save();
 
         return redirect()->route('events')->with('successMessage',$request->event_name . ' was successfully updated');

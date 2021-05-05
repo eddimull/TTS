@@ -46,14 +46,18 @@ Route::get('/events', 'EventsController@index')->middleware(['auth', 'verified']
 Route::get('/events/create', 'EventsController@create')->middleware(['auth', 'verified'])->name('events.create');
 Route::post('/events', 'EventsController@store')->middleware(['auth', 'verified'])->name('events.store');
 Route::get('/events/{key}/edit', 'EventsController@edit')->middleware(['auth', 'verified'])->name('events.edit');
+Route::get('/events/{key}/advance', 'EventsController@advance')->name('events.advance');
 Route::patch('/events/{key}', 'EventsController@update')->middleware(['auth', 'verified'])->name('events.update');
 Route::delete('/events/{key}', 'EventsController@destroy')->middleware(['auth', 'verified'])->name('events.destroy');
+Route::get('/events/createAdvance/{id}','EventsController@createPDF')->middleware(['auth', 'verified']);
+Route::get('/events/downloadPDF/{id}','EventsController@downloadPDF')->middleware(['auth', 'verified']);
+
 
 Route::get('/colors','ColorsController@index')->middleware(['auth', 'verified'])->name('colors');
 Route::put('/colors','ColorsController@store')->middleware(['auth', 'verified'])->name('colors.store');
 
 Route::get('/images/{uri}','ImageController@index');
-Route::get('/images/{band_site}/{uri}','ImageController@index');
+Route::get('/images/{band_site}/{uri}','ImageController@siteImages');
 
 
 require __DIR__.'/auth.php';

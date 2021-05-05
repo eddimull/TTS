@@ -11,7 +11,6 @@
             </template>
 
             <template v-slot:body>
-                
                     <UploadImages @change="handleImages" />
                     Title:  <div>
                             <input type="text" v-model="form.color_title"/>
@@ -20,7 +19,7 @@
                             <textarea class="min-w-full" v-model="form.colorway_description" placeholder=""></textarea>
                             </div>
                     Hashtags: <div>
-                                <smart-tagz :on-changed="tagsUpdate" :allow-duplicates="false"  inputPlaceholder="Describe Attire" />
+                                <!-- <smart-tagz :on-changed="tagsUpdate" :allow-duplicates="false"  :tagsData="defaultTags" inputPlaceholder="Describe Attire" /> -->
                             </div>
                 
             </template>
@@ -36,10 +35,19 @@
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <div v-for="band in bands" :key="band.name" class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
                     <h4>{{band.name}}</h4>
-                    
+                    {{selectedTags}}
+                    <tags-input element-id="tags"
+    v-model="selectedTags" 
+    :existing-tags="[
+        { id: 1, name: 'Web Development' },
+        { id: 2, name: 'PHP' },
+        { id: 3, name: 'JavaScript' },
+    ]"
+    id-field="id"
+    text-field="name"></tags-input>
                     <div class="grid grid-cols-3 gap-4">
                         <div v-for="(color,id) in getColors(band.id)" :key="id">
-                            <card :title="color.color_title" :description="color.colorway_description" :picture="'https://bandapp.s3.us-east-2.amazonaws.com/' + color.photos[0]['photo_name']" :hashTags="color.color_tags.split(',')"/>
+                            <card :title="color.color_title" v-on:click="setColor(color)" :description="color.colorway_description" :picture="'https://bandapp.s3.us-east-2.amazonaws.com/' + color.photos[0]['photo_name']" :hashTags="color.color_tags.split(',')"/>
                         </div>    
                         
                         <div v-on:click="$refs.modalName.openModal(); setBandID(band.id)" class="h-56 m-10 cursor-pointer transition-colors flex content-center justify-center max-w-sm rounded overflow-hidden shadow-lg border-2 hover:bg-green-100">
@@ -65,26 +73,33 @@
     import UploadImages from "vue-upload-drop-images"
     import { SmartTagz } from "smart-tagz";
     import "smart-tagz/dist/smart-tagz.css";
+    import VoerroTagsInput from '@voerro/vue-tagsinput';
+    import '@voerro/vue-tagsinput/dist/style.css';
+ 
      
     export default {
         props:['bands','colors','successMessage'],
         components: {
             BreezeAuthenticatedLayout,
             UploadImages,
-            SmartTagz
+            SmartTagz,
+            'tags-input':VoerroTagsInput
         },
         data(){
             return{
                 showModal:false,
+                selectedTags: [],
                 form: this.$inertia.form({
                     '_method': 'PUT',
+                    color_id:'',
                     color_title:'',
                     color_tags:'',
                     color_photos:[],
                     colorway_description:'',
                     band_id:''
                 }),
-                uploadedFiles:null
+                uploadedFiles:null,
+                defaultTags:['test','test123']
             }
         },
         methods:{
@@ -102,6 +117,27 @@
                 }
                 // console.log(this.form.color_photos);
                 
+            },
+            setColor(color)
+            {
+                // alert('setting color');
+                // this.defaultTags = color.color_tags.split(',');
+
+                const tags = [];
+
+                color.color_tags.split(',').forEach((color,index)=>{
+                    tags.push({
+                        key:index,
+                        value:color
+                    })
+                })
+                this.defaultTags = ['abc','def'];
+                this.form.color_id = color.id;
+                this.form.color_title = color.color_title;
+                this.form.color_tags = tags;
+                this.form.colorway_description = color.colorway_description;
+                this.form.color_photos = color.photos;
+                this.$refs.modalName.openModal();
             },
             updatePreview(file)
             {

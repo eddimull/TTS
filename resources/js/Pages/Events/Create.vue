@@ -1,6 +1,5 @@
 <template>
-    <breeze-authenticated-layout>
-       
+    <breeze-authenticated-layout>       
         <div class="min-w-full max-w-7xl mx-auto sm:px-6 lg:px-8">
              <div class="mb-4">
                 {{ errors.name }}
@@ -26,7 +25,7 @@
                                         <label for="name">Band</label>
                                     </p>
                                     <div>
-                                        <select v-model="form.band_id" class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded" id="grid-state">
+                                        <select v-on:change="colorsForBand()" v-model="form.band_id" class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded" id="grid-state">
                                             <option v-for="band in bands" :key="band.id" :value="band.id">{{band.name}}</option>
                                         </select>
                                     </div>
@@ -36,6 +35,7 @@
                                         <label for="name">Name</label>
                                     </p>
                                     <div class="mb-4">
+                                        <p-inputtext v-model="form.event_name"></p-inputtext>
                                         <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="name" placeholder="Event Name" v-model="form.event_name">
                                     </div>
                                 </div>
@@ -111,6 +111,15 @@
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
 
                                     <p class="text-gray-600">
+                                        <label for="zipCode">City</label>
+                                    </p>
+                                    <p>
+                                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="city" placeholder="Townsville" v-model="form.city">
+                                    </p>
+                                </div>                                 
+                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+
+                                    <p class="text-gray-600">
                                         <label for="state">State</label>
                                     </p>
                                     <p>
@@ -137,26 +146,53 @@
                                 </div>
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                                     <p class="text-gray-600">
-                                        Event Date
+                                        Color
                                     </p>
                                     <p>
-                                        <datepicker v-model="form.event_time" />
+                                        <select v-model="form.colorway_id" class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded" id="colorway">
+                                            <option v-for="color in colors" :key="color.id" :value="color.id">{{color.color_title}}</option>
+                                        </select> 
                                     </p>
                                 </div>
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                                     <p class="text-gray-600">
-                                        Event Time
+                                        Event Date
                                     </p>
                                     <p>
-                                        <VueTimepicker v-model="form.eventTime" />
+                                        <calendar v-on:date-select="setDate()" v-model="form.event_time" />
                                     </p>
                                 </div>
+                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                    <p class="text-gray-600">
+                                        Show Time
+                                    </p>
+                                    <p>
+                                        <calendar v-on:date-select="setDate()" v-model="form.event_time" :showTime="true" :timeOnly="true" hourFormat="12" />
+                                    </p>
+                                </div>
+                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                    <p class="text-gray-600">
+                                        Quiet Time
+                                    </p>
+                                    <p>
+                                        <calendar v-model="form.quiet_time" :showTime="true" :timeOnly="true" hourFormat="12" />
+                                    </p>
+                                </div>   
+                                <div v-if="form.event_type_id === 1" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                    <p class="text-gray-600">
+                                        Ceremony Time
+                                    </p>
+                                    <p>
+                                        <calendar v-model="form.event_time" :showTime="true" :timeOnly="true" hourFormat="12" />
+                                        On Site: <input type="checkbox" v-model="form.onsite"/>
+                                    </p>
+                                </div>                               
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                                     <p class="text-gray-600">
                                         End Time
                                     </p>
                                     <p>
-                                        <VueTimepicker v-model="form.finish_time" />
+                                        <calendar v-model="form.end_time" :showTime="true" :timeOnly="true" hourFormat="12" />
                                     </p>
                                 </div>   
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -164,7 +200,7 @@
                                         Production Load In Time
                                     </p>
                                     <p>
-                                        <VueTimepicker v-model="form.production_loadin_time" />
+                                        <calendar v-model="form.production_loadin_time" :showTime="true" :timeOnly="true" hourFormat="12" />
                                     </p>
                                 </div>  
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -172,7 +208,7 @@
                                         Rhythm Load In Time
                                     </p>
                                     <p>
-                                        <VueTimepicker v-model="form.rhythm_loadin_time" />
+                                        <calendar v-model="form.rhythm_loadin_time" :showTime="true" :timeOnly="true" hourFormat="12" />
                                     </p>
                                 </div>                                                                 
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -180,7 +216,7 @@
                                         Band Load In Time
                                     </p>
                                     <p>
-                                        <VueTimepicker v-model="form.band_loadin_time" />
+                                        <calendar v-model="form.band_loadin_time" :showTime="true" :timeOnly="true" hourFormat="12" />
                                     </p>
                                 </div>              
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -206,7 +242,23 @@
                                     <p>
                                         <input type="checkbox" v-model="form.lodging"/>
                                     </p>
-                                </div>                                                                                                          
+                                </div>  
+                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                    <p class="text-gray-600">
+                                       Outdoors
+                                    </p>
+                                    <p>
+                                        <input type="checkbox" v-model="form.outdoors"/>
+                                    </p>
+                                </div>     
+                                <div v-if="form.event_type_id === 1" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                    <p class="text-gray-600">
+                                       Second Line
+                                    </p>
+                                    <p>
+                                        <input type="checkbox" v-model="form.second_line"/>
+                                    </p>
+                                </div>                                                                                                                                            
                             </div>
                         </div>
                     <div class="flex items-center justify-between">
@@ -223,8 +275,10 @@
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
     import Datepicker from 'vue3-datepicker'
+    import moment from 'moment'
     import VueTimepicker from 'vue3-timepicker'
     import 'vue3-timepicker/dist/VueTimepicker.css'
+    
 
     export default {
         props:['eventTypes','bands','states','errors'],
@@ -233,6 +287,7 @@
         },
         data(){
             return{
+                colors:[],
                 form:{
                     band_id:'',
                     event_name:'',
@@ -243,10 +298,15 @@
                     bouquet_dance:'',
                     address_street:'',
                     zip:'',
+                    city:'',
+                    colorway_id:'',
+                    ceremony_time:'',
+                    quiet_time:'',
+                    onsite:'',
                     notes:'',
                     event_time:'',
                     band_loadin_time:'',
-                    finish_time:'',
+                    end_time:'',
                     rhythm_loadin_time:'',
                     production_loadin_time:'',
                     pay:'',
@@ -258,6 +318,7 @@
                     event_type_id:'',
                     lodging:'',
                     state_id:'',
+                    outdoors:'',
                 }
             }
         },
@@ -267,6 +328,24 @@
                     .then(()=>{
                         // alert('created');
                     })
+            },
+            colorsForBand(){
+                // const band = this.bands.filter(band=>band.id == this.form.band_id);
+                for(const i in this.bands)
+                {
+                    console.log(this.form.band_id,this.bands[i].id )
+                    if(this.bands[i].id === this.form.band_id)
+                    {
+                        this.colors = this.bands[i].colors;
+                    }
+                }
+            },
+            setDate()
+            {
+                this.form.band_loadin_time = moment(String(this.form.event_time)).subtract('hour',1).format("h:mm:ss A");
+                this.form.end_time = moment(String(this.form.event_time)).add('hour',4).format("h:mm:ss A");
+                this.form.rhythm_loadin_time = moment(String(this.form.event_time)).subtract('hour',2).format("h:mm:ss A");
+                this.form.production_loadin_time = moment(String(this.form.event_time)).subtract('hour',3).format("h:mm:ss A");
             }
         }
     }
