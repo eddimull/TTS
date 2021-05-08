@@ -20,7 +20,7 @@
                             </tr>
                         </thead>  
                         <tbody class="text-gray-700">
-                            <tr :class="{'bg-gray-100': $index % 2 === 0, 'border-b': $index % 2 !== 0, 'hover:bg-gray-50':true }" v-for="event in events" :key="event.id">
+                            <tr :class="{'bg-gray-100': index % 2 === 0, 'border-b': true, 'hover:bg-gray-50':true }" v-for="(event,index) in events" :key="event.id">
                                 <td class="w-1/4 text-center py-3 px-4"><inertia-link :href="`/events/${event.event_key}/advance`">{{event.event_name}} ({{event.event_type}})</inertia-link></td>
                                 <td class="w-1/4 text-center py-3 px-4">{{event.venue_name}}</td>
                                 <td class="w-1/4 text-center py-3 px-4">{{formatDate(event.event_time)}}</td>

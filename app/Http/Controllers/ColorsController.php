@@ -48,15 +48,6 @@ class ColorsController extends Controller
         ]);
     }
 
-    /** 
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        //
-    }
 
     /**
      * Store a newly created resource in storage.
@@ -66,28 +57,31 @@ class ColorsController extends Controller
      */
     public function store(Request $request)
     {
-        $band = Bands::find($request->band_id);
+        $band = Bands::find($request->data['band_id']);
         $colorway = Colorways::create([
-            'band_id' => $request->band_id,
-            'color_title' => $request->color_title,
-            'color_tags' => implode(',',$request->color_tags),
-            'colorway_description' => $request->colorway_description
+            'band_id' => $request->data['band_id'],
+            'color_title' => $request->data['color_title'],
+            'color_tags' => $request->data['color_tags'],
+            'colorway_description' => $request->data['colorway_description']
         ]);
-
-        $images = $request->file('color_photos');
-        foreach($images as $image)
+        
+        // $images = $request->file('color_photos');
+        foreach($request->files as $files)
         {
-            $imagePath = $band->site_name . '/' . time() . str_replace($image->getClientOriginalName(),' ','_');
-            
-            $path = Storage::disk('s3')->put($imagePath,
-                            file_get_contents($image),
-                            ['visibility'=>'public']);
-            $color_photo = ColorwayPhotos::create([
-                'colorway_id'=>$colorway->id,
-                'photo_name'=>$imagePath
-            ]);
+            foreach($files as $image)
+            {
+                $imagePath = $band->site_name . '/' . time() . str_replace($image[0]->getClientOriginalName(),' ','_');
+                
+                $path = Storage::disk('s3')->put($imagePath,
+                file_get_contents($image[0]),
+                ['visibility'=>'public']);
+                $color_photo = ColorwayPhotos::create([
+                    'colorway_id'=>$colorway->id,
+                    'photo_name'=>$imagePath
+                    ]);
+            }
         }
-        redirect()->route('Colors/Index')->with('successMessage','Color was successfully added');
+        return redirect()->route('colors')->with('successMessage',$colorway->color_title . ' was successfully added');
     }
 
     /**
@@ -98,8 +92,8 @@ class ColorsController extends Controller
      */
     public function show($request)
     {
-        $band = Bands::find($request->band_id);
-        $colorway = Colorways::create([
+        $this->band = Bands::find($request->band_id);
+        $this->colorway = Colorways::create([
             'band_id' => $request->band_id,
             'color_title' => $request->color_title,
             'color_tags' => implode(',',$request->color_tags),
@@ -107,32 +101,27 @@ class ColorsController extends Controller
         ]);
 
         $images = $request->file('color_photos');
+
+        $this->storeImages($images);
+       
+        return redirect()->route('colors')->with('successMessage',$request->color_title . 'was successfully edited');
+    }
+
+    private function storeImages($images)
+    {
         foreach($images as $image)
         {
-            $imagePath = $band->site_name . '/' . time() . str_replace($image->getClientOriginalName(),' ','_');
+            $imagePath = $this->band->site_name . '/' . time() . str_replace($image->getClientOriginalName(),' ','_');
             
             $path = Storage::disk('s3')->put($imagePath,
                             file_get_contents($image),
                             ['visibility'=>'public']);
             $color_photo = ColorwayPhotos::create([
-                'colorway_id'=>$colorway->id,
+                'colorway_id'=>$this->colorway->id,
                 'photo_name'=>$imagePath
             ]);
         }
-        redirect()->route('Colors/Index')->with('successMessage',$request->color_title . 'was successfully edited');
     }
-
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function edit($id)
-    {
-        //
-    }
-
     /**
      * Update the specified resource in storage.
      *
@@ -142,7 +131,18 @@ class ColorsController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+        $this->colorway = Colorways::find($id);
+        $this->band = Bands::find($this->colorway->band_id);
+
+        $this->colorway->color_title = $request->data['color_title'];
+        $this->colorway->color_tags = $request->data['color_tags'];
+        $this->colorway->colorway_description = $request->data['colorway_description'];
+
+        $this->colorway->save();
+
+        // $images = $request->file('color_photos');
+        // $this->storeImages($images);
+        return redirect()->route('colors')->with('successMessage',$this->colorway->color_title . ' was successfully updated');
     }
 
     /**
@@ -154,5 +154,12 @@ class ColorsController extends Controller
     public function destroy($id)
     {
         //
+        // dd($id);
+
+        $colorway = Colorways::find($id);
+        $colorway->photos()->delete();
+        $colorway->delete();
+
+        return redirect()->route('colors')->with('successMessage','Colorway was successfully deleted');
     }
 }

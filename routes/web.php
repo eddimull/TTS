@@ -54,7 +54,9 @@ Route::get('/events/downloadPDF/{id}','EventsController@downloadPDF')->middlewar
 
 
 Route::get('/colors','ColorsController@index')->middleware(['auth', 'verified'])->name('colors');
-Route::put('/colors','ColorsController@store')->middleware(['auth', 'verified'])->name('colors.store');
+Route::post('/colors','ColorsController@store')->middleware(['auth', 'verified'])->name('colors.store');
+Route::delete('/colors/{id}','ColorsController@destroy')->middleware(['auth', 'verified'])->name('colors.destroy');
+Route::patch('/colors/{id}','ColorsController@update')->middleware(['auth', 'verified'])->name('colors.update');
 
 Route::get('/images/{uri}','ImageController@index');
 Route::get('/images/{band_site}/{uri}','ImageController@siteImages');

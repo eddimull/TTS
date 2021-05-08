@@ -1,6 +1,7 @@
 <template>
     <div>
         <div class="min-h-screen bg-gray-100">
+            
             <nav class="bg-white border-b border-gray-100">
                 <!-- Primary Navigation Menu -->
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -29,7 +30,7 @@
                                 </breeze-nav-link>                    
                             </div>
                         </div>
-
+ 
                         <div class="hidden sm:flex sm:items-center sm:ml-6">
                             <!-- Settings Dropdown -->
                             <div class="ml-3 relative">
@@ -45,7 +46,7 @@
                                             </button>
                                         </span>
                                     </template>
-
+                                       
                                     <template #content>
                                         <breeze-dropdown-link :href="route('account')" method="get" as="button">
                                             Account
@@ -115,6 +116,7 @@
 
             <!-- Page Content -->
             <main class="rounded-t-lg overflow-hidden border-t border-l border-r border-gray-400 px-3 py-10 bg-gray-200 flex justify-center">
+                <toast :successMessage="$page.props.successMessage" :errors="$page.props.errors"></toast>
                 <slot />
             </main>
         </div>
@@ -127,6 +129,7 @@
     import BreezeDropdownLink from '@/Components/DropdownLink'
     import BreezeNavLink from '@/Components/NavLink'
     import BreezeResponsiveNavLink from '@/Components/ResponsiveNavLink'
+    import Toast from '@/Components/Toast'
 
     export default {
         components: {
@@ -135,6 +138,7 @@
             BreezeDropdownLink,
             BreezeNavLink,
             BreezeResponsiveNavLink,
+            Toast
         },
 
         data() {
