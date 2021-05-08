@@ -99,15 +99,21 @@ class BandsController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $request->validate([
-            'name'=>'required',
-            'site_name'=>'required|unique:bands,site_name'
-        ]);
-        
         $band = Bands::find($id);
+        $validation_rules = [
+            'name'=>'required',
+        ];
+        if($band->site_name != $request->site_name)
+        {
+            $validation_rules['site_name'] = 'required|unique:bands,site_name';
+        }
+        
+        $request->validate($validation_rules);
+        
 
         $band->name = $request->name;
         $band->site_name = $request->site_name;
+        $band->calendar_id = $request->calendar_id;
         
         $band->save();
 

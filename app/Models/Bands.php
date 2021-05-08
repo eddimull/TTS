@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Bands extends Model
 {
     use HasFactory;
-    protected $fillable = ['name','site_name'];
+    protected $fillable = ['name','site_name','calendar_id'];
 
     public function owners()
     {

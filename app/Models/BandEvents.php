@@ -42,7 +42,8 @@ class BandEvents extends Model
         'quiet_time',
         'end_time',
         'ceremony_time',
-        'onsite'
+        'onsite',
+        'google_calendar_event_id'
 
     ];
 

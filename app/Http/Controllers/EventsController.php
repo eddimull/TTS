@@ -6,6 +6,7 @@ use App\Models\EventTypes;
 use App\Models\State;
 use App\Models\Bands;
 use App\Models\BandEvents;
+use Carbon\Carbon;
 use PDF;
 use Doctrine\DBAL\Events;
 use Illuminate\Support\Facades\DB;
@@ -13,7 +14,9 @@ use Faker\Provider\Uuid;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
+use Spatie\GoogleCalendar\Event as CalendarEvent;
 
 class EventsController extends Controller
 {
@@ -115,7 +118,7 @@ class EventsController extends Controller
         $strtotime = strtotime($request->event_time);
         $formattedTime = date('Y-m-d',$strtotime);
         // dd($request->end_time);
-        BandEvents::create([
+        $event = BandEvents::create([
             'band_id' => $request->band_id,
             'event_name' => $request->event_name,
             'venue_name' => $request->venue_name,
@@ -150,6 +153,36 @@ class EventsController extends Controller
             'event_key'=>Str::uuid()
         ]);
 
+
+        $band = Bands::find($event->band_id);
+        if($band->calendar_id !== '' && $band->calendar_id !== null)
+        {
+
+            Config::set('google-calendar.service_account_credentials_json',storage_path('/app/google-calendar/service-account-credentials.json'));
+            Config::set('google-calendar.calendar_id',$band->calendar_id);
+            
+            // dd(Carbon::parse($event->event_time));
+
+            if($event->google_calendar_event_id !== null)
+            {
+                $calendarEvent = CalendarEvent::find($event->google_calendar_event_id);
+            }
+            else
+            {
+                $calendarEvent = new CalendarEvent;
+            }
+            $calendarEvent->name = $event->event_name;
+
+            $startTime = Carbon::parse($event->event_time);
+            $endDateTimeFixed = date('Y-m-d',strtotime($event->event_time)) . ' ' . date('H:i:s', strtotime($event->end_time));
+            $endTime = Carbon::parse($endDateTimeFixed);
+            $calendarEvent->startDateTime = $startTime;
+            $calendarEvent->endDateTime = $endTime;   
+            $calendarEvent->description = 'http://tts.band/events/' . $event->event_key . '/advance';
+            $google_id = $calendarEvent->save();  
+            $event->google_calendar_event_id = $google_id->id;
+            $event->save();
+        }
         return redirect()->route('events')->with('successMessage','Event was successfully added');
     }
 
@@ -201,7 +234,9 @@ class EventsController extends Controller
         $request->validate([
             'event_name'=>'required'
         ]);
-        // dd($request);
+        
+        // dd(date('Y-m-d',strtotime($request->event_time) . ' ' . date('H:i:s',strtotime($request->end_time))));
+        // dd($request->end_time);
         $strtotime = strtotime($request->event_time);
         $formattedTime = date('Y-m-d',$strtotime);
         $event = BandEvents::where('event_key',$request->event_key)->first();
@@ -235,6 +270,36 @@ class EventsController extends Controller
         $event->quiet_time = date('Y-m-d H:i:s',strtotime($request->quiet_time));
         $event->onsite = $request->onsite;
         $event->save();
+        
+        $band = Bands::find($event->band_id);
+        if($band->calendar_id !== '' && $band->calendar_id !== null)
+        {
+
+            Config::set('google-calendar.service_account_credentials_json',storage_path('/app/google-calendar/service-account-credentials.json'));
+            Config::set('google-calendar.calendar_id',$band->calendar_id);
+            
+            // dd(Carbon::parse($event->event_time));
+
+            if($event->google_calendar_event_id !== null)
+            {
+                $calendarEvent = CalendarEvent::find($event->google_calendar_event_id);
+            }
+            else
+            {
+                $calendarEvent = new CalendarEvent;
+            }
+            $calendarEvent->name = $event->event_name;
+
+            $startTime = Carbon::parse($event->event_time);
+            $endDateTimeFixed = date('Y-m-d',strtotime($event->event_time)) . ' ' . date('H:i:s', strtotime($event->end_time));
+            $endTime = Carbon::parse($endDateTimeFixed);
+            $calendarEvent->startDateTime = $startTime;
+            $calendarEvent->endDateTime = $endTime;   
+            $calendarEvent->description = 'http://tts.band/events/' . $event->event_key . '/advance';
+            $google_id = $calendarEvent->save();  
+            $event->google_calendar_event_id = $google_id->id;
+            $event->save();
+        }
 
         return redirect()->route('events')->with('successMessage',$request->event_name . ' was successfully updated');
     }
