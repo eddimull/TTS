@@ -14,7 +14,6 @@ class ImageController extends Controller
      */
     public function index($file)
     {
-        dd($file);
         if (Storage::disk('s3')->exists($file)) {
             $storage = Storage::disk('s3')->url($file);
         }

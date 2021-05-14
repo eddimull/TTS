@@ -1,9 +1,10 @@
 <?php
 
+use App\Models\User;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-
+use Illuminate\Support\Facades\Auth;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -58,8 +59,33 @@ Route::post('/colors','ColorsController@store')->middleware(['auth', 'verified']
 Route::delete('/colors/{id}','ColorsController@destroy')->middleware(['auth', 'verified'])->name('colors.destroy');
 Route::patch('/colors/{id}','ColorsController@update')->middleware(['auth', 'verified'])->name('colors.update');
 
+
+
 Route::get('/images/{uri}','ImageController@index');
 Route::get('/images/{band_site}/{uri}','ImageController@siteImages');
 
+Route::post('/inviteOwner/{band_id}','InvitationsController@createOwner')->middleware(['auth','verified'])->name('invite.createOwner');
+Route::post('/inviteMember/{band_id}','InvitationsController@createMember')->middleware(['auth','verified'])->name('invite.createMember');
+
+
+Route::post('/notification/{id}',function($id){
+    $notification = Auth::user()->Notifications->find($id);
+    if($notification)
+    {
+        $notification->markAsRead();
+    }
+
+    return false;
+})->middleware(['auth','verified']);
+
+Route::post('/seentIt',function(){
+    $notifications = Auth::user()->unreadNotifications;
+    foreach($notifications as $notification)
+    {
+        $notification->markAsSeen();
+    }
+
+    return false;
+})->middleware(['auth','verified']);
 
 require __DIR__.'/auth.php';

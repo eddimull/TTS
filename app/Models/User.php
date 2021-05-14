@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Bandnotification;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -52,4 +53,17 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Bands::class,'band_owners','user_id','band_id');
     }
+
+    public function bandMember()
+    {
+        return $this->belongsToMany(BandMembers::class);
+    }
+
+    public function notifications()
+    {
+        
+        return $this->morphMany(Bandnotification::class, 'notifiable')
+                        ->orderBy('created_at','desc');
+    }
+
 }

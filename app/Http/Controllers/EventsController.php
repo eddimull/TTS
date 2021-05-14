@@ -17,6 +17,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
 use Spatie\GoogleCalendar\Event as CalendarEvent;
+use App\Notifications\EventAdded;
+use App\Notifications\EventUpdated;
+use App\Models\User;
 
 class EventsController extends Controller
 {
@@ -300,6 +303,14 @@ class EventsController extends Controller
             $event->google_calendar_event_id = $google_id->id;
             $event->save();
         }
+        $editor = Auth::user();
+        $user = User::find(1);
+        $user->notify(new EventUpdated([
+            'text'=>$editor->name . ' updated ' . $event->event_name,
+            'route'=>'events.advance',
+            'routeParams'=>$event->event_key,
+            'link'=>'/events/' . $event->event_key . '/advance'
+        ]));
 
         return redirect()->route('events')->with('successMessage',$request->event_name . ' was successfully updated');
     }

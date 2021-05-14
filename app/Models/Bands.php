@@ -12,12 +12,18 @@ class Bands extends Model
 
     public function owners()
     {
-        return $this->hasMany(BandOwners::class);
+        return $this->hasManyThrough(BandOwners::class,User::class,'id','band_id');
     }
 
     public function members()
     {
-        return $this->hasMany(BandMembers::class);
+        return $this->hasMany(BandMembers::class,'band_id');
+        // return $this->hasManyThrough(User::class,BandMembers::class,)
+    }
+
+    public function invites()
+    {
+        return $this->hasMany(Invitations::class,'band_id');
     }
 
     public function events()
@@ -29,4 +35,5 @@ class Bands extends Model
         // belongsToMany(Bands::class,'band_owners','user_id','band_id')
         return $this->hasMany(Colorways::class,'band_id');
     }
+
 }

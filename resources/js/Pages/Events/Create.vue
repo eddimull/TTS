@@ -159,7 +159,7 @@
                                         Event Date
                                     </p>
                                     <p>
-                                        <calendar v-on:date-select="setDate()" v-model="form.event_time" />
+                                        <calendar v-on:date-select="assumeSeven()" v-model="form.event_time" />
                                     </p>
                                 </div>
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -167,7 +167,13 @@
                                         Show Time
                                     </p>
                                     <p>
-                                        <calendar v-on:date-select="setDate()" v-model="form.event_time" :showTime="true" :timeOnly="true" hourFormat="12" />
+                                        <calendar v-model="form.event_time" :showTime="true" :timeOnly="true" hourFormat="12" />
+                                        <button class="bg-transparent hover:bg-blue-500 text-blue-700 font-semibold hover:text-white py-2 px-4 mx-3 border border-blue-500 hover:border-transparent rounded" @click="setDate()" type="button">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Auto Fill Times
+                                        </button>
                                     </p>
                                 </div>
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -175,7 +181,7 @@
                                         Quiet Time
                                     </p>
                                     <p>
-                                        <calendar v-model="form.quiet_time" :showTime="true" :timeOnly="true" hourFormat="12" />
+                                        <calendar v-model="form.quiet_time" :showTime="true" :step-minute="15" :timeOnly="true" hourFormat="12" />
                                     </p>
                                 </div>   
                                 <div v-if="form.event_type_id === 1" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -183,7 +189,7 @@
                                         Ceremony Time
                                     </p>
                                     <p>
-                                        <calendar v-model="form.event_time" :showTime="true" :timeOnly="true" hourFormat="12" />
+                                        <calendar v-model="form.ceremony_time" :showTime="true" :step-minute="15" :timeOnly="true" hourFormat="12" />
                                         On Site: <input type="checkbox" v-model="form.onsite"/>
                                     </p>
                                 </div>                               
@@ -192,7 +198,7 @@
                                         End Time
                                     </p>
                                     <p>
-                                        <calendar v-model="form.end_time" :showTime="true" :timeOnly="true" hourFormat="12" />
+                                        <calendar v-model="form.end_time" :showTime="true" :step-minute="15" :timeOnly="true" hourFormat="12" />
                                     </p>
                                 </div>   
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -200,7 +206,7 @@
                                         Production Load In Time
                                     </p>
                                     <p>
-                                        <calendar v-model="form.production_loadin_time" :showTime="true" :timeOnly="true" hourFormat="12" />
+                                        <calendar v-model="form.production_loadin_time" :step-minute="15" :showTime="true" :timeOnly="true" hourFormat="12" />
                                     </p>
                                 </div>  
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -208,7 +214,7 @@
                                         Rhythm Load In Time
                                     </p>
                                     <p>
-                                        <calendar v-model="form.rhythm_loadin_time" :showTime="true" :timeOnly="true" hourFormat="12" />
+                                        <calendar v-model="form.rhythm_loadin_time" :step-minute="15" :showTime="true" :timeOnly="true" hourFormat="12" />
                                     </p>
                                 </div>                                                                 
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -216,7 +222,7 @@
                                         Band Load In Time
                                     </p>
                                     <p>
-                                        <calendar v-model="form.band_loadin_time" :showTime="true" :timeOnly="true" hourFormat="12" />
+                                        <calendar v-model="form.band_loadin_time" :step-minute="15" :showTime="true" :timeOnly="true" hourFormat="12" />
                                     </p>
                                 </div>              
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -340,12 +346,18 @@
                     }
                 }
             },
+            assumeSeven()
+            {
+                this.form.event_time = new Date(moment(String(this.form.event_time)).add('hour',19));
+            },
             setDate()
             {
-                this.form.band_loadin_time = moment(String(this.form.event_time)).subtract('hour',1).format("h:mm:ss A");
-                this.form.end_time = moment(String(this.form.event_time)).add('hour',4).format("h:mm:ss A");
-                this.form.rhythm_loadin_time = moment(String(this.form.event_time)).subtract('hour',2).format("h:mm:ss A");
-                this.form.production_loadin_time = moment(String(this.form.event_time)).subtract('hour',3).format("h:mm:ss A");
+                this.form.end_time = new Date(moment(String(this.form.event_time)).add('hour',4));
+                this.form.quiet_time = new Date(moment(String(this.form.event_time)).subtract('hour',1));
+                this.form.ceremony_time = new Date(moment(String(this.form.event_time)).subtract('hour',1));
+                this.form.band_loadin_time = new Date(moment(String(this.form.event_time)).subtract('hour',2));
+                this.form.rhythm_loadin_time = new Date(moment(String(this.form.event_time)).subtract('hour',3));
+                this.form.production_loadin_time = new Date(moment(String(this.form.event_time)).subtract('hour',4));
             }
         }
     }

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\BandMembers;
+use App\Models\BandOwners;
 use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Auth\Events\Registered;
@@ -10,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
+use App\Models\Invitations;
 
 class RegisteredUserController extends Controller
 {
@@ -44,7 +47,30 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
+        
 
+        $invitations = Invitations::where('email',$user->email)->where('pending',true);
+
+        foreach($invitations as $invitation)
+        {
+            if($invitation->invite_type_id == 1)
+            {
+                BandOwners::create([
+                    'user_id'=>$user->id,
+                    'band_id'=>$invitation->band_id
+                ]);
+            }
+            if($invitation->invite_type_id == 2)
+            {
+                BandMembers::create([
+                    'user_id'=>$user->id,
+                    'band_id'=>$invitation->band_id
+                ]);
+            }            
+
+            $invitation->pending = false;
+            $invitation->save();
+        }
         event(new Registered($user));
 
         Auth::login($user);

@@ -7,6 +7,7 @@ use Inertia\Inertia;
 use App\Models\Bands;
 use App\Models\BandOwners;
 use Illuminate\Support\Facades\Auth;
+use App\Models\User;
 
 class BandsController extends Controller
 {
@@ -85,6 +86,18 @@ class BandsController extends Controller
     public function edit($id)
     {
         $band = Bands::where('id',$id)->first();
+        compact($band->owners);
+        foreach($band->owners as $owners)
+        {
+           compact($owners->user);
+        }
+
+        foreach($band->members as $member)
+        {
+           compact($member->user);
+        }
+        compact($band->invitations);
+
         return Inertia::render('Band/Edit',[
             'band' => $band
         ]);
