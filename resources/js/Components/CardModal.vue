@@ -19,7 +19,7 @@
         <div class="absolute w-full h-full" v-on:click="closeModal()">&nbsp;</div>
         <!-- modal -->
         <transition name="slide-down" appear>
-          <div id="modal" v-if="show" :class="['transform','relative','w-10/12','md:w-1/2','h-1/2','md:h-3/4','bg-white','rounded','shadow-lg','transition-opacity','transition-transform','duration-300']">
+          <div id="modal" v-if="show" :class="['flex','flex-col','transform','relative','w-10/12','md:w-1/2','h-5/6','md:h-3/4','bg-white','rounded','shadow-lg','transition-opacity','transition-transform','duration-300']">
 
               <!-- button close -->
               <button 
@@ -34,11 +34,11 @@
               </div>
 
               <!-- body -->
-              <div class="w-full p-3 overflow-y-auto h-5/6">
+              <div class="w-full p-3 overflow-y-auto flex-auto">
                   <slot name="body"></slot>
               </div>
               <!-- footer -->
-              <div class="absolute bottom-0 left-0 px-4 py-3 border-t border-gray-200 w-full flex justify-end items-center gap-3">
+              <div class="px-4 py-3 border-t border-gray-200 w-full flex justify-end items-center gap-3">
               <button v-if="showSave" v-on:click="emitSave" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded text-white focus:outline-none">{{saveText}}</button>
               <button 
                   v-if="showClose"

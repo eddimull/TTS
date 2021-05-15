@@ -46,9 +46,14 @@
                                         </span>
                                     </template>
                                     <template #content>
-                                        <notification-link v-for="(notification,index) in $page.props.auth.user.notifications" :key="index" @click="markAsRead(notification.id); notification.read_at = Date()" :unread="notification.read_at === null" :href="route(notification.data.route,notification.data.routeParams.split(','))" method="get" as="button">
-                                            {{notification.data.text}}
-                                        </notification-link>
+                                        <div class="flex flex-col max-h-72">
+                                            <div class="overflow-y-auto flex-auto">
+                                                <notification-link v-for="(notification,index) in notifications" :key="index" @click="markAsRead(notification)" :unread="notification.read_at === null" :href="route(notification.data.route,notification.data.routeParams.split(','))" method="get" as="button">
+                                                    {{notification.data.text}}
+                                                </notification-link>
+                                            </div>
+                                        </div>
+                                        <button @click="markAllAsRead()" :class="['block', 'w-full', 'px-4', 'py-2','hover:underline', 'text-center', 'text-sm', 'border-t-2', 'leading-5', 'text-blue-700', 'focus:outline-none','focus:bg-gray-100','transition duration-150','ease-in-out']">Mark all as read</button>
                                     </template>
                                 </breeze-dropdown>
                             </div>
@@ -127,7 +132,6 @@
                     </div>
                 </div>
             </nav>
-
             <!-- Page Heading -->
             <header class="bg-white shadow" v-if="$slots.header">
                 <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
@@ -168,16 +172,32 @@
         data() {
             return {
                 showingNavigationDropdown: false,
-                unseenNotifications: 0
+                unseenNotifications: 0,
+                notifications:[]
             }
         },
-        created:function(){
+        created:async function(){
             this.unseenNotifications = this.$page.props.auth.user.notifications.filter(notification=>notification.seen_at === null).length
+            this.getNotifications()
+            
         },
         methods: {
-            markAsRead(notificationID)
+            getNotifications()
             {
-                axios.post('/notification/' + notificationID);
+                axios.get('/notifications/').then(response=>{
+                    this.notifications = response.data;
+                });
+            },
+            markAllAsRead()
+            {
+                axios.post('/readAllNotifications').then(()=>{
+                    this.getNotifications()
+                })
+            },
+            markAsRead(notification)
+            {
+                notification.read_at = new Date();
+                axios.post('/notification/' + notification.id);
             },
             markSeen()
             {

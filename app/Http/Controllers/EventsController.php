@@ -6,6 +6,7 @@ use App\Models\EventTypes;
 use App\Models\State;
 use App\Models\Bands;
 use App\Models\BandEvents;
+use App\Models\BandOwners;
 use Carbon\Carbon;
 use PDF;
 use Doctrine\DBAL\Events;
@@ -186,6 +187,19 @@ class EventsController extends Controller
             $event->google_calendar_event_id = $google_id->id;
             $event->save();
         }
+
+        $editor = Auth::user();
+        compact($band->owners);
+        foreach($band->owners as $owner)
+        {
+           $user = User::find($owner->user_id);
+           $user->notify(new EventAdded([
+            'text'=>$editor->name . ' added ' . $event->event_name,
+            'route'=>'events.advance',
+            'routeParams'=>$event->event_key,
+            'link'=>'/events/' . $event->event_key . '/advance'
+            ]));
+        }
         return redirect()->route('events')->with('successMessage','Event was successfully added');
     }
 
@@ -304,13 +318,17 @@ class EventsController extends Controller
             $event->save();
         }
         $editor = Auth::user();
-        $user = User::find(1);
-        $user->notify(new EventUpdated([
+        compact($band->owners);
+        foreach($band->owners as $owner)
+        {
+           $user = User::find($owner->user_id);
+           $user->notify(new EventUpdated([
             'text'=>$editor->name . ' updated ' . $event->event_name,
             'route'=>'events.advance',
             'routeParams'=>$event->event_key,
             'link'=>'/events/' . $event->event_key . '/advance'
-        ]));
+            ]));
+        }
 
         return redirect()->route('events')->with('successMessage',$request->event_name . ' was successfully updated');
     }

@@ -68,6 +68,9 @@ Route::post('/inviteOwner/{band_id}','InvitationsController@createOwner')->middl
 Route::post('/inviteMember/{band_id}','InvitationsController@createMember')->middleware(['auth','verified'])->name('invite.createMember');
 
 
+Route::get('/notifications',function(){
+    return json_encode(Auth::user()->Notifications);
+});
 Route::post('/notification/{id}',function($id){
     $notification = Auth::user()->Notifications->find($id);
     if($notification)
@@ -77,6 +80,18 @@ Route::post('/notification/{id}',function($id){
 
     return false;
 })->middleware(['auth','verified']);
+
+
+Route::post('/readAllNotifications',function(){
+    $notifications = Auth::user()->unreadNotifications;
+    foreach($notifications as $notification)
+    {
+        $notification->markAsRead();
+    }
+
+    return false;
+})->middleware(['auth','verified']);
+
 
 Route::post('/seentIt',function(){
     $notifications = Auth::user()->unreadNotifications;

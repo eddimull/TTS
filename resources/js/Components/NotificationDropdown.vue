@@ -3,7 +3,7 @@
                 {
                     'bg-blue-200':unread,
                     'hover:bg-blue-300':unread,
-                    'hover:bg-gray-100':!undread,
+                    'hover:bg-gray-100':!unread,
                 },
                 'block', 
                 'w-full',
@@ -16,7 +16,10 @@
                 'focus:outline-none',
                 'focus:bg-gray-100',
                 'transition duration-150',
-                'ease-in-out']">
+                'ease-in-out']"
+                preserve-state
+                >
+
         <slot />
     </inertia-link>
 </template>

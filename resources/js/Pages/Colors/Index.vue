@@ -43,7 +43,7 @@
                     <h4>{{band.name}}</h4>
                     <div class="grid grid-cols-3 gap-4">
                         <div v-for="(color,id) in getColors(band.id)" :key="id">
-                            <card :title="color.color_title" v-on:click="setColor(color); setUpdating(true)" :description="color.colorway_description" :picture="color.photos.length > 0 ? 'https://bandapp.s3.us-east-2.amazonaws.com/' + color.photos[0]['photo_name'] : false" :hashTags="color.color_tags.split(',')"/>
+                            <card :title="color.color_title" v-on:click="setColor(color); setUpdating(true)" :description="color.colorway_description" :picture="color.photos.length > 0 ? 'https://bandapp.s3.us-east-2.amazonaws.com/' + color.photos[0]['photo_name'] : false" :hashTags="color.color_tags !== null ? color.color_tags.split(',') : []"/>
                         </div>    
                         
                         <div v-on:click="toggleModal(); setBandID(band.id); clearColor(); setUpdating(false)" class="h-56 m-10 cursor-pointer transition-colors flex content-center justify-center max-w-sm rounded overflow-hidden shadow-lg border-2 hover:bg-green-100">
@@ -127,6 +127,10 @@
             setColor(color)
             {
                 const tags = [];
+                if(color.color_tags === null)
+                {
+                    color.color_tags = ''
+                }
                 color.color_tags.split(',').forEach((color,index)=>{
                     tags.push({
                         key:index,

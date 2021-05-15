@@ -10,15 +10,15 @@ use Illuminate\Notifications\Notification;
 class EventAdded extends Notification
 {
     use Queueable;
-
+    protected $data;
     /**
      * Create a new notification instance.
      *
      * @return void
      */
-    public function __construct()
+    public function __construct($data)
     {
-        //
+        $this->data = $data;
     }
 
     /**
@@ -29,7 +29,7 @@ class EventAdded extends Notification
      */
     public function via($notifiable)
     {
-        return ['mail','database'];
+        return ['database'];
     }
 
     /**
@@ -61,8 +61,6 @@ class EventAdded extends Notification
 
     public function toDatabase($notifiable)
     {
-        return [
-
-        ];
+        return $this->data;
     }
 }
