@@ -2,10 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Bands;
 use App\Models\Proposal;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+use App\Models\Proposals;
 
-class ProposalController extends Controller
+class ProposalsController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -14,7 +18,22 @@ class ProposalController extends Controller
      */
     public function index()
     {
-        //
+        $user = Auth::user();
+
+        // $bands = $user->bandOwner->with('proposals')->get()->pluck('proposals')->flatten();
+        // $bands = $user->bandOwner();
+        // $band = Bands::with('proposals')->find(1);
+        $bands = $user->bandOwner;
+        $bandsAndProposals = [];
+  
+            
+        array_push($bandsAndProposals,$bands[0]->with('proposals')->get());
+            
+  
+        
+        return Inertia::render('Proposals/Index',[
+            'bandsAndProposals'=>$bands[0]->with('proposals')->get()
+        ]);
     }
 
     /**

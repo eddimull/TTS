@@ -25,6 +25,9 @@
                                 <breeze-nav-link :href="route('events')" :active="route().current('events')">
                                     Events
                                 </breeze-nav-link> 
+                                <breeze-nav-link :href="route('proposals')" :active="route().current('proposals')">
+                                    Proposals
+                                </breeze-nav-link>                                 
                                 <breeze-nav-link :href="route('colors')" :active="route().current('colors')">
                                     Colors
                                 </breeze-nav-link>                    
@@ -108,6 +111,9 @@
                         </breeze-responsive-nav-link>
                         <breeze-responsive-nav-link :href="route('events')" :active="route().current('events')">
                             Events
+                        </breeze-responsive-nav-link> 
+                        <breeze-responsive-nav-link :href="route('proposals')" :active="route().current('proposals')">
+                            Proposals
                         </breeze-responsive-nav-link> 
                         <breeze-responsive-nav-link :href="route('colors')" :active="route().current('colors')">
                             Colors

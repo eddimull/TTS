@@ -61,7 +61,6 @@ class User extends Authenticatable
 
     public function notifications()
     {
-        
         return $this->morphMany(Bandnotification::class, 'notifiable')
                         ->orderBy('created_at','desc');
     }

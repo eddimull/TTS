@@ -9,6 +9,8 @@ class Bands extends Model
 {
     use HasFactory;
     protected $fillable = ['name','site_name','calendar_id'];
+    
+
 
     public function owners()
     {
@@ -24,6 +26,11 @@ class Bands extends Model
     public function invites()
     {
         return $this->hasMany(Invitations::class,'band_id');
+    }
+
+    public function proposals()
+    {
+        return $this->hasMany(Proposals::class,'band_id');
     }
 
     public function events()
