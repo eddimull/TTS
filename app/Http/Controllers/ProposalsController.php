@@ -24,11 +24,7 @@ class ProposalsController extends Controller
         // $bands = $user->bandOwner();
         // $band = Bands::with('proposals')->find(1);
         $bands = $user->bandOwner;
-        $bandsAndProposals = [];
-  
-            
-        array_push($bandsAndProposals,$bands[0]->with('proposals')->get());
-            
+                   
   
         
         return Inertia::render('Proposals/Index',[
@@ -63,7 +59,7 @@ class ProposalsController extends Controller
      * @param  \App\Models\Proposal  $proposal
      * @return \Illuminate\Http\Response
      */
-    public function show(Proposal $proposal)
+    public function show(Proposals $proposal)
     {
         //
     }
@@ -74,9 +70,11 @@ class ProposalsController extends Controller
      * @param  \App\Models\Proposal  $proposal
      * @return \Illuminate\Http\Response
      */
-    public function edit(Proposal $proposal)
+    public function edit(Proposals $proposal)
     {
-        //
+        return Inertia::render('Proposals/Edit',[
+            'proposal'=>$proposal
+        ]);
     }
 
     /**
@@ -86,7 +84,7 @@ class ProposalsController extends Controller
      * @param  \App\Models\Proposal  $proposal
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, Proposal $proposal)
+    public function update(Request $request, Proposals $proposal)
     {
         //
     }
@@ -97,7 +95,7 @@ class ProposalsController extends Controller
      * @param  \App\Models\Proposal  $proposal
      * @return \Illuminate\Http\Response
      */
-    public function destroy(Proposal $proposal)
+    public function destroy(Proposals $proposal)
     {
         //
     }

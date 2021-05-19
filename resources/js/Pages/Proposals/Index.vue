@@ -5,7 +5,33 @@
                 Proposals
             </h2>
         </template>
-
+        <card-modal ref="proposalModal" v-if="showModal">
+            <template #header>
+                <h1>{{activeProposal.name}}</h1>
+            </template>
+            <template #body>
+                <div v-for="(field,index) in showFields" :key="index" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                    <p class="text-gray-600">
+                        <label for="name">{{field.name}}</label>
+                    </p>
+                    <div class="mb-4">
+                        {{ field.subProperty ? activeProposal[field.property][field.subProperty] : activeProposal[field.property]}}
+                        <!-- <p-inputtext v-model="form.event_name"></p-inputtext>
+                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="name" placeholder="Event Name" v-model="form.event_name"> -->
+                    </div>
+                </div>
+                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                    <p class="text-gray-600">
+                        <label for="name">Contacts</label>
+                    </p>
+                    <ul v-for="contact in activeProposal.proposal_contacts" :key="contact.id" class="mb-4">
+                        <li>Name: {{contact.name}}</li>
+                        <li>Phone: {{contact.phonenumber}}</li>
+                        <li>Name: {{contact.email}}</li>
+                    </ul>
+                </div>
+            </template>
+        </card-modal>
         <div class="md:container md:mx-auto">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
@@ -21,7 +47,7 @@
                                     </tr>
                                 </thead>  
                                 <tbody v-if="band.proposals.length > 0" class="text-gray-700">
-                                    <tr :class="{'bg-gray-100': $index % 2 === 0, 'border-b': $index % 2 !== 0 }" v-for="proposal in band.proposals" :key="proposal.id">
+                                    <tr @click="selectProposal(proposal)" :class="[{'bg-gray-100': $index % 2 === 0, 'border-b': $index % 2 !== 0 },'hover:bg-gray-200','cursor-pointer']" v-for="(proposal,$index) in band.proposals" :key="proposal.id">
                                         <td class="w-1/3 text-center py-3 px-4">{{proposal.name}}</td>
                                         <td class="w-1/3 text-center py-3 px-4">{{proposal.date}}</td>
                                         <td class="w-1/3 text-center py-3 px-4">{{proposal.phase.name}}</td>
@@ -49,11 +75,33 @@
 
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
-
+    import moment from 'moment';
     export default {
         props:['bandsAndProposals','successMessage'],
         components: {
             BreezeAuthenticatedLayout,
         },
+        data(){
+            return{
+                showModal:false,
+                activeProposal:{},
+                showFields:[
+                    {name:'Author',property:'author',subProperty:'name'},
+                    {name:'Proposed Date/Time',property:'date'},
+                    {name:'Hours',property:'hours'},
+                    {name:'Price',property:'price'},
+                    {name:'Color',property:'color'},
+                    {name:'Locked',property:'locked'},
+                    {name:'Notes',property:'notes'},
+                    {name:'Created',property:'created_at'}
+                ]
+            }
+        },
+        methods:{
+            selectProposal(proposal){
+                this.activeProposal = proposal;
+                this.showModal = true;
+            }
+        }
     }
 </script>

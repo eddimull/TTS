@@ -60,6 +60,7 @@ Route::delete('/colors/{id}','ColorsController@destroy')->middleware(['auth', 'v
 Route::patch('/colors/{id}','ColorsController@update')->middleware(['auth', 'verified'])->name('colors.update');
 
 Route::get('/proposals', 'ProposalsController@index')->middleware(['auth', 'verified'])->name('proposals');
+Route::get('/proposals/{proposal:key}/edit', 'ProposalsController@edit')->middleware(['auth', 'verified'])->name('proposals.edit');
 
 Route::get('/images/{uri}','ImageController@index');
 Route::get('/images/{band_site}/{uri}','ImageController@siteImages');
