@@ -5,7 +5,7 @@
                 Proposals
             </h2>
         </template>
-        <card-modal ref="proposalModal" v-if="showModal">
+        <card-modal ref="proposalModal" v-if="showModal" :saveText="'Edit'" @save="gotoProposal" @closing="toggleModal()">
             <template #header>
                 <h1>{{activeProposal.name}}</h1>
             </template>
@@ -98,9 +98,15 @@
             }
         },
         methods:{
+            toggleModal(){
+                this.showModal = !this.showModal
+            },
             selectProposal(proposal){
                 this.activeProposal = proposal;
                 this.showModal = true;
+            },
+            gotoProposal(){
+                this.$inertia.get('/proposals/' + this.activeProposal.key + '/edit');
             }
         }
     }

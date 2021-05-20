@@ -4,7 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class AddProposalIdToBand extends Migration
+class ChangeProposalContactPhonenumberFieldType extends Migration
 {
     /**
      * Run the migrations.
@@ -13,8 +13,8 @@ class AddProposalIdToBand extends Migration
      */
     public function up()
     {
-        Schema::table('bands', function (Blueprint $table) {
-            //
+        Schema::table('proposal_contacts', function (Blueprint $table) {
+            $table->string('phonenumber')->nullable()->change();
         });
     }
 
@@ -25,8 +25,9 @@ class AddProposalIdToBand extends Migration
      */
     public function down()
     {
-        Schema::table('bands', function (Blueprint $table) {
+        Schema::table('proposal_contacts', function (Blueprint $table) {
             //
+            $table->tinyInteger('phonenumber')->nullable()->change();
         });
     }
 }

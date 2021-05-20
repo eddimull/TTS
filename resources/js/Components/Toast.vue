@@ -59,8 +59,6 @@
         watch:{
             successMessage:{
                 handler:function(val,oldval){
-
-                    console.log('success message changed');
                     this.visible=true;
                     if(this.timeout)
                     {

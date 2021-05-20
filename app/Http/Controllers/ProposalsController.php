@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Bands;
 use App\Models\Proposal;
+use App\Models\ProposalContacts;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -41,6 +42,44 @@ class ProposalsController extends Controller
     {
         //
     }
+
+    public function createContact(Request $request, Proposals $proposal)
+    {
+        $request->validate([
+            'name'=>'required',
+            'email'=>'required|email:rfc,dns'
+        ]);
+
+        ProposalContacts::create([
+            'proposal_id'=>$proposal->id,
+            'email'=>$request->email,
+            'phonenumber'=>$request->phonenumber,
+            'name'=>$request->name
+        ]);
+
+        return back()->with('successMessage','Added ' . $request->name . ' as contact');
+    }
+
+
+    public function editContact(Request $request, ProposalContacts $contact)
+    {
+        $request->validate([
+            'name'=>'required',
+            'email'=>'required|email:rfc,dns'
+        ]);
+        $contact->email = $request->email;
+        $contact->name = $request->name;
+        $contact->phonenumber = $request->phonenumber;
+        $contact->save();
+        return back()->with('successMessage','Updated ' . $contact->name);
+    }
+
+    public function deleteContact(ProposalContacts $contact)
+    {
+        $contact->delete();
+        return back()->with('successMessage','Removed Contact');
+    }
+
 
     /**
      * Store a newly created resource in storage.

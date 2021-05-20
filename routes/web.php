@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\ProposalContacts;
+use App\Models\Bands;
 use App\Models\User;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -61,6 +63,9 @@ Route::patch('/colors/{id}','ColorsController@update')->middleware(['auth', 'ver
 
 Route::get('/proposals', 'ProposalsController@index')->middleware(['auth', 'verified'])->name('proposals');
 Route::get('/proposals/{proposal:key}/edit', 'ProposalsController@edit')->middleware(['auth', 'verified'])->name('proposals.edit');
+Route::post('/proposals/createContact/{proposal:key}', 'ProposalsController@createContact')->middleware(['auth', 'verified'])->name('proposals.createContact');
+Route::post('/proposals/editContact/{contact}', 'ProposalsController@editContact')->middleware(['auth', 'verified'])->name('proposals.editContact');
+Route::delete('/proposals/deleteContact/{contact}', 'ProposalsController@deleteContact')->middleware(['auth', 'verified'])->name('proposals.deleteContact');
 
 Route::get('/images/{uri}','ImageController@index');
 Route::get('/images/{band_site}/{uri}','ImageController@siteImages');
