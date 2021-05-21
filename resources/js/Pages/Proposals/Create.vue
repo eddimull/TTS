@@ -3,7 +3,7 @@
         <breeze-authenticated-layout>
         <template #header>
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                    Edit Proposal
+                    Create Proposal
                 </h2>
             </template>
             <div class="min-w-full max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -56,10 +56,7 @@
                     </div>
                     <div class="flex items-center justify-between">
                         <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" @click="updateProposal()" type="submit">
-                            Update Proposal
-                        </button>
-                        <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" v-on:click="deleteProposal()">
-                            Delete Proposal
+                            Create Proposal
                         </button>
                     </div>
                 </div>
@@ -184,24 +181,6 @@
 
             updateProposal(){
                 this.$inertia.patch('/proposals/' + this.proposal.key + '/update/',this.proposalData);
-            },
-            
-            deleteProposal(){
-                 this.$swal.fire({
-                    title: 'Are you sure you want to delete the ' + this.proposalData.name + 'proposal?',
-                    text: "You won't be able to revert this!",
-                    type: 'warning',
-                    showCancelButton: true,
-                    confirmButtonColor: '#3085d6',
-                    cancelButtonColor: '#d33',
-                    confirmButtonText: 'Yes, delete it!'
-                }).then((result) => {
-                    if(result.value)
-                    {
-                        this.$inertia.delete('/proposals/' + this.proposal.key + '/delete');
-                    }
-                })
-                
             }
         }
     }

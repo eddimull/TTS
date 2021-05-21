@@ -32,6 +32,33 @@
                 </div>
             </template>
         </card-modal>
+        <card-modal ref="proposalCreateModal" v-if="showCreateModal" :saveText="'Create Draft'" @save="draftProposal" @closing="toggleCreateModal()">
+            <template #header>
+                <h1>New Proposal</h1>
+            </template>
+            <template #body>
+                <div v-for="input in draftInputs" :key="input" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                    <p class="text-gray-600">
+                                    <label :for="input.name">{{input.name}}</label>
+                                </p>
+                                <div v-if="['text','number'].indexOf(input.type) !== -1" class="mb-4">
+                                    <!-- <p-inputtext v-model="proposalData"></p-inputtext> -->
+                                    <input :type="input.type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :id="input.name" :placeholder="input.name" v-model="proposalData[input.field]">
+                                </div>
+                                <div v-if="input.type == 'textArea'">
+                                    <textarea class="min-w-full" v-model="proposalData[input.field]" placeholder=""></textarea>
+                                </div>
+                                <div v-if="input.type == 'date'">
+                                    <calendar v-model="proposalData[input.field]" :showTime="true" :step-minute="15" hourFormat="12" />
+                                </div>
+                                <div v-if="input.type == 'eventTypeDropdown'">
+                                    <select v-model="proposalData[input.field]">
+                                        <option v-for="type in eventTypes" :key="type.id" :value="type.id">{{type.name}}</option>
+                                    </select>
+                                </div>
+                </div>
+            </template>
+        </card-modal>
         <div class="md:container md:mx-auto">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
@@ -59,13 +86,13 @@
                                     </tr>
                                 </tbody>
                             </table>
-                            <div class="my-4"><a href="/proposals/create" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline m-10 p-5">Draft Proposal for {{band.name}}</a></div>
+                            <div class="my-4"><button @click="toggleCreateModal(band.site_name)" type="button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline m-10 p-5">Draft Proposal for {{band.name}}</button></div>
                         </div>
                         
                     </div>
                     <div v-else>
                         It looks like you don't have any bands to create a proposal for. 
-                        <a href="/bands/create" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Draft Proposal</a>
+                        <button type="button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Draft Proposal</button>
                     </div>
                 </div>
             </div>
@@ -77,14 +104,16 @@
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
     import moment from 'moment';
     export default {
-        props:['bandsAndProposals','successMessage'],
+        props:['bandsAndProposals','successMessage','eventTypes'],
         components: {
             BreezeAuthenticatedLayout,
         },
         data(){
             return{
                 showModal:false,
+                showCreateModal:false,
                 activeProposal:{},
+                activeBandSite:'',
                 showFields:[
                     {name:'Author',property:'author',subProperty:'name'},
                     {name:'Proposed Date/Time',property:'date'},
@@ -95,10 +124,54 @@
                     {name:'Locked',property:'locked'},
                     {name:'Notes',property:'notes'},
                     {name:'Created',property:'created_at'}
+                ],
+                proposalData:{
+                    name:'',
+                    date:'',
+                    event_type_id:0,
+                    hours:0,
+                    price:0,
+                    notes:'',
+                },
+                draftInputs:[
+                    {
+                        name:'Name',
+                        type:'text',
+                        field:'name'
+                    },
+                    {
+                        name:'Date / Time',
+                        type:'date',
+                        field:'date'
+                    },
+                    {
+                        name:'Event Type',
+                        type:'eventTypeDropdown',
+                        field:'event_type_id'
+                    },
+                    {
+                        name:'Length',
+                        type:'number',
+                        field:'hours'
+                    },
+                    {
+                        name:'Price',
+                        type:'number',
+                        field:'price'
+                    },
+                    {
+                        name:'Notes',
+                        type:'textArea',
+                        field:'notes'
+                    },                    
                 ]
             }
         },
         methods:{
+            toggleCreateModal(sitename){
+                this.activeBandSite = sitename;
+                this.showCreateModal = !this.showCreateModal
+            },
             toggleModal(){
                 this.showModal = !this.showModal
             },
@@ -108,6 +181,9 @@
             },
             gotoProposal(){
                 this.$inertia.get('/proposals/' + this.activeProposal.key + '/edit');
+            },
+            draftProposal(){
+                this.$inertia.post('/proposals/' + this.activeBandSite + '/create',this.proposalData);
             }
         }
     }

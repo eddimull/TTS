@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Models\Proposals;
+use Illuminate\Support\Str;
 
 class ProposalsController extends Controller
 {
@@ -27,10 +28,11 @@ class ProposalsController extends Controller
         // $band = Bands::with('proposals')->find(1);
         $bands = $user->bandOwner;
                    
-  
+        $eventTypes = EventTypes::all();
         
         return Inertia::render('Proposals/Index',[
-            'bandsAndProposals'=>$bands[0]->with('proposals')->get()
+            'bandsAndProposals'=>$bands[0]->with('proposals')->get(),
+            'eventTypes'=>$eventTypes
         ]);
     }
 
@@ -39,9 +41,27 @@ class ProposalsController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function create()
+    public function create(Request $request, Bands $band)
     {
-        //
+        $author = Auth::user();
+        $proposal = Proposals::create([
+            'band_id'=>$band->id,
+            'phase_id'=>1,
+            'date'=>date('Y-m-d H:i:s',strtotime($request->date)),
+            'hours'=>$request->hours,
+            'price'=>$request->price,
+            'locked'=>false,
+            'notes'=>'',
+            'key'=>Str::uuid(),
+            'author_id'=>$author->id,
+            'name'=>$request->name
+        ]);
+
+        $eventTypes = EventTypes::all();
+        return Inertia::render('Proposals/Edit',[
+            'proposal'=>$proposal,
+            'eventTypes'=>$eventTypes
+        ]);
     }
 
     public function createContact(Request $request, Proposals $proposal)
@@ -152,6 +172,8 @@ class ProposalsController extends Controller
      */
     public function destroy(Proposals $proposal)
     {
-        //
+        $name = $proposal->name;
+        $proposal->delete();
+        return redirect()->route('proposals')->with('successMessage', $name . ' has been brutally destroyed.');
     }
 }

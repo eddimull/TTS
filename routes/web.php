@@ -2,6 +2,7 @@
 
 use App\Models\ProposalContacts;
 use App\Models\Bands;
+use App\Models\Proposals;
 use App\Models\User;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -64,6 +65,8 @@ Route::patch('/colors/{id}','ColorsController@update')->middleware(['auth', 'ver
 Route::get('/proposals', 'ProposalsController@index')->middleware(['auth', 'verified'])->name('proposals');
 Route::get('/proposals/{proposal:key}/edit', 'ProposalsController@edit')->middleware(['auth', 'verified'])->name('proposals.edit');
 Route::patch('/proposals/{proposal:key}/update', 'ProposalsController@update')->middleware(['auth','verified'])->name('proposals.update');
+Route::post('/proposals/{band:site_name}/create', 'ProposalsController@create')->middleware(['auth','verified'])->name('proposals.create');
+Route::delete('/proposals/{proposal:key}/delete','ProposalsController@destroy')->middleware(['auth','verified'])->name('proposals.delete');
 Route::post('/proposals/createContact/{proposal:key}', 'ProposalsController@createContact')->middleware(['auth', 'verified'])->name('proposals.createContact');
 Route::post('/proposals/editContact/{contact}', 'ProposalsController@editContact')->middleware(['auth', 'verified'])->name('proposals.editContact');
 Route::delete('/proposals/deleteContact/{contact}', 'ProposalsController@deleteContact')->middleware(['auth', 'verified'])->name('proposals.deleteContact');
