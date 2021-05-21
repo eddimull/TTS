@@ -89,6 +89,7 @@
                     {name:'Author',property:'author',subProperty:'name'},
                     {name:'Proposed Date/Time',property:'date'},
                     {name:'Hours',property:'hours'},
+                    {name:'Event Type',property:'event_type',subProperty:'name'},
                     {name:'Price',property:'price'},
                     {name:'Color',property:'color'},
                     {name:'Locked',property:'locked'},

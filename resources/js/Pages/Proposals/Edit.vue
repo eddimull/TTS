@@ -7,24 +7,18 @@
                 </h2>
             </template>
             <div class="min-w-full max-w-7xl mx-auto sm:px-6 lg:px-8">
-                {{proposalData}}
                 <div class="mb-4">
                     <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
                         <div class="bg-white w-full rounded-lg shadow-xl">
-                            <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                            <div v-for="input in validInputs" :key="input" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                                 <p class="text-gray-600">
-                                    <label for="name">Name</label>
+                                    <label :for="input.name">{{input.name}}</label>
                                 </p>
-                                <div class="mb-4">
+                                <div v-if="['text','number'].indexOf(input.type) !== -1" class="mb-4">
                                     <!-- <p-inputtext v-model="proposalData"></p-inputtext> -->
-                                    <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="name" placeholder="Proposal Name" v-model="proposalData.name">
+                                    <input :type="input.type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :id="input.name" :placeholder="input.name" v-model="proposalData[input.field]">
                                 </div>
-                            </div>    
-                            <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                                <p class="text-gray-600">
-                                    <label for="contacts">Contacts</label>
-                                </p>
-                                <div class="mb-4">
+                                <div v-if="input.type == 'contacts'">
                                     <ul class="hover:bg-gray-100 cursor-pointer" @click="proposalData.proposal_contacts.forEach(tempContact=>tempContact.editing = false); if(!contact.editing){ contact.editing = true }" v-for="contact in proposalData.proposal_contacts" :key="contact.id">
                                         <li v-if="!contact.editing">Name: {{contact.name}}</li>
                                         <li v-if="!contact.editing">Phone: {{contact.phonenumber}} </li>
@@ -47,11 +41,22 @@
                                     <button-component v-if="showCreateNewContact" :type="'button'" @click="showCreateNewContact = false">Cancel</button-component>
                                     <button-component v-if="showCreateNewContact" :type="'button'" @click="saveContact">Save</button-component>
                                 </div>
+                                <div v-if="input.type == 'textArea'">
+                                    <textarea class="min-w-full" v-model="proposalData[input.field]" placeholder=""></textarea>
+                                </div>
+                                <div v-if="input.type == 'date'">
+                                    <calendar v-model="proposalData[input.field]" :showTime="true" :step-minute="15" hourFormat="12" />
+                                </div>
+                                <div v-if="input.type == 'eventTypeDropdown'">
+                                    <select v-model="proposalData[input.field]">
+                                        <option v-for="type in eventTypes" :key="type.id" :value="type.id">{{type.name}}</option>
+                                    </select>
+                                </div>
                         </div>                                                                                                                                     
                     </div>
                     <div class="flex items-center justify-between">
-                        <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">
-                            Save Proposal
+                        <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" @click="updateProposal()" type="submit">
+                            Update Proposal
                         </button>
                         <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" v-on:click="showAlert">
                             Delete Proposal
@@ -73,7 +78,7 @@
     import 'vue3-timepicker/dist/VueTimepicker.css'
     import moment from 'moment';
     export default {
-        props:['proposal'],
+        props:['proposal','eventTypes'],
         components: {
             BreezeAuthenticatedLayout,Datepicker,VueTimepicker,ButtonComponent
         }, 
@@ -88,6 +93,48 @@
                 patchingContact:{
 
                 },
+                validInputs:[
+                    {
+                        name:'Name',
+                        type:'text',
+                        field:'name'
+                    },
+                    {
+                        name:'Date / Time',
+                        type:'date',
+                        field:'date'
+                    },
+                    {
+                        name:'Event Type',
+                        type:'eventTypeDropdown',
+                        field:'event_type_id'
+                    },
+                    {
+                        name:'Contacts',
+                        type:'contacts',
+                        field:'proposal_contacts'
+                    },
+                    {
+                        name:'Length',
+                        type:'number',
+                        field:'hours'
+                    },
+                    {
+                        name:'Price',
+                        type:'number',
+                        field:'price'
+                    },
+                    {
+                        name:'Colorway',
+                        type:'text',
+                        field:'color'
+                    },
+                    {
+                        name:'Notes',
+                        type:'textArea',
+                        field:'notes'
+                    },
+                ],
                 showCreateNewContact : false,
                 inputClass:[
                     'shadow',
@@ -106,12 +153,11 @@
             }
         },
         created(){
-
+            this.proposalData.date = new Date(moment(String(this.proposalData.date)))
         },
         methods:{
             saveContact(){
                this.$inertia.post('/proposals/createContact/' + this.proposal.key,this.newContact,{preserveScroll:true,onSuccess:(data)=>{
-                   console.log(data);
                    this.newContact.name = '';
                    this.newContact.phonenumber = '';
                    this.newContact.email = '';
@@ -133,8 +179,11 @@
                 });
             },
             hideContactEdits(){
-                console.log('hide?');
                 this.proposalData.proposal_contacts.forEach(tempContact=>tempContact.editing = false)
+            },
+
+            updateProposal(){
+                this.$inertia.patch('/proposals/' + this.proposal.key + '/update/',this.proposalData);
             }
         }
     }

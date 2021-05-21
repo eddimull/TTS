@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Bands;
+use App\Models\EventTypes;
 use App\Models\Proposal;
 use App\Models\ProposalContacts;
 use Illuminate\Http\Request;
@@ -111,8 +112,10 @@ class ProposalsController extends Controller
      */
     public function edit(Proposals $proposal)
     {
+        $eventTypes = EventTypes::all();
         return Inertia::render('Proposals/Edit',[
-            'proposal'=>$proposal
+            'proposal'=>$proposal,
+            'eventTypes'=>$eventTypes
         ]);
     }
 
@@ -125,7 +128,20 @@ class ProposalsController extends Controller
      */
     public function update(Request $request, Proposals $proposal)
     {
-        //
+        $request->validate([
+            'name'=>'required',
+            'date'=>'required|date',
+            'hours'=>'required|numeric',
+            'event_type_id'=>'required|numeric'
+        ]);
+        
+        $proposal->name = $request->name;
+        $proposal->date = date('Y-m-d H:i:s',strtotime($request->date));
+        $proposal->hours = $request->hours;
+        $proposal->event_type_id = $request->event_type_id;
+        $proposal->save();
+
+        return redirect()->route('proposals')->with('successMessage', $proposal->name . ' was successfully updated');
     }
 
     /**
