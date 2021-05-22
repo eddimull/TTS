@@ -53,6 +53,27 @@
                                 </div>
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                                     <p class="text-gray-600">
+                                        <label for="eventType">Production</label>
+                                    </p>
+                                    <div>
+                                        <div class="mb-4">
+                                            <select v-model="form.production_needed" class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded">
+                                                <option :value="1">Provided by band</option>
+                                                <option :value="0">Provided by venue</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>      
+                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                    <p class="text-gray-600">
+                                        Backline Provided
+                                    </p>
+                                    <p>
+                                        <input type="checkbox" v-model="form.backline_provided" />
+                                    </p>
+                                </div>                                 
+                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                    <p class="text-gray-600">
                                         Venue Name
                                     </p>
                                     <p>
@@ -69,12 +90,20 @@
                                 </div>
                                 <div v-if="form.event_type_id === 1" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                                     <p class="text-gray-600">
-                                        <label for="secondDance">Second Dance</label>
+                                        <label for="father_daughter">Father / Daughter Dance:</label>
                                     </p>
                                     <p>
-                                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="secondDance" placeholder="Second Dance" v-model="form.second_dance">
+                                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="secondDance" placeholder="Second Dance" v-model="form.father_daughter">
                                     </p>
                                 </div>  
+                                <div v-if="form.event_type_id === 1" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                    <p class="text-gray-600">
+                                        <label for="father_daughter">Mother / Groom Dance:</label>
+                                    </p>
+                                    <p>
+                                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="secondDance" placeholder="Second Dance" v-model="form.mother_groom">
+                                    </p>
+                                </div>                                  
                                 <div v-if="form.event_type_id === 1" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                                     <p class="text-gray-600">
                                         <label for="moneyDance">Money Dance</label>
@@ -86,10 +115,10 @@
                                 <div v-if="form.event_type_id === 1" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
 
                                     <p class="text-gray-600">
-                                        <label for="secondDance">Bouquet Dance</label>
+                                        <label for="secondDance">Bouquet / Garter</label>
                                     </p>
                                     <p>
-                                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="bouquetDance" placeholder="Bouquet Stuff" v-model="form.bouquet_dance">
+                                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="bouquetDance" placeholder="Bouquet Stuff" v-model="form.bouquet_garter">
                                     </p>
                                 </div>    
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -267,7 +296,7 @@
                         <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">
                             Update Event
                         </button>
-                        <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" v-on:click="showAlert">
+                        <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="button" v-on:click="showAlert">
                             Delete Event
                         </button>
                     </div>
@@ -296,9 +325,10 @@
                     event_name:this.event.event_name,
                     venue_name:this.event.venue_name,
                     first_dance:this.event.first_dance,
-                    second_dance:this.event.second_dance,
+                    father_daughter:this.event.father_daughter,
+                    mother_groom:this.event.mother_groom,
                     money_dance:this.event.money_dance,
-                    bouquet_dance:this.event.bouquet_dance,
+                    bouquet_garter:this.event.bouquet_garter,
                     address_street:this.event.address_street,
                     zip:this.event.zip,
                     city:this.event.city,
@@ -312,6 +342,8 @@
                     band_loadin_time:new Date(moment(this.event.band_loadin_time)),
                     rhythm_loadin_time:new Date(moment(this.event.rhythm_loadin_time)),
                     production_loadin_time:new Date(moment(this.event.production_loadin_time)),
+                    production_needed:this.event.production_needed,
+                    backline_provided:this.event.backline_provided,                   
                     pay:this.event.pay, 
                     depositReceived:this.event.depositReceived ? true : false,
                     event_key:this.event.event_key,

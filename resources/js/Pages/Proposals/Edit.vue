@@ -58,7 +58,7 @@
                         <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" @click="updateProposal()" type="submit">
                             Update Proposal
                         </button>
-                        <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" v-on:click="deleteProposal()">
+                        <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="button" v-on:click="deleteProposal()">
                             Delete Proposal
                         </button>
                     </div>

@@ -44,11 +44,32 @@
                                         <label for="eventType">Event Type</label>
                                     </p>
                                     <div>
-                                        <select v-model="form.event_type_id" class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded" id="grid-state">
+                                        <select v-on:change="alterProductionNeeded()" v-model="form.event_type_id" class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded" id="grid-state">
                                             <option v-for="eventType in eventTypes" :key="eventType.id" :value="eventType.id">{{eventType.name}}</option>
                                         </select>
                                     </div>
                                 </div>
+                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                    <p class="text-gray-600">
+                                        <label for="eventType">Production</label>
+                                    </p>
+                                    <div>
+                                        <div class="mb-4">
+                                            <select v-model="form.production_needed" class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded">
+                                                <option :value="true">Provided by band</option>
+                                                <option :value="false">Provided by venue</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>      
+                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                    <p class="text-gray-600">
+                                        Backline Provided
+                                    </p>
+                                    <p>
+                                        <input type="checkbox" v-model="form.backline_provided" />
+                                    </p>
+                                </div>                          
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                                     <p class="text-gray-600">
                                         Venue Name
@@ -67,12 +88,20 @@
                                 </div>
                                 <div v-if="form.event_type_id === 1" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                                     <p class="text-gray-600">
-                                        <label for="secondDance">Second Dance</label>
+                                        <label for="father_daughter">Father / Daughter Dance:</label>
                                     </p>
                                     <p>
-                                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="secondDance" placeholder="Second Dance" v-model="form.second_dance">
+                                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="secondDance" placeholder="Second Dance" v-model="form.father_daughter">
                                     </p>
                                 </div>  
+                                <div v-if="form.event_type_id === 1" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                    <p class="text-gray-600">
+                                        <label for="father_daughter">Mother / Groom Dance:</label>
+                                    </p>
+                                    <p>
+                                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="secondDance" placeholder="Second Dance" v-model="form.mother_groom">
+                                    </p>
+                                </div>                                 
                                 <div v-if="form.event_type_id === 1" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                                     <p class="text-gray-600">
                                         <label for="moneyDance">Money Dance</label>
@@ -84,10 +113,10 @@
                                 <div v-if="form.event_type_id === 1" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
 
                                     <p class="text-gray-600">
-                                        <label for="secondDance">Bouquet Dance</label>
+                                        <label for="secondDance">Bouquet / Garter</label>
                                     </p>
                                     <p>
-                                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="bouquetDance" placeholder="Bouquet Stuff" v-model="form.bouquet_dance">
+                                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="bouquetDance" placeholder="Bouquet Stuff" v-model="form.bouquet_garter">
                                     </p>
                                 </div>    
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -98,16 +127,7 @@
                                     <p>
                                         <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="streetAddress" placeholder="P. Sherman, 42" v-model="form.address_street">
                                     </p>
-                                </div>       
-                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-
-                                    <p class="text-gray-600">
-                                        <label for="zipCode">Zip Code</label>
-                                    </p>
-                                    <p>
-                                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="zipCode" placeholder="70506" v-model="form.zip">
-                                    </p>
-                                </div>     
+                                </div>          
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
 
                                     <p class="text-gray-600">
@@ -128,6 +148,15 @@
                                         </select>                                        
                                     </p>
                                 </div>   
+                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+
+                                    <p class="text-gray-600">
+                                        <label for="zipCode">Zip Code</label>
+                                    </p>
+                                    <p>
+                                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="zipCode" placeholder="70506" v-model="form.zip">
+                                    </p>
+                                </div>                                  
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                                     <p class="text-gray-600">
                                         Notes
@@ -162,69 +191,73 @@
                                         <calendar v-on:date-select="assumeSeven()" v-model="form.event_time" />
                                     </p>
                                 </div>
-                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                                    <p class="text-gray-600">
-                                        Show Time
-                                    </p>
-                                    <p>
-                                        <calendar v-model="form.event_time" :showTime="true" :timeOnly="true" hourFormat="12" />
-                                        <button class="bg-transparent hover:bg-blue-500 text-blue-700 font-semibold hover:text-white py-2 px-4 mx-3 border border-blue-500 hover:border-transparent rounded" @click="setDate()" type="button">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            Auto Fill Times
-                                        </button>
-                                    </p>
-                                </div>
-                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                                    <p class="text-gray-600">
-                                        Quiet Time
-                                    </p>
-                                    <p>
-                                        <calendar v-model="form.quiet_time" :showTime="true" :step-minute="15" :timeOnly="true" hourFormat="12" />
-                                    </p>
-                                </div>   
-                                <div v-if="form.event_type_id === 1" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                                    <p class="text-gray-600">
-                                        Ceremony Time
-                                    </p>
-                                    <p>
-                                        <calendar v-model="form.ceremony_time" :showTime="true" :step-minute="15" :timeOnly="true" hourFormat="12" />
-                                        On Site: <input type="checkbox" v-model="form.onsite"/>
-                                    </p>
-                                </div>                               
-                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                                    <p class="text-gray-600">
-                                        End Time
-                                    </p>
-                                    <p>
-                                        <calendar v-model="form.end_time" :showTime="true" :step-minute="15" :timeOnly="true" hourFormat="12" />
-                                    </p>
-                                </div>   
-                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                                    <p class="text-gray-600">
-                                        Production Load In Time
-                                    </p>
-                                    <p>
-                                        <calendar v-model="form.production_loadin_time" :step-minute="15" :showTime="true" :timeOnly="true" hourFormat="12" />
-                                    </p>
-                                </div>  
-                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                                    <p class="text-gray-600">
-                                        Rhythm Load In Time
-                                    </p>
-                                    <p>
-                                        <calendar v-model="form.rhythm_loadin_time" :step-minute="15" :showTime="true" :timeOnly="true" hourFormat="12" />
-                                    </p>
-                                </div>                                                                 
-                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                                    <p class="text-gray-600">
-                                        Band Load In Time
-                                    </p>
-                                    <p>
-                                        <calendar v-model="form.band_loadin_time" :step-minute="15" :showTime="true" :timeOnly="true" hourFormat="12" />
-                                    </p>
-                                </div>              
+                                <transition name="slide-down" appear>
+                                    <div v-if="form.event_time !== ''">
+                                        <div v-if="form.event_time !== ''" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                            <p class="text-gray-600">
+                                                Show Time
+                                            </p>
+                                            <p>
+                                                <calendar :disabled="form.event_time === ''" v-model="form.event_time" :showTime="true" :timeOnly="true" hourFormat="12" />
+                                            </p>
+                                        </div>
+                                        <div v-if="form.event_time !== ''" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                            <p class="text-gray-600">
+                                                End Time
+                                            </p>
+                                            <p>
+                                                <calendar :disabled="form.event_time === ''" v-model="form.end_time" :showTime="true" :step-minute="15" :timeOnly="true" hourFormat="12" />
+                                            </p>
+                                        </div>   
+                                        <div v-if="form.event_type_id === 1 && form.event_time !== ''" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                            <p class="text-gray-600">
+                                                Ceremony Time
+                                            </p>
+                                            <p>
+                                                <calendar :disabled="form.event_time === ''" v-model="form.ceremony_time" :showTime="true" :step-minute="15" :timeOnly="true" hourFormat="12" />
+                                                On Site: <input type="checkbox" v-model="form.onsite"/>
+                                            </p>
+                                        </div>                                               
+                                        <div v-if="form.event_time !== ''" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                            <p class="text-gray-600">
+                                                Quiet Time                                        
+                                            </p>
+                                            <p>
+                                                <calendar :disabled="form.event_time === ''" v-model="form.quiet_time" :showTime="true" :step-minute="15" :timeOnly="true" hourFormat="12" />
+                                                <button v-if="form.event_time !== ''" class="bg-transparent hover:bg-blue-500 text-blue-700 font-semibold hover:text-white py-2 px-4 mx-3 border border-blue-500 hover:border-transparent rounded" @click="setDate()" type="button">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    Auto Fill Times
+                                                </button>
+                                            </p>
+                                        </div>                           
+                                        <div v-if="form.event_time !== '' && form.production_needed" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                            <p class="text-gray-600">
+                                                Production Load In Time
+                                            </p>
+                                            <p>
+                                                <calendar :disabled="form.event_time === ''" v-model="form.production_loadin_time" :step-minute="15" :showTime="true" :timeOnly="true" hourFormat="12" />
+                                            </p>
+                                        </div>  
+                                        <div v-if="form.event_time !== ''" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                            <p class="text-gray-600">
+                                                Rhythm Load In Time
+                                            </p>
+                                            <p>
+                                                <calendar :disabled="form.event_time === ''" v-model="form.rhythm_loadin_time" :step-minute="15" :showTime="true" :timeOnly="true" hourFormat="12" />
+                                            </p>
+                                        </div>                                                                 
+                                        <div v-if="form.event_time !== ''" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                            <p class="text-gray-600">
+                                                Band Load In Time
+                                            </p>
+                                            <p>
+                                                <calendar :disabled="form.event_time === ''" v-model="form.band_loadin_time" :step-minute="15" :showTime="true" :timeOnly="true" hourFormat="12" />
+                                            </p>
+                                        </div>
+                                    </div>   
+                                </transition>          
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                                     <p class="text-gray-600">
                                         Deposit Received
@@ -299,14 +332,17 @@
                     event_name:'',
                     venue_name:'',
                     first_dance:'',
-                    second_dance:'',
+                    father_daughter:'',
+                    mother_groom:'',
                     money_dance:'',
-                    bouquet_dance:'',
+                    bouquet_garter:'',
                     address_street:'',
                     zip:'',
                     city:'',
                     colorway_id:'',
                     ceremony_time:'',
+                    production_needed:true,
+                    backline_provided:false,
                     quiet_time:'',
                     onsite:'',
                     notes:'',
@@ -346,19 +382,55 @@
                     }
                 }
             },
+            alterProductionNeeded()
+            {
+                this.form.production_needed = [3,6].indexOf(this.form.event_type_id) == -1;
+            },
             assumeSeven()
             {
                 this.form.event_time = new Date(moment(String(this.form.event_time)).add('hour',19));
-            },
-            setDate()
-            {
                 this.form.end_time = new Date(moment(String(this.form.event_time)).add('hour',4));
                 this.form.quiet_time = new Date(moment(String(this.form.event_time)).subtract('hour',1));
                 this.form.ceremony_time = new Date(moment(String(this.form.event_time)).subtract('hour',1));
-                this.form.band_loadin_time = new Date(moment(String(this.form.event_time)).subtract('hour',2));
-                this.form.rhythm_loadin_time = new Date(moment(String(this.form.event_time)).subtract('hour',3));
-                this.form.production_loadin_time = new Date(moment(String(this.form.event_time)).subtract('hour',4));
+                
+            },
+            setDate()
+            {
+                const amountBefore = this.form.onsite ? 1 : 0;
+                if(this.form.event_type_id == 1)
+                {
+                    this.form.quiet_time = new Date(moment(String(this.form.ceremony_time)).subtract('hour',amountBefore));
+                    this.form.band_loadin_time = new Date(moment(String(this.form.quiet_time)).subtract('hour',2));
+                    this.form.rhythm_loadin_time = new Date(moment(String(this.form.quiet_time)).subtract('hour',3));
+                    this.form.production_loadin_time = new Date(moment(String(this.form.quiet_time)).subtract('hour',4));
+                }
+                else
+                {
+                    this.form.band_loadin_time = new Date(moment(String(this.form.quiet_time)).subtract('hour',2));
+                    this.form.rhythm_loadin_time = new Date(moment(String(this.form.quiet_time)).subtract('hour',3));
+                    this.form.production_loadin_time = new Date(moment(String(this.form.quiet_time)).subtract('hour',4));
+                }
             }
         }
     }
 </script>
+<style scoped>
+.fade-enter-active, .fade-leave-active {
+  transition: opacity .5s;
+}
+.fade-enter-from, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
+  opacity: 0;
+}
+
+.slide-down-enter-active{
+  transition: all .3s ease;
+  transition-delay: .1s;
+}
+.slide-down-leave-active {
+  transition: all .5s cubic-bezier(1.0, 0.5, 0.8, 1.0);
+}
+.slide-down-enter-from, .slide-down-leave-to
+/* .slide-fade-leave-active below version 2.1.8 */ {
+  transform: translateY(-50px);
+}
+</style>

@@ -21,6 +21,7 @@ use Spatie\GoogleCalendar\Event as CalendarEvent;
 use App\Notifications\EventAdded;
 use App\Notifications\EventUpdated;
 use App\Models\User;
+use Doctrine\DBAL\Schema\View;
 
 class EventsController extends Controller
 {
@@ -74,9 +75,10 @@ class EventsController extends Controller
         
 
         // dd($event->event_type_name);
-        return Inertia::render('Events/Advance',[
-            'event'=>$event            
-        ]);
+        // return Inertia::render('Events/Advance',[
+        //     'event'=>$event            
+        // ]);
+        return View('advance',['event'=>$event]);
 
     }
     public function createPDF($id)
@@ -127,10 +129,13 @@ class EventsController extends Controller
             'event_name' => $request->event_name,
             'venue_name' => $request->venue_name,
             'first_dance' => $request->first_dance,
-            'second_dance' => $request->second_dance,
+            'father_daughter' => $request->father_daughter,
+            'mother_groom' => $request->mother_groom,
             'money_dance' => $request->money_dance,
-            'bouquet_dance' => $request->bouquet_dance,
+            'bouquet_garter' => $request->bouquet_garter,
             'address_street' => $request->address_street,
+            'production_needed'=>$request->production_needed,
+            'backline_provided'=>$request->backline_provided,
             'zip' => $request->zip,
             'notes' => $request->notes,
             'event_time' => date('Y-m-d H:i:s',strtotime($request->event_time)),
@@ -179,6 +184,10 @@ class EventsController extends Controller
 
             $startTime = Carbon::parse($event->event_time);
             $endDateTimeFixed = date('Y-m-d',strtotime($event->event_time)) . ' ' . date('H:i:s', strtotime($event->end_time));
+            if($endDateTimeFixed < $startTime)//when events end after midnight
+            {
+                $endDateTimeFixed = date('Y-m-d',strtotime($event->event_time . ' +1 day')) . ' ' . date('H:i:s', strtotime($event->end_time));
+            }
             $endTime = Carbon::parse($endDateTimeFixed);
             $calendarEvent->startDateTime = $startTime;
             $calendarEvent->endDateTime = $endTime;   
@@ -262,10 +271,13 @@ class EventsController extends Controller
         $event->event_name = $request->event_name;
         $event->venue_name = $request->venue_name;
         $event->first_dance = $request->first_dance;
-        $event->second_dance = $request->second_dance;
+        $event->father_daughter = $request->father_daughter;
+        $event->mother_groom = $request->mother_groom;
         $event->money_dance = $request->money_dance;
-        $event->bouquet_dance = $request->bouquet_dance;
+        $event->bouquet_garter = $request->bouquet_garter;
         $event->address_street = $request->address_street;
+        $event->production_needed = $request->production_needed;
+        $event->backline_provided = $request->backline_provided;
         $event->zip = $request->zip;
         $event->notes = $request->notes;
         $event->event_time = date('Y-m-d H:i:s',strtotime($request->event_time));
@@ -309,6 +321,10 @@ class EventsController extends Controller
 
             $startTime = Carbon::parse($event->event_time);
             $endDateTimeFixed = date('Y-m-d',strtotime($event->event_time)) . ' ' . date('H:i:s', strtotime($event->end_time));
+            if($endDateTimeFixed < $startTime)//when events end after midnight
+            {
+                $endDateTimeFixed = date('Y-m-d',strtotime($event->event_time . ' +1 day')) . ' ' . date('H:i:s', strtotime($event->end_time));
+            }
             $endTime = Carbon::parse($endDateTimeFixed);
             $calendarEvent->startDateTime = $startTime;
             $calendarEvent->endDateTime = $endTime;   

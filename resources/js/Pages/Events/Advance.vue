@@ -89,23 +89,37 @@
                     </tr>                    
                     <tr v-if="(event.event_type.name == 'Wedding')">
                         <td class="w-1/6">&nbsp;</td>
-                        <td class="border border-black border-2 px-4 py-2 w-1/6 bg-gray-200">First Dances:</td>
+                        <td class="border border-black border-2 px-4 py-2 w-1/6 bg-gray-200">First Dance:</td>
                         <td class="border border-black border-2 px-4 py-2">
                             {{event.first_dance}}
                         </td>                                                    
                     </tr>                      
                     <tr v-if="(event.event_type.name == 'Wedding')">
                         <td class="w-1/6">&nbsp;</td>
-                        <td class="border border-black border-2 px-4 py-2 w-1/6 bg-gray-200">Second Dances:</td>
+                        <td class="border border-black border-2 px-4 py-2 w-1/6 bg-gray-200">Father/Daughter:</td>
                         <td class="border border-black border-2 px-4 py-2">
-                            {{event.second_dance}}
+                            {{event.father_daughter}}
                         </td>                                                    
-                    </tr>                                             
+                    </tr>             
                     <tr v-if="(event.event_type.name == 'Wedding')">
                         <td class="w-1/6">&nbsp;</td>
-                        <td class="border border-black border-2 px-4 py-2 w-1/6 bg-gray-200">Bouquet/Money Dances:</td>
+                        <td class="border border-black border-2 px-4 py-2 w-1/6 bg-gray-200">Mother/Groom:</td>
                         <td class="border border-black border-2 px-4 py-2">
-                            {{event.bouquet_dance}} / {{event.money_dance}}
+                            {{event.mother_groom}}
+                        </td>                                                    
+                    </tr>                                                         
+                    <tr v-if="(event.event_type.name == 'Wedding')">
+                        <td class="w-1/6">&nbsp;</td>
+                        <td class="border border-black border-2 px-4 py-2 w-1/6 bg-gray-200">Money Dance:</td>
+                        <td class="border border-black border-2 px-4 py-2">
+                            {{event.money_dance}}
+                        </td>                                                    
+                    </tr>    
+                    <tr v-if="(event.event_type.name == 'Wedding')">
+                        <td class="w-1/6">&nbsp;</td>
+                        <td class="border border-black border-2 px-4 py-2 w-1/6 bg-gray-200">Bouquet/Garter Dances:</td>
+                        <td class="border border-black border-2 px-4 py-2">
+                            {{event.bouquet_garter}}
                         </td>                                                    
                     </tr>    
                     <tr v-if="(event.event_type.name == 'Wedding')">
