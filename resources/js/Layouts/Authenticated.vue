@@ -1,6 +1,6 @@
 <template>
     <div>
-        <div class="min-h-screen bg-gray-100">
+        <div class="min-h-screen bg-gradient-to-r from-blue-800 to-blue-200">
             
             <nav class="bg-white border-b border-gray-100">
                 <!-- Primary Navigation Menu -->
@@ -146,7 +146,7 @@
             </header>
 
             <!-- Page Content -->
-            <main class="rounded-t-lg overflow-hidden border-t border-l border-r border-gray-400 px-3 py-10 bg-gray-200 flex justify-center">
+            <main class="rounded-t-lg overflow-hidden border-t border-l border-r border-gray-400 px-3 py-10 flex justify-center">
                 <toast :successMessage="$page.props.successMessage" :errors="$page.props.errors"></toast>
                 <slot />
             </main>
