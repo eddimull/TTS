@@ -6,6 +6,7 @@ use App\Models\Bands;
 use App\Models\EventTypes;
 use App\Models\Proposal;
 use App\Models\ProposalContacts;
+use App\Models\ProposalPhases;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -29,10 +30,12 @@ class ProposalsController extends Controller
         $bands = $user->bandOwner;
                    
         $eventTypes = EventTypes::all();
-        
+        $proposal_phases = ProposalPhases::all();
+
         return Inertia::render('Proposals/Index',[
             'bandsAndProposals'=>$bands[0]->with('proposals')->get(),
-            'eventTypes'=>$eventTypes
+            'eventTypes'=>$eventTypes,
+            'proposal_phases'=>$proposal_phases
         ]);
     }
 

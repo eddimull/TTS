@@ -9,6 +9,41 @@
             <template #header>
                 <h1>{{activeProposal.name}}</h1>
             </template>
+            <template #headerBody>
+                <div class="mx-4 mb-1 p-4 w-11/12 flex flex-row">
+                <div class="flex items-center flex-grow" v-for="(phase,index) in proposal_phases" :key="phase.id">
+                     
+                        <div :class="['flex', 'items-center', {
+                                'text-purple-500':phase.id <= activeProposal.phase_id,
+                                'text-gray-500':phase.id > activeProposal.phase_id
+                                }, 'relative']">
+                        <div v-html="phase.icon" :class="['rounded-full', 'transition', 'duration-500', 'ease-in-out', 'h-12', 'w-12', 'py-3', 'border-2', 
+                                                            {
+                                                                'border-purple-500':phase.id <= activeProposal.phase_id,
+                                                                'border-gray-300':phase.id > activeProposal.phase_id
+                                                            }
+                                                        ]">
+                        </div>
+                        <div :class="['hidden', 'lg:block', 'absolute', 'top-0', '-ml-10', 'text-center', 'mt-16', 'w-32', 'text-xs', 'font-medium', 'uppercase', 
+                                        {
+                                            'text-purple-500':phase.id <= activeProposal.phase_id,
+                                            'text-gray-500':phase.id > activeProposal.phase_id
+                                        }   
+                                    ]">
+                        {{phase.name}}
+                        </div>
+                    </div>
+                    <div v-if="index+1 !== Object.keys(proposal_phases).length" :class="['flex-auto', 'border-t-2', 'transition', 'duration-500', 'ease-in-out', 
+                                                                                            {
+                                                                                                'border-purple-500':phase.id < activeProposal.phase_id,
+                                                                                                'border-gray-300':phase.id > activeProposal.phase_id
+                                                                                        
+                                                                                            }
+                                                                                        ]"></div>
+                    
+                </div>
+              </div>
+            </template>
             <template #body>
                 <div v-for="(field,index) in showFields" :key="index" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                     <p class="text-gray-600">
@@ -58,6 +93,7 @@
                                 </div>
                 </div>
             </template>
+            
         </card-modal>
         <div class="md:container md:mx-auto">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -104,7 +140,7 @@
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
     import moment from 'moment';
     export default {
-        props:['bandsAndProposals','successMessage','eventTypes'],
+        props:['bandsAndProposals','successMessage','eventTypes','proposal_phases'],
         components: {
             BreezeAuthenticatedLayout,
         },

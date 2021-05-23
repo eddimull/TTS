@@ -29,8 +29,9 @@
               </button>
 
               <!-- header -->
-              <div class="px-4 py-3 border-b border-gray-200">
+              <div class="px-4 py-3 border-b border-gray-200 flex flex-row">
               <h2 class="text-xl font-semibold text-gray-600 m-3"><slot name="header"></slot></h2>
+              <slot name="headerBody"/>
               </div>
 
               <!-- body -->
@@ -39,6 +40,7 @@
               </div>
               <!-- footer -->
               <div class="px-4 py-3 border-t border-gray-200 w-full flex justify-end items-center gap-3">
+              <slot name="footer"/>
               <button v-if="showSave" v-on:click="emitSave" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded text-white focus:outline-none">{{saveText}}</button>
               <button 
                   v-if="showClose"
