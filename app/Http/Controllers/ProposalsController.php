@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Models\Proposals;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class ProposalsController extends Controller
@@ -167,6 +168,29 @@ class ProposalsController extends Controller
         return redirect()->route('proposals')->with('successMessage', $proposal->name . ' was successfully updated');
     }
 
+    public function sendIt(Proposals $proposal)
+    {
+        
+        foreach($proposal->proposal_contacts as $contact)
+        {
+            
+            Mail::to($contact->email)->send(new \App\Mail\Proposal($proposal));
+            
+        }
+
+        $proposal->phase_id = 3;
+        $proposal->save();
+
+        return redirect()->route('proposals')->with('successMessage', $proposal->name . ' sent to clients!');
+        
+    }
+
+    public function finalize(Proposals $proposal)
+    {
+        $proposal->phase_id = 2;
+        $proposal->save();
+        return redirect()->route('proposals')->with('successMessage', $proposal->name . ' has been finalized.');
+    }
     /**
      * Remove the specified resource from storage.
      *

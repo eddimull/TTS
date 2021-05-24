@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\EventsController;
+use App\Mail\Proposal;
 use App\Models\ProposalContacts;
 use App\Models\Bands;
 use App\Models\Proposals;
@@ -8,6 +10,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -55,6 +59,7 @@ Route::patch('/events/{key}', 'EventsController@update')->middleware(['auth', 'v
 Route::delete('/events/{key}', 'EventsController@destroy')->middleware(['auth', 'verified'])->name('events.destroy');
 Route::get('/events/createAdvance/{id}','EventsController@createPDF')->middleware(['auth', 'verified']);
 Route::get('/events/downloadPDF/{id}','EventsController@downloadPDF')->middleware(['auth', 'verified']);
+Route::get('/events/{event:event_key}/locationImage','EventsController@getGoogleMapsImage')->name('events.locationImage');
 
 
 Route::get('/colors','ColorsController@index')->middleware(['auth', 'verified'])->name('colors');
@@ -67,6 +72,8 @@ Route::get('/proposals/{proposal:key}/edit', 'ProposalsController@edit')->middle
 Route::patch('/proposals/{proposal:key}/update', 'ProposalsController@update')->middleware(['auth','verified'])->name('proposals.update');
 Route::post('/proposals/{band:site_name}/create', 'ProposalsController@create')->middleware(['auth','verified'])->name('proposals.create');
 Route::delete('/proposals/{proposal:key}/delete','ProposalsController@destroy')->middleware(['auth','verified'])->name('proposals.delete');
+Route::post('/proposals/{proposal:key}/finalize', 'ProposalsController@finalize')->middleware(['auth','verified'])->name('proposals.finalize');
+Route::post('/proposals/{proposal:key}/sendit', 'ProposalsController@sendIt')->middleware(['auth','verified'])->name('proposals.finalize');
 Route::post('/proposals/createContact/{proposal:key}', 'ProposalsController@createContact')->middleware(['auth', 'verified'])->name('proposals.createContact');
 Route::post('/proposals/editContact/{contact}', 'ProposalsController@editContact')->middleware(['auth', 'verified'])->name('proposals.editContact');
 Route::delete('/proposals/deleteContact/{contact}', 'ProposalsController@deleteContact')->middleware(['auth', 'verified'])->name('proposals.deleteContact');

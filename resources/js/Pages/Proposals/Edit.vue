@@ -58,6 +58,24 @@
                         <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" @click="updateProposal()" type="submit">
                             Update Proposal
                         </button>
+                        <button :disabled="proposalData.proposal_contacts.length === 0" :class="[
+                                                                                                                {
+                                                                                                                    'bg-gray-400': proposalData.proposal_contacts.length === 0,
+                                                                                                                    'cursor-not-allowed': proposalData.proposal_contacts.length === 0,
+                                                                                                                    'bg-blue-500': proposalData.proposal_contacts.length !== 0,
+                                                                                                                    'hover:bg-blue-700' : proposalData.proposal_contacts.length !== 0,
+                                                                                                                },
+                                                                                                                'text-white',
+                                                                                                                'font-bold',
+                                                                                                                'py-2',
+                                                                                                                'px-4',
+                                                                                                                'rounded',
+                                                                                                                'focus:outline-none',
+                                                                                                                'focus:shadow-outlin',
+                                                                                                            ]" 
+                            @click="finalizeProposal()" type="button">
+                            Finalize
+                        </button>
                         <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="button" v-on:click="deleteProposal()">
                             Delete Proposal
                         </button>
@@ -148,7 +166,7 @@
                     'leading-tight ',
                     'focus:outline-none ',
                     'focus:shadow-outline'
-                ]
+                ],
                 
             }
         },
@@ -184,6 +202,9 @@
 
             updateProposal(){
                 this.$inertia.patch('/proposals/' + this.proposal.key + '/update/',this.proposalData);
+            },
+            finalizeProposal(){
+                this.$inertia.post('/proposals/'+ this.proposal.key + '/finalize/');
             },
             
             deleteProposal(){

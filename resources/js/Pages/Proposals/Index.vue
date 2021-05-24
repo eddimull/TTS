@@ -17,7 +17,7 @@
                                 'text-purple-500':phase.id <= activeProposal.phase_id,
                                 'text-gray-500':phase.id > activeProposal.phase_id
                                 }, 'relative']">
-                        <div v-html="phase.icon" :class="['rounded-full', 'transition', 'duration-500', 'ease-in-out', 'h-12', 'w-12', 'py-3', 'border-2', 
+                        <div v-html="phase.icon" :class="['rounded-full', 'transition', 'duration-1000', 'ease-in-out', 'h-12', 'w-12', 'py-3', 'border-2', 
                                                             {
                                                                 'border-purple-500':phase.id <= activeProposal.phase_id,
                                                                 'border-gray-300':phase.id > activeProposal.phase_id
@@ -45,25 +45,43 @@
               </div>
             </template>
             <template #body>
-                <div v-for="(field,index) in showFields" :key="index" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                    <p class="text-gray-600">
-                        <label for="name">{{field.name}}</label>
-                    </p>
-                    <div class="mb-4">
-                        {{ field.subProperty ? activeProposal[field.property][field.subProperty] : activeProposal[field.property]}}
-                        <!-- <p-inputtext v-model="form.event_name"></p-inputtext>
-                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="name" placeholder="Event Name" v-model="form.event_name"> -->
+                <div v-if="loading" class=" flex justify-center items-center flex align-center content-center h-full flex-col">
+                    <div class="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+                    <div class="my-8">Sending...</div>
+                </div>
+                <div v-else>
+                    <div v-for="(field,index) in showFields" :key="index" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                        <p class="text-gray-600">
+                            <label for="name">{{field.name}}</label>
+                        </p>
+                        <div class="mb-4">
+                            {{ field.subProperty ? activeProposal[field.property][field.subProperty] : activeProposal[field.property]}}
+                            <!-- <p-inputtext v-model="form.event_name"></p-inputtext>
+                            <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="name" placeholder="Event Name" v-model="form.event_name"> -->
+                        </div>
+                    </div>
+                    <div :class="['md:grid', 'md:grid-cols-2', 'hover:bg-gray-50', 'md:space-y-0', 'space-y-1', 'p-4']">
+                        <p class="text-gray-600">
+                            <label for="name">Contacts</label>
+                        </p>
+                        <div>
+                            <ul v-for="contact in activeProposal.proposal_contacts" :key="contact.id" class="mb-4">
+                                <li>Name: {{contact.name}}</li>
+                                <li>Phone: {{contact.phonenumber}}</li>
+                                <li>Name: {{contact.email}}</li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
-                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                    <p class="text-gray-600">
-                        <label for="name">Contacts</label>
-                    </p>
-                    <ul v-for="contact in activeProposal.proposal_contacts" :key="contact.id" class="mb-4">
-                        <li>Name: {{contact.name}}</li>
-                        <li>Phone: {{contact.phonenumber}}</li>
-                        <li>Name: {{contact.email}}</li>
-                    </ul>
+            </template>
+            <template #footerBody>
+                <div class="flex-auto">
+                    <button v-if="activeProposal.phase_id == 2" @click="sendIt()" type="button" class="mx-2 bg-green-500 hover:bg-green-600 px-4 py-2 rounded text-white focus:outline-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="inline h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        Send It!
+                    </button>
                 </div>
             </template>
         </card-modal>
@@ -139,6 +157,7 @@
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
     import moment from 'moment';
+import axios from 'axios';
     export default {
         props:['bandsAndProposals','successMessage','eventTypes','proposal_phases'],
         components: {
@@ -169,6 +188,7 @@
                     price:0,
                     notes:'',
                 },
+                loading:false,
                 draftInputs:[
                     {
                         name:'Name',
@@ -220,6 +240,19 @@
             },
             draftProposal(){
                 this.$inertia.post('/proposals/' + this.activeBandSite + '/create',this.proposalData);
+            },
+            sendIt(){
+                this.activeProposal.phase_id = 3;
+                this.loading = true;
+                setTimeout(()=>{
+
+                    this.$inertia.post('/proposals/' + this.activeProposal.key + '/sendit',{},{
+                        onSuccess:()=>{
+                            this.loading = false;
+                        this.toggleModal();
+                        }
+                    });
+                },1000)
             }
         }
     }

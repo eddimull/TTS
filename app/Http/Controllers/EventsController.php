@@ -7,6 +7,7 @@ use App\Models\State;
 use App\Models\Bands;
 use App\Models\BandEvents;
 use App\Models\BandOwners;
+use App\Models\Proposals;
 use Carbon\Carbon;
 use PDF;
 use Doctrine\DBAL\Events;
@@ -22,6 +23,7 @@ use App\Notifications\EventAdded;
 use App\Notifications\EventUpdated;
 use App\Models\User;
 use Doctrine\DBAL\Schema\View;
+use Illuminate\Support\Facades\Http;
 
 class EventsController extends Controller
 {
@@ -348,7 +350,13 @@ class EventsController extends Controller
 
         return redirect()->route('events')->with('successMessage',$request->event_name . ' was successfully updated');
     }
-
+    public function getGoogleMapsImage(BandEvents $event)
+    {
+        
+        // dd($event);
+        
+        return Http::get("https://maps.googleapis.com/maps/api/staticmap?api=1&center=" . urlencode($event->venue_name . ' ' . $event->address_street . ' ' . $event->city . ', ' . $event->state->state_name . ' ' . $event->zip) . '&size=400x400&key=' . $_ENV['GOOGLE_STATIC_MAP_KEY']);
+    }
     /**
      * Remove the specified resource from storage.
      *

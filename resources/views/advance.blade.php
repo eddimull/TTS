@@ -38,7 +38,7 @@
                         <td class="border border-black border-2 px-4 py-2 w-1/6 bg-gray-200">Google Maps:</td>
                         <td class="border border-black border-2 px-4 py-2">
                             <a href="https://www.google.com/maps/search/?api=1&query={{urlencode($event['venue_name'] . ' ' . $event['address_street'] . ' ' . $event['city'] . ', ' . $event['state']['state_name'] . ' ' . $event['zip'])}}">
-                                <img src="https://maps.googleapis.com/maps/api/staticmap?api=1&center={{urlencode($event['venue_name'] . ' ' . $event['address_street'] . ' ' . $event['city'] . ', ' . $event['state']['state_name'] . ' ' . $event['zip'])}}&size=400x400&key=AIzaSyBtMMMPLWtUI7rZJ96qN-D4xNvSwWtC8Rk"/>
+                                <img src="/events/{{$event['event_key']}}/locationImage"/>
                             </a>
                         </td>
                     </tr>
