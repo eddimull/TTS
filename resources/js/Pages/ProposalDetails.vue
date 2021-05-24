@@ -1,0 +1,61 @@
+<template>
+    <breeze-guest-layout>
+        <div v-if="showIntro" class="md:container md:mx-auto">
+            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
+                    <div>Hello</div>
+                    <div>Who are we speaking with today?</div>
+                    <div>
+                        <input v-model="person" type="text"/>
+                    </div>
+                    <div>
+                        <button @click="savePerson" :disabled="person === ''" type="button">Submit</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div v-else class="md:container md:mx-auto">
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                Details for {{proposal.name}}
+            </h2>
+            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
+                    Details
+                    <ul>                        
+                        <li>Event Type: {{proposal.event_type.name}}</li>
+                        <li>Band: {{proposal.band.name}}</li>
+                        <li>When: {{formatDate(proposal.date)}} </li>
+                        <li>How long: {{proposal.hours}} hours </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </breeze-guest-layout>
+</template>
+
+<script>
+    import BreezeGuestLayout from '@/Layouts/Guest'
+    import moment from 'moment';
+
+    export default {
+        props:['proposal','event_typtes'],
+        components: {
+            BreezeGuestLayout,
+        },
+        data(){
+            return{
+                showIntro:true,
+                person:''
+            }
+
+        },
+        methods:{
+            savePerson(){
+                this.showIntro = false;
+            },
+            formatDate(date){
+                return moment(date).format('LLLL');
+            }
+        }
+    }
+</script>

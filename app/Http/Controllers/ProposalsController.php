@@ -128,6 +128,15 @@ class ProposalsController extends Controller
         //
     }
 
+
+    public function details(Proposals $proposal)
+    {
+        $eventTypes = EventTypes::all();
+        return Inertia::render('ProposalDetails',[
+            'proposal'=>$proposal,
+            'eventTypes'=>$eventTypes
+        ]);
+    }
     /**
      * Show the form for editing the specified resource.
      *
