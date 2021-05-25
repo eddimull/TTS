@@ -3,6 +3,8 @@
 
     
         When: {{ date('m/d/Y g:i A',strtotime($proposal->date)) }}
+
+        Where: {{$proposal->location}}
     
         How long: {{$proposal->hours}} hours
     

@@ -172,8 +172,9 @@ import axios from 'axios';
                 showFields:[
                     {name:'Author',property:'author',subProperty:'name'},
                     {name:'Proposed Date/Time',property:'date'},
-                    {name:'Hours',property:'hours'},
                     {name:'Event Type',property:'event_type',subProperty:'name'},
+                    {name:'Location',property:'location'},
+                    {name:'Hours',property:'hours'},
                     {name:'Price',property:'price'},
                     {name:'Color',property:'color'},
                     {name:'Locked',property:'locked'},
@@ -196,14 +197,14 @@ import axios from 'axios';
                         field:'name'
                     },
                     {
-                        name:'Date / Time',
-                        type:'date',
-                        field:'date'
-                    },
-                    {
                         name:'Event Type',
                         type:'eventTypeDropdown',
                         field:'event_type_id'
+                    },
+                    {
+                        name:'Date / Time',
+                        type:'date',
+                        field:'date'
                     },
                     {
                         name:'Length',

@@ -18,6 +18,13 @@
                                     <!-- <p-inputtext v-model="proposalData"></p-inputtext> -->
                                     <input :type="input.type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :id="input.name" :placeholder="input.name" v-model="proposalData[input.field]">
                                 </div>
+                                <div v-if="input.type == 'location'" class="mb-4">
+                                    <input type="text" @keyup="autoComplete()" v-model="proposalData.location" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                                    
+                                    <ul class="">
+                                        <li class="border-black my-4 p-4 bg-gray-200 hover:bg-gray-300 cursor-pointer" v-for="(result,index) in searchResults" :key="index" @click="proposalData.location = result.description; searchResults = null">{{result.description}}</li>
+                                    </ul>
+                                </div>
                                 <div v-if="input.type == 'contacts'">
                                     <ul class="hover:bg-gray-100 cursor-pointer" @click="proposalData.proposal_contacts.forEach(tempContact=>tempContact.editing = false); if(!contact.editing){ contact.editing = true }" v-for="contact in proposalData.proposal_contacts" :key="contact.id">
                                         <li v-if="!contact.editing">Name: {{contact.name}}</li>
@@ -95,6 +102,7 @@
     import VueTimepicker from 'vue3-timepicker'
     import 'vue3-timepicker/dist/VueTimepicker.css'
     import moment from 'moment';
+import axios from 'axios'
     export default {
         props:['proposal','eventTypes'],
         components: {
@@ -118,14 +126,19 @@
                         field:'name'
                     },
                     {
+                        name:'Event Type',
+                        type:'eventTypeDropdown',
+                        field:'event_type_id'
+                    },
+                    {
                         name:'Date / Time',
                         type:'date',
                         field:'date'
                     },
                     {
-                        name:'Event Type',
-                        type:'eventTypeDropdown',
-                        field:'event_type_id'
+                        name:'Where',
+                        type:'location',
+                        field:'location_id'
                     },
                     {
                         name:'Contacts',
@@ -167,7 +180,9 @@
                     'focus:outline-none ',
                     'focus:shadow-outline'
                 ],
-                
+                sessionToken : Math.floor(Math.random() * 1000000000),
+                searchResults:'',
+                searchTimer: null
             }
         },
         created(){
@@ -223,6 +238,22 @@
                     }
                 })
                 
+            },
+
+            autoComplete(){
+                console.log('autocomplete');
+                if(this.searchTimer){
+                    clearTimeout(this.searchTimer);
+                    this.searchTimer = null;
+                }
+                this.searchTimer = setTimeout(()=>{
+                    axios.post('/autocompleteLocation',{
+                        sessionToken:this.sessionToken,
+                        searchParams:this.proposalData.location,
+                    }).then((response)=>{
+                        this.searchResults = response.data.predictions
+                    })
+                },800)
             }
         }
     }

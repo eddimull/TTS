@@ -13,6 +13,7 @@ use Inertia\Inertia;
 use App\Models\Proposals;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Http;
 
 class ProposalsController extends Controller
 {
@@ -55,6 +56,7 @@ class ProposalsController extends Controller
             'hours'=>$request->hours,
             'price'=>$request->price,
             'locked'=>false,
+            'location'=>null,
             'notes'=>'',
             'key'=>Str::uuid(),
             'author_id'=>$author->id,
@@ -112,21 +114,14 @@ class ProposalsController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function searchLocations(Request $request)
     {
-        //
+        $googleResponse = Http::get("https://maps.googleapis.com/maps/api/place/autocomplete/json?input=" . $request->searchParams . "&key=" . $_ENV['GOOGLE_MAPS_API_KEY'] . '&sessiontoken=' . $request->sessionToken);
+    
+        return $googleResponse;
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  \App\Models\Proposal  $proposal
-     * @return \Illuminate\Http\Response
-     */
-    public function show(Proposals $proposal)
-    {
-        //
-    }
+
 
 
     public function details(Proposals $proposal)
@@ -171,6 +166,7 @@ class ProposalsController extends Controller
         $proposal->name = $request->name;
         $proposal->date = date('Y-m-d H:i:s',strtotime($request->date));
         $proposal->hours = $request->hours;
+        $proposal->location = $request->location;
         $proposal->event_type_id = $request->event_type_id;
         $proposal->save();
 

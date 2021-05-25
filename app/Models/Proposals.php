@@ -36,4 +36,6 @@ class Proposals extends Pivot
     {
         return $this->belongsTo(EventTypes::class);
     }
+
+
 }

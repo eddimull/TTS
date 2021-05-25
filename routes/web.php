@@ -6,10 +6,12 @@ use App\Models\ProposalContacts;
 use App\Models\Bands;
 use App\Models\Proposals;
 use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 
 /*
@@ -78,6 +80,7 @@ Route::get('/proposals/{proposal:key}/details', 'ProposalsController@details')->
 Route::post('/proposals/createContact/{proposal:key}', 'ProposalsController@createContact')->middleware(['auth', 'verified'])->name('proposals.createContact');
 Route::post('/proposals/editContact/{contact}', 'ProposalsController@editContact')->middleware(['auth', 'verified'])->name('proposals.editContact');
 Route::delete('/proposals/deleteContact/{contact}', 'ProposalsController@deleteContact')->middleware(['auth', 'verified'])->name('proposals.deleteContact');
+Route::post('/autocompleteLocation','ProposalsController@searchLocations')->middleware(['auth','verified'])->name('proposals.search');
 
 Route::get('/images/{uri}','ImageController@index');
 Route::get('/images/{band_site}/{uri}','ImageController@siteImages');

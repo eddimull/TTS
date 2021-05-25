@@ -25,6 +25,7 @@
                         <li>Event Type: {{proposal.event_type.name}}</li>
                         <li>Band: {{proposal.band.name}}</li>
                         <li>When: {{formatDate(proposal.date)}} </li>
+                        <li>Where: {{proposal.location}} </li>
                         <li>How long: {{proposal.hours}} hours </li>
                     </ul>
                 </div>
