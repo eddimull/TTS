@@ -51,7 +51,7 @@
                                     <template #content>
                                         <div class="flex flex-col max-h-72">
                                             <div class="overflow-y-auto flex-auto">
-                                                <notification-link v-for="(notification,index) in notifications" :key="index" @click="markAsRead(notification)" :unread="notification.read_at === null" :href="route(notification.data.route,notification.data.routeParams.split(','))" method="get" as="button">
+                                                <notification-link v-for="(notification,index) in notifications" :key="index" @click="markAsRead(notification)" :unread="notification.read_at === null" :href="route(notification.data.route,notification.data.routeParams == null ? '' : notification.data.routeParams.split(','))" method="get" as="button">
                                                     {{notification.data.text}}
                                                 </notification-link>
                                             </div>

@@ -25,7 +25,7 @@
                                         <label for="name">Band</label>
                                     </p>
                                     <div>
-                                        <select v-on:change="colorsForBand()" v-model="form.band_id" class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded" id="grid-state">
+                                        <select id="bandDropdown" v-on:change="colorsForBand()" v-model="form.band_id" class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded">
                                             <option v-for="band in bands" :key="band.id" :value="band.id">{{band.name}}</option>
                                         </select>
                                     </div>
@@ -44,7 +44,7 @@
                                         <label for="eventType">Event Type</label>
                                     </p>
                                     <div>
-                                        <select v-on:change="alterProductionNeeded()" v-model="form.event_type_id" class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded" id="grid-state">
+                                        <select id="productionDropdown" v-on:change="alterProductionNeeded()" v-model="form.event_type_id" class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded" >
                                             <option v-for="eventType in eventTypes" :key="eventType.id" :value="eventType.id">{{eventType.name}}</option>
                                         </select>
                                     </div>
@@ -143,7 +143,7 @@
                                         <label for="state">State</label>
                                     </p>
                                     <p>
-                                        <select v-model="form.state_id" class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded" id="grid-state">
+                                        <select id="stateDropdown" v-model="form.state_id" class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded" >
                                             <option v-for="state in states" :key="state.state_id" :value="state.state_id">{{state.state_name}}</option>
                                         </select>                                        
                                     </p>
@@ -162,7 +162,7 @@
                                         Notes
                                     </p>
                                     <p>
-                                        <textarea class="min-w-full" v-model="form.notes" placeholder=""></textarea>
+                                        <textarea id="notesTextArea" class="min-w-full" v-model="form.notes" placeholder=""></textarea>
                                     </p>
                                 </div>                                                                                                                                                                                                                                                                                                                                    
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -188,7 +188,7 @@
                                         Event Date
                                     </p>
                                     <p>
-                                        <calendar v-on:date-select="assumeSeven()" v-model="form.event_time" />
+                                        <calendar id="eventDate" v-on:date-select="assumeSeven()" v-model="form.event_time" />
                                     </p>
                                 </div>
                                 <transition name="slide-down" appear>
@@ -224,7 +224,7 @@
                                             </p>
                                             <p>
                                                 <calendar :disabled="form.event_time === ''" v-model="form.quiet_time" :showTime="true" :step-minute="15" :timeOnly="true" hourFormat="12" />
-                                                <button v-if="form.event_time !== ''" class="bg-transparent hover:bg-blue-500 text-blue-700 font-semibold hover:text-white py-2 px-4 mx-3 border border-blue-500 hover:border-transparent rounded" @click="setDate()" type="button">
+                                                <button id="autoFillButton" v-if="form.event_time !== ''" class="bg-transparent hover:bg-blue-500 text-blue-700 font-semibold hover:text-white py-2 px-4 mx-3 border border-blue-500 hover:border-transparent rounded" @click="setDate()" type="button">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                                     </svg>

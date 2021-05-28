@@ -16,10 +16,10 @@ class Invitation extends Mailable
      *
      * @return void
      */
-    public function __construct($details)
+    public function __construct($band)
     {
         //
-        $this->details = $details;
+        $this->band = $band;
     }
 
     /**
@@ -29,8 +29,9 @@ class Invitation extends Mailable
      */
     public function build()
     {
-        return $this->subject('Invite to Band')
+        return $this->markdown('email.invitation')
+                    ->subject('Invite to join ' . $this->band->name)
                     ->view('email.invitation')
-                    ->with(['details'=>$this->details]);
+                    ->with(['band'=>$this->band]);
     }
 }

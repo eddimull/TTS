@@ -37,7 +37,7 @@ class InvitationsController extends Controller
     public function createOwner(Request $request, $id)
     {
         $request->validate([
-            'email'=>'required',
+            'email'=>'required|email:rfc,dns',
         ]);
         if(Invitations::where('email',$request->email)->where('band_id',$id)->exists())
         {
@@ -65,7 +65,7 @@ class InvitationsController extends Controller
                 'body' => 'You were invited to be an owner of ' . $band->name . ' at TTS.'
             ];
             //uncomment when out of sandbox
-            // Mail::to($user->email)->send(new Notification($details));
+            Mail::to($user->email)->send(new Notification($details));
         }
         else
         {
@@ -74,7 +74,7 @@ class InvitationsController extends Controller
                 'body' => 'You were invited to be an owner of ' . $band->name . ' at TTS. Create an account at http://tts.band/register'
             ];
            
-            // Mail::to($invite->email)->send(new Invitation($details));
+            Mail::to($invite->email)->send(new Invitation($band));
         }
         return back()->with('successMessage','User invited to be an owner');
     }
@@ -82,7 +82,7 @@ class InvitationsController extends Controller
     public function createMember(Request $request, $id)
     {
         $request->validate([
-            'email'=>'required',
+            'email'=>'required|email:rfc,dns',
         ]);
 
         Invitations::create([

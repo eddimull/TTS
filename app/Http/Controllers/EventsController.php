@@ -367,8 +367,32 @@ class EventsController extends Controller
     {
         //
         $event = BandEvents::where('event_key',$key)->first();
-        $event->delete();
+        $band = $event->band;
 
+        if($band->calendar_id !== '' && $band->calendar_id !== null)
+        {
+            
+            Config::set('google-calendar.service_account_credentials_json',storage_path('/app/google-calendar/service-account-credentials.json'));
+            Config::set('google-calendar.calendar_id',$band->calendar_id);
+            $calendarEvent = CalendarEvent::find($event->google_calendar_event_id);
+            $calendarEvent->delete();
+
+        }
+
+        $editor = Auth::user();
+        compact($band->owners);
+        foreach($band->owners as $owner)
+        {
+           $user = User::find($owner->user_id);
+           $user->notify(new EventUpdated([
+            'text'=>$editor->name . ' deleted ' . $event->event_name,
+            'route'=>'events',
+            'routeParams'=>null,
+            'link'=>'/events/'
+            ]));
+        }
+        
+        $event->delete();
         return redirect()->route('events')->with('successMessage',$event->event_name . ' was successfully deleted');
     }
 }

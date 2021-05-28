@@ -24,8 +24,8 @@
                                 <td class="w-1/4 text-center py-3 px-4"><inertia-link :href="`/events/${event.event_key}/advance`">{{event.event_name}} ({{event.event_type}})</inertia-link></td>
                                 <td class="w-1/4 text-center py-3 px-4">{{event.venue_name}}</td>
                                 <td class="w-1/4 text-center py-3 px-4">{{formatDate(event.event_time)}}</td>
-                                <td class="w-1/4">
-                                    <inertia-link class="border bg-white hover:bg-blue-500 rounded p-1" :href="`/events/${event.event_key}/edit`">
+                                <td class="w-1/4" >
+                                    <inertia-link :dusk="event.event_name.replace(/ /g,'_')" class="border bg-white hover:bg-blue-500 rounded p-1" :href="`/events/${event.event_key}/edit`">
                                         Edit
                                     </inertia-link>
                                 </td>
