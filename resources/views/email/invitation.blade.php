@@ -1,5 +1,5 @@
 @component('mail::message')
-    <h2>Hello, you were invited to become an owner of {{$band->name}}!</h2>
+    <h2>Hello, you were invited to become {{$ownerMember}} of {{$bandName}}!</h2>
 
     
         To accept create an account below. 
@@ -11,5 +11,5 @@ Join Band
 @endcomponent
 
 Thanks,<br>
-{{$band->name}}
+{{$bandName}}
 @endcomponent

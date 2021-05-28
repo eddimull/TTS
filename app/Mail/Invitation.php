@@ -30,8 +30,9 @@ class Invitation extends Mailable
     public function build()
     {
         return $this->markdown('email.invitation')
-                    ->subject('Invite to join ' . $this->band->name)
-                    ->view('email.invitation')
-                    ->with(['band'=>$this->band]);
+                    ->with('bandName',$this->band->name)
+                    ->with('ownerMember','an owner')
+                    ->subject('Invite to join ' . $this->band->name);
+                    
     }
 }

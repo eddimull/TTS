@@ -30,6 +30,8 @@ class Proposal extends Mailable
      */
     public function build()
     {
-        return $this->markdown('email.proposal')->subject('Proposal for ' . $this->proposal->band->name);
+        return $this->markdown('email.proposal')
+                        ->with('proposal',$this->proposal)
+                        ->subject('Proposal from ' . $this->proposal->band->name . ' to play at ' . $this->proposal->location);
     }
 }

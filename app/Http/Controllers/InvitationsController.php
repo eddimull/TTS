@@ -54,7 +54,7 @@ class InvitationsController extends Controller
 
         $user = User::where('email', $invite->email)->first();
         $band = Bands::find($invite->band_id);
-
+        
         if($user !== null)
         {
             $created = BandOwners::firstOrCreate([
@@ -66,7 +66,7 @@ class InvitationsController extends Controller
                 'body' => 'You were invited to be an owner of ' . $band->name . ' at TTS.'
             ];
             //uncomment when out of sandbox
-            Mail::to($user->email)->send(new Notification($details));
+            // Mail::to($user->email)->send(new Notification($details));
         }
         else
         {
