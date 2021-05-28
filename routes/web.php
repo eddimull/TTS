@@ -87,7 +87,7 @@ Route::get('/images/{band_site}/{uri}','ImageController@siteImages');
 
 Route::post('/inviteOwner/{band_id}','InvitationsController@createOwner')->middleware(['auth','verified'])->name('invite.createOwner');
 Route::post('/inviteMember/{band_id}','InvitationsController@createMember')->middleware(['auth','verified'])->name('invite.createMember');
-
+Route::delete('/deleteInvite/{band}/{invitations}','InvitationsController@destroy')->middleware(['auth','verified'])->name('invite.delete');
 
 Route::get('/notifications',function(){
     return json_encode(Auth::user()->Notifications);

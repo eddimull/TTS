@@ -46,18 +46,33 @@
                 <div v-if="activePanel == 'Band Members'">
 
                     Members:
-                    <ul v-if="band.members">
-                        <li v-for="(member,index) in band.members" :key="index">
+                    <ul class="px-3" v-if="band.members">
+                        <li v-for="(member,index) in band.members" class="my-2" :key="index">
                             {{member.user.name}} - {{ member.user.email }}
                         </li>
                     </ul>
+                    <div v-else>
+                        No Members
+                    </div>
                     Owners:
                     
-                    <ul v-if="band.owners">
-                        <li v-for="(owner,index) in band.owners" :key="index">
+                    <ul  class="px-3" v-if="band.owners">
+                        <li v-for="(owner,index) in band.owners" class="my-2" :key="index">
                             {{owner.user.name}} - {{owner.user.email}}
                         </li>
                     </ul>
+                    <div v-else>
+                        No Owners
+                    </div>
+                    Pending Invites:
+                    <ul  class="px-3" v-if="band.pending_invites">
+                        <li @click="deleteInvite(invite)" v-for="(invite,index) in band.pending_invites" class="italic text-gray-400 my-2 cursor-pointer" :key="index">
+                            {{invite.email}}
+                        </li>
+                    </ul>
+                    <div v-else>
+                        No Members
+                    </div>
                     
                     <p v-if="band.members.legth == 0">Looks like you don't have any members in your band. Invite some!</p>
                     <transition name="slide-down">
@@ -154,6 +169,23 @@
                     email:this.invite.email
                 }, {
                     onSuccess:()=>{
+                    }
+                })
+            },
+            deleteInvite(invite)
+            {
+                 this.$swal.fire({
+                    title: 'Are you sure you want to remove the invite for '+ invite.email,
+                    text: "You won't be able to revert this!",
+                    type: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Yes, delete it!'
+                }).then((result) => {
+                    if(result.value)
+                    {
+                        this.$inertia.delete('/deleteInvite/' + this.band.id + '/' + invite.id);
                     }
                 })
             }

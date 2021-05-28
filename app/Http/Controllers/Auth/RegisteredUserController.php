@@ -41,7 +41,7 @@ class RegisteredUserController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|confirmed|min:8',
         ]);
-
+            
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
@@ -49,7 +49,7 @@ class RegisteredUserController extends Controller
         ]);
         
 
-        $invitations = Invitations::where('email',$user->email)->where('pending',true);
+        $invitations = Invitations::where('email',$user->email)->where('pending',true)->get();
 
         foreach($invitations as $invitation)
         {

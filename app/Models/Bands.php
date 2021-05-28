@@ -27,6 +27,15 @@ class Bands extends Model
     {
         return $this->hasMany(Invitations::class,'band_id');
     }
+    public function invitations()
+    {
+        return $this->hasMany(Invitations::class,'band_id');
+    }
+
+    public function pendingInvites()
+    {
+        return $this->invitations()->where('pending','=','1');
+    }
 
     public function proposals()
     {

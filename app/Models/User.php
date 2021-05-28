@@ -65,4 +65,19 @@ class User extends Authenticatable
                         ->orderBy('created_at','desc');
     }
 
+    public function ownsBand($id)
+    {
+        $bandsOwned = $this->bandOwner;
+        $owns = false;
+        foreach($bandsOwned as $band)
+        {
+            if($id == $band->id)
+            {
+                $owns = true;
+            }
+        }
+
+        return $owns;
+    }
+
 }

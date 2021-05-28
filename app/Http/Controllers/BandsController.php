@@ -83,9 +83,9 @@ class BandsController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function edit($id)
+    public function edit(Bands $band)
     {
-        $band = Bands::where('id',$id)->first();
+        // $band = Bands::where('id',$id)->first();
         compact($band->owners);
         foreach($band->owners as $owners)
         {
@@ -96,7 +96,7 @@ class BandsController extends Controller
         {
            compact($member->user);
         }
-        compact($band->invitations);
+        compact($band->pendingInvites);
 
         return Inertia::render('Band/Edit',[
             'band' => $band

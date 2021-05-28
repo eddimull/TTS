@@ -12,6 +12,7 @@ use App\Models\Bands;
 use App\Models\User;
 use Error;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Auth;
 
 class InvitationsController extends Controller
 {
@@ -142,8 +143,19 @@ class InvitationsController extends Controller
      * @param  \App\Models\Invitations  $invitations
      * @return \Illuminate\Http\Response
      */
-    public function destroy(Invitations $invitations)
+    public function destroy(Bands $band, $invitation)
     {
-        //
+        $invite = Invitations::where('band_id','=',$band->id)->where('id','=',$invitation)->first();
+
+        $user = Auth::user();
+        if($user->ownsBand($band->id))
+        {
+            $invite->delete();
+            return back()->with('successMessage','Invitation removed');
+        }
+        else
+        {
+            dd('cant delete');
+        }
     }
 }

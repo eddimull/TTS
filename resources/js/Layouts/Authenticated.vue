@@ -118,7 +118,7 @@
                         <breeze-responsive-nav-link :href="route('colors')" :active="route().current('colors')">
                             Colors
                         </breeze-responsive-nav-link>   
-                    </div>
+                    </div> 
 
                     <!-- Responsive Settings Options -->
                     <div class="pt-4 pb-1 border-t border-gray-200">
