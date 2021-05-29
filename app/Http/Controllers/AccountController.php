@@ -94,6 +94,7 @@ class AccountController extends Controller
         $user->CountryID = $request->country;
         $user->Address1 = $request->address1;
         $user->Address2 = $request->address2;
+        $user->emailNotifications = $request->emailNotifications;
 
         if($request->password !== '' && !is_null($request->password) && $request->password !== null)
         {

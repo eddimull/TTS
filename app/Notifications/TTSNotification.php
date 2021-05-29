@@ -7,7 +7,9 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class EventAdded extends Notification
+use function PHPUnit\Framework\throwException;
+
+class TTSNotification extends Notification
 {
     use Queueable;
     protected $data;
@@ -19,6 +21,24 @@ class EventAdded extends Notification
     public function __construct($data)
     {
         $this->data = $data;
+        
+
+        if(!isset($this->data['text']))
+        {
+            $this->data['text'] = '';
+        }
+        if(!isset($this->data['link']))
+        {
+            $this->data['link'] = '/';
+        }
+        if(!isset($this->data['route']))
+        {
+            $this->data['route'] = 'dashboard';
+        }
+        if(!isset($this->data['routeParams']))
+        {
+            $this->data['routeParams'] = '';
+        }
     }
 
     /**
@@ -45,10 +65,10 @@ class EventAdded extends Notification
      */
     public function toMail($notifiable)
     {
-        return (new MailMessage)
-                    ->line('There was an update to an event')
-                    ->action('Check out the event', config('app.url') .  $this->data['url'])
-                    ->line($this->data['text']);
+            return (new MailMessage)
+            ->line(isset($this->data['emailHeader']) ? $this->data['emailHeader'] : '')
+            ->action(isset($this->data['actionText']) ? $this->data['actionText'] : 'Check it out', config('app.url') .  (isset($this->data['url']) ? $this->data['url'] : '') )
+            ->line(isset($this->data['text']) ? $this->data['text'] : '');
     }
 
     /**
@@ -58,13 +78,6 @@ class EventAdded extends Notification
      * @return array
      */
     public function toArray($notifiable)
-    {
-        return [
-            //
-        ];
-    }
-
-    public function toDatabase($notifiable)
     {
         return $this->data;
     }

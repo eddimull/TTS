@@ -2,7 +2,7 @@
     <breeze-authenticated-layout>
         <template #header>
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Account
+                Account Preferences
             </h2>
         </template>
 
@@ -19,7 +19,6 @@
                         </div>
                     </div>
                     <div class="container">
-                        Account Preferences
                       <div class="bg-white rounded px-8 pt-6 pb-8 mb-4 flex flex-col my-2">
                         <form action="/account/update" method="PATCH" @submit.prevent="updateAccount">
                         <div class="-mx-3 md:flex mb-6">
@@ -76,31 +75,41 @@
                               </div>
                           </div>
                           
-                        <div class="-mx-3 md:flex mb-2">
+                          <div class="-mx-3 md:flex mb-2">
 
-                          <div class="md:w-1/2 px-3 mb-6 md:mb-0">
-                            <label class="block uppercase tracking-wide text-grey-darker text-xs font-bold mb-2" for="grid-city">
-                              City
-                            </label>
-                            <input v-model="form.city" class="appearance-none block w-full bg-grey-lighter text-grey-darker border border-grey-lighter rounded py-3 px-4" id="grid-city" type="text" placeholder="Beverly Hills">
-                          </div>
-                          <div class="md:w-1/2 px-3">
-                            <label class="block uppercase tracking-wide text-grey-darker text-xs font-bold mb-2" for="grid-state">
-                              State
-                            </label>
-                            <div class="relative">
-                              <select v-model="form.state" :disabled="filteredStateList.length === 0" class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded" id="grid-state">
-                                <option v-for="state in filteredStateList" v-bind:key="state.state_id" :value="state.state_id">{{state.state_name}}</option>
-                              </select>
+                            <div class="md:w-1/2 px-3 mb-6 md:mb-0">
+                              <label class="block uppercase tracking-wide text-grey-darker text-xs font-bold mb-2" for="grid-city">
+                                City
+                              </label>
+                              <input v-model="form.city" class="appearance-none block w-full bg-grey-lighter text-grey-darker border border-grey-lighter rounded py-3 px-4" id="grid-city" type="text" placeholder="Beverly Hills">
+                            </div>
+                            <div class="md:w-1/2 px-3">
+                              <label class="block uppercase tracking-wide text-grey-darker text-xs font-bold mb-2" for="grid-state">
+                                State
+                              </label>
+                              <div class="relative">
+                                <select v-model="form.state" :disabled="filteredStateList.length === 0" class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded" id="grid-state">
+                                  <option v-for="state in filteredStateList" v-bind:key="state.state_id" :value="state.state_id">{{state.state_name}}</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div class="md:w-1/2 px-3">
+                              <label class="block uppercase tracking-wide text-grey-darker text-xs font-bold mb-2" for="grid-zip">
+                                Zip
+                              </label>
+                              <input v-model="form.zip" class="appearance-none block w-full bg-grey-lighter text-grey-darker border border-grey-lighter rounded py-3 px-4" id="grid-zip" type="text" placeholder="90210">
                             </div>
                           </div>
-                          <div class="md:w-1/2 px-3">
-                            <label class="block uppercase tracking-wide text-grey-darker text-xs font-bold mb-2" for="grid-zip">
-                              Zip
-                            </label>
-                            <input v-model="form.zip" class="appearance-none block w-full bg-grey-lighter text-grey-darker border border-grey-lighter rounded py-3 px-4" id="grid-zip" type="text" placeholder="90210">
+                          <div class="-mx-3 md:flex mt-6">
+                              <div class="md:w-1/2 px-3">
+                                <label class="block uppercase tracking-wide text-grey-darker text-xs font-bold mb-2" for="grid-state">
+                                    Receive Email Notifications
+                                </label>
+                                <div class="mx-3 relative">
+                                  <input-switch v-model="form.emailNotifications"></input-switch>
+                                </div>
+                              </div>
                           </div>
-                        </div>
                         </form>
                       </div>
                       <button v-on:click="updateAccount" class="bg-blue-500 px-4 py-2 text-lg font-semibold tracking-wider text-white rounded hover:bg-blue-600">Save</button>
@@ -113,11 +122,13 @@
 
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
+    import InputSwitch from 'primevue/inputswitch';
 
     export default {
         props:['user','states','countries','successMessage'],
         components: {
             BreezeAuthenticatedLayout,
+            InputSwitch,
         },
         data(){
             return{
@@ -129,7 +140,8 @@
                     state:this.user.StateID,
                     country:this.user.CountryID,
                     address1:this.user.Address1,
-                    address2:this.user.Address2
+                    address2:this.user.Address2,
+                    emailNotifications:this.user.emailNotifications
                 },
                 filteredStateList:this.states
             }

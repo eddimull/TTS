@@ -22,6 +22,7 @@ use Spatie\GoogleCalendar\Event as CalendarEvent;
 use App\Notifications\EventAdded;
 use App\Notifications\EventUpdated;
 use App\Models\User;
+use App\Notifications\TTSNotification;
 use Doctrine\DBAL\Schema\View;
 use Illuminate\Support\Facades\Http;
 
@@ -204,11 +205,11 @@ class EventsController extends Controller
         foreach($band->owners as $owner)
         {
            $user = User::find($owner->user_id);
-           $user->notify(new EventAdded([
+           $user->notify(new TTSNotification([
             'text'=>$editor->name . ' added ' . $event->event_name,
             'route'=>'events.advance',
             'routeParams'=>$event->event_key,
-            'link'=>'/events/' . $event->event_key . '/advance'
+            'url'=>'/events/' . $event->event_key . '/advance'
             ]));
         }
         return redirect()->route('events')->with('successMessage','Event was successfully added');
@@ -340,21 +341,18 @@ class EventsController extends Controller
         foreach($band->owners as $owner)
         {
            $user = User::find($owner->user_id);
-           $user->notify(new EventUpdated([
+           $user->notify(new TTSNotification([
             'text'=>$editor->name . ' updated ' . $event->event_name,
             'route'=>'events.advance',
             'routeParams'=>$event->event_key,
-            'link'=>'/events/' . $event->event_key . '/advance'
+            'url'=>'/events/' . $event->event_key . '/advance'
             ]));
         }
 
         return redirect()->route('events')->with('successMessage',$request->event_name . ' was successfully updated');
     }
     public function getGoogleMapsImage(BandEvents $event)
-    {
-        
-        // dd($event);
-        
+    {      
         return Http::get("https://maps.googleapis.com/maps/api/staticmap?api=1&center=" . urlencode($event->venue_name . ' ' . $event->address_street . ' ' . $event->city . ', ' . $event->state->state_name . ' ' . $event->zip) . '&size=400x400&key=' . $_ENV['GOOGLE_STATIC_MAP_KEY']);
     }
     /**
@@ -369,7 +367,7 @@ class EventsController extends Controller
         $event = BandEvents::where('event_key',$key)->first();
         $band = $event->band;
 
-        if($band->calendar_id !== '' && $band->calendar_id !== null)
+        if($band->calendar_id !== '' && $band->calendar_id !== null && $event->google_calendar_event_id !== null)
         {
             
             Config::set('google-calendar.service_account_credentials_json',storage_path('/app/google-calendar/service-account-credentials.json'));
@@ -384,14 +382,15 @@ class EventsController extends Controller
         foreach($band->owners as $owner)
         {
            $user = User::find($owner->user_id);
-           $user->notify(new EventUpdated([
+           $user->notify(new TTSNotification([
             'text'=>$editor->name . ' deleted ' . $event->event_name,
             'route'=>'events',
             'routeParams'=>null,
-            'link'=>'/events/'
+            'emailHeader'=>'An event was deleted',
+            'url'=>'/events/'
             ]));
         }
-        
+
         $event->delete();
         return redirect()->route('events')->with('successMessage',$event->event_name . ' was successfully deleted');
     }

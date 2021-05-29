@@ -1,0 +1,28 @@
+Band
+    Add Members
+    Remove Members
+    Remove owners
+    Pictures and clickable stuff
+    Notify band members/owners
+Events
+    google location stuff
+Proposals
+    resend proposal to one user
+    review and accept
+    move proposal to contract upon accepting
+    show other dates on calendar
+        red/yellow depending on their dates
+Playlists
+    Charts
+    create new + upload charts 
+    delete 
+Contracts
+    email Contracts
+    Docusign
+
+Invoicing / Money tools
+    ????
+
+
+
+

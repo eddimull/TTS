@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BandEvents;
 use App\Models\Bands;
 use App\Models\EventTypes;
 use App\Models\Proposal;
@@ -14,6 +15,7 @@ use App\Models\Proposals;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
+
 
 class ProposalsController extends Controller
 {
@@ -141,9 +143,13 @@ class ProposalsController extends Controller
     public function edit(Proposals $proposal)
     {
         $eventTypes = EventTypes::all();
+        $bookedDates = BandEvents::where('band_id','=',$proposal->band_id)->get();
+        $proposedDates = Proposals::where('band_id','=',$proposal->band_id)->where('id','!=',$proposal->id)->get();
         return Inertia::render('Proposals/Edit',[
             'proposal'=>$proposal,
-            'eventTypes'=>$eventTypes
+            'eventTypes'=>$eventTypes,
+            'bookedDates'=>$bookedDates,
+            'proposedDates'=>$proposedDates
         ]);
     }
 

@@ -29,7 +29,12 @@ class EventUpdated extends Notification
      */
     public function via($notifiable)
     {
-        return ['database'];
+        $notificationMethods = ['database'];
+        if($notifiable->emailNotifications)
+        {
+            array_push($notificationMethods,'mail');
+        }
+        return $notificationMethods;
     }
 
     /**
@@ -41,8 +46,8 @@ class EventUpdated extends Notification
     public function toMail($notifiable)
     {
         return (new MailMessage)
-                    ->line('Event Updated')
-                    ->action('Notification Action', url('/'))
+                    ->line('There was an update to an event')
+                    ->action('Check out the event', config('app.url') .  $this->data['link'])
                     ->line($this->data['text']);
     }
 

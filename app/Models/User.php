@@ -27,7 +27,8 @@ class User extends Authenticatable
         'CountryID',
         'Address1',
         'Address2',
-        'Address3'
+        'Address3',
+        'emailNotifications'
     ];
 
     /**
