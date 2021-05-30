@@ -8,6 +8,7 @@ use App\Models\Bands;
 use App\Models\BandOwners;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
+use App\Notifications\TTSNotification;
 
 class BandsController extends Controller
 {
@@ -133,14 +134,33 @@ class BandsController extends Controller
         return redirect()->route('bands')->with('successMessage', $band->name . ' was successfully updated');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy($id)
+
+    public function deleteOwner(Bands $band, $ownerParam)
     {
-        //
+       
+
+        $owner = BandOwners::where('user_id','=',$ownerParam)->where('band_id','=',$band->id)->first();
+        $author = Auth::user();
+        if($author->ownsBand($band->id))
+        {
+
+            foreach($band->owners as $bandOwner)
+            {
+               $inviteOwnerUser = User::find($bandOwner->user_id);
+               $inviteOwnerUser->notify(new TTSNotification([
+                'text'=>$author->name . ' removed ' . $owner->user->name . ' an owner of ' . $band->name,
+                'route'=>'bands.edit',
+                'routeParams'=>$band->id,
+                'url'=>'/bands/' . $band->id . '/edit'
+                ]));
+            }
+
+            $owner->delete();
+            return back()->with('successMessage','User removed from band owners');
+        }
+        else
+        {
+            return back()->withErrors(['You are not authorized to remove the owner of this band.']);
+        }
     }
 }

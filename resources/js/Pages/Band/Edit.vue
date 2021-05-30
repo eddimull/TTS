@@ -57,7 +57,7 @@
                     Owners:
                     
                     <ul  class="px-3" v-if="band.owners">
-                        <li v-for="(owner,index) in band.owners" class="my-2" :key="index">
+                        <li @click="deleteOwner(owner)" v-for="(owner,index) in band.owners" class="my-2 cursor-pointer" :key="index">
                             {{owner.user.name}} - {{owner.user.email}}
                         </li>
                     </ul>
@@ -169,6 +169,23 @@
                     email:this.invite.email
                 }, {
                     onSuccess:()=>{
+                    }
+                })
+            },
+            deleteOwner(owner)
+            {
+                 this.$swal.fire({
+                    title: 'Are you sure you remove ' + owner.user.name + ' as an owner?',
+                    text: "You won't be able to revert this!",
+                    type: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: 'Yes, delete it!'
+                }).then((result) => {
+                    if(result.value)
+                    {
+                        this.$inertia.delete('/deleteOwner/' + this.band.id + '/' + owner.user.id);
                     }
                 })
             },

@@ -182,7 +182,7 @@ class InvitationsController extends Controller
         }
         else
         {
-            dd('cant delete');
+            return back()->withErrors(['You are not authorized to remove this invitation.']);
         }
     }
 }

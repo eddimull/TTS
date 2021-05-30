@@ -50,6 +50,7 @@ Route::post('/bands', 'BandsController@store')->middleware(['auth', 'verified'])
 Route::get('/bands/{band}/edit', 'BandsController@edit')->middleware(['auth', 'verified'])->name('bands.edit');
 Route::patch('/bands/{band}', 'BandsController@update')->middleware(['auth', 'verified'])->name('bands.update');
 Route::delete('/bands/{band}', 'BandsController@destroy')->middleware(['auth', 'verified'])->name('bands.destroy');
+Route::delete('/deleteOwner/{band}/{owner}','BandsController@deleteOwner')->middleware(['auth','verified'])->name('bands.deleteOwner');
 
 
 Route::get('/events', 'EventsController@index')->middleware(['auth', 'verified'])->name('events');
