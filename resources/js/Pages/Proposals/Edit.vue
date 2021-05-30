@@ -16,10 +16,10 @@
                                 </p>
                                 <div v-if="['text','number'].indexOf(input.type) !== -1" class="mb-4">
                                     <!-- <p-inputtext v-model="proposalData"></p-inputtext> -->
-                                    <input :type="input.type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :id="input.name" :placeholder="input.name" v-model="proposalData[input.field]">
+                                    <input @input="unsavedChanges=true" :type="input.type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :id="input.name" :placeholder="input.name" v-model="proposalData[input.field]">
                                 </div>
                                 <div v-if="input.type == 'location'" class="mb-4">
-                                    <input type="text" @keyup="autoComplete()" v-model="proposalData.location" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                                    <input @input="unsavedChanges=true" type="text" @keyup="autoComplete()" v-model="proposalData.location" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
                                     
                                     <ul class="">
                                         <li class="border-black my-4 p-4 bg-gray-200 hover:bg-gray-300 cursor-pointer" v-for="(result,index) in searchResults" :key="index" @click="proposalData.location = result.description; searchResults = null">{{result.description}}</li>
@@ -48,11 +48,11 @@
                                     <button-component v-if="showCreateNewContact" :type="'button'" @click="showCreateNewContact = false">Cancel</button-component>
                                     <button-component v-if="showCreateNewContact" :type="'button'" @click="saveContact">Save</button-component>
                                 </div>
-                                <div v-if="input.type == 'textArea'">
+                                <div @change="unsavedChanges=true" v-if="input.type == 'textArea'">
                                     <textarea class="min-w-full" v-model="proposalData[input.field]" placeholder=""></textarea>
                                 </div>
                                 <div v-if="input.type == 'date'">
-                                    <calendar v-model="proposalData[input.field]" :showTime="true" :step-minute="15" hourFormat="12">
+                                    <calendar v-on:date-select="unsavedChanges=true" v-model="proposalData[input.field]" :showTime="true" :disabledDates="getDisabledDates()" :step-minute="15" hourFormat="12">
                                         <template #date="slotProps">
                                             <strong v-if="findReservedDate(slotProps.date)" :title="findReservedDateName(slotProps.date)" class="rounded-full h-24 w-24 flex items-center justify-center bg-red-300">{{slotProps.date.day}}</strong>
                                             <strong v-else-if="findProposedDate(slotProps.date)" :title="findProposedDateName(slotProps.date)" class="rounded-full h-24 w-24 flex items-center justify-center bg-yellow-300">{{slotProps.date.day}}</strong>
@@ -61,7 +61,7 @@
                                     </calendar>
                                 </div>
                                 <div v-if="input.type == 'eventTypeDropdown'">
-                                    <select v-model="proposalData[input.field]">
+                                    <select @change="unsavedChanges=true" v-model="proposalData[input.field]">
                                         <option v-for="type in eventTypes" :key="type.id" :value="type.id">{{type.name}}</option>
                                     </select>
                                 </div>
@@ -99,7 +99,7 @@
         </div>
     </breeze-authenticated-layout>
     </div>
-</template>
+</template> 
 
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
@@ -123,6 +123,7 @@ import { forEach } from 'lodash'
                     phonenumber:'',
                     email:''
                 },
+                unsavedChanges: false,
                 patchingContact:{
 
                 },
@@ -250,6 +251,14 @@ import { forEach } from 'lodash'
                 })
                 return name
             },
+            getDisabledDates()
+            {
+                let dateArray = [];
+                this.bookedDates.forEach(date=>{
+                    dateArray.push(new Date(moment(String(date.event_time))));
+                })
+                return dateArray;
+            },            
             getMonth(date)
             {
                 return moment(date).month()
@@ -292,7 +301,33 @@ import { forEach } from 'lodash'
                 this.$inertia.patch('/proposals/' + this.proposal.key + '/update/',this.proposalData);
             },
             finalizeProposal(){
-                this.$inertia.post('/proposals/'+ this.proposal.key + '/finalize/');
+                if(this.unsavedChanges)
+                {
+                    this.$swal.fire({
+                        title: 'You have unsaved changes',
+                        text: "Do you want to save changes and finalize or go as is?",
+                        showCancelButton: true,
+                        showDenyButton: true,
+                        confirmButtonText: 'Save Changes and Finalize',
+                        denyButtonText: 'Discard Changes and Finalize',
+                    }).then((result)=>{
+                        if (result.isConfirmed) {
+                            this.$inertia.patch('/proposals/' + this.proposal.key + '/update/',this.proposalData,{
+                                onSuccess:()=>{
+                                    this.unsavedChanges = false;
+                                    this.finalizeProposal();
+                                }
+                            })
+                        } else if (result.isDenied) {
+                            this.unsavedChanges = false;
+                            this.finalizeProposal();
+                        }
+                    })
+                }
+                else
+                {
+                    this.$inertia.post('/proposals/'+ this.proposal.key + '/finalize/');
+                }
             },
             
             deleteProposal(){

@@ -102,7 +102,13 @@
                                     <textarea class="min-w-full" v-model="proposalData[input.field]" placeholder=""></textarea>
                                 </div>
                                 <div v-if="input.type == 'date'">
-                                    <calendar v-model="proposalData[input.field]" :showTime="true" :step-minute="15" hourFormat="12" />
+                                    <calendar v-model="proposalData[input.field]" :disabledDates="getDisabledDates()" :showTime="true" :step-minute="15" hourFormat="12">
+                                        <template #date="slotProps">
+                                            <strong @click="$swal.fire('Date already booked with ' + findReservedDateName(slotProps.date))" v-if="findReservedDate(slotProps.date)" :title="findReservedDateName(slotProps.date)" class="rounded-full h-24 w-24 flex items-center justify-center bg-red-300">{{slotProps.date.day}}</strong>
+                                            <strong  @click="$swal.fire('Date under proposal with ' + findProposedDateName(slotProps.date))" v-else-if="findProposedDate(slotProps.date)" :title="findProposedDateName(slotProps.date)" class="rounded-full h-24 w-24 flex items-center justify-center bg-yellow-300">{{slotProps.date.day}}</strong>
+                                            <template v-else>{{slotProps.date.day}}</template>
+                                        </template>
+                                    </calendar>
                                 </div>
                                 <div v-if="input.type == 'eventTypeDropdown'">
                                     <select v-model="proposalData[input.field]">
@@ -159,7 +165,7 @@
     import moment from 'moment';
 import axios from 'axios';
     export default {
-        props:['bandsAndProposals','successMessage','eventTypes','proposal_phases'],
+        props:['bandsAndProposals','successMessage','eventTypes','proposal_phases','bookedDates','proposedDates'],
         components: {
             BreezeAuthenticatedLayout,
         },
@@ -183,7 +189,7 @@ import axios from 'axios';
                 ],
                 proposalData:{
                     name:'',
-                    date:'',
+                    date:new Date(moment().set({'hour':19,'minute':0}).add('month',1)),
                     event_type_id:0,
                     hours:0,
                     price:0,
@@ -225,6 +231,68 @@ import axios from 'axios';
             }
         },
         methods:{
+            findReservedDate(date)
+            {
+                
+                const jsDate = moment(String(date.month + 1) + '-' + String(date.day) + '-' + String(date.year)).format('YYYY-MM-DD');
+                var booked = false;
+                this.bookedDates.forEach(bookedDate =>{
+                    const parsedDate = moment(bookedDate.event_time).format('YYYY-MM-DD');
+                    if(parsedDate === jsDate)
+                    {
+                        booked = true;
+                    }
+                })
+                return booked
+            },
+            findReservedDateName(date)
+            {
+                const jsDate = moment(String(date.month + 1) + '-' + String(date.day) + '-' + String(date.year)).format('YYYY-MM-DD');
+                var name = '';
+                this.bookedDates.forEach(bookedDate =>{
+                    const parsedDate = moment(bookedDate.event_time).format('YYYY-MM-DD');
+                    if(parsedDate === jsDate)
+                    {
+                        name = bookedDate.event_name;
+                    }
+                })
+                return name
+            },
+            findProposedDate(date)
+            {
+                
+                const jsDate = moment(String(date.month + 1) + '-' + String(date.day) + '-' + String(date.year)).format('YYYY-MM-DD');
+                var booked = false;
+                this.proposedDates.forEach(proposedDate =>{
+                    const parsedDate = moment(proposedDate.date).format('YYYY-MM-DD');
+                    if(parsedDate === jsDate)
+                    {
+                        booked = true;
+                    }
+                })
+                return booked
+            },
+            findProposedDateName(date)
+            {
+                const jsDate = moment(String(date.month + 1) + '-' + String(date.day) + '-' + String(date.year)).format('YYYY-MM-DD');
+                var name = '';
+                this.proposedDates.forEach(proposedDate =>{
+                    const parsedDate = moment(proposedDate.date).format('YYYY-MM-DD');
+                    if(parsedDate === jsDate)
+                    {
+                        name = proposedDate.name;
+                    }
+                })
+                return name
+            },
+            getDisabledDates()
+            {
+                let dateArray = [];
+                this.bookedDates.forEach(date=>{
+                    dateArray.push(new Date(moment(String(date.event_time))));
+                })
+                return dateArray;
+            },
             toggleCreateModal(sitename){
                 this.activeBandSite = sitename;
                 this.showCreateModal = !this.showCreateModal

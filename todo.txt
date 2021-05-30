@@ -10,8 +10,7 @@ Proposals
     resend proposal to one user
     review and accept
     move proposal to contract upon accepting
-    show other dates on calendar
-        red/yellow depending on their dates
+    multi-band support for proposals
 Playlists
     Charts
     create new + upload charts 

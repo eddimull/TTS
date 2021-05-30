@@ -15,6 +15,8 @@ use App\Models\Proposals;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
+use App\Models\User;
+use App\Notifications\TTSNotification;
 
 
 class ProposalsController extends Controller
@@ -35,11 +37,16 @@ class ProposalsController extends Controller
                    
         $eventTypes = EventTypes::all();
         $proposal_phases = ProposalPhases::all();
+        
+        $bookedDates = BandEvents::where('band_id','=',$bands[0]->id)->get();
+        $proposedDates = Proposals::where('band_id','=',$bands[0]->id)->get();
 
         return Inertia::render('Proposals/Index',[
             'bandsAndProposals'=>$bands[0]->with('proposals')->get(),
             'eventTypes'=>$eventTypes,
-            'proposal_phases'=>$proposal_phases
+            'proposal_phases'=>$proposal_phases,
+            'bookedDates'=>$bookedDates,
+            'proposedDates'=>$proposedDates
         ]);
     }
 
@@ -57,6 +64,7 @@ class ProposalsController extends Controller
             'date'=>date('Y-m-d H:i:s',strtotime($request->date)),
             'hours'=>$request->hours,
             'price'=>$request->price,
+            'event_type_id'=>$request->event_type_id,
             'locked'=>false,
             'location'=>null,
             'notes'=>'',
@@ -65,10 +73,47 @@ class ProposalsController extends Controller
             'name'=>$request->name
         ]);
 
+
+        foreach($band->owners as $owner)
+        {
+           $user = User::find($owner->user_id);
+           $user->notify(new TTSNotification([
+            'text'=>$author->name . ' drafted up proposal for ' . $proposal->name,
+            'route'=>'proposals.edit',
+            'routeParams'=>$proposal->key,
+            'url'=>'/proposals/' . $proposal->key . '/edit'
+            ]));
+        }
+
+        $bookedDates = BandEvents::where('band_id','=',$proposal->band_id)->get();
+        $proposedDates = Proposals::where('band_id','=',$proposal->band_id)->where('id','!=',$proposal->id)->get();
+
+        compact($proposal->proposal_contacts);
         $eventTypes = EventTypes::all();
         return Inertia::render('Proposals/Edit',[
             'proposal'=>$proposal,
-            'eventTypes'=>$eventTypes
+            'eventTypes'=>$eventTypes,
+            'bookedDates'=>$bookedDates,
+            'proposedDates'=>$proposedDates
+        ]);
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  \App\Models\Proposal  $proposal
+     * @return \Illuminate\Http\Response
+     */
+    public function edit(Proposals $proposal)
+    {
+        $eventTypes = EventTypes::all();
+        $bookedDates = BandEvents::where('band_id','=',$proposal->band_id)->get();
+        $proposedDates = Proposals::where('band_id','=',$proposal->band_id)->where('id','!=',$proposal->id)->get();
+        return Inertia::render('Proposals/Edit',[
+            'proposal'=>$proposal,
+            'eventTypes'=>$eventTypes,
+            'bookedDates'=>$bookedDates,
+            'proposedDates'=>$proposedDates
         ]);
     }
 
@@ -134,24 +179,6 @@ class ProposalsController extends Controller
             'eventTypes'=>$eventTypes
         ]);
     }
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  \App\Models\Proposal  $proposal
-     * @return \Illuminate\Http\Response
-     */
-    public function edit(Proposals $proposal)
-    {
-        $eventTypes = EventTypes::all();
-        $bookedDates = BandEvents::where('band_id','=',$proposal->band_id)->get();
-        $proposedDates = Proposals::where('band_id','=',$proposal->band_id)->where('id','!=',$proposal->id)->get();
-        return Inertia::render('Proposals/Edit',[
-            'proposal'=>$proposal,
-            'eventTypes'=>$eventTypes,
-            'bookedDates'=>$bookedDates,
-            'proposedDates'=>$proposedDates
-        ]);
-    }
 
     /**
      * Update the specified resource in storage.
@@ -191,6 +218,19 @@ class ProposalsController extends Controller
 
         $proposal->phase_id = 3;
         $proposal->save();
+        $author = Auth::user();
+        $band = Bands::find($proposal->band_id);
+
+        foreach($band->owners as $owner)
+        {
+           $user = User::find($owner->user_id);
+           $user->notify(new TTSNotification([
+            'text'=>$author->name . ' sent out proposal for ' . $proposal->name,
+            'route'=>'proposals',
+            'routeParams'=>'',
+            'url'=>'/proposals/'
+            ]));
+        }
 
         return redirect()->route('proposals')->with('successMessage', $proposal->name . ' sent to clients!');
         
