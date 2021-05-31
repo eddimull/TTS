@@ -78,6 +78,8 @@ Route::delete('/proposals/{proposal:key}/delete','ProposalsController@destroy')-
 Route::post('/proposals/{proposal:key}/finalize', 'ProposalsController@finalize')->middleware(['auth','verified'])->name('proposals.finalize');
 Route::post('/proposals/{proposal:key}/sendit', 'ProposalsController@sendIt')->middleware(['auth','verified'])->name('proposals.finalize');
 Route::get('/proposals/{proposal:key}/details', 'ProposalsController@details')->name('proposals.details');
+Route::get('/proposals/{proposal:key}/accepted', 'ProposalsController@accepted')->name('proposals.accepted');
+Route::post('/proposals/{proposal:key}/accept', 'ProposalsController@accept')->name('proposals.accept');
 Route::post('/proposals/createContact/{proposal:key}', 'ProposalsController@createContact')->middleware(['auth', 'verified'])->name('proposals.createContact');
 Route::post('/proposals/editContact/{contact}', 'ProposalsController@editContact')->middleware(['auth', 'verified'])->name('proposals.editContact');
 Route::delete('/proposals/deleteContact/{contact}', 'ProposalsController@deleteContact')->middleware(['auth', 'verified'])->name('proposals.deleteContact');

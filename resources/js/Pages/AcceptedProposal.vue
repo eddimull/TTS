@@ -1,20 +1,9 @@
 <template>
     <breeze-guest-layout>
-        <div v-if="showIntro" class="md:container md:mx-auto">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="flex flex-col bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
-                    <div class="flex my-3">Hello</div>
-                    <div class="flex my-3">Who are we speaking with today?</div>
-                    <div class="flex my-3">
-                        <input class="w-full" v-model="person" type="text"/>
-                    </div>
-                    <div class="flex my-3 justify-center">
-                        <Button @click="savePerson" :disabled="person === ''" label="Submit" icon="pi pi-user" iconPos="right" />
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div v-else class="md:container md:mx-auto">
+        <transition name="fade">
+            <canvas v-if="show" class="fixed inset-0 transition-opacity" id="confettiCanvas"></canvas>
+        </transition>
+        <div class="md:container md:mx-auto">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 Details for {{proposal.name}}
             </h2>
@@ -29,11 +18,9 @@
                         <li>Price: {{proposal.price}} </li>
                         <li>How long: {{proposal.hours}} hours </li>
                     </ul>
-                    <div class="my-5 flex justify-center">
-                        <Button @click="acceptProposal()" label="Accept Proposal" icon="pi pi-check" iconPos="right" />
-                    </div>
                 </div>
             </div>
+             
         </div>
     </breeze-guest-layout>
 </template>
@@ -41,20 +28,43 @@
 <script>
     import BreezeGuestLayout from '@/Layouts/Guest'
     import moment from 'moment';
-    import Button from 'primevue/button';
+    import ConfettiGenerator from "confetti-js";
 
     export default {
         props:['proposal','event_typtes'],
         components: {
             BreezeGuestLayout,
-            Button
         },
         data(){
             return{
-                showIntro:true,
-                person:''
+                person:'',
+                show:true
             }
 
+        },
+        mounted(){
+            
+        },
+        created(){
+            this.$swal.fire({
+                    title: "Proposal Accepted!",
+                    text: "You should receive an official contract shortly",
+                    icon: "success",
+                }).then(()=>{
+                    var confettiSettings = { target: 'confettiCanvas' };
+                    var confetti = new ConfettiGenerator(confettiSettings);
+                    confetti.render();
+                    setTimeout(()=>{
+                        this.show = false;
+                    },5000)
+                })
+                
+
+            // this.$confetti.start();
+
+            // setTimeout(()=>{
+            //     this.$confetti.stop();
+            // },5000)
         },
         methods:{
             savePerson(){
@@ -62,11 +72,15 @@
             },
             formatDate(date){
                 return moment(date).format('LLLL');
-            },
-            acceptProposal()
-            {
-                this.$inertia.post('/proposals/' + this.proposal.key + '/accept',{'person':this.person});
             }
         }
     }
 </script>
+<style scoped>
+.fade-enter-active, .fade-leave-active {
+  transition: opacity .5s;
+}
+.fade-enter, .fade-leave-to /* .fade-leave-active below version 2.1.8 */ {
+  opacity: 0;
+}
+</style>

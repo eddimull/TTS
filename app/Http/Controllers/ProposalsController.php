@@ -169,10 +169,23 @@ class ProposalsController extends Controller
     }
 
 
-
+    public function accepted(Proposals $proposal)
+    {
+        $eventTypes = EventTypes::all();
+        return Inertia::render('AcceptedProposal',[
+            'proposal'=>$proposal,
+            'eventTypes'=>$eventTypes
+        ]);
+    }
 
     public function details(Proposals $proposal)
     {
+
+        if($proposal->phase_id === 4)
+        {
+            return redirect('/proposals/' . $proposal->key . '/accepted')->withErrors('Proposal has already been accepted');
+        }
+
         $eventTypes = EventTypes::all();
         return Inertia::render('ProposalDetails',[
             'proposal'=>$proposal,
@@ -253,5 +266,26 @@ class ProposalsController extends Controller
         $name = $proposal->name;
         $proposal->delete();
         return redirect()->route('proposals')->with('successMessage', $name . ' has been brutally destroyed.');
+    }
+
+    public function accept(Request $request, Proposals $proposal)
+    {
+        $proposal->phase_id = 4;
+        $proposal->save();
+
+        $band = Bands::find($proposal->band_id);
+
+        foreach($band->owners as $owner)
+        {
+           $user = User::find($owner->user_id);
+           $user->notify(new TTSNotification([
+            'text'=>$request->person . ' just accepted proposal for ' . $proposal->name,
+            'route'=>'proposals',
+            'routeParams'=>'',
+            'url'=>'/proposals/'
+            ]));
+        }
+
+        return redirect('/proposals/' . $proposal->key . '/accepted')->with('successMessage','Proposal has been accepted. Await a finalized contract');
     }
 }

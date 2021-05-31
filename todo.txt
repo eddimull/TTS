@@ -1,9 +1,9 @@
 Band
     Add Members
     Remove Members
-    Remove owners
+    -Remove owners
     Pictures and clickable stuff
-    Notify band members/owners
+    -Notify band members/owners
 Events
     google location stuff
 Proposals
