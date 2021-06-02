@@ -51,6 +51,7 @@ Route::get('/bands/{band}/edit', 'BandsController@edit')->middleware(['auth', 'v
 Route::patch('/bands/{band}', 'BandsController@update')->middleware(['auth', 'verified'])->name('bands.update');
 Route::delete('/bands/{band}', 'BandsController@destroy')->middleware(['auth', 'verified'])->name('bands.destroy');
 Route::delete('/deleteOwner/{band}/{owner}','BandsController@deleteOwner')->middleware(['auth','verified'])->name('bands.deleteOwner');
+Route::post('/bands/{band}/uploadLogo','BandsController@uploadLogo')->middleware(['auth', 'verified'])->name('bands.uploadLogo');
 
 
 Route::get('/events', 'EventsController@index')->middleware(['auth', 'verified'])->name('events');
@@ -91,6 +92,8 @@ Route::get('/images/{band_site}/{uri}','ImageController@siteImages');
 Route::post('/inviteOwner/{band_id}','InvitationsController@createOwner')->middleware(['auth','verified'])->name('invite.createOwner');
 Route::post('/inviteMember/{band_id}','InvitationsController@createMember')->middleware(['auth','verified'])->name('invite.createMember');
 Route::delete('/deleteInvite/{band}/{invitations}','InvitationsController@destroy')->middleware(['auth','verified'])->name('invite.delete');
+
+Route::get('/contracts','ContractsController@index')->middleware(['auth','verified'])->name('contracts');
 
 Route::get('/notifications',function(){
     return json_encode(Auth::user()->Notifications);

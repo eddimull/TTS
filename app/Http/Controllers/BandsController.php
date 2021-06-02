@@ -9,6 +9,7 @@ use App\Models\BandOwners;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Notifications\TTSNotification;
+use Illuminate\Support\Facades\Storage;
 
 class BandsController extends Controller
 {
@@ -162,5 +163,42 @@ class BandsController extends Controller
         {
             return back()->withErrors(['You are not authorized to remove the owner of this band.']);
         }
+    }
+
+    public function uploadLogo(Bands $band, Request $request)
+    {
+        $request->validate([
+            'files.*'=>'required|image'
+        ]);
+        $author = Auth::user();
+        
+        if($author->isOwner($band->id))
+        {
+            $imageName = time() . $band->name . 'logo.' . $request->logo[0]->extension();  
+
+            $imagePath = $request->logo[0]->storeAs($band->site_name, $imageName, 's3');
+            
+            $band->logo = '/images/' . $imagePath;
+
+            
+            $band->save();
+
+
+            foreach($band->owners as $owner)
+            {
+               $user = User::find($owner->user_id);
+               $user->notify(new TTSNotification([
+                'text'=>$author->name . ' updated the logo for ' . $band->name,
+                'route'=>'bands',
+                'routeParams'=>null,
+                'url'=>'/bands/' . $band->id . '/edit'
+                ]));
+            }
+
+            return redirect()->back()->with('successMessage','Updated Logo! (no need to save)');
+        }
+
+        return back()->withErrors('You do not have privileges to update the logo for this band');
+        
     }
 }

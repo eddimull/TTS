@@ -175,6 +175,7 @@ return [
         App\Providers\RouteServiceProvider::class,
         GoogleMaps\ServiceProvider\GoogleMapsServiceProvider::class,
         Barryvdh\DomPDF\ServiceProvider::class,
+        LaravelDocusign\DocusignServiceProvider::class
         
     ],
 
@@ -230,6 +231,7 @@ return [
         'View' => Illuminate\Support\Facades\View::class,
         'GoogleMaps' => GoogleMaps\Facade\GoogleMapsFacade::class,
         'PDF' => Barryvdh\DomPDF\Facade::class,
+        'DocuSign'  => LaravelDocusign\Facades\DocuSign::class,
 
     ],
 

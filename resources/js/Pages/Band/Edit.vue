@@ -17,9 +17,14 @@
                     </div>
                     <div class="mb-4">
                         <label class="block text-gray-700 text-sm font-bold mb-2" for="name">Page Name (URL)</label>
-                    <input type="text" v-on:input="filter" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="site_name" placeholder="Band_Name"  pattern="([a-zA-z0-9\-_]+)" v-model="form.site_name">
+                            <input type="text" v-on:input="filter" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="site_name" placeholder="Band_Name"  pattern="([a-zA-z0-9\-_]+)" v-model="form.site_name">
                             <span v-if="urlWarn" class="text-red-700">Letters, numbers, _, +, and - are the only characters allowed</span>
-                    </div>     
+                    </div> 
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="name">Logo</label>
+                            <img :src="band.logo"/>
+                            <FileUpload ref="fileUpload" mode="basic" name="logo" accept="image/*" :auto="true" :customUpload="true" @uploader="uploadLogo" />
+                    </div>      
                     <div class="mb-4">
                         <label class="block text-gray-700 text-sm font-bold mb-2" for="name">Google Calendar ID</label>
                         <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="calendarID" placeholder="Calendar ID" v-model="form.calendar_id">
@@ -98,11 +103,13 @@
 
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
+    import FileUpload from 'primevue/fileupload';
 
     export default {
         props:['errors','band','members','owners'],
         components: {
             BreezeAuthenticatedLayout,
+            FileUpload
         },
         data(){
             return{
@@ -205,6 +212,17 @@
                         this.$inertia.delete('/deleteInvite/' + this.band.id + '/' + invite.id);
                     }
                 })
+            },
+            uploadLogo(event)
+            {
+                // console.log(event.files);
+                this.$inertia.post('./uploadLogo',{'logo':event.files},{
+                forceFormData: true,
+                onSuccess:()=>{
+                    this.$swal.fire("logo uploaded","(no need to update)","success");
+                    this.$refs.fileUpload.clear()
+                }
+                });
             }
         },
         watch:{

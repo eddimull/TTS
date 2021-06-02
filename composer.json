@@ -20,7 +20,8 @@
         "laravel/tinker": "^2.5",
         "league/flysystem-aws-s3-v3": "~1.0",
         "spatie/laravel-google-calendar": "^3.3",
-        "tightenco/ziggy": "^1.0"
+        "tightenco/ziggy": "^1.0",
+        "tucker-eric/laravel-docusign": "^5.0"
     },
     "require-dev": {
         "facade/ignition": "^2.5",
