@@ -1,0 +1,6 @@
+2021/06/10 01:17:57 Using in-memory storage
+2021/06/10 01:17:57 [SMTP] Binding to address: 0.0.0.0:1025
+[HTTP] Binding to address: 0.0.0.0:8025
+2021/06/10 01:17:57 Serving under http://0.0.0.0:8025/
+Creating API v1 with WebPath: 
+Creating API v2 with WebPath: 

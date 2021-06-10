@@ -51,8 +51,8 @@ class ContractsController extends Controller
 
         $pdf = PDF::loadView('contract',['proposal'=>$proposal]);
         
-        return $pdf->download('test.pdf');
-        // return View();
+        return $pdf->inline();
+        // return View('contract',['proposal'=>$proposal]);
     }
 
 

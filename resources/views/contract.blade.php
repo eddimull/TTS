@@ -12,7 +12,7 @@
     <body style="size: legal; width: 1280px;" class="font-sans antialiased">
         <div class="border-2 min-w-full max-w-7xl mx-auto sm:px-6 lg:px-8 background-gray-400">
                <div class="my-4 max-w-md flex justify-center align-center mx-auto">
-                <img src="{{ $proposal['band']['logo'] }}" />
+                <img src="{{ url($proposal['band']['logo']) }}" />
                 </div>
                 <hr/>
                 <div>
