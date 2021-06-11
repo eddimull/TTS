@@ -93,7 +93,7 @@ Route::post('/inviteOwner/{band_id}','InvitationsController@createOwner')->middl
 Route::post('/inviteMember/{band_id}','InvitationsController@createMember')->middleware(['auth','verified'])->name('invite.createMember');
 Route::delete('/deleteInvite/{band}/{invitations}','InvitationsController@destroy')->middleware(['auth','verified'])->name('invite.delete');
 
-Route::get('/contracts','ContractsController@index')->middleware(['auth','verified'])->name('contracts');
+Route::get('/contracts','ContractsController@index')->name('contracts');
 
 Route::get('/notifications',function(){
     return json_encode(Auth::user()->Notifications);

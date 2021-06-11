@@ -22,21 +22,24 @@ class ContractsController extends Controller
     public function index()
     {
         $client = DocuSign::create();
-        $signer = DocuSign::signer([
-            'name'  => 'John Doe',
-            'email' => 'Jdoe123@example.com'
-            ]);
+        // $signer = DocuSign::signer([
+        //     'name'  => 'John Doe',
+        //     'email' => 'Jdoe123@example.com'
+        //     ]);
             
             $envelope = [
-                'template_id'=>'397acf0b-9fe1-41a4-871e-8aca5719e53e',
-                'signer_email'=>'eddimull@gmail.com',
-                'signer_name'=>'Eddizzle Muller',
+                'signer_email'=>'journey01282@gmail.com',
+                'signer_name'=>'Cory Landry',
                 'cc_email'=>'eddimull@yahoo.com',
                 'cc_name'=>'Eddie 2'
                 ];
+
+        
         // dd($client->templates->listTemplates());
         // $options = new CreateEnvelopeOptions();
         $test = new \LaravelDocusign\Client;
+
+        // $client->document
         // $options->setCdseMode(null);
         // $options->setMergeRolesOnDraft(null);
         // dd(CreateEnvelopeOptions::class);
@@ -45,61 +48,80 @@ class ContractsController extends Controller
         // dd($test->envelopes);
         // $client->envelopes
 
-        // $sent = $client->envelopes->createEnvelopeWithHttpInfo($this->make_envelope($envelope));
-        $proposal = Proposals::find(1);
-        // dd($proposal);
+        $sent = $client->envelopes->createEnvelopeWithHttpInfo($this->make_envelope_from_docusign($envelope));
 
-        $pdf = PDF::loadView('contract',['proposal'=>$proposal]);
-        
-        return $pdf->inline();
+        // return $base64PDF;
+        // dd($proposal);
+        dd($sent);
+
         // return View('contract',['proposal'=>$proposal]);
     }
 
-
-    private function make_envelope($args)
+    private function make_envelope_from_docusign(array $args): EnvelopeDefinition
     {
-        # Create the envelope definition with the template_id
+        $proposal = Proposals::find(1);
+        $pdf = PDF::loadView('contract',['proposal'=>$proposal]);
+        $base64PDF = base64_encode($pdf->output());
+
+        # Create the envelope definition
         $envelope_definition = new \DocuSign\eSign\Model\EnvelopeDefinition([
-           'status' => 'sent', 'template_id' => $args['template_id'],
-           'email_subject'=> 'Contract for Three Thirty Seven',
-           'email_blurb'=>'This is the body of the email that gets sent out'
+           'email_subject' => 'Contract for ' . $proposal->band->name,
+           'email_blurb'=>'Please sign this contract so we can make this official!'
         ]);
-        # Create the template role elements to connect the signer and cc recipients
-        # to the template
-        $signer = new \DocuSign\eSign\Model\TemplateRole([
+        // $doc1_b64 = base64_encode($this->clientService->createDocumentForEnvelope($args));
+        # read files 2 and 3 from a local directory
+        # The reads could raise an exception if the file is not available!
+
+
+        $document = new \DocuSign\eSign\Model\Document([  # create the DocuSign document object
+            'document_base64' => $base64PDF,
+            'name' => 'Contract for ' . $proposal->band->name,  # can be different from actual file name
+            'file_extension' => 'pdf',  # many different document types are accepted
+            'document_id' => '1'  # a label used to reference the doc
+        ]);
+        # The order in the docs array determines the order in the envelope
+        $envelope_definition->setDocuments([$document]);
+
+        # Create the signer recipient model
+        $signer1 = new \DocuSign\eSign\Model\Signer([
             'email' => $args['signer_email'], 'name' => $args['signer_name'],
-            'role_name' => 'signer'
-        ]);
-        # Create a cc template role.
-        $cc = new \DocuSign\eSign\Model\TemplateRole([
+            'recipient_id' => "1", 'routing_order' => "1"]);
+        # routingOrder (lower means earlier) determines the order of deliveries
+        # to the recipients. Parallel routing order is supported by using the
+        # same integer as the order for two or more recipients.
+
+        # create a cc recipient to receive a copy of the documents
+        $cc1 = new \DocuSign\eSign\Model\CarbonCopy([
             'email' => $args['cc_email'], 'name' => $args['cc_name'],
-            'role_name' => 'cc'
-        ]);
+            'recipient_id' => "2", 'routing_order' => "2"]);
 
-        
-        # Add the TemplateRole objects to the envelope object
-        $envelope_definition->setTemplateRoles([$signer, $cc]);
-        // dd('got here?');
+        # Create signHere fields (also known as tabs) on the documents,
+        # We're using anchor (autoPlace) positioning
+        #
+        # The DocuSign platform searches throughout your envelope's
+        # documents for matching anchor strings. So the
+        # signHere2 tab will be used in both document 2 and 3 since they
+        #  use the same anchor string for their "signer 1" tabs.
+        $sign_here1 = new \DocuSign\eSign\Model\SignHere([
+            'anchor_string' => 'Signature:', 'anchor_units' => 'pixels',
+            'anchor_y_offset' => '10', 'anchor_x_offset' => '40']);
+       
+
+        # Add the tabs model (including the sign_here tabs) to the signer
+        # The Tabs object wants arrays of the different field/tab types
+        $signer1->setTabs(new \DocuSign\eSign\Model\Tabs([
+            'sign_here_tabs' => [$sign_here1]]));
+
+        # Add the recipients to the envelope object
+        $recipients = new \DocuSign\eSign\Model\Recipients([
+            'signers' => [$signer1], 'carbon_copies' => [$cc1]]);
+        $envelope_definition->setRecipients($recipients);
+
+        # Request that the envelope be sent by setting |status| to "sent".
+        # To request that the envelope be created as a draft, set to "created"
+        $envelope_definition->setStatus('sent');
+
         return $envelope_definition;
-    }
-
-    private function worker($args)
-    {
-        $envelope_args = $args["envelope_args"];
-        # Create the envelope request object
-        $envelope_definition = $this->make_envelope($envelope_args);
-        # Call Envelopes::create API method
-        # Exceptions will be caught by the calling function
-        // $config = new \DocuSign\eSign\Configuration();
-        // $config->setHost($args['base_path']);
-        // $config->addDefaultHeader('Authorization', 'Bearer ' . $args['ds_access_token']);
-        // $api_client = new \DocuSign\eSign\client\ApiClient($config);
-        $client = DocuSign::create();
-        // dd();
-        $envelope_api = new \DocuSign\eSign\Api\EnvelopesApi($client);
-        $results = $client->envelopes->createEnvelope('14017186',$envelope_definition,CreateEnvelopeOptions::class);
-        $envelope_id = $results->getEnvelopeId();
-        return ['envelope_id' => $envelope_id];
     }
     /**
      * Show the form for creating a new resource.

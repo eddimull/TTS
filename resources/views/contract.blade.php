@@ -17,7 +17,7 @@
                 <hr/>
                 <div>
                     <p><strong>{{ $proposal['band']['name'] }}</strong> (hereinafter referred to as "Artist"), enter into this Agreement
-with <strong>{{ $proposal['proposal_contacts'][0]['name'] }}</strong> (hereinafter referred to as “Buyer”), for the engagement of a live musical performance
+with <strong> {{ $proposal['proposal_contacts'][0]['name'] }} </strong> (hereinafter referred to as “Buyer”), for the engagement of a live musical performance
 (hereinafter referred to as the “Venue”), subject to the following conditions:
                 </div>
                 <div class="mt-3 mb-12">
@@ -195,6 +195,9 @@ shall be in form of <strong>check, money order, Chase Quick Pay, Venmo, cashier�
                     <p>I Agree to the terms and conditions of this contract<p>
                     <div>
                         <strong class="underline">{{ $proposal['proposal_contacts'][0]['name'] }}</strong> - <strong>{{ date('m/d/Y') }}</strong>
+                    </div>
+                    <div class="my-8">
+                        Signature:
                     </div>
                 </div>                                              
         </div>
