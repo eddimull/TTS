@@ -15,6 +15,8 @@ class CreateContractsTable extends Migration
     {
         Schema::create('contracts', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('proposal_id');
+            $table->string('envelope_id');
             $table->timestamps();
         });
     }

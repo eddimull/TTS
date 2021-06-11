@@ -76,6 +76,7 @@ Route::get('/proposals/{proposal:key}/edit', 'ProposalsController@edit')->middle
 Route::patch('/proposals/{proposal:key}/update', 'ProposalsController@update')->middleware(['auth','verified'])->name('proposals.update');
 Route::post('/proposals/{band:site_name}/create', 'ProposalsController@create')->middleware(['auth','verified'])->name('proposals.create');
 Route::delete('/proposals/{proposal:key}/delete','ProposalsController@destroy')->middleware(['auth','verified'])->name('proposals.delete');
+Route::get('/proposals/{proposal:key}/finalize', 'ProposalsController@finalize')->middleware(['auth','verified'])->name('proposals.finalize');
 Route::post('/proposals/{proposal:key}/finalize', 'ProposalsController@finalize')->middleware(['auth','verified'])->name('proposals.finalize');
 Route::post('/proposals/{proposal:key}/sendit', 'ProposalsController@sendIt')->middleware(['auth','verified'])->name('proposals.finalize');
 Route::get('/proposals/{proposal:key}/details', 'ProposalsController@details')->name('proposals.details');
@@ -92,6 +93,8 @@ Route::get('/images/{band_site}/{uri}','ImageController@siteImages');
 Route::post('/inviteOwner/{band_id}','InvitationsController@createOwner')->middleware(['auth','verified'])->name('invite.createOwner');
 Route::post('/inviteMember/{band_id}','InvitationsController@createMember')->middleware(['auth','verified'])->name('invite.createMember');
 Route::delete('/deleteInvite/{band}/{invitations}','InvitationsController@destroy')->middleware(['auth','verified'])->name('invite.delete');
+
+Route::any('/docusignWebhook/','ContractsController@webhook')->name('contracts.webhook');
 
 Route::get('/contracts','ContractsController@index')->name('contracts');
 
@@ -129,5 +132,10 @@ Route::post('/seentIt',function(){
 
     return false;
 })->middleware(['auth','verified']);
+
+
+Route::any('/info/',function(){
+    return phpinfo();
+});
 
 require __DIR__.'/auth.php';

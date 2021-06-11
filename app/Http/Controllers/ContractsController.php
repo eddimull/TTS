@@ -28,10 +28,10 @@ class ContractsController extends Controller
         //     ]);
             
             $envelope = [
-                'signer_email'=>'journey01282@gmail.com',
-                'signer_name'=>'Cory Landry',
-                'cc_email'=>'eddimull@yahoo.com',
-                'cc_name'=>'Eddie 2'
+                // 'signer_email'=>'journey01282@gmail.com',
+                // 'signer_name'=>'Cory Landry',
+                // 'cc_email'=>'eddimull@yahoo.com',
+                // 'cc_name'=>'Eddie 2'
                 ];
 
         
@@ -122,6 +122,11 @@ class ContractsController extends Controller
         $envelope_definition->setStatus('sent');
 
         return $envelope_definition;
+    }
+
+    public function webhook(Request $request)
+    {
+        dd($request);
     }
     /**
      * Show the form for creating a new resource.
