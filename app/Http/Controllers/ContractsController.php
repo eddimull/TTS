@@ -14,6 +14,8 @@ use PDF;
 use Log;
 use App\Models\Bands;
 use Illuminate\Support\Facades\Storage;
+use App\Models\User;
+use App\Notifications\TTSNotification;
 
 class ContractsController extends Controller
 {
@@ -143,9 +145,35 @@ class ContractsController extends Controller
 
     public function webhook(Request $request)
     {
-        // dd($request);
-        Log::debug($request);
-        return response('got it');
+        
+        $contract = Contracts::where('envelope_id',$request['envelopeId'])->first();
+        // dd($contract);
+        if($contract)
+        {
+            $proposal = $contract->proposal;
+            $contract->status = $request['status'];
+            
+            if($contract->status == 'completed')
+            {
+
+                $band = Bands::find($proposal->band_id);
+                
+                foreach($band->owners as $owner)
+                {
+                    $user = User::find($owner->user_id);
+                    $user->notify(new TTSNotification([
+                        'text'=>'Contract for ' . $proposal->name . ' signed and completed!',
+                        'route'=>'proposals',
+                        'routeParams'=>'',
+                        'url'=>'/proposals/'
+                        ]));
+                }
+                    
+            }
+            $contract->save();
+        }
+        
+        return response('success');
     }
     /**
      * Show the form for creating a new resource.

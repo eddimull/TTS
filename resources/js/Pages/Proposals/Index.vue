@@ -5,7 +5,70 @@
                 Proposals
             </h2>
         </template>
-        <card-modal ref="proposalModal" v-if="showModal" :saveText="'Edit'" @save="gotoProposal" @closing="toggleModal()">
+
+        <div class="md:container md:mx-auto">
+            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
+                    <div v-if="bandsAndProposals.length > 0" class="container my-8">
+                        <div v-for="band in bandsAndProposals" :key="band.id">
+                            <span class="font-semibold">{{band.name}}</span>
+
+                            <DataTable :value="band.proposals" responsiveLayout="scroll" selectionMode="single" :paginator="true" 
+                            :rows="10" @rowSelect="selectProposal"
+                            :rowsPerPageOptions="[10,20,50]"
+                            v-model:filters="filters1"
+                            :globalFilterFields="['name','date','phase.name']"
+                            filterDisplay="menu">
+                            <template #header>
+                                <div class="p-d-flex p-jc-between">
+                                    <Button type="button" icon="pi pi-filter-slash" label="Clear" class="p-button-outlined" @click="clearFilter1()"/>
+                                    <span class="p-input-icon-left">
+                                        <i class="pi pi-search" />
+                                        <InputText v-model="filters1['global'].value" placeholder="Keyword Search" />
+                                    </span>
+                                </div>
+                            </template>
+                            <template #empty>
+                                No Proposals.
+                            </template>
+                                <Column field="name" filterField="name" header="Name" :sortable="true"></Column>
+                                <Column field="date" filterField="date" header="Date" :sortable="true"></Column>
+                                <Column field="phase.name" filterField="phase.name" header="Phase" :sortable="true"></Column>
+                            </DataTable>
+                            <!-- <table class="min-w-full bg-white m-5 rounded">
+                                <thead class="bg-gray-800 text-white">
+                                    <tr>
+                                        <th scope="w-1/3 text-left py-3 uppercase font-semibold text-sm">Name</th>
+                                        <th scope="w-1/3 text-left py-3 uppercase font-semibold text-sm">Date</th>
+                                        <th scope="w-1/3 text-left py-3 uppercase font-semibold text-sm">Phase</th>
+                                    </tr>
+                                </thead>  
+                                <tbody v-if="band.proposals.length > 0" class="text-gray-700">
+                                    <tr @click="selectProposal(proposal)" :class="[{'bg-gray-100': $index % 2 === 0, 'border-b': $index % 2 !== 0 },'hover:bg-gray-200','cursor-pointer']" v-for="(proposal,$index) in band.proposals" :key="proposal.id">
+                                        <td class="w-1/3 text-center py-3 px-4">{{proposal.name}}</td>
+                                        <td class="w-1/3 text-center py-3 px-4">{{proposal.date}}</td>
+                                        <td class="w-1/3 text-center py-3 px-4">{{proposal.phase.name}}</td>
+                                    </tr>
+                                </tbody>  
+                                <tbody v-else>
+                                    <tr>
+                                        <td  colspan="3" class="text-center">No proposals at the moment</td>
+                                    </tr>
+                                </tbody>
+                            </table> -->
+                            <div class="my-4"><button @click="toggleCreateModal(band.site_name)" type="button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline m-10 p-5">Draft Proposal for {{band.name}}</button></div>
+                        </div>
+                        
+                    </div>
+                    <div v-else>
+                        It looks like you don't have any bands to create a proposal for. 
+                        <button type="button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Draft Proposal</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+                <card-modal ref="proposalModal" v-if="showModal" :saveText="'Edit'" @save="gotoProposal" @closing="toggleModal()">
             <template #header>
                 <h1>{{activeProposal.name}}</h1>
             </template>
@@ -119,55 +182,30 @@
             </template>
             
         </card-modal>
-        <div class="md:container md:mx-auto">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
-                    <div v-if="bandsAndProposals.length > 0" class="container my-8">
-                        <div v-for="band in bandsAndProposals" :key="band.id">
-                            {{band.name}}
-                            <table class="min-w-full bg-white m-5 rounded">
-                                <thead class="bg-gray-800 text-white">
-                                    <tr>
-                                        <th scope="w-1/3 text-left py-3 uppercase font-semibold text-sm">Name</th>
-                                        <th scope="w-1/3 text-left py-3 uppercase font-semibold text-sm">Date</th>
-                                        <th scope="w-1/3 text-left py-3 uppercase font-semibold text-sm">Phase</th>
-                                    </tr>
-                                </thead>  
-                                <tbody v-if="band.proposals.length > 0" class="text-gray-700">
-                                    <tr @click="selectProposal(proposal)" :class="[{'bg-gray-100': $index % 2 === 0, 'border-b': $index % 2 !== 0 },'hover:bg-gray-200','cursor-pointer']" v-for="(proposal,$index) in band.proposals" :key="proposal.id">
-                                        <td class="w-1/3 text-center py-3 px-4">{{proposal.name}}</td>
-                                        <td class="w-1/3 text-center py-3 px-4">{{proposal.date}}</td>
-                                        <td class="w-1/3 text-center py-3 px-4">{{proposal.phase.name}}</td>
-                                    </tr>
-                                </tbody>  
-                                <tbody v-else>
-                                    <tr>
-                                        <td  colspan="3" class="text-center">No proposals at the moment</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                            <div class="my-4"><button @click="toggleCreateModal(band.site_name)" type="button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline m-10 p-5">Draft Proposal for {{band.name}}</button></div>
-                        </div>
-                        
-                    </div>
-                    <div v-else>
-                        It looks like you don't have any bands to create a proposal for. 
-                        <button type="button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Draft Proposal</button>
-                    </div>
-                </div>
-            </div>
-        </div>
     </breeze-authenticated-layout>
 </template>
 
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
     import moment from 'moment';
-import axios from 'axios';
+    import DataTable from 'primevue/datatable';
+    import Column from 'primevue/column';
+    import InputText from 'primevue/inputtext';
+    import Button from 'primevue/button';
+    import axios from 'axios';
+    import {FilterMatchMode,FilterOperator} from 'primevue/api';
+
     export default {
         props:['bandsAndProposals','successMessage','eventTypes','proposal_phases','bookedDates','proposedDates'],
         components: {
             BreezeAuthenticatedLayout,
+            DataTable,
+            Column,
+            InputText,
+            Button
+        },
+        created(){
+            this.initFilters1();
         },
         data(){
             return{
@@ -175,6 +213,7 @@ import axios from 'axios';
                 showCreateModal:false,
                 activeProposal:{},
                 activeBandSite:'',
+                filters1: null,
                 showFields:[
                     {name:'Author',property:'author',subProperty:'name'},
                     {name:'Proposed Date/Time',property:'date'},
@@ -301,7 +340,8 @@ import axios from 'axios';
                 this.showModal = !this.showModal
             },
             selectProposal(proposal){
-                this.activeProposal = proposal;
+                
+                this.activeProposal = proposal.data;
                 this.showModal = true;
             },
             gotoProposal(){
@@ -322,7 +362,15 @@ import axios from 'axios';
                         }
                     });
                 },1000)
-            }
+            },
+            clearFilter1() {
+                this.initFilters1();
+            },
+            initFilters1() {
+                this.filters1 = {
+                    'global': {value: null, matchMode: FilterMatchMode.CONTAINS}
+                }
+            }            
         }
     }
 </script>

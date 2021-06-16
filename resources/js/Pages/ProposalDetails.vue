@@ -30,7 +30,11 @@
                         <li>How long: {{proposal.hours}} hours </li>
                     </ul>
                     <div class="my-5 flex justify-center">
-                        <Button @click="acceptProposal()" label="Accept Proposal" icon="pi pi-check" iconPos="right" />
+                        <Button v-if="!loading" @click="acceptProposal()" :disabled="loading" :label="loading ? 'Submitting...' : 'Accept Proposal'" icon="pi pi-check" iconPos="right"></Button>
+
+                            <span v-if="loading">
+                                <ProgressSpinner />
+                            </span>
                     </div>
                 </div>
             </div>
@@ -42,17 +46,20 @@
     import BreezeGuestLayout from '@/Layouts/Guest'
     import moment from 'moment';
     import Button from 'primevue/button';
+    import ProgressSpinner from 'primevue/progressspinner';
 
     export default {
         props:['proposal','event_typtes'],
         components: {
             BreezeGuestLayout,
-            Button
+            Button,
+            ProgressSpinner
         },
         data(){
             return{
                 showIntro:true,
-                person:''
+                person:'',
+                loading:false
             }
 
         },
@@ -65,6 +72,7 @@
             },
             acceptProposal()
             {
+                this.loading = true;
                 this.$inertia.post('/proposals/' + this.proposal.key + '/accept',{'person':this.person});
             }
         }
