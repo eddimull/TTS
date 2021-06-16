@@ -86,6 +86,7 @@ Route::post('/proposals/createContact/{proposal:key}', 'ProposalsController@crea
 Route::post('/proposals/editContact/{contact}', 'ProposalsController@editContact')->middleware(['auth', 'verified'])->name('proposals.editContact');
 Route::delete('/proposals/deleteContact/{contact}', 'ProposalsController@deleteContact')->middleware(['auth', 'verified'])->name('proposals.deleteContact');
 Route::post('/autocompleteLocation','ProposalsController@searchLocations')->middleware(['auth','verified'])->name('proposals.search');
+Route::get('/getLocation','ProposalsController@searchDetails')->middleware(['auth','verified'])->name('proposals.search');
 
 Route::get('/images/{uri}','ImageController@index');
 Route::get('/images/{band_site}/{uri}','ImageController@siteImages');
@@ -94,7 +95,7 @@ Route::post('/inviteOwner/{band_id}','InvitationsController@createOwner')->middl
 Route::post('/inviteMember/{band_id}','InvitationsController@createMember')->middleware(['auth','verified'])->name('invite.createMember');
 Route::delete('/deleteInvite/{band}/{invitations}','InvitationsController@destroy')->middleware(['auth','verified'])->name('invite.delete');
 
-Route::any('/docusignWebhook/','ContractsController@webhook')->name('contracts.webhook');
+Route::any('/docusignWebhook/','ContractsController@webhook')->name('contracts.webhook')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
 
 Route::get('/contracts','ContractsController@index')->name('contracts');
 

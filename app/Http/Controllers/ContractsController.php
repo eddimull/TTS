@@ -11,6 +11,9 @@ use DocuSign\eSign\Api\EnvelopesApi;
 use DocuSign\eSign\Model\EnvelopeDefinition;
 use DocuSign\Rest\Api\Envelopes;
 use PDF;
+use Log;
+use App\Models\Bands;
+use Illuminate\Support\Facades\Storage;
 
 class ContractsController extends Controller
 {
@@ -28,10 +31,10 @@ class ContractsController extends Controller
         //     ]);
             
             $envelope = [
-                // 'signer_email'=>'journey01282@gmail.com',
-                // 'signer_name'=>'Cory Landry',
-                // 'cc_email'=>'eddimull@yahoo.com',
-                // 'cc_name'=>'Eddie 2'
+                'signer_email'=>'eddimull@gmail.com',
+                'signer_name'=>'Eddie muller',
+                'cc_email'=>'eddimull@yahoo.com',
+                'cc_name'=>'Eddie 2'
                 ];
 
         
@@ -48,13 +51,27 @@ class ContractsController extends Controller
         // dd($test->envelopes);
         // $client->envelopes
 
-        $sent = $client->envelopes->createEnvelopeWithHttpInfo($this->make_envelope_from_docusign($envelope));
+        // $sent = $client->envelopes->createEnvelopeWithHttpInfo($this->make_envelope_from_docusign($envelope));
 
         // return $base64PDF;
         // dd($proposal);
-        dd($sent);
+        // dd($sent[0]['envelope_id']);
 
         // return View('contract',['proposal'=>$proposal]);
+
+        $proposal = Proposals::find(1);
+        $band = Bands::find($proposal->band_id);
+        $pdf = PDF::loadView('contract',['proposal'=>$proposal]);
+        $base64PDF = base64_encode($pdf->output());
+        // dd($proposal->name);
+        $imagePath = $band->site_name . '/' . $proposal->name . '_contract_' . time() . '.pdf';
+           
+        $path = Storage::disk('s3')->put($imagePath,
+        base64_decode($base64PDF),
+        ['visibility'=>'public']);
+        
+        dd(Storage::disk('s3')->url($imagePath));
+
     }
 
     private function make_envelope_from_docusign(array $args): EnvelopeDefinition
@@ -126,7 +143,9 @@ class ContractsController extends Controller
 
     public function webhook(Request $request)
     {
-        dd($request);
+        // dd($request);
+        Log::debug($request);
+        return response('got it');
     }
     /**
      * Show the form for creating a new resource.

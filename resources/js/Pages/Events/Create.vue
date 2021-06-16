@@ -75,7 +75,11 @@
                                         Venue Name
                                     </p>
                                     <p>
-                                        <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="venueName" placeholder="Venue Name" v-model="form.venue_name">
+                                        <input @input="unsavedChanges=true" type="text" @keyup="autoComplete()" placeholder="Venue Name" v-model="form.venue_name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                                    
+                                        <ul class="">
+                                            <li class="border-black my-4 p-4 bg-gray-200 hover:bg-gray-300 cursor-pointer" v-for="(result,index) in searchResults" :key="index" @click="getLocationDetails(result.place_id); form.venue_name = result.structured_formatting.main_text; searchResults = null">{{result.description}}</li>
+                                        </ul>
                                     </p>
                                 </div>
                                 <div v-if="form.event_type_id === 1" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -326,6 +330,9 @@
         },
         data(){
             return{
+                sessionToken : Math.floor(Math.random() * 1000000000),
+                searchResults:'',
+                searchTimer: null,
                 colors:[],
                 form:{
                     band_id:'',
@@ -410,6 +417,55 @@
                     this.form.rhythm_loadin_time = new Date(moment(String(this.form.quiet_time)).subtract('hour',3));
                     this.form.production_loadin_time = new Date(moment(String(this.form.quiet_time)).subtract('hour',4));
                 }
+            },
+
+            autoComplete(){
+                if(this.searchTimer){
+                    clearTimeout(this.searchTimer);
+                    this.searchTimer = null;
+                }
+                this.searchTimer = setTimeout(()=>{
+                    axios.post('/autocompleteLocation',{
+                        sessionToken:this.sessionToken,
+                        searchParams:this.form.venue_name,
+                    }).then((response)=>{
+                        this.searchResults = response.data.predictions
+                    })
+                },800)
+            },
+
+            getLocationDetails(place_id)
+            {
+                axios.get('/getLocation',{
+                    params:{
+                        place_id:place_id,
+                        sessionToken:this.sessionToken
+                    }
+                }).then((response)=>{
+                    const address_components = response.data.result.address_components;
+
+                    if(address_components.find(element => element.types.indexOf('street_number') !== -1))
+                    {
+                        this.form.address_street = address_components.find(element => element.types.indexOf('street_number') !== -1).long_name + ' ' + address_components.find(element => element.types.indexOf('route') !== -1).long_name;
+                    }
+                    else
+
+                    {
+                        this.form.address_street = address_components[0].long_name;
+                    }
+                    
+                    const stateName = address_components.find(element => element.types.indexOf('administrative_area_level_1') !== -1).long_name
+                    
+                    this.form.state_id = this.states.find(element => element.state_name === stateName).state_id;
+
+                    this.form.city = address_components.find(element => element.types.indexOf('locality') !== -1).long_name
+                    
+                    if(address_components.find(element => element.types.indexOf('postal_code') !== -1))
+                    {
+                        this.form.zip = address_components.find(element => element.types.indexOf('postal_code') !== -1).long_name
+                    }
+
+                })
             }
         }
     }

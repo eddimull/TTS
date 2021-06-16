@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BandEvents;
 use App\Models\Bands;
+use App\Models\Contracts;
 use App\Models\EventTypes;
 use App\Models\Proposal;
 use App\Models\ProposalContacts;
@@ -20,6 +21,7 @@ use App\Notifications\TTSNotification;
 use LaravelDocusign\Facades\DocuSign;
 use DocuSign\eSign\Model\EnvelopeDefinition;
 use PDF;
+use Illuminate\Support\Facades\Storage;
 
 class ProposalsController extends Controller
 {
@@ -170,6 +172,13 @@ class ProposalsController extends Controller
         return $googleResponse;
     }
 
+    public function searchDetails(Request $request)
+    {
+        $googleResponse = Http::get("https://maps.googleapis.com/maps/api/place/details/json?place_id=" . $request->place_id . "&key=" . $_ENV['GOOGLE_MAPS_API_KEY'] . '&sessiontoken=' . $request->sessionToken);
+    
+        return $googleResponse;
+    }
+
 
     public function accepted(Proposals $proposal)
     {
@@ -289,15 +298,32 @@ class ProposalsController extends Controller
         }
 
         $client = DocuSign::create();
-        $sent = $client->envelopes->createEnvelopeWithHttpInfo($this->make_envelope_from_docusign($proposal));
+        $pdf = PDF::loadView('contract',['proposal'=>$proposal]);
+        $base64PDF = base64_encode($pdf->output());
+
+        $sent = $client->envelopes->createEnvelopeWithHttpInfo($this->make_envelope_from_docusign($proposal,$base64PDF));
+
+        $imagePath = $band->site_name . '/' . $proposal->name . '_contract_' . time() . '.pdf';
+                
+        $path = Storage::disk('s3')->put($imagePath,
+        base64_decode($base64PDF),
+        ['visibility'=>'public']);
+
+        Contracts::create([
+            'proposal_id'=>$proposal->id,
+            'envelope_id'=>$sent[0]['envelope_id'],
+            'status'=>'sent',
+            'image_url'=>Storage::disk('s3')->url($imagePath)
+        ]);
+
+        
 
         return redirect('/proposals/' . $proposal->key . '/accepted')->with('successMessage','Proposal has been accepted. Await a finalized contract');
     }
 
-    private function make_envelope_from_docusign($proposal): EnvelopeDefinition
+    private function make_envelope_from_docusign($proposal,$base64PDF): EnvelopeDefinition
     {
-        $pdf = PDF::loadView('contract',['proposal'=>$proposal]);
-        $base64PDF = base64_encode($pdf->output());
+        
 
         # Create the envelope definition
         $envelope_definition = new \DocuSign\eSign\Model\EnvelopeDefinition([
