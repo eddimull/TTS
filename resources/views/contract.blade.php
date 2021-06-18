@@ -24,7 +24,11 @@ with <strong> {{ $proposal['proposal_contacts'][0]['name'] }} </strong> (hereina
                     <p class="text-xl font-bold my-2">Details of engagement:</p>
                     <div>
                         <ul>
-                            <li><span class="font-bold">Dates:</span> {{ date('Y/m/d',strtotime($proposal['date'])) }} </li>
+                            @if(count($proposal['recurring_dates']) > 0)
+                            <li><span class="font-bold">Dates:</span> {{ date('m/d/Y',strtotime($proposal['date'])) }}@foreach($proposal['recurring_dates'] as $date), {{ date('m/d/Y',strtotime($date['date'])) }}@endforeach</li>
+                            @else
+                            <li><span class="font-bold">Date:</span> {{ date('m/d/Y',strtotime($proposal['date'])) }} </li>
+                            @endif
                             <li><span class="font-bold">Performance Time:</span> {{ date('g:i A',strtotime($proposal['date'])) }}</li>
                             <li><span class="font-bold">Performance Length:</span> {{ $proposal['hours'] }} hours</li>
                             <li><span class="font-bold">Sound Check Time: </span> at least 1 hour before performance</li>

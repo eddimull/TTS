@@ -15,7 +15,6 @@
                                     <label :for="input.name">{{input.name}}</label>
                                 </p>
                                 <div v-if="['text','number'].indexOf(input.type) !== -1" class="mb-4">
-                                    <!-- <p-inputtext v-model="proposalData"></p-inputtext> -->
                                     <input @input="unsavedChanges=true" :type="input.type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :id="input.name" :placeholder="input.name" v-model="proposalData[input.field]">
                                 </div>
                                 <div v-if="input.type == 'location'" class="mb-4">
@@ -59,6 +58,26 @@
                                             <template v-else>{{slotProps.date.day}}</template>
                                         </template>
                                     </calendar>
+                                    <div v-for="(date,index) in recurringDates" :key="index">
+                                        <calendar v-on:date-select="unsavedChanges=true" v-model="recurringDates[index].date" :showTime="true" :disabledDates="getDisabledDates()" :step-minute="15" hourFormat="12">
+                                            <template #date="slotProps">
+                                                <strong v-if="findReservedDate(slotProps.date)" :title="findReservedDateName(slotProps.date)" class="rounded-full h-24 w-24 flex items-center justify-center bg-red-300">{{slotProps.date.day}}</strong>
+                                                <strong v-else-if="findProposedDate(slotProps.date)" :title="findProposedDateName(slotProps.date)" class="rounded-full h-24 w-24 flex items-center justify-center bg-yellow-300">{{slotProps.date.day}}</strong>
+                                                <template v-else>{{slotProps.date.day}}</template>
+                                            </template>
+                                        </calendar>    
+                                        <button
+                                            @click="recurringDates.splice(index,1)"
+                                            class="transform translate-y-1 bg-red-500 text-white active:bg-purple-600 font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150"
+                                            type="button">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </button>                                   
+                                    </div>
+                                    <div>
+                                        <button-component @click="addRecurringDate">Add another date</button-component>
+                                    </div>
                                 </div>
                                 <div v-if="input.type == 'eventTypeDropdown'">
                                     <select @change="unsavedChanges=true" v-model="proposalData[input.field]">
@@ -111,7 +130,7 @@
 import axios from 'axios'
 import { forEach } from 'lodash'
     export default {
-        props:['proposal','eventTypes','bookedDates','proposedDates'],
+        props:['proposal','eventTypes','bookedDates','proposedDates','recurringDates'],
         components: {
             BreezeAuthenticatedLayout,Datepicker,VueTimepicker,ButtonComponent
         }, 
@@ -195,6 +214,12 @@ import { forEach } from 'lodash'
         },
         created(){
             this.proposalData.date = new Date(moment(String(this.proposalData.date)))
+            for(let i in this.recurringDates)
+            {
+                
+                this.recurringDates[i].date = new Date(moment(String(this.recurringDates[i].date)))
+
+            }
         },
         methods:{
             findReservedDate(date)
@@ -298,6 +323,7 @@ import { forEach } from 'lodash'
             },
 
             updateProposal(){
+                this.proposalData.recurring_dates = this.recurringDates;
                 this.$inertia.patch('/proposals/' + this.proposal.key + '/update/',this.proposalData);
             },
             finalizeProposal(){
@@ -329,6 +355,10 @@ import { forEach } from 'lodash'
                     this.$inertia.post('/proposals/'+ this.proposal.key + '/finalize/');
                 }
             },
+
+            addRecurringDate(){
+                this.recurringDates.push({date: new Date(moment(String(this.proposalData.date)).add(this.recurringDates.length + 1,'days'))});
+            },
             
             deleteProposal(){
                  this.$swal.fire({
@@ -349,7 +379,6 @@ import { forEach } from 'lodash'
             },
 
             autoComplete(){
-                console.log('autocomplete');
                 if(this.searchTimer){
                     clearTimeout(this.searchTimer);
                     this.searchTimer = null;

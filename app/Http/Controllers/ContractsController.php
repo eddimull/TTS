@@ -59,20 +59,21 @@ class ContractsController extends Controller
         // dd($proposal);
         // dd($sent[0]['envelope_id']);
 
-        // return View('contract',['proposal'=>$proposal]);
-
+        
         $proposal = Proposals::find(1);
         $band = Bands::find($proposal->band_id);
-        $pdf = PDF::loadView('contract',['proposal'=>$proposal]);
-        $base64PDF = base64_encode($pdf->output());
+        return View('contract',['proposal'=>$proposal]);
+        // return 
+        // $pdf = PDF::loadView('contract',['proposal'=>$proposal]);
+        // $base64PDF = base64_encode($pdf->output());
         // dd($proposal->name);
-        $imagePath = $band->site_name . '/' . $proposal->name . '_contract_' . time() . '.pdf';
+        // $imagePath = $band->site_name . '/' . $proposal->name . '_contract_' . time() . '.pdf';
            
-        $path = Storage::disk('s3')->put($imagePath,
-        base64_decode($base64PDF),
-        ['visibility'=>'public']);
+        // $path = Storage::disk('s3')->put($imagePath,
+        // base64_decode($base64PDF),
+        // ['visibility'=>'public']);
         
-        dd(Storage::disk('s3')->url($imagePath));
+        // dd(Storage::disk('s3')->url($imagePath));
 
     }
 

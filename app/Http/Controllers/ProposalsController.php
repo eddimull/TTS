@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Models\Proposals;
+use App\Models\recurring_proposal_dates;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
@@ -94,11 +95,13 @@ class ProposalsController extends Controller
 
         compact($proposal->proposal_contacts);
         $eventTypes = EventTypes::all();
+
         return Inertia::render('Proposals/Edit',[
             'proposal'=>$proposal,
             'eventTypes'=>$eventTypes,
             'bookedDates'=>$bookedDates,
-            'proposedDates'=>$proposedDates
+            'proposedDates'=>$proposedDates,
+            'recurringDates'=>$proposal->recurring_dates
         ]);
     }
 
@@ -117,7 +120,8 @@ class ProposalsController extends Controller
             'proposal'=>$proposal,
             'eventTypes'=>$eventTypes,
             'bookedDates'=>$bookedDates,
-            'proposedDates'=>$proposedDates
+            'proposedDates'=>$proposedDates,
+            'recurringDates'=>$proposal->recurring_dates
         ]);
     }
 
@@ -226,6 +230,36 @@ class ProposalsController extends Controller
         $proposal->location = $request->location;
         $proposal->event_type_id = $request->event_type_id;
         $proposal->save();
+        
+        $noTouchy = []; 
+
+        foreach($request->recurring_dates as $date)
+        {
+            if(empty($date->propsal_id))
+            {
+                $recurringDate = recurring_proposal_dates::create([
+                    'proposal_id'=>$proposal->id,
+                    'date'=>date('Y-m-d H:i:s',strtotime($date['date']))
+                ]);
+                
+            }
+            else
+            {
+                $recurringDate = recurring_proposal_dates::find($date->id);
+                $recurringDate->date = date('Y-m-d H:i:s',strtotime($date['date']));
+                $recurringDate->save();
+            }
+            $noTouchy[] = $recurringDate->id;
+        }
+
+        foreach($proposal->recurring_dates as $date)
+        {
+            if(!in_array($date->id,$noTouchy))
+            {
+                $date->delete();
+            }
+        }
+        
 
         return redirect()->route('proposals')->with('successMessage', $proposal->name . ' was successfully updated');
     }

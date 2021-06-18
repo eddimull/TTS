@@ -113,14 +113,18 @@
                     <div class="my-8">Sending...</div>
                 </div>
                 <div v-else>
-                    <div v-for="(field,index) in showFields" :key="index" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                    <div v-for="(field,index) in showFields.filter(field=>Array.isArray(activeProposal[field.property]) ? activeProposal[field.property].length > 0 : activeProposal[field.property])" :key="index" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                        
                         <p class="text-gray-600">
                             <label for="name">{{field.name}}</label>
                         </p>
-                        <div class="mb-4">
+                        <div class="mb-4" v-if="Array.isArray(activeProposal[field.property])">
+                            <ul>
+                                <li v-for="(property,index) in activeProposal[field.property]" :key="index">{{property[field.subProperty]}}</li>
+                            </ul>
+                        </div>
+                        <div v-else class="mb-4">
                             {{ field.subProperty ? activeProposal[field.property][field.subProperty] : activeProposal[field.property]}}
-                            <!-- <p-inputtext v-model="form.event_name"></p-inputtext>
-                            <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="name" placeholder="Event Name" v-model="form.event_name"> -->
                         </div>
                     </div>
                     <div :class="['md:grid', 'md:grid-cols-2', 'hover:bg-gray-50', 'md:space-y-0', 'space-y-1', 'p-4']">
@@ -217,6 +221,7 @@
                 showFields:[
                     {name:'Author',property:'author',subProperty:'name'},
                     {name:'Proposed Date/Time',property:'date'},
+                    {name:'Recurring dates',property:'recurring_dates',subProperty:'date'},
                     {name:'Event Type',property:'event_type',subProperty:'name'},
                     {name:'Location',property:'location'},
                     {name:'Hours',property:'hours'},
