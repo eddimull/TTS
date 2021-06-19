@@ -95,7 +95,6 @@ Route::post('/inviteOwner/{band_id}','InvitationsController@createOwner')->middl
 Route::post('/inviteMember/{band_id}','InvitationsController@createMember')->middleware(['auth','verified'])->name('invite.createMember');
 Route::delete('/deleteInvite/{band}/{invitations}','InvitationsController@destroy')->middleware(['auth','verified'])->name('invite.delete');
 
-Route::any('/docusignWebhook/','ContractsController@webhook')->name('contracts.webhook')->withoutMiddleware([\App\Http\Middleware\VerifyCsrfToken::class]);
 
 Route::get('/contracts','ContractsController@index')->name('contracts');
 

@@ -123,6 +123,9 @@
                                 <li v-for="(property,index) in activeProposal[field.property]" :key="index">{{property[field.subProperty]}}</li>
                             </ul>
                         </div>
+                        <div v-if="field.property == 'contract'">
+                            <a :href="activeProposal[field.property][field.subProperty]" download>{{ field.subProperty ? activeProposal[field.property][field.subProperty] : activeProposal[field.property]}}</a>
+                        </div>
                         <div v-else class="mb-4">
                             {{ field.subProperty ? activeProposal[field.property][field.subProperty] : activeProposal[field.property]}}
                         </div>
@@ -229,7 +232,8 @@
                     {name:'Color',property:'color'},
                     {name:'Locked',property:'locked'},
                     {name:'Notes',property:'notes'},
-                    {name:'Created',property:'created_at'}
+                    {name:'Created',property:'created_at'},
+                    {name:'Contract PDF',property:'contract',subProperty:'image_url'}
                 ],
                 proposalData:{
                     name:'',

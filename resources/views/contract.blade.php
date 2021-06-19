@@ -10,7 +10,7 @@
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap">
     </head>
     <body style="size: legal; width: 1280px;" class="font-sans antialiased">
-        <div class="border-2 min-w-full max-w-7xl mx-auto sm:px-6 lg:px-8 background-gray-400">
+        <div class="min-w-full max-w-7xl mx-auto sm:px-6 lg:px-8">
                <div class="my-4 max-w-md flex justify-center align-center mx-auto">
                 <img src="{{ url($proposal['band']['logo']) }}" />
                 </div>
@@ -201,7 +201,7 @@ shall be in form of <strong>check, money order, Chase Quick Pay, Venmo, cashierâ
                         <strong class="underline">{{ $proposal['proposal_contacts'][0]['name'] }}</strong> - <strong>{{ date('m/d/Y') }}</strong>
                     </div>
                     <div class="my-8">
-                        Signature:
+                        Signature:  {signature:user____________}
                     </div>
                 </div>                                              
         </div>

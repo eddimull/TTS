@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\Pivot;
 class Proposals extends Pivot
 {
     protected $table = 'proposals';
-    protected $with = ['band','proposal_contacts','phase','author','event_type','recurring_dates'];
+    protected $with = ['band','proposal_contacts','phase','author','event_type','recurring_dates','contract'];
 
 
 
@@ -16,6 +16,10 @@ class Proposals extends Pivot
         return $this->belongsTo(Bands::class);
     }
 
+    public function contract()
+    {
+        return $this->hasOne(Contracts::class,'proposal_id');
+    }
 
     public function proposal_contacts()
     {
