@@ -52,6 +52,7 @@ Route::patch('/bands/{band}', 'BandsController@update')->middleware(['auth', 've
 Route::delete('/bands/{band}', 'BandsController@destroy')->middleware(['auth', 'verified'])->name('bands.destroy');
 Route::delete('/deleteOwner/{band}/{owner}','BandsController@deleteOwner')->middleware(['auth','verified'])->name('bands.deleteOwner');
 Route::post('/bands/{band}/uploadLogo','BandsController@uploadLogo')->middleware(['auth', 'verified'])->name('bands.uploadLogo');
+Route::get('/bands/{band}/setupStripe','BandsController@setupStripe')->middleware(['auth', 'verified'])->name('bands.setupStripe');
 
 
 Route::get('/events', 'EventsController@index')->middleware(['auth', 'verified'])->name('events');

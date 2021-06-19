@@ -40,7 +40,14 @@
                                 <li>Copy the calendar ID and paste it in above</li>
                             </ol>
                         </p>
-                    </div>                 
+                    </div>     
+                    <div class="mb-4">
+                        <a :href="'/bands/' + band.id + '/setupStripe'">
+                            <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="button">
+                                Setup Stripe 
+                            </button>
+                        </a>
+                    </div>            
                     <div class="flex items-center justify-between">
                         <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">
                             Update 

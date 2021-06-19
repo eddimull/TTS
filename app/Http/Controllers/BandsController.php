@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Bands;
 use App\Models\BandOwners;
+use App\Models\stripe_accounts;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Notifications\TTSNotification;
@@ -200,5 +201,28 @@ class BandsController extends Controller
 
         return back()->withErrors('You do not have privileges to update the logo for this band');
         
+    }
+
+    public function setupStripe(Bands $band, Request $request)
+    {
+        \Stripe\Stripe::setApiKey(env('STRIPE_KEY'));
+
+        $account = \Stripe\Account::create([
+        'type' => 'standard',
+        ]);
+
+        $account_links = \Stripe\AccountLink::create([
+            'account' => $account->id,
+            'refresh_url' => url('/login'),
+            'return_url' =>url('/bands/' . $band->id . '/edit'),
+            'type' => 'account_onboarding',
+          ]);
+        
+        stripe_accounts::create([
+            'band_id'=>$band->id,
+            'stripe_account_id'=>$account->id,
+            'status'=>'incomplete'
+        ]);
+        return \Redirect::away($account_links->url);
     }
 }
