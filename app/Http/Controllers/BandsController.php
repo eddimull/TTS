@@ -24,7 +24,7 @@ class BandsController extends Controller
         // $bands = Bands::select('bands.*')->join('band_owners','bands.id','=','band_owners.band_id')->where('user_id',Auth::id())->get();
         $user = Auth::user();
         // $bandOwner = $user->ban
-        // ddd(Auth::id());
+        
         return Inertia::render('Band/Index',[
             'bands'=>$user->bandOwner
         ]);
@@ -100,7 +100,7 @@ class BandsController extends Controller
            compact($member->user);
         }
         compact($band->pendingInvites);
-
+        compact($band->stripe_accounts);
         return Inertia::render('Band/Edit',[
             'band' => $band
         ]);

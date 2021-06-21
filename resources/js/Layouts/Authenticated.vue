@@ -27,7 +27,10 @@
                                 </breeze-nav-link> 
                                 <breeze-nav-link :href="route('proposals')" :active="route().current('proposals')">
                                     Proposals
-                                </breeze-nav-link>                                 
+                                </breeze-nav-link>       
+                                <breeze-nav-link :href="route('invoices')" :active="route().current('invoices')">
+                                    Invoices
+                                </breeze-nav-link>                             
                                 <breeze-nav-link :href="route('colors')" :active="route().current('colors')">
                                     Colors
                                 </breeze-nav-link>                    
@@ -114,6 +117,9 @@
                         </breeze-responsive-nav-link> 
                         <breeze-responsive-nav-link :href="route('proposals')" :active="route().current('proposals')">
                             Proposals
+                        </breeze-responsive-nav-link> 
+                        <breeze-responsive-nav-link :href="route('invoices')" :active="route().current('invoices')">
+                            Invoices
                         </breeze-responsive-nav-link> 
                         <breeze-responsive-nav-link :href="route('colors')" :active="route().current('colors')">
                             Colors

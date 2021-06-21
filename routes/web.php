@@ -89,6 +89,9 @@ Route::delete('/proposals/deleteContact/{contact}', 'ProposalsController@deleteC
 Route::post('/autocompleteLocation','ProposalsController@searchLocations')->middleware(['auth','verified'])->name('proposals.search');
 Route::get('/getLocation','ProposalsController@searchDetails')->middleware(['auth','verified'])->name('proposals.search');
 
+Route::get('/invoices','InvoicesController@index')->middleware((['auth','verified']))->name('invoices');
+Route::post('/invoices/{proposal:key}/send','InvoicesController@create')->middleware((['auth','verified']))->name('invoices.create');
+
 Route::get('/images/{uri}','ImageController@index');
 Route::get('/images/{band_site}/{uri}','ImageController@siteImages');
 

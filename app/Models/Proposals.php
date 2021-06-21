@@ -30,6 +30,11 @@ class Proposals extends Pivot
     {
         return $this->hasMany(recurring_proposal_dates::class,'proposal_id');
     }
+    
+    public function invoices()
+    {
+        return $this->hasMany(Invoices::class,'proposal_id');
+    }
 
     public function phase()
     {

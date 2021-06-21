@@ -41,13 +41,16 @@
                             </ol>
                         </p>
                     </div>     
-                    <div class="mb-4">
+                    <div class="mb-4" v-if="!band.stripe_accounts">
                         <a :href="'/bands/' + band.id + '/setupStripe'">
                             <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="button">
                                 Setup Stripe 
                             </button>
                         </a>
                     </div>            
+                    <div class="mb-4" v-else>
+                        <p class="text-green-500">Stripe account setup</p>
+                    </div>
                     <div class="flex items-center justify-between">
                         <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">
                             Update 

@@ -4,6 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Invoices;
 use Illuminate\Http\Request;
+use App\Models\EventTypes;
+use App\Models\BandEvents;
+use App\Models\Proposals;
+use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
+
 
 class InvoicesController extends Controller
 {
@@ -14,7 +20,16 @@ class InvoicesController extends Controller
      */
     public function index()
     {
-        //
+        $user = Auth::user();
+        $bands = $user->bandOwner;
+                   
+        $eventTypes = EventTypes::all();
+        $proposals = Proposals::where('band_id','=',$bands[0]->id)->where('phase_id','=',6)->with('invoices')->get();
+        // dd($proposals);
+        return Inertia::render('Invoices/Index',[
+            'proposals'=>$proposals,
+            'eventTypes'=>$eventTypes
+        ]);
     }
 
     /**
@@ -22,9 +37,9 @@ class InvoicesController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function create()
+    public function create(Proposals $proposal, Request $request)
     {
-        //
+        dd($proposal);
     }
 
     /**
