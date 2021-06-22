@@ -72,8 +72,8 @@ shall be in form of <strong>check, money order, Chase Quick Pay, Venmo, cashierâ
                     elects to pay via Chase Quick Pay, Venmo, or credit card, payment shall be made to {{ $proposal['band']['name'] }}
                     ten (10) days prior to the Performance. (Additional fees may apply to credit card payments.)</strong> In the event
                     that Buyer requests that Artist perform past the end time set forth in this Agreement, and Artist chooses
-                    continue performing, Buyer shall pay Artist <strong>${{ number_format(($proposal['price']/$proposal['hours'])*1.5,2) }}</strong> directly for each additional sixty minutes of the
-                    Performance, payable immediately following the Performance. 
+                    to continue performing, Buyer shall pay Artist <strong>${{ number_format(($proposal['price']/$proposal['hours'])*1.5,2) }}</strong> directly for each additional sixty minutes of the
+                    Performance, limited to one additional hour, payable immediately following the Performance. 
                     </p>
                 </div>
                 <div class="my-3">

@@ -39,7 +39,19 @@ class InvoicesController extends Controller
      */
     public function create(Proposals $proposal, Request $request)
     {
-        dd($proposal);
+        $stripe = new \Stripe\StripeClient(env('STRIPE_KEY'));
+          
+        if($proposal->stripe_customers->count() == 0)
+        {
+            foreach($proposal->proposal_contacts as $contact)
+            {
+                $stripe->customers->create([
+                    'description' => 'Customer for ' . $proposal->name,
+                    'email'=>$contact->email,
+                    'name'=>$contact->name
+                  ]);
+            }
+        }
     }
 
     /**

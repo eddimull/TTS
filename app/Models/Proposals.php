@@ -51,6 +51,10 @@ class Proposals extends Pivot
         return $this->belongsTo(EventTypes::class);
     }
 
+    public function stripe_customers()
+    {
+        return $this->hasMany(stripe_customers::class,'proposal_id');
+    }
 
 
 
