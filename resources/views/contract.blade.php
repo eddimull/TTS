@@ -55,8 +55,8 @@ shall be in form of <strong>check, money order, Chase Quick Pay, Venmo, cashierâ
                     <div class="mb-3">
                         <ul>
                             <li>{{ $proposal['band']['name'] }}</li>
-                            <li>Address</li>
-                            <li>City State Zip</li>
+                            <li>100 Desire</li>
+                            <li>Lafayette, LA 70506</li>
                         </ul>
                     </div>
                     <p class="mb-3">
