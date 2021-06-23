@@ -34,10 +34,9 @@
                                 </div>
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                                     <p class="text-gray-600">
-                                        <label for="name">Name</label>
+                                        <label for="name">Event Name</label>
                                     </p>
                                     <div class="mb-4">
-                                        <p-inputtext v-model="form.event_name"></p-inputtext>
                                         <input type="text" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="name" placeholder="Event Name" v-model="form.event_name">
                                     </div>
                                 </div>
@@ -71,7 +70,35 @@
                                     <p>
                                         <input type="checkbox" v-model="form.backline_provided" />
                                     </p>
-                                </div>                                 
+                                </div>       
+                                <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                                    <p class="text-gray-600">
+                                        Contacts
+                                    </p>
+                                    <div>
+                                        <ul class="hover:bg-gray-100 cursor-pointer" @click="form.event_contacts.forEach(tempContact=>tempContact.editing = false); if(!contact.editing){ contact.editing = true }" v-for="contact in form.event_contacts" :key="contact.id">
+                                            <li v-if="!contact.editing">Name: {{contact.name}}</li>
+                                            <li v-if="!contact.editing">Phone: {{contact.phonenumber}} </li>
+                                            <li v-if="!contact.editing">Email: {{contact.email}} </li>
+                                            <li v-if="contact.editing">Name: <input :class="inputClass" required type="text" v-model="contact.name"/></li>
+                                            <li v-if="contact.editing">Phone: <input :class="inputClass" type="tel" v-model="contact.phonenumber"/></li>
+                                            <li v-if="contact.editing">Email: <input :class="inputClass" type="email" v-model="contact.email"/></li>
+                                            <li v-if="contact.editing">
+                                                <button-component @click.stop="updateContact(contact)" :type="'button'">Save</button-component>
+                                                <button-component v-on:click.stop="contact.editing = false" :type="'button'">Cancel</button-component>
+                                                <button-component @click.stop="removeContact(contact)" :type="'button'">Delete</button-component>
+                                            </li>
+                                        </ul>
+                                        <ul v-if="showCreateNewContact">
+                                            <li>Name: <input :class="inputClass" required type="text" v-model="newContact.name"/></li>
+                                            <li>Phone: <input :class="inputClass" type="tel" v-model="newContact.phonenumber"/></li>
+                                            <li>Email: <input :class="inputClass" type="email" v-model="newContact.email"/></li>
+                                        </ul>
+                                        <button-component v-if="!showCreateNewContact" :type="'button'" @click="showCreateNewContact = true">Create New</button-component>
+                                        <button-component v-if="showCreateNewContact" :type="'button'" @click="showCreateNewContact = false">Cancel</button-component>
+                                        <button-component v-if="showCreateNewContact" :type="'button'" @click="saveContact">Save</button-component>
+                                    </div>
+                                </div>                                                          
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                                     <p class="text-gray-600">
                                         Venue Name
@@ -292,7 +319,7 @@
                                     <p>
                                         <input type="checkbox" v-model="form.second_line"/>
                                     </p>
-                                </div>                                                                                                                                            
+                                </div>                                                                                                                                             
                             </div>
                         </div>
                     <div class="flex items-center justify-between">
@@ -315,21 +342,42 @@
     import Datepicker from 'vue3-datepicker'
     import VueTimepicker from 'vue3-timepicker'
     import 'vue3-timepicker/dist/VueTimepicker.css'
+    import ButtonComponent from '@/Components/Button'
     import moment from 'moment';
     export default {
         props:['event','eventTypes','bands','states','errors'],
         components: {
-            BreezeAuthenticatedLayout,Datepicker,VueTimepicker
+            BreezeAuthenticatedLayout,Datepicker,VueTimepicker,ButtonComponent
         }, 
         data(){
             return{
                 sessionToken : Math.floor(Math.random() * 1000000000),
                 searchResults:'',
                 searchTimer: null,
+                showCreateNewContact:false,
+                newContact:{
+                    name:'',
+                    phonenumber:'',
+                    email:''
+                },
+                inputClass:[
+                    'shadow',
+                    'appearance-none',
+                    'border',
+                    'rounded ',
+                    'w-full ',
+                    'py-2 ',
+                    'px-3 ',
+                    'text-gray-700 ',
+                    'leading-tight ',
+                    'focus:outline-none ',
+                    'focus:shadow-outline'
+                ],
                 form:{
                     band_id:this.event.band_id,
                     event_name:this.event.event_name,
                     venue_name:this.event.venue_name,
+                    event_contacts:this.event.event_contacts,
                     first_dance:this.event.first_dance,
                     father_daughter:this.event.father_daughter,
                     mother_groom:this.event.mother_groom,
@@ -453,7 +501,33 @@
                     .then(()=>{
                         // alert('created');
                     })
-            }
+            },
+            saveContact(){
+               this.$inertia.post('/events/createContact/' + this.event.event_key,this.newContact,{preserveScroll:true,onSuccess:(data)=>{
+                //    console.log(data);
+                   this.newContact.name = '';
+                   this.newContact.phonenumber = '';
+                   this.newContact.email = '';
+                   this.showCreateNewContact = false;
+                   this.form.event_contacts = data.props.event.event_contacts;
+               }})
+            },
+            updateContact(contact){
+                // console.log(contact);
+                this.$inertia.post('/events/editContact/' + contact.id,contact,{preserveScroll:true}).then(()=>{
+                    contact.editing = false;
+                });
+            },
+            removeContact(contact){
+                this.$inertia.delete('/events/deleteContact/' + contact.id,{preserveScroll:true}).then(data=>{
+                    this.form.event_contacts = this.form.event_contacts.filter(propContact=>{
+                        return propContact.id !== contact.id;
+                    })
+                });
+            },
+            hideContactEdits(){
+                this.form.event_contacts.forEach(tempContact=>tempContact.editing = false)
+            },            
         }
     }
 </script>

@@ -65,6 +65,9 @@ Route::delete('/events/{key}', 'EventsController@destroy')->middleware(['auth', 
 Route::get('/events/createAdvance/{id}','EventsController@createPDF')->middleware(['auth', 'verified']);
 Route::get('/events/downloadPDF/{id}','EventsController@downloadPDF')->middleware(['auth', 'verified']);
 Route::get('/events/{event:event_key}/locationImage','EventsController@getGoogleMapsImage')->name('events.locationImage');
+Route::post('/events/createContact/{event:event_key}', 'EventsController@createContact')->middleware(['auth', 'verified'])->name('events.createContact');
+Route::post('/events/editContact/{contact}', 'EventsController@editContact')->middleware(['auth', 'verified'])->name('events.editContact');
+Route::delete('/events/deleteContact/{contact}', 'EventsController@deleteContact')->middleware(['auth', 'verified'])->name('events.deleteContact');
 
 
 Route::get('/colors','ColorsController@index')->middleware(['auth', 'verified'])->name('colors');

@@ -44,6 +44,13 @@
                     </tr>
                     <tr>
                         <td class="w-1/6">&nbsp;</td>
+                        <td class="border border-black border-2 px-4 py-2 w-1/6 bg-gray-200">Apple Maps:</td>
+                        <td class="border border-black border-2 px-4 py-2">
+                           <a href="https://maps.apple.com/?q={{urlencode($event['venue_name'] . ' ' . $event['address_street'] . ' ' . $event['city'] . ', ' . $event['state']['state_name'] . ' ' . $event['zip'])}}">https://maps.apple.com/?q={{urlencode($event['venue_name'] . ' ' . $event['address_street'] . ' ' . $event['city'] . ', ' . $event['state']['state_name'] . ' ' . $event['zip'])}}</a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="w-1/6">&nbsp;</td>
                         <td class="border border-black border-2 px-4 py-2 w-1/6 bg-gray-200">Contact:</td>
                         <td class="border border-black border-2 px-4 py-2">
                             

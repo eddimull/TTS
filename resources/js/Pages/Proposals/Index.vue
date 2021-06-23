@@ -246,7 +246,7 @@
                 loading:false,
                 draftInputs:[
                     {
-                        name:'Name',
+                        name:'Name of the gig',
                         type:'text',
                         field:'name'
                     },

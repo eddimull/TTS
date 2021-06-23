@@ -7,6 +7,7 @@ use App\Models\State;
 use App\Models\Bands;
 use App\Models\BandEvents;
 use App\Models\BandOwners;
+use App\Models\EventContacts;
 use App\Models\Proposals;
 use Carbon\Carbon;
 use PDF;
@@ -243,6 +244,7 @@ class EventsController extends Controller
             $colors = $band->colorways;
             $band->colors = $colors;
         }
+
         return Inertia::render('Events/Edit',[
             'event'=>$event,
             'eventTypes' => $eventTypes,
@@ -393,5 +395,43 @@ class EventsController extends Controller
 
         $event->delete();
         return redirect()->route('events')->with('successMessage',$event->event_name . ' was successfully deleted');
+    }
+
+
+    public function createContact(Request $request, BandEvents $event)
+    {
+        $request->validate([
+            'name'=>'required',
+            'email'=>'required|email:rfc,dns'
+        ]);
+
+        EventContacts::create([
+            'event_id'=>$event->id,
+            'email'=>$request->email,
+            'phonenumber'=>$request->phonenumber,
+            'name'=>$request->name
+        ]);
+
+        return back()->with('successMessage','Added ' . $request->name . ' as contact');
+    }
+
+
+    public function editContact(Request $request, EventContacts $contact)
+    {
+        $request->validate([
+            'name'=>'required',
+            'email'=>'required|email:rfc,dns'
+        ]);
+        $contact->email = $request->email;
+        $contact->name = $request->name;
+        $contact->phonenumber = $request->phonenumber;
+        $contact->save();
+        return back()->with('successMessage','Updated ' . $contact->name);
+    }
+
+    public function deleteContact(EventContacts $contact)
+    {
+        $contact->delete();
+        return back()->with('successMessage','Removed Contact');
     }
 }

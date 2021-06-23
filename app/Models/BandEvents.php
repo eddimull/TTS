@@ -50,6 +50,9 @@ class BandEvents extends Model
 
     ];
 
+
+    protected $with = ['band','event_contacts','event_type'];
+
     public function event_type()
     {
         return $this->hasOne(EventTypes::class,'id','event_type_id');
@@ -68,6 +71,11 @@ class BandEvents extends Model
     public function state()
     {
         return $this->hasOne(State::class,'state_id','state_id');
+    }
+
+    public function event_contacts()
+    {
+        return $this->hasMany(EventContacts::class,'event_id');
     }
 }
 
