@@ -2,6 +2,8 @@
 
 namespace App\Console;
 
+use App\Mail\EventReminder;
+use App\Models\BandEvents;
 use App\Models\Contracts;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
@@ -10,6 +12,8 @@ use App\Models\User;
 use App\Notifications\TTSNotification;
 use Symfony\Component\ErrorHandler\Debug;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Mail;
 
 class Kernel extends ConsoleKernel
 {
@@ -81,6 +85,24 @@ class Kernel extends ConsoleKernel
                 }
             }
         })->everyMinute();
+
+
+        $schedule->call(function(){
+            $BandEvents = BandEvents::whereDate('event_time', Carbon::today())->get();
+            
+            foreach($BandEvents as $event)
+            {
+
+                $band = $event->band;
+                $bandOwners = $band->owners;
+                
+                foreach($bandOwners as $owner)
+                {
+                    $owneruser = $owner->user;
+                    Mail::to($owneruser->email)->send(new EventReminder($event));
+                }
+            }
+        })->dailyAt('9:00');
     }
 
     /**

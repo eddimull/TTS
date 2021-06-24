@@ -202,7 +202,10 @@
                                         Pay $
                                     </p>
                                     <p>
-                                        <input type="number" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="pay" placeholder="0" v-model="form.pay">
+                                        <currency-input 
+                                            v-model.lazy="value"
+                                            v-model="form.pay"
+                                        />
                                     </p>
                                 </div>
                                 <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -343,11 +346,12 @@
     import VueTimepicker from 'vue3-timepicker'
     import 'vue3-timepicker/dist/VueTimepicker.css'
     import ButtonComponent from '@/Components/Button'
+    import CurrencyInput from '@/Components/CurrencyInput'
     import moment from 'moment';
     export default {
         props:['event','eventTypes','bands','states','errors'],
         components: {
-            BreezeAuthenticatedLayout,Datepicker,VueTimepicker,ButtonComponent
+            BreezeAuthenticatedLayout,Datepicker,VueTimepicker,ButtonComponent,CurrencyInput
         }, 
         data(){
             return{
