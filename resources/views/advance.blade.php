@@ -192,13 +192,22 @@
                             {{$event['notes']}}
                         </td>                                                    
                     </tr>       
-                    <tr v-if="($event.lodging)">
+                    
+                    <tr>
                         <td class="w-1/6">&nbsp;</td>
                         <td class="border border-black border-2 px-4 py-2 w-1/6 bg-gray-200">Lodging:</td>
+                        @if($event['lodging'])
                         <td class="border border-black border-2 px-4 py-2">
                             There will be lodging.
                         </td>                                                    
-                    </tr>    
+                        @else
+                        <td class="border border-black border-2 px-4 py-2">
+                            👎
+                        </td>                                                    
+                        @endif  
+
+
+                    </tr>  
                     <tr>
                         <td class="w-1/6">&nbsp;</td>
                         <td class="border border-black border-2 px-4 py-2 w-1/6 bg-gray-200">Outside:</td>
