@@ -5,11 +5,13 @@
                 <div class="flex flex-col bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
                     <div class="flex my-3">Hello</div>
                     <div class="flex my-3">Who are we speaking with today?</div>
-                    <div class="flex my-3">
-                        <input class="w-full" v-model="person" type="text"/>
-                    </div>
-                    <div class="flex my-3 justify-center">
-                        <Button @click="savePerson" :disabled="person === ''" label="Submit" icon="pi pi-user" iconPos="right" />
+                    <div v-on:keyup.enter="savePerson">
+                        <div class="flex my-3">
+                            <input class="w-full" v-model="person" type="text"/>
+                        </div>
+                        <div class="flex my-3 justify-center">
+                            <Button @click="savePerson" type="button" :disabled="person === ''" label="Submit" icon="pi pi-user" iconPos="right" />
+                        </div>
                     </div>
                 </div>
             </div>

@@ -154,11 +154,17 @@
             </template>
             <template #footerBody>
                 <div class="flex-auto">
-                    <button v-if="activeProposal.phase_id == 2" @click="sendIt()" type="button" class="mx-2 bg-green-500 hover:bg-green-600 px-4 py-2 rounded text-white focus:outline-none">
+                    <button v-if="activeProposal.phase_id == 2" :disabled="loading" @click="sendIt()" type="button" class="mx-2 bg-green-500 hover:bg-green-600 px-4 py-2 rounded text-white focus:outline-none">
                         <svg xmlns="http://www.w3.org/2000/svg" class="inline h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                         </svg>
                         Send It!
+                    </button>
+                    <button v-if="activeProposal.phase_id == 3" :disabled="loading" @click="sendIt()" type="button" class="mx-2 bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded text-white focus:outline-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="inline h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        Resend it
                     </button>
                 </div>
             </template>
@@ -382,12 +388,13 @@
                 this.$inertia.post('/proposals/' + this.activeBandSite + '/create',this.proposalData);
             },
             sendIt(){
-                this.activeProposal.phase_id = 3;
+                
                 this.loading = true;
                 setTimeout(()=>{
 
                     this.$inertia.post('/proposals/' + this.activeProposal.key + '/sendit',{},{
                         onSuccess:()=>{
+                            this.activeProposal.phase_id = 3;
                             this.loading = false;
                         this.toggleModal();
                         }

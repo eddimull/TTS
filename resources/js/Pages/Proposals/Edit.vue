@@ -19,7 +19,6 @@
                                 </div>
                                 <div v-if="input.type == 'currency'" class="mb-4">
                                     <currency-input
-                                    v-model.lazy="value"
                                      v-model="proposalData[input.field]"
                                     />
                                 </div>
