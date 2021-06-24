@@ -12,14 +12,13 @@
             'flex',
             'justify-center',
             'items-start',
-            'md:items-center',
-            'pt-10',
-            'md:pt-']">
+            'items-center',
+            'pt-10']">
 
         <div class="absolute w-full h-full" v-on:click="closeModal()">&nbsp;</div>
         <!-- modal -->
         <transition name="slide-down" appear>
-          <div id="modal" v-if="show" :class="['flex','flex-col','transform','relative','w-10/12','md:w-1/2','h-5/6','md:h-3/4','bg-white','rounded','shadow-lg','transition-opacity','transition-transform','duration-300']">
+          <div id="modal" v-if="show" :class="['flex','flex-col','transform','relative','w-10/12','h-5/6','max-w-2xl','bg-white','rounded','shadow-lg','transition-opacity','transition-transform','duration-300']">
 
               <!-- button close -->
               <button 

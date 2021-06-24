@@ -73,22 +73,23 @@
                 <h1>{{activeProposal.name}}</h1>
             </template>
             <template #headerBody>
-                <div class="mx-4 mb-1 p-4 w-11/12 flex flex-row">
+                <div class="mx-4 mb-1 md:mb-4 p-4 w-11/12 flex flex-row">
                 <div class="flex items-center flex-grow" v-for="(phase,index) in proposal_phases" :key="phase.id">
                      
                         <div :class="['flex', 'items-center', {
                                 'text-purple-500':phase.id <= activeProposal.phase_id,
                                 'text-gray-500':phase.id > activeProposal.phase_id
                                 }, 'relative']">
-                        <div v-html="phase.icon" :class="['rounded-full', 'transition', 'duration-1000', 'ease-in-out', 'h-12', 'w-12', 'py-3', 'border-2', 
+                        <div v-html="phase.icon" :title="phase.name" :class="['rounded-full', 'transition', 'duration-1000', 'ease-in-out', 'h-10', 'w-10','md:h-12','md:w-12', 'py-3', 'border-2', 
                                                             {
                                                                 'border-purple-500':phase.id <= activeProposal.phase_id,
                                                                 'border-gray-300':phase.id > activeProposal.phase_id
                                                             }
                                                         ]">
                         </div>
-                        <div :class="['hidden', 'lg:block', 'absolute', 'top-0', '-ml-10', 'text-center', 'mt-16', 'w-32', 'text-xs', 'font-medium', 'uppercase', 
+                        <div :class="['hidden', 'md:block', 'absolute', 'top-0','left-0', 'text-center', 'mt-12', 'text-xs', 'font-medium', 'uppercase', 
                                         {
+                                            '-ml-2':phase.id > 1,
                                             'text-purple-500':phase.id <= activeProposal.phase_id,
                                             'text-gray-500':phase.id > activeProposal.phase_id
                                         }   
@@ -123,8 +124,15 @@
                                 <li v-for="(property,index) in activeProposal[field.property]" :key="index">{{property[field.subProperty]}}</li>
                             </ul>
                         </div>
-                        <div v-if="field.property == 'contract'">
-                            <a :href="activeProposal[field.property][field.subProperty]" download>{{ field.subProperty ? activeProposal[field.property][field.subProperty] : activeProposal[field.property]}}</a>
+                        <div class="overflow-ellipsis text-blue-500" v-if="field.property == 'contract'">
+                            <a target="_blank" :href="activeProposal[field.property][field.subProperty]" download>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z" clip-rule="evenodd" />
+                                </svg> Download Contract
+                            </a>
+                        </div>
+                        <div v-else-if="field.property == 'price'">
+                            ${{parseFloat(activeProposal[field.property]).toFixed(2)}}
                         </div>
                         <div v-else class="mb-4">
                             {{ field.subProperty ? activeProposal[field.property][field.subProperty] : activeProposal[field.property]}}
