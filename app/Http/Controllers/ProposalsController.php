@@ -72,7 +72,8 @@ class ProposalsController extends Controller
             'event_type_id'=>$request->event_type_id,
             'locked'=>false,
             'location'=>null,
-            'notes'=>'',
+            'notes'=>$request->notes,
+            'client_notes'=>$request->client_notes,
             'key'=>Str::uuid(),
             'author_id'=>$author->id,
             'name'=>$request->name
@@ -228,6 +229,9 @@ class ProposalsController extends Controller
         $proposal->date = date('Y-m-d H:i:s',strtotime($request->date));
         $proposal->hours = $request->hours;
         $proposal->location = $request->location;
+        $proposal->price = $request->price;
+        $proposal->notes = $request->notes;
+        $proposal->client_notes = $request->client_notes;
         $proposal->event_type_id = $request->event_type_id;
         $proposal->save();
         

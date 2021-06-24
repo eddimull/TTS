@@ -46,6 +46,12 @@
  * Copyright Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
  */
 
+/**
+ * Vue Currency Input 2.0.0
+ * (c) 2018-2021 Matthias Stiller
+ * @license MIT
+ */
+
 /** @preserve
    * jsPDF - PDF Document creation from JavaScript
    * Version 1.4.1 Built on 2018-06-06T07:49:34.040Z

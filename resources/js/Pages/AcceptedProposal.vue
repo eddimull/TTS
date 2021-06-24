@@ -15,8 +15,9 @@
                         <li>Band: {{proposal.band.name}}</li>
                         <li>When: {{formatDate(proposal.date)}} </li>
                         <li>Where: {{proposal.location ?? 'TBD'}} </li>
-                        <li>Price: {{proposal.price}} </li>
+                        <li>Price: ${{parseFloat(proposal.price).toFixed(2)}} </li>
                         <li>How long: {{proposal.hours}} hours </li>
+                        <li class="mt-4" v-if="proposal.client_notes">Notes: {{proposal.client_notes}} </li>
                     </ul>
                 </div>
             </div>

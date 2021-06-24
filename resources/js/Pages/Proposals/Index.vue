@@ -168,6 +168,12 @@
                                     <!-- <p-inputtext v-model="proposalData"></p-inputtext> -->
                                     <input :type="input.type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :id="input.name" :placeholder="input.name" v-model="proposalData[input.field]">
                                 </div>
+                                <div v-if="input.type == 'currency'" class="mb-4">
+                                    <currency-input
+                                    v-model.lazy="value"
+                                     v-model="proposalData[input.field]"
+                                    />
+                                </div>
                                 <div v-if="input.type == 'textArea'">
                                     <textarea class="min-w-full" v-model="proposalData[input.field]" placeholder=""></textarea>
                                 </div>
@@ -200,6 +206,7 @@
     import InputText from 'primevue/inputtext';
     import Button from 'primevue/button';
     import axios from 'axios';
+    import CurrencyInput from '@/Components/CurrencyInput';
     import {FilterMatchMode,FilterOperator} from 'primevue/api';
 
     export default {
@@ -209,7 +216,8 @@
             DataTable,
             Column,
             InputText,
-            Button
+            Button,
+            CurrencyInput
         },
         created(){
             this.initFilters1();
@@ -231,7 +239,8 @@
                     {name:'Price',property:'price'},
                     {name:'Color',property:'color'},
                     {name:'Locked',property:'locked'},
-                    {name:'Notes',property:'notes'},
+                    {name:'Notes (client does not see this)',property:'notes'},
+                    {name:'Client Notes',property:'client_notes'},
                     {name:'Created',property:'created_at'},
                     {name:'Contract PDF',property:'contract',subProperty:'image_url'}
                 ],
@@ -261,20 +270,25 @@
                         field:'date'
                     },
                     {
-                        name:'Length',
+                        name:'Length (hours)',
                         type:'number',
                         field:'hours'
                     },
                     {
                         name:'Price',
-                        type:'number',
+                        type:'currency',
                         field:'price'
                     },
                     {
-                        name:'Notes',
+                        name:'Notes (for band)',
                         type:'textArea',
                         field:'notes'
-                    },                    
+                    },      
+                    {
+                        name:'Notes for client',
+                        type:'textArea',
+                        field:'client_notes'
+                    },               
                 ]
             }
         },

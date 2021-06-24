@@ -20,14 +20,14 @@
             </h2>
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
-                    Details
                     <ul>                        
                         <li>Event Type: {{proposal.event_type.name}}</li>
                         <li>Band: {{proposal.band.name}}</li>
                         <li>When: {{formatDate(proposal.date)}} </li>
                         <li>Where: {{proposal.location ?? 'TBD'}} </li>
-                        <li>Price: {{proposal.price}} </li>
+                        <li>Price: ${{parseFloat(proposal.price).toFixed(2)}} </li>
                         <li>How long: {{proposal.hours}} hours </li>
+                        <li class="mt-4" v-if="proposal.client_notes">Notes: {{proposal.client_notes}} </li>
                     </ul>
                     <div class="my-5 flex justify-center">
                         <Button v-if="!loading" @click="acceptProposal()" :disabled="loading" :label="loading ? 'Submitting...' : 'Accept Proposal'" icon="pi pi-check" iconPos="right"></Button>

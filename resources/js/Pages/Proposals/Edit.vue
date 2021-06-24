@@ -17,6 +17,12 @@
                                 <div v-if="['text','number'].indexOf(input.type) !== -1" class="mb-4">
                                     <input @input="unsavedChanges=true" :type="input.type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :id="input.name" :placeholder="input.name" v-model="proposalData[input.field]">
                                 </div>
+                                <div v-if="input.type == 'currency'" class="mb-4">
+                                    <currency-input
+                                    v-model.lazy="value"
+                                     v-model="proposalData[input.field]"
+                                    />
+                                </div>
                                 <div v-if="input.type == 'location'" class="mb-4">
                                     <input @input="unsavedChanges=true" type="text" @keyup="autoComplete()" v-model="proposalData.location" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
                                     
@@ -123,6 +129,7 @@
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
     import ButtonComponent from '@/Components/Button'
+    import CurrencyInput from '@/Components/CurrencyInput'
     import Datepicker from 'vue3-datepicker'
     import VueTimepicker from 'vue3-timepicker'
     import 'vue3-timepicker/dist/VueTimepicker.css'
@@ -132,7 +139,7 @@ import { forEach } from 'lodash'
     export default {
         props:['proposal','eventTypes','bookedDates','proposedDates','recurringDates'],
         components: {
-            BreezeAuthenticatedLayout,Datepicker,VueTimepicker,ButtonComponent
+            BreezeAuthenticatedLayout,Datepicker,VueTimepicker,ButtonComponent,CurrencyInput
         }, 
         data(){
             return{
@@ -173,13 +180,13 @@ import { forEach } from 'lodash'
                         field:'proposal_contacts'
                     },
                     {
-                        name:'Length',
+                        name:'Length (hours)',
                         type:'number',
                         field:'hours'
                     },
                     {
                         name:'Price',
-                        type:'number',
+                        type:'currency',
                         field:'price'
                     },
                     {
@@ -188,9 +195,14 @@ import { forEach } from 'lodash'
                         field:'color'
                     },
                     {
-                        name:'Notes',
+                        name:'Notes (for band)',
                         type:'textArea',
                         field:'notes'
+                    },
+                    {
+                        name:'Client Notes',
+                        type:'textArea',
+                        field:'client_notes'
                     },
                 ],
                 showCreateNewContact : false,
