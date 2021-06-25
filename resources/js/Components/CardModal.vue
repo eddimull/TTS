@@ -7,18 +7,19 @@
             'inset-0',
             'bg-black',
             'bg-opacity-30',
-            'h-screen',
+            'h-full',
             'w-full',
             'flex',
             'justify-center',
             'items-start',
             'items-center',
-            'pt-10']">
+            'py-4',
+            'md:py-10']">
 
         <div class="absolute w-full h-full" v-on:click="closeModal()">&nbsp;</div>
         <!-- modal -->
         <transition name="slide-down" appear>
-          <div id="modal" v-if="show" :class="['flex','flex-col','transform','relative','w-10/12','h-5/6','max-w-2xl','bg-white','rounded','shadow-lg','transition-opacity','transition-transform','duration-300']">
+          <div id="modal" v-if="show" :class="['flex','flex-col','transform','relative','w-10/12','h-full', 'md:h-5/6','max-w-2xl','bg-white','rounded','shadow-lg','transition-opacity','transition-transform','duration-300']">
 
               <!-- button close -->
               <button 
@@ -34,7 +35,7 @@
               </div>
 
               <!-- body -->
-              <div class="w-full p-3 overflow-y-auto flex-auto">
+              <div class="w-full p-3 overflow-y-auto flex-auto overflow-auto">
                   <slot name="body"></slot>
               </div>
               <!-- footer -->
