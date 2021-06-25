@@ -7,9 +7,11 @@ use Illuminate\Http\Request;
 use App\Models\EventTypes;
 use App\Models\BandEvents;
 use App\Models\Proposals;
+use App\Models\stripe_customers;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
-
+use App\Models\stripe_invoice_prices;
+use App\Models\stripe_products;
 
 class InvoicesController extends Controller
 {
@@ -39,19 +41,73 @@ class InvoicesController extends Controller
      */
     public function create(Proposals $proposal, Request $request)
     {
+        
         $stripe = new \Stripe\StripeClient(env('STRIPE_KEY'));
           
         if($proposal->stripe_customers->count() == 0)
         {
             foreach($proposal->proposal_contacts as $contact)
             {
-                $stripe->customers->create([
+                
+                $createdCustomer = $stripe->customers->create([
                     'description' => 'Customer for ' . $proposal->name,
                     'email'=>$contact->email,
                     'name'=>$contact->name
                   ]);
+
+                stripe_customers::create([
+                    'stripe_account_id'=>$createdCustomer->id,
+                    'proposal_id'=>$proposal->id,
+                    'status'=>'connected'
+                ]);
+
+                
             }
         }
+
+        $amount = $request->amount * 100;
+
+        if($request->buyer_pays_convenience)
+        {
+            $amount = ($amount * 1.029) + 30;
+        }
+        \Stripe\Stripe::setApiKey(env('STRIPE_KEY'));
+        $product = \Stripe\Product::create([
+            'name'=>$proposal->name
+        ]);
+
+        stripe_products::create([
+            'proposal_id'=>$proposal->id,
+            'product_name'=>$proposal->name,
+            'stripe_product_id'=>$product->id
+        ]);
+
+        $price = \Stripe\Price::create([
+            'product' => $product->id,
+            'unit_amount' => $amount,
+            'currency' => 'usd',
+        ]);
+        
+        stripe_invoice_prices::create([
+            'proposal_id'=>$proposal->id,
+            'stripe_price_id'=>$price->id
+        ]);
+
+        $invoice_item = \Stripe\InvoiceItem::create([
+            'customer' =>  $proposal->stripe_customers[0]->stripe_account_id,
+            'price' => $price->id,
+          ]);
+        
+        $invoice = \Stripe\Invoice::create([
+            'on_behalf_of' => $proposal->band->stripe_accounts->stripe_account_id,
+            'application_fee_amount' => 10,
+            'transfer_data' => [
+                'destination' => $proposal->band->stripe_accounts->stripe_account_id,
+            ],
+            'customer' => $proposal->stripe_customers[0]->stripe_account_id
+        ]);
+
+        return back()->with('successMessage','Invoice sent in for ' . $proposal->name);
     }
 
     /**

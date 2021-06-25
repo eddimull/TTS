@@ -116,6 +116,11 @@
                         <input v-if="input.editable" :type="input.type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :id="input.name" :placeholder="input.name" v-model="activeProposal[input.field]">
                         <span v-else class="appearance-none rounded w-full py-2 px-3 text-gray-700 leading-tight" :id="input.name">{{activeProposal[input.field]}}</span>
                     </div>
+                    <div v-if="input.type == 'currency'">
+                        <currency-input 
+                            v-model="activeProposal[input.field]"
+                        />
+                    </div>
                     <div v-if="input.type == 'textArea'">
                         <textarea class="min-w-full" v-model="activeProposal[input.field]" placeholder=""></textarea>
                     </div>
@@ -142,6 +147,7 @@
     import Button from 'primevue/button';
     import axios from 'axios';
     import {FilterMatchMode,FilterOperator} from 'primevue/api';
+    import CurrencyInput from '@/Components/CurrencyInput'
 
     export default {
         props:['proposals','successMessage','eventTypes'],
@@ -151,7 +157,8 @@
             Column,
             InputText,
             InputSwitch,
-            Button
+            Button,
+            CurrencyInput
         },
         created(){
             this.initFilters1();
@@ -214,7 +221,7 @@
                     },
                     {
                         name:'Invoice Amount',
-                        type:'number',
+                        type:'currency',
                         field:'amount',
                         editable:true
                     },
