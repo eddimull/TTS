@@ -73,7 +73,7 @@
                 <h1>{{activeProposal.name}}</h1>
             </template>
             <template #headerBody>
-                <div class="mx-4 mb-1 md:mb-4 p-4 w-11/12 flex flex-row">
+                <div class="mb-1 md:mb-4 p-4 w-full flex flex-row">
                 <div class="flex items-center flex-grow" v-for="(phase,index) in proposal_phases" :key="phase.id">
                      
                         <div :class="['flex', 'items-center', {

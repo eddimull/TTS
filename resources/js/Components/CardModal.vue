@@ -28,7 +28,7 @@
               </button>
 
               <!-- header -->
-              <div class="px-4 py-3 border-b border-gray-200 flex flex-row">
+              <div class="px-4 py-3 border-b border-gray-200 flex flex-col lg:flex-row">
               <h2 class="text-xl font-semibold text-gray-600 m-3"><slot name="header"></slot></h2>
               <slot name="headerBody"/>
               </div>
