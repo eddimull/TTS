@@ -82,7 +82,8 @@ Route::post('/proposals/{band:site_name}/create', 'ProposalsController@create')-
 Route::delete('/proposals/{proposal:key}/delete','ProposalsController@destroy')->middleware(['auth','verified'])->name('proposals.delete');
 Route::get('/proposals/{proposal:key}/finalize', 'ProposalsController@finalize')->middleware(['auth','verified'])->name('proposals.finalize');
 Route::post('/proposals/{proposal:key}/finalize', 'ProposalsController@finalize')->middleware(['auth','verified'])->name('proposals.finalize');
-Route::post('/proposals/{proposal:key}/sendit', 'ProposalsController@sendIt')->middleware(['auth','verified'])->name('proposals.finalize');
+Route::post('/proposals/{proposal:key}/sendit', 'ProposalsController@sendIt')->middleware(['auth','verified'])->name('proposals.sendIt');
+Route::post('/proposals/{proposal:key}/writeToCalendar', 'ProposalsController@writeToCalendar')->middleware(['auth','verified'])->name('proposals.writeToCalendar');
 Route::get('/proposals/{proposal:key}/details', 'ProposalsController@details')->name('proposals.details');
 Route::get('/proposals/{proposal:key}/accepted', 'ProposalsController@accepted')->name('proposals.accepted');
 Route::post('/proposals/{proposal:key}/accept', 'ProposalsController@accept')->name('proposals.accept');

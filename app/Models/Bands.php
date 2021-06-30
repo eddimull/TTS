@@ -9,7 +9,7 @@ class Bands extends Model
 {
     use HasFactory;
     protected $fillable = ['name','site_name','calendar_id'];
-    
+    // protected $with = ['proposals'];
 
 
     public function owners()

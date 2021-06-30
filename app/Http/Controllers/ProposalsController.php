@@ -39,15 +39,33 @@ class ProposalsController extends Controller
         // $bands = $user->bandOwner();
         // $band = Bands::with('proposals')->find(1);
         $bands = $user->bandOwner;
-                   
+        $bookedDates = [];
+        $proposedDates = [];
+        foreach($bands as $band)
+        {
+            compact($band->proposals);
+            compact($band->events);
+            foreach($band->events as $event)
+            {
+                $bookedDates[] = $event;
+
+            }
+            foreach($band->proposals as $proposal)
+            {
+                $proposedDates[] = $proposal;
+
+            }
+        }
+
+
+        
         $eventTypes = EventTypes::all();
         $proposal_phases = ProposalPhases::all();
         
-        $bookedDates = BandEvents::where('band_id','=',$bands[0]->id)->get();
-        $proposedDates = Proposals::where('band_id','=',$bands[0]->id)->get();
-
+        // $bookedDates = BandEvents::where('band_id','=',$bands[0]->id)->get();
+        // $proposedDates = Proposals::where('band_id','=',$bands[0]->id)->get();
         return Inertia::render('Proposals/Index',[
-            'bandsAndProposals'=>$bands[0]->with('proposals')->get(),
+            'bandsAndProposals'=>$bands,
             'eventTypes'=>$eventTypes,
             'proposal_phases'=>$proposal_phases,
             'bookedDates'=>$bookedDates,
@@ -315,6 +333,103 @@ class ProposalsController extends Controller
         $name = $proposal->name;
         $proposal->delete();
         return redirect()->route('proposals')->with('successMessage', $name . ' has been brutally destroyed.');
+    }
+
+    public function writeToCalendar(Proposals $proposal)
+    {
+
+        // BandEvents::create({})
+        dd($proposal);
+        // $googleResponse = Http::get("https://maps.googleapis.com/maps/api/place/autocomplete/json?input=" . $request->searchParams . "&key=" . $_ENV['GOOGLE_MAPS_API_KEY'] . '&sessiontoken=' . $request->sessionToken);
+        // $googleResponse = Http::get("https://maps.googleapis.com/maps/api/place/details/json?place_id=" . $request->place_id . "&key=" . $_ENV['GOOGLE_MAPS_API_KEY'] . '&sessiontoken=' . $request->sessionToken);
+        // $strtotime = strtotime($proposal->date);
+        // $formattedTime = date('Y-m-d',$strtotime);
+        // // dd($request->end_time);
+        // $event = BandEvents::create([
+        //     'band_id' => $proposal->band->id,
+        //     'event_name' => $proposal->name,
+        //     'venue_name' => $proposal->location,
+        //     'first_dance' => 'TBD',
+        //     'father_daughter' => 'TBD',
+        //     'mother_groom' => 'TBD',
+        //     'money_dance' => 'TBD',
+        //     'bouquet_garter' => 'TBD',
+        //     'address_street' => $request->address_street,
+        //     'production_needed'=>$request->production_needed,
+        //     'backline_provided'=>$request->backline_provided,
+        //     'zip' => $request->zip,
+        //     'notes' => $request->notes,
+        //     'event_time' => date('Y-m-d H:i:s',strtotime($request->event_time)),
+        //     'band_loadin_time' =>  date('Y-m-d H:i:s',strtotime($request->band_loadin_time)),
+        //     'rhythm_loadin_time' => date('Y-m-d H:i:s',strtotime($request->rhythm_loadin_time)),
+        //     'production_loadin_time' => date('Y-m-d H:i:s',strtotime($request->production_loadin_time)),
+        //     'pay' => $request->pay,
+        //     'depositReceived' => $request->depositReceived,
+        //     'event_key' => $request->event_key,
+        //     'created_at' => $request->created_at,
+        //     'updated_at' => $request->updated_at,
+        //     'public' => $request->public,
+        //     'event_type_id' => $request->event_type_id,
+        //     'lodging' => $request->lodging,
+        //     'state_id' => $request->state_id,
+        //     'city' => $request->city,
+        //     'colorway_id'=>$request->colorway_id,
+        //     'quiet_time'=> date('Y-m-d H:i:s',strtotime($request->quiet_time)),
+        //     'end_time'=> date('Y-m-d H:i:s',strtotime($request->end_time)),
+        //     'ceremony_time'=> date('Y-m-d H:i:s',strtotime($request->ceremony_time)),
+        //     'outside'=>$request->outside,
+        //     'second_line'=>$request->second_line,
+        //     'onsite'=>$request->onsite,
+        //     'event_key'=>Str::uuid()
+        // ]);
+
+
+        // $band = Bands::find($event->band_id);
+        // if($band->calendar_id !== '' && $band->calendar_id !== null)
+        // {
+
+        //     Config::set('google-calendar.service_account_credentials_json',storage_path('/app/google-calendar/service-account-credentials.json'));
+        //     Config::set('google-calendar.calendar_id',$band->calendar_id);
+            
+        //     // dd(Carbon::parse($event->event_time));
+
+        //     if($event->google_calendar_event_id !== null)
+        //     {
+        //         $calendarEvent = CalendarEvent::find($event->google_calendar_event_id);
+        //     }
+        //     else
+        //     {
+        //         $calendarEvent = new CalendarEvent;
+        //     }
+        //     $calendarEvent->name = $event->event_name;
+
+        //     $startTime = Carbon::parse($event->event_time);
+        //     $endDateTimeFixed = date('Y-m-d',strtotime($event->event_time)) . ' ' . date('H:i:s', strtotime($event->end_time));
+        //     if($endDateTimeFixed < $startTime)//when events end after midnight
+        //     {
+        //         $endDateTimeFixed = date('Y-m-d',strtotime($event->event_time . ' +1 day')) . ' ' . date('H:i:s', strtotime($event->end_time));
+        //     }
+        //     $endTime = Carbon::parse($endDateTimeFixed);
+        //     $calendarEvent->startDateTime = $startTime;
+        //     $calendarEvent->endDateTime = $endTime;   
+        //     $calendarEvent->description = 'http://tts.band/events/' . $event->event_key . '/advance';
+        //     $google_id = $calendarEvent->save();  
+        //     $event->google_calendar_event_id = $google_id->id;
+        //     $event->save();
+        // }
+
+        // $editor = Auth::user();
+        // compact($band->owners);
+        // foreach($band->owners as $owner)
+        // {
+        //    $user = User::find($owner->user_id);
+        //    $user->notify(new TTSNotification([
+        //     'text'=>$editor->name . ' added ' . $event->event_name,
+        //     'route'=>'events.advance',
+        //     'routeParams'=>$event->event_key,
+        //     'url'=>'/events/' . $event->event_key . '/advance'
+        //     ]));
+        // }
     }
 
     public function accept(Request $request, Proposals $proposal)
