@@ -14,6 +14,10 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Models\Proposals;
 use App\Models\recurring_proposal_dates;
+use App\Models\State;
+use Spatie\GoogleCalendar\Event as CalendarEvent;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
@@ -286,13 +290,13 @@ class ProposalsController extends Controller
         return redirect()->route('proposals')->with('successMessage', $proposal->name . ' was successfully updated');
     }
 
-    public function sendIt(Proposals $proposal)
+    public function sendIt(Proposals $proposal, Request $request)
     {
         
         foreach($proposal->proposal_contacts as $contact)
         {
             
-            Mail::to($contact->email)->send(new \App\Mail\Proposal($proposal));
+            Mail::to($contact->email)->send(new \App\Mail\Proposal($proposal,$request->message));
             
         }
 
@@ -339,97 +343,155 @@ class ProposalsController extends Controller
     {
 
         // BandEvents::create({})
-        dd($proposal);
-        // $googleResponse = Http::get("https://maps.googleapis.com/maps/api/place/autocomplete/json?input=" . $request->searchParams . "&key=" . $_ENV['GOOGLE_MAPS_API_KEY'] . '&sessiontoken=' . $request->sessionToken);
-        // $googleResponse = Http::get("https://maps.googleapis.com/maps/api/place/details/json?place_id=" . $request->place_id . "&key=" . $_ENV['GOOGLE_MAPS_API_KEY'] . '&sessiontoken=' . $request->sessionToken);
-        // $strtotime = strtotime($proposal->date);
-        // $formattedTime = date('Y-m-d',$strtotime);
-        // // dd($request->end_time);
-        // $event = BandEvents::create([
-        //     'band_id' => $proposal->band->id,
-        //     'event_name' => $proposal->name,
-        //     'venue_name' => $proposal->location,
-        //     'first_dance' => 'TBD',
-        //     'father_daughter' => 'TBD',
-        //     'mother_groom' => 'TBD',
-        //     'money_dance' => 'TBD',
-        //     'bouquet_garter' => 'TBD',
-        //     'address_street' => $request->address_street,
-        //     'production_needed'=>$request->production_needed,
-        //     'backline_provided'=>$request->backline_provided,
-        //     'zip' => $request->zip,
-        //     'notes' => $request->notes,
-        //     'event_time' => date('Y-m-d H:i:s',strtotime($request->event_time)),
-        //     'band_loadin_time' =>  date('Y-m-d H:i:s',strtotime($request->band_loadin_time)),
-        //     'rhythm_loadin_time' => date('Y-m-d H:i:s',strtotime($request->rhythm_loadin_time)),
-        //     'production_loadin_time' => date('Y-m-d H:i:s',strtotime($request->production_loadin_time)),
-        //     'pay' => $request->pay,
-        //     'depositReceived' => $request->depositReceived,
-        //     'event_key' => $request->event_key,
-        //     'created_at' => $request->created_at,
-        //     'updated_at' => $request->updated_at,
-        //     'public' => $request->public,
-        //     'event_type_id' => $request->event_type_id,
-        //     'lodging' => $request->lodging,
-        //     'state_id' => $request->state_id,
-        //     'city' => $request->city,
-        //     'colorway_id'=>$request->colorway_id,
-        //     'quiet_time'=> date('Y-m-d H:i:s',strtotime($request->quiet_time)),
-        //     'end_time'=> date('Y-m-d H:i:s',strtotime($request->end_time)),
-        //     'ceremony_time'=> date('Y-m-d H:i:s',strtotime($request->ceremony_time)),
-        //     'outside'=>$request->outside,
-        //     'second_line'=>$request->second_line,
-        //     'onsite'=>$request->onsite,
-        //     'event_key'=>Str::uuid()
-        // ]);
 
+        $sessionToken = Str::random();
+        $googleResponse = Http::get("https://maps.googleapis.com/maps/api/place/autocomplete/json",[
+            'input'=> $proposal->location,
+            'key' => $_ENV['GOOGLE_MAPS_API_KEY'],
+            'sessiontoken' => $sessionToken
+        ]);
+        $parsedResponse = json_decode($googleResponse->body());
+        $usableAddress = [
+            'venue'=>'Unnamed Venue',
+            'street_number' => '',
+            'route' => '',
+            'locality' => '',
+            'state' => 'Louisiana',
+            'postal_code' => ''
+        ];
+        if($parsedResponse->status !== 'INVALID_REQUEST')
+        {
+            $usableAddress['venue'] = $parsedResponse->predictions[0]->structured_formatting->main_text;
+            $place_id = $parsedResponse->predictions[0]->place_id;
+            $detailedResponse = Http::get("https://maps.googleapis.com/maps/api/place/details/json",[
+                'place_id'=>$place_id,
+                'key' => $_ENV['GOOGLE_MAPS_API_KEY'],
+                'sessiontoken'=> $sessionToken
+            ]);
+            $parsedDetails = json_decode($detailedResponse->body());
 
-        // $band = Bands::find($event->band_id);
-        // if($band->calendar_id !== '' && $band->calendar_id !== null)
-        // {
-
-        //     Config::set('google-calendar.service_account_credentials_json',storage_path('/app/google-calendar/service-account-credentials.json'));
-        //     Config::set('google-calendar.calendar_id',$band->calendar_id);
+            if($parsedDetails->status !== 'INVALID_REQUEST')
+            {
+                $addressComponents = $parsedDetails->result->address_components;                 
+                foreach($addressComponents as $component)
+                {
+                    
+                    if(array_search('street_number', $component->types) !== false)
+                    {
+                        $usableAddress['street_number'] = $component->long_name;                                        
+                    }
+                    if(array_search('route', $component->types) !== false)
+                    {
+                        $usableAddress['route'] = $component->long_name;                                
+                    }
+                    if(array_search('locality', $component->types) !== false)
+                    {
+                        $usableAddress['locality'] = $component->long_name;                                
+                    }
+                    if(array_search('administrative_area_level_1', $component->types) !== false)
+                    {
+                        $usableAddress['state'] = $component->long_name;                                
+                    }
+                    if(array_search('postal_code', $component->types) !== false)
+                    {
+                        $usableAddress['postal_code'] = $component->long_name;                                
+                    }
+                }   
+            }
             
-        //     // dd(Carbon::parse($event->event_time));
 
-        //     if($event->google_calendar_event_id !== null)
-        //     {
-        //         $calendarEvent = CalendarEvent::find($event->google_calendar_event_id);
-        //     }
-        //     else
-        //     {
-        //         $calendarEvent = new CalendarEvent;
-        //     }
-        //     $calendarEvent->name = $event->event_name;
+        }
+        
+        $state = State::where('state_name',$usableAddress['state'])->first();
 
-        //     $startTime = Carbon::parse($event->event_time);
-        //     $endDateTimeFixed = date('Y-m-d',strtotime($event->event_time)) . ' ' . date('H:i:s', strtotime($event->end_time));
-        //     if($endDateTimeFixed < $startTime)//when events end after midnight
-        //     {
-        //         $endDateTimeFixed = date('Y-m-d',strtotime($event->event_time . ' +1 day')) . ' ' . date('H:i:s', strtotime($event->end_time));
-        //     }
-        //     $endTime = Carbon::parse($endDateTimeFixed);
-        //     $calendarEvent->startDateTime = $startTime;
-        //     $calendarEvent->endDateTime = $endTime;   
-        //     $calendarEvent->description = 'http://tts.band/events/' . $event->event_key . '/advance';
-        //     $google_id = $calendarEvent->save();  
-        //     $event->google_calendar_event_id = $google_id->id;
-        //     $event->save();
-        // }
+        
+        $event = BandEvents::create([
+            'band_id' => $proposal->band->id,
+            'event_name' => $proposal->name,
+            'venue_name' => $usableAddress['venue'],
+            'first_dance' => 'TBD',
+            'father_daughter' => 'TBD',
+            'mother_groom' => 'TBD',
+            'money_dance' => 'TBD',
+            'bouquet_garter' => 'TBD',
+            'address_street' => $usableAddress['street_number'] . ' ' . $usableAddress['route'],
+            'production_needed'=>true,
+            'backline_provided'=>false,
+            'zip' => $usableAddress['postal_code'],
+            'notes' => $proposal->notes,
+            'event_time' => date('Y-m-d H:i:s',strtotime($proposal->date)),
+            'band_loadin_time' =>  date('Y-m-d H:i:s',strtotime($proposal->date)),
+            'rhythm_loadin_time' => date('Y-m-d H:i:s',strtotime($proposal->date)),
+            'production_loadin_time' => date('Y-m-d H:i:s',strtotime($proposal->date)),
+            'pay' => $proposal->price,
+            'depositReceived' => true,
+            'event_key' => Str::uuid(),
+            'public' => false,
+            'event_type_id' => $proposal->event_type_id,
+            'lodging' => false,
+            'state_id' => $state->state_id,
+            'city' => $usableAddress['locality'],
+            'colorway_id'=>0,
+            'quiet_time'=> date('Y-m-d H:i:s',strtotime($proposal->date)),
+            'end_time'=> date('Y-m-d H:i:s',strtotime($proposal->date . '+ ' . $proposal->hours . ' hours')),
+            'ceremony_time'=> date('Y-m-d H:i:s',strtotime($proposal->date)),
+            'outside'=>false,
+            'second_line'=>false,
+            'onsite'=>false,
+            'event_key'=>Str::uuid()
+        ]);
 
-        // $editor = Auth::user();
-        // compact($band->owners);
-        // foreach($band->owners as $owner)
-        // {
-        //    $user = User::find($owner->user_id);
-        //    $user->notify(new TTSNotification([
-        //     'text'=>$editor->name . ' added ' . $event->event_name,
-        //     'route'=>'events.advance',
-        //     'routeParams'=>$event->event_key,
-        //     'url'=>'/events/' . $event->event_key . '/advance'
-        //     ]));
-        // }
+        $proposal->event_id = $event->id;
+        $proposal->save();
+
+        $band = Bands::find($event->band_id);
+        if($band->calendar_id !== '' && $band->calendar_id !== null)
+        {
+
+            Config::set('google-calendar.service_account_credentials_json',storage_path('/app/google-calendar/service-account-credentials.json'));
+            Config::set('google-calendar.calendar_id',$band->calendar_id);
+            
+            // dd(Carbon::parse($event->event_time));
+
+            if($event->google_calendar_event_id !== null)
+            {
+                $calendarEvent = CalendarEvent::find($event->google_calendar_event_id);
+            }
+            else
+            {
+                $calendarEvent = new CalendarEvent;
+            }
+            $calendarEvent->name = $event->event_name;
+
+            $startTime = Carbon::parse($event->event_time);
+            $endDateTimeFixed = date('Y-m-d',strtotime($event->event_time)) . ' ' . date('H:i:s', strtotime($event->end_time));
+            if($endDateTimeFixed < $startTime)//when events end after midnight
+            {
+                $endDateTimeFixed = date('Y-m-d',strtotime($event->event_time . ' +1 day')) . ' ' . date('H:i:s', strtotime($event->end_time));
+            }
+            $endTime = Carbon::parse($endDateTimeFixed);
+            $calendarEvent->startDateTime = $startTime;
+            $calendarEvent->endDateTime = $endTime;   
+            $calendarEvent->description = 'http://tts.band/events/' . $event->event_key . '/advance';
+            $google_id = $calendarEvent->save();  
+            $event->google_calendar_event_id = $google_id->id;
+            $event->save();
+        }
+
+        $editor = Auth::user();
+        compact($band->owners);
+        foreach($band->owners as $owner)
+        {
+           $user = User::find($owner->user_id);
+           $user->notify(new TTSNotification([
+            'text'=>$editor->name . ' added ' . $event->event_name . ' created from proposal',
+            'route'=>'events.advance',
+            'routeParams'=>$event->event_key,
+            'url'=>'/events/' . $event->event_key . '/advance'
+            ]));
+        }
+
+        return redirect('/events/' . $event->event_key . '/edit');
     }
 
     public function accept(Request $request, Proposals $proposal)
@@ -522,89 +584,5 @@ class ProposalsController extends Controller
         ]);
 
         return $sent;
-    }
-
-    private function make_envelope_from_docusign($proposal,$base64PDF): EnvelopeDefinition
-    {
-        
-
-        # Create the envelope definition
-        $envelope_definition = new \DocuSign\eSign\Model\EnvelopeDefinition([
-            'sender'=>'TTS.band via DocuSign',
-           'email_subject' => 'Contract for ' . $proposal->band->name,
-           'email_blurb'=>'Please sign this contract so we can make this official!'
-        ]);
-        # read files 2 and 3 from a local directory
-        # The reads could raise an exception if the file is not available!
-
-
-        $document = new \DocuSign\eSign\Model\Document([  # create the DocuSign document object
-            'document_base64' => $base64PDF,
-            'name' => 'Contract for ' . $proposal->band->name,  # can be different from actual file name
-            'file_extension' => 'pdf',  # many different document types are accepted
-            'document_id' => '1'  # a label used to reference the doc
-        ]);
-        # The order in the docs array determines the order in the envelope
-        $envelope_definition->setDocuments([$document]);
-        
-        foreach($proposal->proposal_contacts as $contact)
-        {
-            
-            Mail::to($contact->email)->send(new \App\Mail\Proposal($proposal));
-            
-        }
-        # Create the signer recipient model
-        $signer1 = null;
-        # routingOrder (lower means earlier) determines the order of deliveries
-        # to the recipients. Parallel routing order is supported by using the
-        # same integer as the order for two or more recipients.
-        $carbonCopies = [];
-
-        $contactIndex = 0;
-        foreach($proposal->proposal_contacts as $contact)
-        {
-            $contactIndex += 1;
-
-            if($contactIndex === 1)
-            {
-                $signer1 = new \DocuSign\eSign\Model\Signer([
-                    'email' => $contact->email, 'name' => $contact->name,
-                    'recipient_id' => "1", 'routing_order' => "1"]);
-            }
-            else
-            {
-                $carbonCopies[] = new \DocuSign\eSign\Model\CarbonCopy([
-                    'email' => $contact->email, 'name' => $contact->name,
-                    'recipient_id' => $contactIndex, 'routing_order' => $contactIndex]);
-            }
-        }
-
-        # Create signHere fields (also known as tabs) on the documents,
-        # We're using anchor (autoPlace) positioning
-        #
-        # The DocuSign platform searches throughout your envelope's
-        # documents for matching anchor strings. So the
-        # signHere2 tab will be used in both document 2 and 3 since they
-        #  use the same anchor string for their "signer 1" tabs.
-        $sign_here1 = new \DocuSign\eSign\Model\SignHere([
-            'anchor_string' => 'Signature:', 'anchor_units' => 'pixels',
-            'anchor_y_offset' => '10', 'anchor_x_offset' => '40']);
-       
-
-        # Add the tabs model (including the sign_here tabs) to the signer
-        # The Tabs object wants arrays of the different field/tab types
-        $signer1->setTabs(new \DocuSign\eSign\Model\Tabs([
-            'sign_here_tabs' => [$sign_here1]]));
-
-        # Add the recipients to the envelope object
-        $recipients = new \DocuSign\eSign\Model\Recipients([
-            'signers' => [$signer1], 'carbon_copies' => $carbonCopies]);
-        $envelope_definition->setRecipients($recipients);
-
-        # Request that the envelope be sent by setting |status| to "sent".
-        # To request that the envelope be created as a draft, set to "created"
-        $envelope_definition->setStatus('sent');
-
-        return $envelope_definition;
-    }    
+    }  
 }

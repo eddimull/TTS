@@ -1,10 +1,12 @@
 @component('mail::message')
     <h2>Hello, thanks for starting up a proposal with {{$proposal->band->name}}!</h2>
-
+        @component('mail::subcopy')
+            {{$message}}
+        @endcomponent
     
         When: {{ date('m/d/Y g:i A',strtotime($proposal->date)) }}
 
-        Where: {{$proposal->location}}
+        Where: {{empty($proposal->location) ? 'TBD' : $proposal->location}}
     
         How long: {{$proposal->hours}} hours
     

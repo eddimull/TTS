@@ -18,9 +18,10 @@ class Proposal extends Mailable
      *
      * @return void
      */
-    public function __construct(Proposals $proposal)
+    public function __construct(Proposals $proposal, $message)
     {
         $this->proposal = $proposal;
+        $this->message = $message;
     }
 
     /**
@@ -30,8 +31,14 @@ class Proposal extends Mailable
      */
     public function build()
     {
+        $subject = 'Proposal with ' . $this->proposal->band->name . ' to play at ' . $this->proposal->location;
+        if(empty($this->proposal->location))
+        {
+            $subject = 'Proposal with ' . $this->proposal->band->name;
+        }
         return $this->markdown('email.proposal')
                         ->with('proposal',$this->proposal)
-                        ->subject('Proposal from ' . $this->proposal->band->name . ' to play at ' . $this->proposal->location);
+                        ->with('message',$this->message)
+                        ->subject($subject);
     }
 }

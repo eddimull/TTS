@@ -390,16 +390,32 @@
             sendIt(){
                 
                 this.loading = true;
-                setTimeout(()=>{
+                this.$swal.fire({
+                    inputLabel: 'Customized message for the proposal email',
+                    inputPlaceholder: 'Type your message here...',
+                    inputValue:'Please confirm the details of this proposal',
+                    input: 'textarea',
+                    showCancelButton: true 
+                }).then(input =>{
+                    if(input.isConfirmed)
+                    {
+                        setTimeout(()=>{
 
-                    this.$inertia.post('/proposals/' + this.activeProposal.key + '/sendit',{},{
-                        onSuccess:()=>{
-                            this.activeProposal.phase_id = 3;
-                            this.loading = false;
-                        this.toggleModal();
-                        }
-                    });
-                },1000)
+                            this.$inertia.post('/proposals/' + this.activeProposal.key + '/sendit',{message:input.value},{
+                                onSuccess:()=>{
+                                    this.activeProposal.phase_id = 3;
+                                    this.loading = false;
+                                // this.toggleModal();
+                                }
+                            });
+                        },1000)
+                    }
+                    else
+                    {
+                        this.loading = false;
+                    }
+                });
+                
             },
             clearFilter1() {
                 this.initFilters1();
