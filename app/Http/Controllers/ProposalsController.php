@@ -324,7 +324,7 @@ class ProposalsController extends Controller
     {
         $proposal->phase_id = 2;
         $proposal->save();
-        return redirect()->route('proposals')->with('successMessage', $proposal->name . ' has been finalized.');
+        return redirect()->route('proposals',['open'=>$proposal->id])->with('successMessage', $proposal->name . ' has been finalized.');
     }
     /**
      * Remove the specified resource from storage.
@@ -472,7 +472,7 @@ class ProposalsController extends Controller
             $endTime = Carbon::parse($endDateTimeFixed);
             $calendarEvent->startDateTime = $startTime;
             $calendarEvent->endDateTime = $endTime;   
-            $calendarEvent->description = 'http://tts.band/events/' . $event->event_key . '/advance';
+            $calendarEvent->description = 'https://tts.band/events/' . $event->event_key . '/advance';
             $google_id = $calendarEvent->save();  
             $event->google_calendar_event_id = $google_id->id;
             $event->save();

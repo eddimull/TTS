@@ -1,128 +1,321 @@
 <template>
-    <div>
-        <breeze-authenticated-layout>
-        <template #header>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                    Edit Proposal
-                </h2>
-            </template>
-            <div class="min-w-full max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="mb-4">
-                    <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-                        <div class="bg-white w-full rounded-lg shadow-xl">
-                            <div v-for="input in validInputs" :key="input" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                                <p class="text-gray-600">
-                                    <label :for="input.name">{{input.name}}</label>
-                                </p>
-                                <div v-if="['text','number'].indexOf(input.type) !== -1" class="mb-4">
-                                    <input @input="unsavedChanges=true" :type="input.type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :id="input.name" :placeholder="input.name" v-model="proposalData[input.field]">
-                                </div>
-                                <div v-if="input.type == 'currency'" class="mb-4">
-                                    <currency-input
-                                     v-model="proposalData[input.field]"
-                                    />
-                                </div>
-                                <div v-if="input.type == 'location'" class="mb-4">
-                                    <input @input="unsavedChanges=true" type="text" @keyup="autoComplete()" v-model="proposalData.location" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
-                                    
-                                    <ul class="">
-                                        <li class="border-black my-4 p-4 bg-gray-200 hover:bg-gray-300 cursor-pointer" v-for="(result,index) in searchResults" :key="index" @click="proposalData.location = result.description; searchResults = null">{{result.description}}</li>
-                                    </ul>
-                                </div>
-                                <div v-if="input.type == 'contacts'">
-                                    <ul class="hover:bg-gray-100 cursor-pointer" @click="proposalData.proposal_contacts.forEach(tempContact=>tempContact.editing = false); if(!contact.editing){ contact.editing = true }" v-for="contact in proposalData.proposal_contacts" :key="contact.id">
-                                        <li v-if="!contact.editing">Name: {{contact.name}}</li>
-                                        <li v-if="!contact.editing">Phone: {{contact.phonenumber}} </li>
-                                        <li v-if="!contact.editing">Email: {{contact.email}} </li>
-                                        <li v-if="contact.editing">Name: <input :class="inputClass" required type="text" v-model="contact.name"/></li>
-                                        <li v-if="contact.editing">Phone: <input :class="inputClass" type="tel" v-model="contact.phonenumber"/></li>
-                                        <li v-if="contact.editing">Email: <input :class="inputClass" type="email" v-model="contact.email"/></li>
-                                        <li v-if="contact.editing">
-                                            <button-component @click.stop="updateContact(contact)" :type="'button'">Save</button-component>
-                                            <button-component v-on:click.stop="contact.editing = false" :type="'button'">Cancel</button-component>
-                                            <button-component @click.stop="removeContact(contact)" :type="'button'">Delete</button-component>
-                                        </li>
-                                    </ul>
-                                    <ul v-if="showCreateNewContact">
-                                        <li>Name: <input :class="inputClass" required type="text" v-model="newContact.name"/></li>
-                                        <li>Phone: <input :class="inputClass" type="tel" v-model="newContact.phonenumber"/></li>
-                                        <li>Email: <input :class="inputClass" type="email" v-model="newContact.email"/></li>
-                                    </ul>
-                                    <button-component v-if="!showCreateNewContact" :type="'button'" @click="showCreateNewContact = true">Create New</button-component>
-                                    <button-component v-if="showCreateNewContact" :type="'button'" @click="showCreateNewContact = false">Cancel</button-component>
-                                    <button-component v-if="showCreateNewContact" :type="'button'" @click="saveContact">Save</button-component>
-                                </div>
-                                <div @change="unsavedChanges=true" v-if="input.type == 'textArea'">
-                                    <textarea class="min-w-full" v-model="proposalData[input.field]" placeholder=""></textarea>
-                                </div>
-                                <div v-if="input.type == 'date'">
-                                    <calendar v-on:date-select="unsavedChanges=true" v-model="proposalData[input.field]" :showTime="true" :disabledDates="getDisabledDates()" :step-minute="15" hourFormat="12">
-                                        <template #date="slotProps">
-                                            <strong v-if="findReservedDate(slotProps.date)" :title="findReservedDateName(slotProps.date)" class="rounded-full h-24 w-24 flex items-center justify-center bg-red-300">{{slotProps.date.day}}</strong>
-                                            <strong v-else-if="findProposedDate(slotProps.date)" :title="findProposedDateName(slotProps.date)" class="rounded-full h-24 w-24 flex items-center justify-center bg-yellow-300">{{slotProps.date.day}}</strong>
-                                            <template v-else>{{slotProps.date.day}}</template>
-                                        </template>
-                                    </calendar>
-                                    <div v-for="(date,index) in recurringDates" :key="index">
-                                        <calendar v-on:date-select="unsavedChanges=true" v-model="recurringDates[index].date" :showTime="true" :disabledDates="getDisabledDates()" :step-minute="15" hourFormat="12">
-                                            <template #date="slotProps">
-                                                <strong v-if="findReservedDate(slotProps.date)" :title="findReservedDateName(slotProps.date)" class="rounded-full h-24 w-24 flex items-center justify-center bg-red-300">{{slotProps.date.day}}</strong>
-                                                <strong v-else-if="findProposedDate(slotProps.date)" :title="findProposedDateName(slotProps.date)" class="rounded-full h-24 w-24 flex items-center justify-center bg-yellow-300">{{slotProps.date.day}}</strong>
-                                                <template v-else>{{slotProps.date.day}}</template>
-                                            </template>
-                                        </calendar>    
-                                        <button
-                                            @click="recurringDates.splice(index,1)"
-                                            class="transform translate-y-1 bg-red-500 text-white active:bg-purple-600 font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150"
-                                            type="button">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                        </button>                                   
-                                    </div>
-                                    <div>
-                                        <button-component @click="addRecurringDate">Add another date</button-component>
-                                    </div>
-                                </div>
-                                <div v-if="input.type == 'eventTypeDropdown'">
-                                    <select @change="unsavedChanges=true" v-model="proposalData[input.field]">
-                                        <option v-for="type in eventTypes" :key="type.id" :value="type.id">{{type.name}}</option>
-                                    </select>
-                                </div>
-                        </div>                                                                                                                                     
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" @click="updateProposal()" type="submit">
-                            Update Proposal
-                        </button>
-                        <button :disabled="proposalData.proposal_contacts.length === 0" :class="[
-                                                                                                                {
-                                                                                                                    'bg-gray-400': proposalData.proposal_contacts.length === 0,
-                                                                                                                    'cursor-not-allowed': proposalData.proposal_contacts.length === 0,
-                                                                                                                    'bg-blue-500': proposalData.proposal_contacts.length !== 0,
-                                                                                                                    'hover:bg-blue-700' : proposalData.proposal_contacts.length !== 0,
-                                                                                                                },
-                                                                                                                'text-white',
-                                                                                                                'font-bold',
-                                                                                                                'py-2',
-                                                                                                                'px-4',
-                                                                                                                'rounded',
-                                                                                                                'focus:outline-none',
-                                                                                                                'focus:shadow-outlin',
-                                                                                                            ]" 
-                            @click="finalizeProposal()" type="button">
-                            Finalize
-                        </button>
-                        <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="button" v-on:click="deleteProposal()">
-                            Delete Proposal
-                        </button>
-                    </div>
+  <div>
+    <breeze-authenticated-layout>
+      <template #header>
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+          Edit Proposal
+        </h2>
+      </template>
+      <div class="min-w-full max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="mb-4">
+          <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+            <div class="bg-white w-full rounded-lg shadow-xl">
+              <div
+                v-for="input in validInputs"
+                :key="input"
+                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
+              >
+                <p class="text-gray-600">
+                  <label :for="input.name">{{ input.name }}</label>
+                </p>
+                <div
+                  v-if="['text','number'].indexOf(input.type) !== -1"
+                  class="mb-4"
+                >
+                  <input
+                    :id="input.name"
+                    :type="input.type"
+                    v-model="proposalData[input.field]"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    :placeholder="input.name"
+                    @input="unsavedChanges=true"
+                  >
                 </div>
-
+                <div
+                  v-if="input.type == 'currency'"
+                  class="mb-4"
+                >
+                  <currency-input
+                    v-model="proposalData[input.field]"
+                  />
+                </div>
+                <div
+                  v-if="input.type == 'location'"
+                  class="mb-4"
+                >
+                  <input
+                    v-model="proposalData.location"
+                    type="text"
+                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                    @input="unsavedChanges=true"
+                    @keyup="autoComplete()"
+                  >
+                                    
+                  <ul class="">
+                    <li
+                      v-for="(result,index) in searchResults"
+                      :key="index"
+                      class="border-black my-4 p-4 bg-gray-200 hover:bg-gray-300 cursor-pointer"
+                      @click="proposalData.location = result.description; searchResults = null"
+                    >
+                      {{ result.description }}
+                    </li>
+                  </ul>
+                </div>
+                <div v-if="input.type == 'contacts'">
+                  <ul
+                    v-for="contact in proposalData.proposal_contacts"
+                    :key="contact.id"
+                    class="hover:bg-gray-100 cursor-pointer"
+                    @click="proposalData.proposal_contacts.forEach(tempContact=>tempContact.editing = false); if(!contact.editing){ contact.editing = true }"
+                  >
+                    <li v-if="!contact.editing">
+                      Name: {{ contact.name }}
+                    </li>
+                    <li v-if="!contact.editing">
+                      Phone: {{ contact.phonenumber }}
+                    </li>
+                    <li v-if="!contact.editing">
+                      Email: {{ contact.email }}
+                    </li>
+                    <li v-if="contact.editing">
+                      Name: <input
+                        v-model="contact.name"
+                        :class="inputClass"
+                        required
+                        type="text"
+                      >
+                    </li>
+                    <li v-if="contact.editing">
+                      Phone: <input
+                        v-model="contact.phonenumber"
+                        :class="inputClass"
+                        type="tel"
+                      >
+                    </li>
+                    <li v-if="contact.editing">
+                      Email: <input
+                        v-model="contact.email"
+                        :class="inputClass"
+                        type="email"
+                      >
+                    </li>
+                    <li v-if="contact.editing">
+                      <button-component
+                        :type="'button'"
+                        @click.stop="updateContact(contact)"
+                      >
+                        Save
+                      </button-component>
+                      <button-component
+                        :type="'button'"
+                        @click.stop="contact.editing = false"
+                      >
+                        Cancel
+                      </button-component>
+                      <button-component
+                        :type="'button'"
+                        @click.stop="removeContact(contact)"
+                      >
+                        Delete
+                      </button-component>
+                    </li>
+                  </ul>
+                  <ul v-if="showCreateNewContact">
+                    <li>
+                      Name: <input
+                        v-model="newContact.name"
+                        :class="inputClass"
+                        required
+                        type="text"
+                      >
+                    </li>
+                    <li>
+                      Phone: <input
+                        v-model="newContact.phonenumber"
+                        :class="inputClass"
+                        type="tel"
+                      >
+                    </li>
+                    <li>
+                      Email: <input
+                        v-model="newContact.email"
+                        :class="inputClass"
+                        type="email"
+                      >
+                    </li>
+                  </ul>
+                  <button-component
+                    v-if="!showCreateNewContact"
+                    :type="'button'"
+                    @click="showCreateNewContact = true"
+                  >
+                    Create New
+                  </button-component>
+                  <button-component
+                    v-if="showCreateNewContact"
+                    :type="'button'"
+                    @click="showCreateNewContact = false"
+                  >
+                    Cancel
+                  </button-component>
+                  <button-component
+                    v-if="showCreateNewContact"
+                    :type="'button'"
+                    @click="saveContact"
+                  >
+                    Save
+                  </button-component>
+                </div>
+                <div
+                  v-if="input.type == 'textArea'"
+                  @change="unsavedChanges=true"
+                >
+                  <textarea
+                    v-model="proposalData[input.field]"
+                    class="min-w-full"
+                    placeholder=""
+                  />
+                </div>
+                <div v-if="input.type == 'date'">
+                  <calendar
+                    v-model="proposalData[input.field]"
+                    :show-time="true"
+                    :disabled-dates="getDisabledDates()"
+                    :step-minute="15"
+                    hour-format="12"
+                    @date-select="unsavedChanges=true"
+                  >
+                    <template #date="slotProps">
+                      <strong
+                        v-if="findReservedDate(slotProps.date)"
+                        :title="findReservedDateName(slotProps.date)"
+                        class="rounded-full h-24 w-24 flex items-center justify-center bg-red-300"
+                      >{{ slotProps.date.day }}</strong>
+                      <strong
+                        v-else-if="findProposedDate(slotProps.date)"
+                        :title="findProposedDateName(slotProps.date)"
+                        class="rounded-full h-24 w-24 flex items-center justify-center bg-yellow-300"
+                      >{{ slotProps.date.day }}</strong>
+                      <template v-else>
+                        {{ slotProps.date.day }}
+                      </template>
+                    </template>
+                  </calendar>
+                  <div
+                    v-for="(date,index) in recurringDates"
+                    :key="index"
+                  >
+                    <calendar
+                      v-model="recurringDates[index].date"
+                      :show-time="true"
+                      :disabled-dates="getDisabledDates()"
+                      :step-minute="15"
+                      hour-format="12"
+                      @date-select="unsavedChanges=true"
+                    >
+                      <template #date="slotProps">
+                        <strong
+                          v-if="findReservedDate(slotProps.date)"
+                          :title="findReservedDateName(slotProps.date)"
+                          class="rounded-full h-24 w-24 flex items-center justify-center bg-red-300"
+                        >{{ slotProps.date.day }}</strong>
+                        <strong
+                          v-else-if="findProposedDate(slotProps.date)"
+                          :title="findProposedDateName(slotProps.date)"
+                          class="rounded-full h-24 w-24 flex items-center justify-center bg-yellow-300"
+                        >{{ slotProps.date.day }}</strong>
+                        <template v-else>
+                          {{ slotProps.date.day }}
+                        </template>
+                      </template>
+                    </calendar>    
+                    <button
+                      class="transform translate-y-1 bg-red-500 text-white active:bg-purple-600 font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150"
+                      type="button"
+                      @click="recurringDates.splice(index,1)"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                    </button>                                   
+                  </div>
+                  <div>
+                    <button-component @click="addRecurringDate">
+                      Add another date
+                    </button-component>
+                  </div>
+                </div>
+                <div v-if="input.type == 'eventTypeDropdown'">
+                  <select
+                    v-model="proposalData[input.field]"
+                    @change="unsavedChanges=true"
+                  >
+                    <option
+                      v-for="type in eventTypes"
+                      :key="type.id"
+                      :value="type.id"
+                    >
+                      {{ type.name }}
+                    </option>
+                  </select>
+                </div>
+              </div>                                                                                                                                     
             </div>
+            <div class="flex items-center justify-between">
+              <button
+                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                type="submit"
+                @click="updateProposal()"
+              >
+                Update Proposal
+              </button>
+              <button
+                :disabled="proposalData.proposal_contacts.length === 0"
+                :class="[
+                  {
+                    'bg-gray-400': proposalData.proposal_contacts.length === 0,
+                    'cursor-not-allowed': proposalData.proposal_contacts.length === 0,
+                    'bg-blue-500': proposalData.proposal_contacts.length !== 0,
+                    'hover:bg-blue-700' : proposalData.proposal_contacts.length !== 0,
+                  },
+                  'text-white',
+                  'font-bold',
+                  'py-2',
+                  'px-4',
+                  'rounded',
+                  'focus:outline-none',
+                  'focus:shadow-outlin',
+                ]" 
+                type="button"
+                @click="finalizeProposal()"
+              >
+                Finalize
+              </button>
+              <button
+                class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+                type="button"
+                @click="deleteProposal()"
+              >
+                Delete Proposal
+              </button>
+            </div>
+          </div>
         </div>
+      </div>
     </breeze-authenticated-layout>
-    </div>
+  </div>
 </template> 
 
 <script>
@@ -136,10 +329,10 @@
 import axios from 'axios'
 import { forEach } from 'lodash'
     export default {
-        props:['proposal','eventTypes','bookedDates','proposedDates','recurringDates'],
         components: {
             BreezeAuthenticatedLayout,Datepicker,VueTimepicker,ButtonComponent,CurrencyInput
-        }, 
+        },
+        props:['proposal','eventTypes','bookedDates','proposedDates','recurringDates'], 
         data(){
             return{
                 proposalData:this.proposal,

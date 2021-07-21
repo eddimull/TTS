@@ -10,6 +10,7 @@ import CardModal from './Components/CardModal'
 import Card from './Components/Card'
 import PrimeVue from 'primevue/config';
 import Calendar from 'primevue/calendar';
+import qs from 'qs';
 
 import 'sweetalert2/dist/sweetalert2.min.css';
 import 'primevue/resources/themes/saga-blue/theme.css'
@@ -34,6 +35,9 @@ const app = createApp({
     .component("card-modal",CardModal)
     .component('calendar', Calendar)
     .component("card",Card)
-    .mount(el);
+
+app.config.globalProperties.$qs = qs;
+app.mount(el)
+
 
 InertiaProgress.init({ color: '#4B5563' });
