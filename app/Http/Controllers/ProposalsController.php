@@ -517,6 +517,19 @@ class ProposalsController extends Controller
         $proposal->save();
         return redirect('/proposals/' . $proposal->key . '/accepted')->with('successMessage','Proposal has been accepted. Await a finalized contract');
     }
+
+    public function sendContract(Request $request, Proposals $proposal)
+    {
+        if($proposal->phase_id != 4)
+        {
+            return redirect()->route('proposals')->withErrors('Proposal has not been approved. Cannot send out.');
+        }
+        
+        $this->make_pandadoc_contract($proposal);
+        $proposal->phase_id = 5;
+        $proposal->save();
+        return redirect()->route('proposals')->with('successMessage', $proposal->name . ' contract manually sent!');
+    }
     private function make_pandadoc_contract($proposal)
     {
         $pdf = PDF::loadView('contract',['proposal'=>$proposal]);
