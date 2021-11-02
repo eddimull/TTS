@@ -95,7 +95,7 @@
       </template>
     </Dialog>
     <div class="bg-white shadow">
-      <div class="w-24 md:w-auto py-6 px-4 sm:px-6 lg:px-8">
+      <div class="min-w-min md:w-auto py-6 px-4 sm:px-6 lg:px-8">
         <div>
           <div class="card mx-10">
             <div class="p-fluid p-formgrid p-grid">
