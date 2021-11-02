@@ -252,6 +252,14 @@
             >
               Colors
             </breeze-responsive-nav-link>   
+
+            <breeze-responsive-nav-link
+              v-if="$page.props.auth.user.navigation.Charts"
+              :href="route('charts')"
+              :active="route().current('charts')"
+            >
+              Charts
+            </breeze-responsive-nav-link>   
           </div> 
 
           <!-- Responsive Settings Options -->

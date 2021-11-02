@@ -326,7 +326,7 @@
             {
               this.$inertia.post(this.chartData.id + '/chartDownload/' + this.selectedUpload.id,{
                 displayName: this.selectedUpload.displayName,
-                notes:this.selectedUpload.notes
+                notes:this.selectedUpload.notes ? this.selectedUpload.notes : ''
 
               })
             },
