@@ -24,8 +24,8 @@
                 >
                   <input
                     :id="input.name"
-                    :type="input.type"
                     v-model="proposalData[input.field]"
+                    :type="input.type"
                     class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     :placeholder="input.name"
                     @input="unsavedChanges=true"
@@ -510,7 +510,7 @@ import { forEach } from 'lodash'
                }})
             },
             updateContact(contact){
-                // console.log(contact);
+                
                 this.$inertia.post('/proposals/editContact/' + contact.id,contact,{preserveScroll:true}).then(()=>{
                     contact.editing = false;
                 });

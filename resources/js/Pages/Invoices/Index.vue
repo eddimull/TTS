@@ -1,140 +1,265 @@
 <template>
-    <breeze-authenticated-layout>
-        <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Invoices
-            </h2>
-        </template>
+  <breeze-authenticated-layout>
+    <template #header>
+      <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        Invoices
+      </h2>
+    </template>
 
-        <div class="md:container md:mx-auto">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
-                            <DataTable :value="proposals" responsiveLayout="scroll" selectionMode="single" :paginator="true" 
-                            :rows="10" @rowSelect="selectProposal"
-                            :rowsPerPageOptions="[10,20,50]"
-                            v-model:filters="filters1"
-                            :globalFilterFields="['name','date','band.name']"
-                            filterDisplay="menu">
-                            <template #header>
-                                <div class="p-d-flex p-jc-between">
-                                    <Button type="button" icon="pi pi-filter-slash" label="Clear" class="p-button-outlined" @click="clearFilter1()"/>
-                                    <span class="p-input-icon-left">
-                                        <i class="pi pi-search" />
-                                        <InputText v-model="filters1['global'].value" placeholder="Keyword Search" />
-                                    </span>
-                                </div>
-                            </template>
-                            <template #empty>
-                                No Completed Proposals.
-                            </template>
-                                <Column field="name" filterField="name" header="Name" :sortable="true"></Column>
-                                <Column field="date" filterField="date" header="Date" :sortable="true"></Column>
-                                <Column field="band.name" filterField="band.name" header="Band" :sortable="true"></Column>
-                                <Column>
-                                    <template #body="slotProps">
-                                        <Button @click="createInvoice(slotProps.data)" icon="pi pi-dollar" label="Create Invoice"/>
-                                    </template>
-                                </Column>
-                            </DataTable>
-                        </div>                        
-                    </div>
-                </div>
-
-                <card-modal ref="proposalModal" v-if="showModal" :showSave="false" @closing="toggleModal()">
+    <div class="md:container md:mx-auto">
+      <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
+          <DataTable
+            v-model:filters="filters1"
+            :value="proposals"
+            responsive-layout="scroll"
+            selection-mode="single" 
+            :paginator="true"
+            :rows="10"
+            :rows-per-page-options="[10,20,50]"
+            :global-filter-fields="['name','date','band.name']"
+            filter-display="menu"
+            @rowSelect="selectProposal"
+          >
             <template #header>
-                <h1>{{activeProposal.name}}</h1>
+              <div class="p-d-flex p-jc-between">
+                <Button
+                  type="button"
+                  icon="pi pi-filter-slash"
+                  label="Clear"
+                  class="p-button-outlined"
+                  @click="clearFilter1()"
+                />
+                <span class="p-input-icon-left">
+                  <i class="pi pi-search" />
+                  <InputText
+                    v-model="filters1['global'].value"
+                    placeholder="Keyword Search"
+                  />
+                </span>
+              </div>
             </template>
-            <template #body>
-                <div v-if="loading" class=" flex justify-center items-center flex align-center content-center h-full flex-col">
-                    <div class="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
-                    <div class="my-8">Sending...</div>
-                </div>
-                <div v-else>
-                    <div v-for="(field,index) in showFields.filter(field=>Array.isArray(activeProposal[field.property]) ? activeProposal[field.property].length > 0 : activeProposal[field.property])" :key="index" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                        <p class="text-gray-600">
-                            <label for="name">{{field.name}}</label>
-                        </p>
-                        <div class="mb-4" v-if="field.property == 'invoices'">
-                            <div v-if="activeProposal[field.property].length == 0">
-                                No invoices have been sent. 
-                            </div>
-                            <ul v-else>
-                                <li v-for="(property,index) in activeProposal[field.property]" :key="index">${{property.amount}} - Sent {{property.created_at}}</li>
-                            </ul>
-                        </div>
-                        <div class="overflow-ellipsis text-blue-500" v-if="field.property == 'contract'">
-                            <a target="_blank" :href="activeProposal[field.property][field.subProperty]" download>
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z" clip-rule="evenodd" />
-                                </svg> Download Contract
-                            </a>
-                        </div>
-                        <div v-else-if="field.property == 'price'">
-                            ${{parseFloat(activeProposal[field.property]).toFixed(2)}}
-                        </div>
-                        <div v-else class="mb-4">
-                            {{ field.subProperty ? activeProposal[field.property][field.subProperty] : activeProposal[field.property]}}
-                        </div>
-                    </div>
-                    <div :class="['md:grid', 'md:grid-cols-2', 'hover:bg-gray-50', 'md:space-y-0', 'space-y-1', 'p-4']">
-                        <p class="text-gray-600">
-                            <label for="name">Contacts</label>
-                        </p>
-                        <div>
-                            <ul v-for="contact in activeProposal.proposal_contacts" :key="contact.id" class="mb-4">
-                                <li>Name: {{contact.name}}</li>
-                                <li>Phone: {{contact.phonenumber}}</li>
-                                <li>Name: {{contact.email}}</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
+            <template #empty>
+              No Completed Proposals.
             </template>
-            <template #footerBody>
-                <div class="flex-auto">
-                    <button v-show="!activeProposal.event_id" @click="writeToCalendar()" type="button" class="mx-2 bg-green-500 hover:bg-green-600 px-4 py-2 rounded text-white focus:outline-none">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="inline h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd" />
-                        </svg>
-                        Write to calendar
-                    </button>
-                </div>
-            </template>
-        </card-modal>
-        <card-modal ref="proposalCreateInvoice" v-if="showInvoiceModal" :saveText="'Create Invoice'" @save="sendInvoice" @closing="toggleInvoiceModal()">
-            <template #header>
-                <h1>New Invoice</h1>
-            </template>
-            <template #body>
-                <div v-for="input in draftInputs" :key="input" class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                    <p class="text-gray-600">
-                        <label :for="input.name">{{input.name}}</label>
-                    </p>
+            <Column
+              field="name"
+              filter-field="name"
+              header="Name"
+              :sortable="true"
+            />
+            <Column
+              field="date"
+              filter-field="date"
+              header="Date"
+              :sortable="true"
+            />
+            <Column
+              field="band.name"
+              filter-field="band.name"
+              header="Band"
+              :sortable="true"
+            />
+            <Column>
+              <template #body="slotProps">
+                <Button
+                  icon="pi pi-dollar"
+                  label="Create Invoice"
+                  @click="createInvoice(slotProps.data)"
+                />
+              </template>
+            </Column>
+          </DataTable>
+        </div>                        
+      </div>
+    </div>
 
-                    <div v-if="['text','number'].indexOf(input.type) !== -1" class="mb-4">
-                        <!-- <p-inputtext v-model="proposalData"></p-inputtext> -->
-                        <input v-if="input.editable" :type="input.type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" :id="input.name" :placeholder="input.name" v-model="activeProposal[input.field]">
-                        <span v-else class="appearance-none rounded w-full py-2 px-3 text-gray-700 leading-tight" :id="input.name">{{activeProposal[input.field]}}</span>
-                    </div>
-                    <div v-if="input.type == 'currency'">
-                        <currency-input 
-                            v-model="activeProposal[input.field]"
-                        />
-                    </div>
-                    <div v-if="input.type == 'textArea'">
-                        <textarea class="min-w-full" v-model="activeProposal[input.field]" placeholder=""></textarea>
-                    </div>
-                    <div v-if="input.type == 'toggle'">
-                        <InputSwitch v-model="activeProposal[input.field]" />
-                    </div>
-                    <div v-if="input.note" class="md:grid-cols-2">
-                        <p class="text-gray-400 text-sm">{{input.note}}</p>
-                    </div>
-                </div>
-            </template>
-            
-        </card-modal>
-    </breeze-authenticated-layout>
+    <card-modal
+      v-if="showModal"
+      ref="proposalModal"
+      :show-save="false"
+      @closing="toggleModal()"
+    >
+      <template #header>
+        <h1>{{ activeProposal.name }}</h1>
+      </template>
+      <template #body>
+        <div
+          v-if="loading"
+          class=" flex justify-center items-center flex align-center content-center h-full flex-col"
+        >
+          <div class="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900" />
+          <div class="my-8">
+            Sending...
+          </div>
+        </div>
+        <div v-else>
+          <div
+            v-for="(field,index) in showFields.filter(field=>Array.isArray(activeProposal[field.property]) ? activeProposal[field.property].length > 0 : activeProposal[field.property])"
+            :key="index"
+            class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
+          >
+            <p class="text-gray-600">
+              <label for="name">{{ field.name }}</label>
+            </p>
+            <div
+              v-if="field.property == 'invoices'"
+              class="mb-4"
+            >
+              <div v-if="activeProposal[field.property].length == 0">
+                No invoices have been sent. 
+              </div>
+              <ul v-else>
+                <li
+                  v-for="(property,index) in activeProposal[field.property]"
+                  :key="index"
+                >
+                  ${{ property.amount }} - Sent {{ property.created_at }}
+                </li>
+              </ul>
+            </div>
+            <div
+              v-if="field.property == 'contract'"
+              class="overflow-ellipsis text-blue-500"
+            >
+              <a
+                target="_blank"
+                :href="activeProposal[field.property][field.subProperty]"
+                download
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-5 w-5 inline"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm5 6a1 1 0 10-2 0v3.586l-1.293-1.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V8z"
+                    clip-rule="evenodd"
+                  />
+                </svg> Download Contract
+              </a>
+            </div>
+            <div v-else-if="field.property == 'price'">
+              ${{ parseFloat(activeProposal[field.property]).toFixed(2) }}
+            </div>
+            <div
+              v-else
+              class="mb-4"
+            >
+              {{ field.subProperty ? activeProposal[field.property][field.subProperty] : activeProposal[field.property] }}
+            </div>
+          </div>
+          <div :class="['md:grid', 'md:grid-cols-2', 'hover:bg-gray-50', 'md:space-y-0', 'space-y-1', 'p-4']">
+            <p class="text-gray-600">
+              <label for="name">Contacts</label>
+            </p>
+            <div>
+              <ul
+                v-for="contact in activeProposal.proposal_contacts"
+                :key="contact.id"
+                class="mb-4"
+              >
+                <li>Name: {{ contact.name }}</li>
+                <li>Phone: {{ contact.phonenumber }}</li>
+                <li>Name: {{ contact.email }}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </template>
+      <template #footerBody>
+        <div class="flex-auto">
+          <button
+            v-show="!activeProposal.event_id"
+            type="button"
+            class="mx-2 bg-green-500 hover:bg-green-600 px-4 py-2 rounded text-white focus:outline-none"
+            @click="writeToCalendar()"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="inline h-6 w-6"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            Write to calendar
+          </button>
+        </div>
+      </template>
+    </card-modal>
+    <card-modal
+      v-if="showInvoiceModal"
+      ref="proposalCreateInvoice"
+      :save-text="'Create Invoice'"
+      @save="sendInvoice"
+      @closing="toggleInvoiceModal()"
+    >
+      <template #header>
+        <h1>New Invoice</h1>
+      </template>
+      <template #body>
+        <div
+          v-for="input in draftInputs"
+          :key="input"
+          class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
+        >
+          <p class="text-gray-600">
+            <label :for="input.name">{{ input.name }}</label>
+          </p>
+
+          <div
+            v-if="['text','number'].indexOf(input.type) !== -1"
+            class="mb-4"
+          >
+            <!-- <p-inputtext v-model="proposalData"></p-inputtext> -->
+            <input
+              v-if="input.editable"
+              :id="input.name"
+              v-model="activeProposal[input.field]"
+              :type="input.type"
+              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+              :placeholder="input.name"
+            >
+            <span
+              v-else
+              :id="input.name"
+              class="appearance-none rounded w-full py-2 px-3 text-gray-700 leading-tight"
+            >{{ activeProposal[input.field] }}</span>
+          </div>
+          <div v-if="input.type == 'currency'">
+            <currency-input 
+              v-model="activeProposal[input.field]"
+            />
+          </div>
+          <div v-if="input.type == 'textArea'">
+            <textarea
+              v-model="activeProposal[input.field]"
+              class="min-w-full"
+              placeholder=""
+            />
+          </div>
+          <div v-if="input.type == 'toggle'">
+            <InputSwitch v-model="activeProposal[input.field]" />
+          </div>
+          <div
+            v-if="input.note"
+            class="md:grid-cols-2"
+          >
+            <p class="text-gray-400 text-sm">
+              {{ input.note }}
+            </p>
+          </div>
+        </div>
+      </template>
+    </card-modal>
+  </breeze-authenticated-layout>
 </template>
 
 <script>
@@ -150,7 +275,6 @@
     import CurrencyInput from '@/Components/CurrencyInput'
 
     export default {
-        props:['proposals','successMessage','eventTypes'],
         components: {
             BreezeAuthenticatedLayout,
             DataTable,
@@ -160,9 +284,7 @@
             Button,
             CurrencyInput
         },
-        created(){
-            this.initFilters1();
-        },
+        props:['proposals','successMessage','eventTypes'],
         data(){
             return{
                 showModal:false,
@@ -235,6 +357,9 @@
 
                 ]
             }
+        },
+        created(){
+            this.initFilters1();
         },
         methods:{
             toggleInvoiceModal(sitename){

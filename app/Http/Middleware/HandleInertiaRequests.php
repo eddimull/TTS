@@ -36,6 +36,7 @@ class HandleInertiaRequests extends Middleware
         $user = $request->user();
         if($user)
         {
+            $user->navigation = $user->getNav();
             compact($user->notifications);
         }
         return array_merge(parent::share($request), [

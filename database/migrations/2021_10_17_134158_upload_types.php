@@ -1,11 +1,12 @@
 <?php
 
+use Database\Seeders\upload_types;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
-use Database\Seeders\upload_types;
 
-class MakeEventTypes extends Migration
+class UploadTypes extends Migration
 {
     /**
      * Run the migrations.
@@ -14,16 +15,15 @@ class MakeEventTypes extends Migration
      */
     public function up()
     {
-        Schema::create('event_types', function (Blueprint $table) {
+        Schema::create('upload_types', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->timestamps();
         });
 
-        $seed = new upload_types();
-
-        $seed->run();
-
+        Artisan::call('db:seed', [
+            '--class' => 'upload_types',
+            '--force' => true // <--- add this line
+        ]);
     }
 
     /**
@@ -33,6 +33,6 @@ class MakeEventTypes extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('event_types');
+        Schema::dropIfExists('upload_types');
     }
 }

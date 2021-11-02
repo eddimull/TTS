@@ -1,29 +1,37 @@
 <template>
-    <breeze-guest-layout>
-        <transition name="fade">
-            <canvas v-if="show" class="fixed inset-0 transition-opacity" id="confettiCanvas"></canvas>
-        </transition>
-        <div class="md:container md:mx-auto">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Details for {{proposal.name}}
-            </h2>
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
-                    Details
-                    <ul>                        
-                        <li>Event Type: {{proposal.event_type.name}}</li>
-                        <li>Band: {{proposal.band.name}}</li>
-                        <li>When: {{formatDate(proposal.date)}} </li>
-                        <li>Where: {{proposal.location ?? 'TBD'}} </li>
-                        <li>Price: ${{parseFloat(proposal.price).toFixed(2)}} </li>
-                        <li>How long: {{proposal.hours}} hours </li>
-                        <li class="mt-4" v-if="proposal.client_notes">Notes: {{proposal.client_notes}} </li>
-                    </ul>
-                </div>
-            </div>
-             
+  <breeze-guest-layout>
+    <transition name="fade">
+      <canvas
+        v-if="show"
+        id="confettiCanvas"
+        class="fixed inset-0 transition-opacity"
+      />
+    </transition>
+    <div class="md:container md:mx-auto">
+      <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        Details for {{ proposal.name }}
+      </h2>
+      <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
+          Details
+          <ul>                        
+            <li>Event Type: {{ proposal.event_type.name }}</li>
+            <li>Band: {{ proposal.band.name }}</li>
+            <li>When: {{ formatDate(proposal.date) }} </li>
+            <li>Where: {{ proposal.location ?? 'TBD' }} </li>
+            <li>Price: ${{ parseFloat(proposal.price).toFixed(2) }} </li>
+            <li>How long: {{ proposal.hours }} hours </li>
+            <li
+              v-if="proposal.client_notes"
+              class="mt-4"
+            >
+              Notes: {{ proposal.client_notes }}
+            </li>
+          </ul>
         </div>
-    </breeze-guest-layout>
+      </div>
+    </div>
+  </breeze-guest-layout>
 </template>
 
 <script>
@@ -32,10 +40,10 @@
     import ConfettiGenerator from "confetti-js";
 
     export default {
-        props:['proposal','event_typtes'],
         components: {
             BreezeGuestLayout,
         },
+        props:['proposal','event_typtes'],
         data(){
             return{
                 person:'',

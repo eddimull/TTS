@@ -63,5 +63,9 @@ class Kernel extends HttpKernel
         'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+        'owner' => \App\Http\Middleware\Owner::class,
+        'userInBand'=> \App\Http\Middleware\userInBand::class,
+        'charts.read'=> \App\Http\Middleware\CanReadCharts::class,
+        'charts.write'=> \App\Http\Middleware\CanWriteCharts::class
     ];
 }

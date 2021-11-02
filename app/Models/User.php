@@ -7,6 +7,8 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Models\Charts;
+use App\Models\userPermissions;
 
 class User extends Authenticatable
 {
@@ -57,7 +59,95 @@ class User extends Authenticatable
 
     public function bandMember()
     {
-        return $this->belongsToMany(BandMembers::class);
+        return $this->belongsToMany(Bands::class,'band_members','user_id','band_id');
+    }
+
+    public function permissionsForBand($id)
+    {
+        return userPermissions::firstOrCreate(['user_id'=>$this->id,'band_id'=>$id]);
+    }
+
+
+    public function canWriteCharts($bandId)
+    {
+        // dd($bandId);
+        if($this->ownsBand($bandId))
+        {
+            return true;
+        }
+        else
+        {
+            $permissions = $this->permissionsForBand($bandId);
+            
+        
+            return (bool)$permissions->write_charts;
+        }
+    }
+
+    public function charts()
+    {
+        // return $this->hasManyThrough(Charts::class,Bands::class,'band_members','user_id','band_id');
+        $bandIds = [];
+
+        $ownedBands = $this->bandOwner;
+        $bandMember = $this->bandMember;
+
+        foreach($ownedBands as $band)
+        {
+            array_push($bandIds,$band->id);
+        }
+
+        foreach($bandMember as $band)
+        {
+            array_push($bandIds,$band->id);
+        }
+        $bandIds = array_unique($bandIds);
+        
+        $charts = Charts::whereIn('band_id',$bandIds)->get();
+    
+        return $charts;
+
+    }
+
+    public function getNav(){
+        $availableNav = [
+            'Events'=>false,
+            'Proposals'=>false,
+            'Invoices'=>false,
+            'Colors'=>false,
+            'Charts'=>false
+        ];
+        
+
+        if(count($this->bandOwner) > 0) //no need to check anything else. They should have access to all the stuff for their band
+        {
+            return [
+                'Events'=>true,
+                'Proposals'=>true,
+                'Invoices'=>true,
+                'Colors'=>true,
+                'Charts'=>true
+            ];
+        }
+        $bands = $this->bandMember;
+
+        foreach($bands as $band)
+        {
+            $permissions = $this->permissionsForBand($band->id);
+            
+            foreach($availableNav as $key=>$navItem)
+            {
+                if(!$navItem)
+                {
+                    if($permissions['read_' . strtolower($key)])
+                    {
+                        $availableNav[$key] = true;
+                        
+                    }
+                }
+            }
+        }
+        return $availableNav;
     }
 
     public function notifications()
@@ -66,6 +156,20 @@ class User extends Authenticatable
                         ->orderBy('created_at','desc');
     }
 
+    public function isPartOfBand($id)
+    {
+        $bandsPartOf = $this->bandMember;
+        $partOf = false;
+        foreach($bandsPartOf as $band)
+        {
+            if($id == $band->id)
+            {
+                $partOf = true;
+            }
+        }
+
+        return $partOf;
+    }
 
     public function isOwner($id)
     {

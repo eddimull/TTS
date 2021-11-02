@@ -1,5 +1,6 @@
 const mix = require('laravel-mix');
-
+const path = require('path');
+const fs = require('fs');
 /*
  |--------------------------------------------------------------------------
  | Mix Asset Management
@@ -18,7 +19,25 @@ mix.js('resources/js/app.js', 'public/js')
         require('tailwindcss'),
         require('autoprefixer'),
     ])
-    .webpackConfig(require('./webpack.config'));
+    .options({
+        hmrOptions: {
+            host: 'dev.tts.band',
+            port: '8080'
+        }
+    })
+    mix.webpackConfig({
+        devServer: {
+          https: {
+            key: fs.readFileSync('./ssl/privkey.pem'),
+            cert: fs.readFileSync('./ssl/fullchain.pem')
+          }
+        },
+        resolve: {
+            alias: {
+                '@': path.resolve('resources/js'),
+            },
+        }
+      })
 
 if (mix.inProduction()) {
     mix.version();
