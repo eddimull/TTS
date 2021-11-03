@@ -9,12 +9,12 @@ class MileageService{
     public function handle($events)
     {
         $user = Auth::user();
+        $stats = ['miles'=>0];
         if($user->Address1 !== null && $user->City !== null && $user->StateID !== null && $user->Zip !== null )
         {
             $state = State::where('state_id',$user->StateID)->first();
             // $userGeoCode = \GoogleMaps::load('geocoding')
             //                 ->setParamByKey('address', $user->Address1 . ' ' . $user->City . ' ' . $state->state_name . ' ' . $user->Zip)->get();
-            $stats = ['miles'=>0];
 
             foreach($events as $event)
             {
