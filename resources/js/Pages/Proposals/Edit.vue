@@ -3,7 +3,9 @@
     <breeze-authenticated-layout>
       <template #header>
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-          Edit Proposal
+          <Link href="/proposals">
+            Proposals
+          </Link> :: {{ proposalData.name }}
         </h2>
       </template>
       <div class="min-w-full max-w-7xl mx-auto sm:px-6 lg:px-8">

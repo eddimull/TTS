@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\EventsController;
+use App\Http\Controllers\FinancesController;
+use App\Http\Controllers\InvoicesController;
 use App\Mail\Proposal;
 use App\Models\ProposalContacts;
 use App\Models\Bands;
@@ -75,28 +77,36 @@ Route::get('/colors','ColorsController@index')->middleware(['auth', 'verified'])
 Route::post('/colors','ColorsController@store')->middleware(['auth', 'verified'])->name('colors.store');
 Route::delete('/colors/{id}','ColorsController@destroy')->middleware(['auth', 'verified'])->name('colors.destroy');
 Route::patch('/colors/{id}','ColorsController@update')->middleware(['auth', 'verified'])->name('colors.update');
+Route::group(['prefix'=>'proposals'],function(){
+    Route::group(['middleware'=>['auth','verified']],function(){
+        Route::get('/', 'ProposalsController@index')->name('proposals');
+        Route::get('/{proposal:key}/edit', 'ProposalsController@edit')->name('proposals.edit');
+        Route::patch('/{proposal:key}/update', 'ProposalsController@update')->name('proposals.update');
+        Route::post('/{band:site_name}/create', 'ProposalsController@create')->name('proposals.create');
+        Route::delete('/{proposal:key}/delete','ProposalsController@destroy')->name('proposals.delete');
+        Route::get('/{proposal:key}/finalize', 'ProposalsController@finalize')->name('proposals.finalize');
+        Route::post('/{proposal:key}/finalize', 'ProposalsController@finalize')->name('proposals.finalize');
+        Route::post('/{proposal:key}/sendit', 'ProposalsController@sendIt')->name('proposals.sendIt');
+        Route::post('/{proposal:key}/sendContract', 'ProposalsController@sendContract')->name('proposals.sendContract');
+        Route::post('/{proposal:key}/writeToCalendar', 'ProposalsController@writeToCalendar')->name('proposals.writeToCalendar');
+        Route::post('/createContact/{proposal:key}', 'ProposalsController@createContact')->name('proposals.createContact');
+        Route::post('/editContact/{contact}', 'ProposalsController@editContact')->name('proposals.editContact');
+        Route::delete('/deleteContact/{contact}', 'ProposalsController@deleteContact')->name('proposals.deleteContact');
+    });
 
-Route::get('/proposals', 'ProposalsController@index')->middleware(['auth', 'verified'])->name('proposals');
-Route::get('/proposals/{proposal:key}/edit', 'ProposalsController@edit')->middleware(['auth', 'verified'])->name('proposals.edit');
-Route::patch('/proposals/{proposal:key}/update', 'ProposalsController@update')->middleware(['auth','verified'])->name('proposals.update');
-Route::post('/proposals/{band:site_name}/create', 'ProposalsController@create')->middleware(['auth','verified'])->name('proposals.create');
-Route::delete('/proposals/{proposal:key}/delete','ProposalsController@destroy')->middleware(['auth','verified'])->name('proposals.delete');
-Route::get('/proposals/{proposal:key}/finalize', 'ProposalsController@finalize')->middleware(['auth','verified'])->name('proposals.finalize');
-Route::post('/proposals/{proposal:key}/finalize', 'ProposalsController@finalize')->middleware(['auth','verified'])->name('proposals.finalize');
-Route::post('/proposals/{proposal:key}/sendit', 'ProposalsController@sendIt')->middleware(['auth','verified'])->name('proposals.sendIt');
-Route::post('/proposals/{proposal:key}/sendContract', 'ProposalsController@sendContract')->middleware(['auth','verified'])->name('proposals.sendContract');
-Route::post('/proposals/{proposal:key}/writeToCalendar', 'ProposalsController@writeToCalendar')->middleware(['auth','verified'])->name('proposals.writeToCalendar');
-Route::get('/proposals/{proposal:key}/details', 'ProposalsController@details')->name('proposals.details');
-Route::get('/proposals/{proposal:key}/accepted', 'ProposalsController@accepted')->name('proposals.accepted');
-Route::post('/proposals/{proposal:key}/accept', 'ProposalsController@accept')->name('proposals.accept');
-Route::post('/proposals/createContact/{proposal:key}', 'ProposalsController@createContact')->middleware(['auth', 'verified'])->name('proposals.createContact');
-Route::post('/proposals/editContact/{contact}', 'ProposalsController@editContact')->middleware(['auth', 'verified'])->name('proposals.editContact');
-Route::delete('/proposals/deleteContact/{contact}', 'ProposalsController@deleteContact')->middleware(['auth', 'verified'])->name('proposals.deleteContact');
+    Route::get('/{proposal:key}/details', 'ProposalsController@details')->name('proposals.details');
+    Route::get('/{proposal:key}/accepted', 'ProposalsController@accepted')->name('proposals.accepted');
+    Route::post('/{proposal:key}/accept', 'ProposalsController@accept')->name('proposals.accept');
+
+});
 Route::post('/autocompleteLocation','ProposalsController@searchLocations')->middleware(['auth','verified'])->name('proposals.search');
 Route::get('/getLocation','ProposalsController@searchDetails')->middleware(['auth','verified'])->name('proposals.search');
 
-Route::get('/invoices','InvoicesController@index')->middleware((['auth','verified']))->name('invoices');
-Route::post('/invoices/{proposal:key}/send','InvoicesController@create')->middleware((['auth','verified']))->name('invoices.create');
+Route::group(['prefix'=>'finances','middleware'=>['auth','verified']],function(){
+    Route::get('/',[FinancesController::class,'index'])->name('finances');
+    Route::get('/invoices',)->name('invoices');
+    Route::post('/invoices/{proposal:key}/send',[InvoicesController::class,'create'])->name('invoices.create');
+});
 
 Route::get('/images/{uri}','ImageController@index');
 Route::get('/images/{band_site}/{uri}','ImageController@siteImages');

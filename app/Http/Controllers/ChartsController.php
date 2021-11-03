@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use App\Models\ChartUploads;
+use App\Services\ChartsServices;
 use Illuminate\Support\Carbon;
 use Auth;
 use Illuminate\Support\Facades\Redirect;
@@ -22,18 +23,9 @@ class ChartsController extends Controller
     {
         $charts = Auth::user()->charts();
         
-        return Inertia::render('Charts/Index',['charts'=>$charts]);
+        return Inertia::render('Charts/Index',compact('charts'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        //
-    }
 
     /**
      * Store a newly created resource in storage.
@@ -55,17 +47,6 @@ class ChartsController extends Controller
     }
 
     /**
-     * Display the specified resource.
-     *
-     * @param  \App\Models\Charts  $charts
-     * @return \Illuminate\Http\Response
-     */
-    public function show(Charts $charts)
-    {
-        
-    }
-
-    /**
      * Show the form for editing the specified resource.
      *
      * @param  \App\Models\Charts  $charts
@@ -82,23 +63,9 @@ class ChartsController extends Controller
     public function uploadChartData(Charts $chart, Request $request)
     {
         // dd($request->type_id);
-        $dataPath = $chart->band->site_name . '/charts/' ;
-        
-        foreach($request->file('files') as $i=>$file)
-        {
-            $uploadPath = $dataPath. Carbon::now() . $file[$i]->getClientOriginalName();
-            // dd($file[$i]);
-            Storage::disk('s3')->put($uploadPath,fopen($file[$i]->getRealPath(), 'r+'));
 
-            ChartUploads::create([
-                'chart_id' => $chart->id,
-                'upload_type_id'=>$request->type_id,
-                'name'=>$file[$i]->getClientOriginalName(),
-                'displayName'=>$file[$i]->getClientOriginalName(),
-                'fileType'=>Storage::mimeType($uploadPath),
-                'url'=>$uploadPath
-            ]);
-        }
+        $chartService = new ChartsServices();
+        $chartService->uploadData($chart,$request);
 
         return Redirect::back()->with('successMessage', 'Files Uploaded');
     }

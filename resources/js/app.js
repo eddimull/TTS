@@ -5,6 +5,7 @@ import { createApp, h, Vue } from 'vue';
 import { App as InertiaApp, plugin as InertiaPlugin } from '@inertiajs/inertia-vue3';
 import { InertiaProgress } from '@inertiajs/progress';
 import VueSweetalert2 from 'vue-sweetalert2';
+import Link from '@inertiajs/inertia-vue3'
 import moment from 'moment';
 import CardModal from './Components/CardModal'
 import Card from './Components/Card'
@@ -28,10 +29,16 @@ import Dropdown from 'primevue/dropdown';
 import Image from 'primevue/image';
 import qs from 'qs';
 import AudioVisual from 'vue-audio-visual'
-
+import Chart from 'primevue/chart';
+import TabView from 'primevue/tabview';
+import TabPanel from 'primevue/tabpanel';
+import BreezeNavLink from '@/Components/InlineLink'
+import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
+import Container from '@/Components/Container'
 import 'sweetalert2/dist/sweetalert2.min.css';
 import 'primevue/resources/themes/saga-blue/theme.css'
-import 'primevue/resources/primevue.min.css'                 
+import 'primevue/resources/primevue.min.css'
+import 'primeflex/primeflex.css';                 
 import 'primeicons/primeicons.css'    
 
 
@@ -50,6 +57,10 @@ const app = createApp({
     .use(moment)
     .use(PrimeVue)
     .use(AudioVisual)
+    .component('Layout',BreezeAuthenticatedLayout)
+    .component('Link',BreezeNavLink)
+    .component('Container',Container)
+    .component('Chart',Chart)
     .component("card-modal",CardModal)
     .component('calendar', Calendar)
     .component('Checkbox',Checkbox)
@@ -69,6 +80,8 @@ const app = createApp({
     .component('Dropdown',Dropdown)
     .component('DataTable',DataTable)
     .component('Panel',Panel)
+    .component('TabView',TabView)
+    .component('TabPanel',TabPanel)
 
 app.config.globalProperties.$qs = qs;
 app.mount(el)

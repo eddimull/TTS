@@ -1,5 +1,12 @@
 <template>
   <breeze-authenticated-layout>
+    <template #header>
+      <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <Link href="/bands">
+          Bands
+        </Link> :: {{ band.name }}
+      </h2>
+    </template>
     <div class="w-full max-w-lg">
       <div class="mb-4 bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
         <div class="mb-4 flex text-center">

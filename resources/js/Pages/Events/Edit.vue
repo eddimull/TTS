@@ -1,5 +1,12 @@
 <template>
   <breeze-authenticated-layout>
+    <template #header>
+      <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <Link href="/events">
+          Events
+        </Link> :: {{ form.event_name }}
+      </h2>
+    </template>
     <div class="min-w-full max-w-7xl mx-auto sm:px-6 lg:px-8">
       <div class="mb-4">
         {{ errors.name }}

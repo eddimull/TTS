@@ -4,161 +4,161 @@
       <h2 class="font-semibold text-xl text-gray-800 leading-tight">
         Band Charts
       </h2>
-      <div>
-        <div class="card">
-          <Toolbar class="p-mb-4">
-            <template #left>
-              <Button
-                label="New"
-                icon="pi pi-plus"
-                class="p-button-success p-mr-2"
-                @click="openNew"
-              />
-              <!-- <Button
+    </template>
+    <div class="min-w-full max-w-7xl">
+      <div class="card">
+        <Toolbar class="p-mb-4">
+          <template #left>
+            <Button
+              label="New"
+              icon="pi pi-plus"
+              class="p-button-success p-mr-2"
+              @click="openNew"
+            />
+          <!-- <Button
                 label="Delete"
                 icon="pi pi-trash"
                 class="hidden p-button-danger"
                 :disabled="!selectedProducts || !selectedProducts.length"
                 @click="confirmDeleteSelected"
               /> -->
-            </template>
+          </template>
 
-            <template #right>
-              <!-- <Button
+          <template #right>
+          <!-- <Button
 
                 label="Export"
                 icon="pi pi-upload"
                 class="hidden p-button-help"
                 @click="exportCSV($event)"
               /> -->
-            </template>
-          </Toolbar>
-          <DataTable
-            :value="chartsData"
-            striped-rows
-            row-hover
-            responsive-layout="scroll"
-            selection-mode="single"
-            @row-click="selectedChart"
-          >
-            <Column
-              field="title"
-              header="Title"
-            />
-            <Column
-              field="composer"
-              header="Composer"
-            />
-            <template #empty>
-              No Records found. Click 'new' to create one.
-            </template>
-          </DataTable>
-        </div>
-
-        <Dialog
-          v-model:visible="chartDialog"
-          :style="{width: '450px'}"
-          header="Chart Details"
-          :modal="true"
-          class="p-fluid"
-        >
-          <img
-            v-if="chart.image"
-            src="https://www.primefaces.org/wp-content/uploads/2020/05/placeholder.png"
-            :alt="chart.image"
-            class="product-image"
-          >
-          <div class="p-field">
-            <label for="name">Name</label>
-            <InputText
-              id="name"
-              v-model.trim="chart.name"
-              required="true"
-              autofocus
-              :class="{'p-invalid': submitted && !chart.name}"
-            />
-            <small
-              v-if="submitted && !chart.name"
-              class="p-error"
-            >Name is required.</small>
-          </div>
-          <div class="p-field">
-            <label for="name">Composer</label>
-            <InputText
-              id="name"
-              v-model.trim="chart.composer"
-              required="true"
-              autofocus
-              :class="{'p-invalid': submitted && !chart.composer}"
-            />
-            <small
-              v-if="submitted && !chart.composer"
-              class="p-error"
-            >Composer is required.</small>
-          </div>                  
-          <div class="p-field">
-            <label for="description">Description</label>
-            <Textarea
-              id="description"
-              v-model="chart.description"
-              required="true"
-              rows="3"
-              cols="20"
-            />
-          </div>
-          <div class="p-field">
-            <label
-              for="band"
-              class="p-mb-3"
-            >Band</label>
-            <Dropdown
-              id="bandSelection"
-              v-model="chart.band"
-              :options="availableBands"
-              option-label="name"
-              placeholder="Select a Band"
-            >
-              <template #value="slotProps">
-                <div v-if="slotProps.value && slotProps.value.id">
-                  <span>{{ slotProps.value.name }}</span>
-                </div>
-
-                <span v-else>
-                  {{ slotProps.placeholder }}
-                </span>
-              </template>
-            </Dropdown>
-          </div>          
-          <div class="p-formgrid p-grid">
-            <div class="p-field p-col">
-              <label for="price">Price</label>
-              <InputNumber
-                id="price"
-                v-model="chart.price"
-                mode="currency"
-                currency="USD"
-                locale="en-US"
-              />
-            </div>
-          </div>
-          <template #footer>
-            <Button
-              label="Cancel"
-              icon="pi pi-times"
-              class="p-button-text"
-              @click="closeDialog"
-            />
-            <Button
-              :label="saving ? 'Saving...': 'Save'"
-              :disabled="saving"
-              icon="pi pi-check"
-              class="p-button-text"
-              @click="saveChart"
-            />
           </template>
-        </Dialog>
+        </Toolbar>
+        <DataTable
+          :value="chartsData"
+          striped-rows
+          row-hover
+          responsive-layout="scroll"
+          selection-mode="single"
+          @row-click="selectedChart"
+        >
+          <Column
+            field="title"
+            header="Title"
+          />
+          <Column
+            field="composer"
+            header="Composer"
+          />
+          <template #empty>
+            No Records found. Click 'new' to create one.
+          </template>
+        </DataTable>
       </div>
-    </template>
+
+      <Dialog
+        v-model:visible="chartDialog"
+        :style="{width: '450px'}"
+        header="Chart Details"
+        :modal="true"
+        class="p-fluid"
+      >
+        <img
+          v-if="chart.image"
+          src="https://www.primefaces.org/wp-content/uploads/2020/05/placeholder.png"
+          :alt="chart.image"
+          class="product-image"
+        >
+        <div class="p-field">
+          <label for="name">Name</label>
+          <InputText
+            id="name"
+            v-model.trim="chart.name"
+            required="true"
+            autofocus
+            :class="{'p-invalid': submitted && !chart.name}"
+          />
+          <small
+            v-if="submitted && !chart.name"
+            class="p-error"
+          >Name is required.</small>
+        </div>
+        <div class="p-field">
+          <label for="name">Composer</label>
+          <InputText
+            id="name"
+            v-model.trim="chart.composer"
+            required="true"
+            autofocus
+            :class="{'p-invalid': submitted && !chart.composer}"
+          />
+          <small
+            v-if="submitted && !chart.composer"
+            class="p-error"
+          >Composer is required.</small>
+        </div>                  
+        <div class="p-field">
+          <label for="description">Description</label>
+          <Textarea
+            id="description"
+            v-model="chart.description"
+            required="true"
+            rows="3"
+            cols="20"
+          />
+        </div>
+        <div class="p-field">
+          <label
+            for="band"
+            class="p-mb-3"
+          >Band</label>
+          <Dropdown
+            id="bandSelection"
+            v-model="chart.band"
+            :options="availableBands"
+            option-label="name"
+            placeholder="Select a Band"
+          >
+            <template #value="slotProps">
+              <div v-if="slotProps.value && slotProps.value.id">
+                <span>{{ slotProps.value.name }}</span>
+              </div>
+
+              <span v-else>
+                {{ slotProps.placeholder }}
+              </span>
+            </template>
+          </Dropdown>
+        </div>          
+        <div class="p-formgrid p-grid">
+          <div class="p-field p-col">
+            <label for="price">Price</label>
+            <InputNumber
+              id="price"
+              v-model="chart.price"
+              mode="currency"
+              currency="USD"
+              locale="en-US"
+            />
+          </div>
+        </div>
+        <template #footer>
+          <Button
+            label="Cancel"
+            icon="pi pi-times"
+            class="p-button-text"
+            @click="closeDialog"
+          />
+          <Button
+            :label="saving ? 'Saving...': 'Save'"
+            :disabled="saving"
+            icon="pi pi-check"
+            class="p-button-text"
+            @click="saveChart"
+          />
+        </template>
+      </Dialog>
+    </div>
   </breeze-authenticated-layout>
 </template>
 

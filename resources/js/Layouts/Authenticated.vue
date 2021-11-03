@@ -43,10 +43,10 @@
                 </breeze-nav-link>       
                 <breeze-nav-link
                   v-if="$page.props.auth.user.navigation.Invoices"
-                  :href="route('invoices')"
-                  :active="route().current('invoices')"
+                  :href="route('finances')"
+                  :active="route().current('finances')"
                 >
-                  Invoices
+                  Finances
                 </breeze-nav-link>                             
                 <breeze-nav-link
                   v-if="$page.props.auth.user.navigation.Colors"
@@ -240,10 +240,10 @@
             </breeze-responsive-nav-link> 
             <breeze-responsive-nav-link
               v-if="$page.props.auth.user.navigation.Invoices"
-              :href="route('invoices')"
-              :active="route().current('invoices')"
+              :href="route('finances')"
+              :active="route().current('finances')"
             >
-              Invoices
+              Finances
             </breeze-responsive-nav-link> 
             <breeze-responsive-nav-link
               v-if="$page.props.auth.user.navigation.Colors"
@@ -297,7 +297,7 @@
         v-if="$slots.header"
         class="bg-white shadow"
       >
-        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto py-2 px-4 sm:px-4 lg:px-8">
           <slot name="header" />
         </div>
       </header>
@@ -309,7 +309,9 @@
           :errors="$page.props.errors"
         />
         <slot />
-        <slot name="content" />
+        <div class="layout-main-container">
+          <slot name="content" />
+        </div>
       </main>
     </div>
   </div>

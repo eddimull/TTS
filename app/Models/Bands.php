@@ -46,6 +46,10 @@ class Bands extends Model
     {
         return $this->hasMany(Proposals::class,'band_id');
     }
+    public function completedProposals()
+    {
+        return $this->hasMany(Proposals::class,'band_id')->where('phase_id','=','6');
+    }
 
     public function events()
     {
