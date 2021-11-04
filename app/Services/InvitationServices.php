@@ -27,11 +27,11 @@ class InvitationServices{
                 'language' => 'a member'
             ];
         }
-        $checkInvite = Invitations::where('email','=',$email)->and('band_id','=',$bandid)->and('invite_type_id','=',$owner ? 1 : 2)->first();
-        if(!is_null($checkInvite))
-        {
-            return back()->withErrors(['user'=>'Invitation already sent!']);
-        }
+        // $checkInvite = Invitations::where('email','=',$email)->and('band_id','=',$bandid)->and('invite_type_id','=',$owner ? 1 : 2)->first();
+        // if(!is_null($checkInvite))
+        // {
+        //     return back()->withErrors(['user'=>'Invitation already sent!']);
+        // }
         $invite = Invitations::create([
             'email'=>$email,
             'band_id'=>$bandid,
