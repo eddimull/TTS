@@ -40,7 +40,7 @@ class CreateProposalTable extends Migration
             $table->foreignId('proposal_id');
             $table->string('email');
             $table->string('name');
-            $table->tinyInteger('phonenumber');
+            $table->integer('phonenumber');
             $table->timestamps();
         });
 

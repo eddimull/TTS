@@ -16,10 +16,21 @@ class Invitation extends Mailable
      *
      * @return void
      */
-    public function __construct($band)
+    public function __construct($band,$owner = false)
     {
         //
         $this->band = $band;
+        $this->verbage = [
+            'type' => 'owner',
+            'language' => 'an owner'
+        ];
+        if(!$owner)
+        {
+            $this->verbage = [
+                'type' => 'member',
+                'language' => 'a member'
+            ];
+        }
     }
 
     /**
@@ -31,8 +42,8 @@ class Invitation extends Mailable
     {
         return $this->markdown('email.invitation')
                     ->with('bandName',$this->band->name)
-                    ->with('ownerMember','an owner')
-                    ->subject('Invite to join ' . $this->band->name);
+                    ->with('ownerMember',$this->verbage['language'])
+                    ->subject('Invite to become ' . $this->verbage['language'] . ' of ' . $this->band->name);
                     
     }
 }

@@ -3,7 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Database\Seeders\upload_types;
+use Database\Seeders\EventTypeSeeder;
 
 class MakeEventTypes extends Migration
 {
@@ -14,13 +14,14 @@ class MakeEventTypes extends Migration
      */
     public function up()
     {
+        Schema::dropIfExists('event_types');
         Schema::create('event_types', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->timestamps();
         });
 
-        $seed = new upload_types();
+        $seed = new EventTypeSeeder();
 
         $seed->run();
 

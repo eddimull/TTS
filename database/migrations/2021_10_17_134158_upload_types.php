@@ -19,11 +19,10 @@ class UploadTypes extends Migration
             $table->id();
             $table->string('name');
         });
+        $seed = new upload_types();
 
-        Artisan::call('db:seed', [
-            '--class' => 'upload_types',
-            '--force' => true // <--- add this line
-        ]);
+        $seed->run();
+       
     }
 
     /**

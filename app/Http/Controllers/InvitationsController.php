@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\CreateMemberRequest;
 use App\Models\Invitations;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -14,6 +15,7 @@ use Error;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Auth;
 use App\Notifications\TTSNotification;
+use App\Services\InvitationServices;
 
 class InvitationsController extends Controller
 {
@@ -36,88 +38,17 @@ class InvitationsController extends Controller
     {
         //
     }
-    public function createOwner(Request $request, $id)
+    public function createOwner(CreateMemberRequest $request, $id)
     {
-        $request->validate([
-            'email'=>'required|email:rfc,dns',
-        ]);
-        if(Invitations::where('email',$request->email)->where('band_id',$id)->exists())
-        {
-            return back()->withErrors('User already invited to be an owner.');
-        }
-
-        $invite = Invitations::create([
-            'email'=>$request->email,
-            'band_id'=>$id,
-            'invite_type_id'=>1
-        ]);
-
-        $author = Auth::user();
-        $user = User::where('email', $invite->email)->first();
-        $band = Bands::find($invite->band_id);
-        
-        if($user !== null)
-        {
-
-            if($user->ownsBand($band->id))
-            {
-                return back()->withErrors('User is already an owner.');
-            }
-
-            $created = BandOwners::firstOrCreate([
-                'user_id' => $user->id,
-                'band_id' => $invite->band_id
-            ]);
-            $details = [
-                'title' => 'Invitation to become a band owner',
-                'body' => 'You were invited to be an owner of ' . $band->name . ' at TTS.'
-            ];
-            foreach($band->owners as $owner)
-            {
-               $ownerUser = User::find($owner->user_id);
-               $ownerUser->notify(new TTSNotification([
-                'text'=>$author->name . ' made ' . $user->name . ' an owner of ' . $band->name,
-                'route'=>'bands.edit',
-                'routeParams'=>$band->id,
-                'url'=>'/bands/' . $band->id . '/edit'
-                ]));
-            }
-            //uncomment when out of sandbox
-            Mail::to($user->email)->send(new Invitation($band));
-        }
-        else
-        {
-            $details = [
-                'title' => 'Invitation to become a band owner',
-                'body' => 'You were invited to be an owner of ' . $band->name . ' at TTS. Create an account at http://tts.band/register'
-            ];
-
-            foreach($band->owners as $owner)
-            {
-               $ownerUser = User::find($owner->user_id);
-               $ownerUser->notify(new TTSNotification([
-                'text'=>$author->name . ' invited ' . $invite->email . ' an owner of ' . $band->name . ' (invitation pending)',
-                'route'=>'bands.edit',
-                'routeParams'=>$band->id,
-                'url'=>'/bands/' . $band->id . '/edit'
-                ]));
-            }
-            Mail::to($invite->email)->send(new Invitation($band));
-        }
+        (new InvitationServices())->inviteUser($request->email,$id,true);
         return back()->with('successMessage','User invited to be an owner');
     }
 
-    public function createMember(Request $request, $id)
+    public function createMember(CreateMemberRequest $request, $id)
     {
-        $request->validate([
-            'email'=>'required|email:rfc,dns',
-        ]);
+        (new InvitationServices())->inviteUser($request->email,$id,false);
+        return back()->with('successMessage',$request->email . ' has been invited to be a member');
 
-        Invitations::create([
-            'email'=>$request->email,
-            'band_id'=>$id,
-            'invite_type_id'=>2
-        ]);
     }
     /**
      * Store a newly created resource in storage.

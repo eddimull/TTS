@@ -3,6 +3,7 @@
 use App\Http\Controllers\EventsController;
 use App\Http\Controllers\FinancesController;
 use App\Http\Controllers\InvoicesController;
+use App\Http\Controllers\InvitationsController;
 use App\Mail\Proposal;
 use App\Models\ProposalContacts;
 use App\Models\Bands;
@@ -111,8 +112,8 @@ Route::group(['prefix'=>'finances','middleware'=>['auth','verified']],function()
 Route::get('/images/{uri}','ImageController@index');
 Route::get('/images/{band_site}/{uri}','ImageController@siteImages');
 
-Route::post('/inviteOwner/{band_id}','InvitationsController@createOwner')->middleware(['auth','verified'])->name('invite.createOwner');
-Route::post('/inviteMember/{band_id}','InvitationsController@createMember')->middleware(['auth','verified'])->name('invite.createMember');
+Route::post('/inviteOwner/{band_id}',[InvitationsController::class,'createOwner'])->middleware(['auth','verified'])->name('invite.createOwner');
+Route::post('/inviteMember/{band_id}',[InvitationsController::class,'createMember'])->middleware(['auth','verified'])->name('invite.createMember');
 Route::delete('/deleteInvite/{band}/{invitations}','InvitationsController@destroy')->middleware(['auth','verified'])->name('invite.delete');
 
 

@@ -31,7 +31,7 @@ class AddingAddressToUser extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             //
-            $table->dropColumn('Zip',5);
+            $table->dropColumn('Zip');
             $table->dropColumn('City');
             $table->dropColumn('StateID');
             $table->dropColumn('CountryID');

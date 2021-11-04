@@ -27,7 +27,7 @@ class ChangeProposalContactPhonenumberFieldType extends Migration
     {
         Schema::table('proposal_contacts', function (Blueprint $table) {
             //
-            $table->tinyInteger('phonenumber')->nullable()->change();
+            $table->integer('phonenumber')->nullable()->change();
         });
     }
 }
