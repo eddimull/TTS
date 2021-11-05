@@ -11,6 +11,7 @@ class Proposals extends Model
 
     protected $table = 'proposals';
     protected $with = ['band','proposal_contacts','phase','author','event_type','recurring_dates','contract'];
+    protected $guarded = [];
 
 
 
@@ -57,6 +58,29 @@ class Proposals extends Model
     public function stripe_customers()
     {
         return $this->hasMany(stripe_customers::class,'proposal_id');
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(ProposalPayments::class,'proposal_id');
+    }
+
+    public function getAmountPaidAttribute()
+    {
+        
+        $paid = 0;
+        foreach($this->payments as $payment)
+        {
+            $paid += $payment->amount;
+        }
+
+        return number_format($paid/100,2);
+    }
+
+
+    public function getAmountLeftAttribute()
+    {   
+        return number_format($this->price - $this->amountPaid,2);
     }
 
 

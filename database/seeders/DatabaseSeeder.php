@@ -22,7 +22,7 @@ class DatabaseSeeder extends Seeder
         $this->call(CountriesTableSeeder::class);
         $this->call(StatesTableSeeder::class);
         // $this->call(EventTypeSeeder::class); //it calls itself on the migration
-        $this->call(ProposalPhasesSeeder::class);
+        // $this->call(ProposalPhasesSeeder::class);
         \App\Models\Proposals::factory(300)->create();
     }
 }

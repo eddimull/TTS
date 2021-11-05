@@ -1,11 +1,10 @@
 <?php
 
-use Database\Seeders\ProposalPhasesSeeder;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateProposalPhasesTable extends Migration
+class AddTimestampsToPayments extends Migration
 {
     /**
      * Run the migrations.
@@ -14,14 +13,9 @@ class CreateProposalPhasesTable extends Migration
      */
     public function up()
     {
-        Schema::create('proposal_phases', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
+        Schema::table('payments', function (Blueprint $table) {
             $table->timestamps();
         });
-
-        $seed = new ProposalPhasesSeeder();
-        $seed->run();
     }
 
     /**
@@ -31,6 +25,9 @@ class CreateProposalPhasesTable extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('proposal_phases');
+        Schema::table('payments', function (Blueprint $table) {
+            $table->removeColumn('updated_at');
+            $table->removeColumn('created_at');
+        });
     }
 }
