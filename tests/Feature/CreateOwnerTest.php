@@ -52,7 +52,8 @@ class CreateOwnerTest extends TestCase
         $response->assertSessionHas(['successMessage']);
         $this->assertDatabaseHas('invitations',[
             'email'=>'test@user.com',
-            'invite_type_id'=>1
+            'invite_type_id'=>1,
+            'pending'=>true
         ]);
     }
 }

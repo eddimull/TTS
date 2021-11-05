@@ -22,9 +22,10 @@ class BandsFactory extends Factory
      */
     public function definition()
     {
+        $band = $this->faker->company;
         return [
-            'name' => $this->faker->name,
-            'site_name' => str_replace(' ','_',$this->faker->name)
+            'name' => $band,
+            'site_name' => str_replace(' ','_',$band)
         ];
     }
 

@@ -17,9 +17,6 @@ class CreateMemberTest extends TestCase
 
     protected function setupBandAndUser()
     {
-
-        parent::setUp();
-
         $this->band = Bands::factory()->create();
         $this->user = User::factory()->create();
         BandOwners::create([
@@ -42,7 +39,7 @@ class CreateMemberTest extends TestCase
     public function test_invalidEmail()
     {
 
-
+        $this->setupBandAndUser();
 
         $response = $this->actingAs($this->user)->post('/inviteMember/' . $this->band->id,['email'=>'badEmail']);
 
@@ -53,13 +50,14 @@ class CreateMemberTest extends TestCase
     public function test_validEmail()
     {
       
-
+        $this->setupBandAndUser();
         $response = $this->actingAs($this->user)->post('/inviteMember/' . $this->band->id,['email'=>'test@user.com']);
 
         $response->assertSessionHas(['successMessage']);
         $this->assertDatabaseHas('invitations',[
             'email'=>'test@user.com',
-            'invite_type_id'=>2
+            'invite_type_id'=>2,
+            'pending'=>true
         ]);
         
     }

@@ -6,6 +6,11 @@ use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\Bands;
 use App\Models\BandOwners;
+use CountriesTableSeeder;
+use StatesTableSeeder;
+use EventTypeSeeder;
+use ProposalPhasesSeeder;
+use Illuminate\Cache\DatabaseStore;
 
 class EddiesStuff extends Seeder
 {
@@ -29,6 +34,9 @@ class EddiesStuff extends Seeder
             'user_id'=>$user->id,
             'band_id'=>$band->id
         ]);
+
+        $dbSeeder = new DatabaseSeeder();
+        $dbSeeder->run();
 
     }
 }

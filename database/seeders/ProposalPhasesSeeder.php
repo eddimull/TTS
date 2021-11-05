@@ -16,19 +16,15 @@ class ProposalPhasesSeeder extends Seeder
     {
        
         $proposal_phases =[
-        [
-            'name'=>'draft'
-        ],
-        [
-            'name'=>'finalized'
-        ],
-        [
-            'name'=>'sent/pending'
-        ],
-        [
-            'name'=>'approved'
-        ],        
+            ['name'=>'Draft'],
+            ['name'=>'Finalized'],
+            ['name'=>'proposal sent'],
+            ['name'=>'Approved'],
+            ['name'=>'contract sent'],
+            ['name'=>'contract signed'],     
         ];
+
+
         
         ProposalPhases::insert($proposal_phases);
     }
