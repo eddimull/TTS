@@ -80,7 +80,7 @@ class ChartsController extends Controller
     public function updateResource(Charts $chart, ChartUploads $upload, Request $request)
     {
         $upload->displayName = $request->displayName;
-        $upload->notes = $request->notes;
+        $upload->notes = is_null($request->notes) ? '' : $request->notes;
         $upload->save();
         return Redirect::back()->with('successMessage', $upload->displayName . ' has been updated');
     }
