@@ -25,7 +25,7 @@ class ProposalPaidAmount extends TestCase
         // dd($band->id);
         $proposal = Proposals::factory()->create([
             'band_id'=>$band->id,
-            'price'=>'10000.00',
+            'price'=>'10000.000',
             'paid'=>false,
             'author_id'=>$user->id
         ]);
@@ -48,7 +48,7 @@ class ProposalPaidAmount extends TestCase
         // dd($band->id);
         $proposal = Proposals::factory()->create([
             'band_id'=>$band->id,
-            'price'=>'10000.00',
+            'price'=>'10000.000',
             'paid'=>false,
             'author_id'=>$user->id
         ]);

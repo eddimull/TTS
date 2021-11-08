@@ -96,150 +96,147 @@
         />
       </template>
     </Dialog>
-    <div class="bg-white shadow">
+    <Container>
       <div class="min-w-min md:w-auto py-6 px-4 sm:px-6 lg:px-8">
-        <div>
-          <div class="card mx-10">
-            <div class="p-fluid p-formgrid p-grid">
-              <div class="p-field p-col my-4">
-                <label for="firstname">Title</label>
-                <InputText
-                  id="firstname"
-                  v-model="chartData.title"
-                  type="text"
-                />
-              </div>
-              <div class="p-field p-col my-4">
-                <label for="lastname">Composer</label>
-                <InputText
-                  id="lastname"
-                  v-model="chartData.composer"
-                  type="text"
-                />
-              </div>
-              <div class="p-field p-col my-4">
-                <label for="public">Public </label>
-                
-                <Checkbox
-                  v-model="chartData.public"
-                  name="public"
-                  :binary="true"
-                />
-              </div>
-              <div class="p-field p-col my-4">
-                <label for="description">Notes/Description</label>
-              
-                <Editor
-                  v-model="chartData.description"
-                  name="description"
-                  editor-style="height:320px"
-                />
-              </div>     
-              <div class="flex">
-                <div class="w-1/4 mx-4 flex-auto border-4 border-light-blue-500 border-opacity-75">
-                  <Button
-                    label="Delete Chart"
-                    icon="pi pi-trash"
-                    class="p-button-text"
-                    @click="deleteChart"
-                  />
-                </div>
-                <div class="w-1/4 mx-4 flex-auto border-4 border-light-blue-500 border-opacity-75">
-                  <Button
-                    label="Update Chart"
-                    icon="pi pi-save"
-                    @click="updateChart"
-                  />
-                </div>
-              </div>      
+        <div class="flex flex-col">
+          <div class="p-fluid p-formgrid p-grid">
+            <div class="p-field p-col my-4">
+              <label for="firstname">Title</label>
+              <InputText
+                id="firstname"
+                v-model="chartData.title"
+                type="text"
+              />
             </div>
-            <Divider type="dashed" />
-            <Panel class="mt-4">
-              <template #header>
-                Sheet Music
-              </template>
-	
-              <DataTable
-                :value="sheetMusic"
-                striped-rows
-                row-hover
-                responsive-layout="scroll"
-                selection-mode="single"
-                @row-click="selectUpload"
-              >
-                <Column
-                  field="displayName"
-                  header="Name"
+            <div class="p-field p-col my-4">
+              <label for="lastname">Composer</label>
+              <InputText
+                id="lastname"
+                v-model="chartData.composer"
+                type="text"
+              />
+            </div>
+            <div class="p-field p-col my-4">
+              <label for="public">Public </label>
+                
+              <Checkbox
+                v-model="chartData.public"
+                name="public"
+                :binary="true"
+              />
+            </div>
+            <div class="p-field p-col my-4">
+              <label for="description">Notes/Description</label>
+              
+              <Editor
+                v-model="chartData.description"
+                name="description"
+                editor-style="height:320px"
+              />
+            </div>     
+            <div class="flex flex-row">
+              <div class="w-1/4 mx-4 flex-auto border-4 border-light-blue-500 border-opacity-75">
+                <Button
+                  label="Delete Chart"
+                  icon="pi pi-trash"
+                  class="p-button-text"
+                  @click="deleteChart"
                 />
-                <Column
-                  field="name"
-                  header="File Name"
+              </div>
+              <div class="w-1/4 mx-4 flex-auto border-4 border-light-blue-500 border-opacity-75">
+                <Button
+                  label="Update Chart"
+                  icon="pi pi-save"
+                  @click="updateChart"
                 />
- 
-                <template #empty>
-                  No Sheet Music found.
-                </template>
-              </DataTable>
-              <Accordion>
-                <AccordionTab header="upload">
-                  <FileUpload
-                    name="sheetMusic[]"              
-                    :multiple="true"
-                    :custom-upload="true"
-                    @uploader="uploadChart"
-                  >
-                    <template #empty>
-                      <p>Drag and drop files to here to upload.</p>
-                    </template>
-                  </FileUpload>
-                </AccordionTab>
-              </Accordion>
-            </Panel>
-            <Panel class="mt-4">
-              <template #header>
-                Recordings
-              </template>
-              <DataTable
-                :value="recordings"
-                striped-rows
-                row-hover
-                responsive-layout="scroll"
-                selection-mode="single"
-                @row-click="selectUpload"
-              >
-                <Column
-                  field="displayName"
-                  header="Name"
-                />
-                <Column
-                  field="name"
-                  header="File Name"
-                />
-                <template #empty>
-                  No Recordings found.
-                </template>
-              </DataTable>
-              <Accordion>
-                <AccordionTab header="upload">
-                  <FileUpload
-                    name="recordings[]"
-                    :url="chart.id + '/upload'"
-                    :multiple="true"
-                    :custom-upload="true"
-                    @uploader="uploadMusic"
-                  >
-                    <template #empty>
-                      <p>Drag and drop files to here to upload.</p>
-                    </template>
-                  </FileUpload>
-                </AccordionTab>
-              </Accordion>
-            </Panel>
-            <div />
+              </div>
+            </div>      
           </div>
+          <Divider type="dashed" />
+          <Panel class="mt-4">
+            <template #header>
+              Sheet Music
+            </template>
+	
+            <DataTable
+              :value="sheetMusic"
+              striped-rows
+              row-hover
+              responsive-layout="scroll"
+              selection-mode="single"
+              @row-click="selectUpload"
+            >
+              <Column
+                field="displayName"
+                header="Name"
+              />
+              <Column
+                field="name"
+                header="File Name"
+              />
+ 
+              <template #empty>
+                No Sheet Music found.
+              </template>
+            </DataTable>
+            <Accordion>
+              <AccordionTab header="upload">
+                <FileUpload
+                  name="sheetMusic[]"              
+                  :multiple="true"
+                  :custom-upload="true"
+                  @uploader="uploadChart"
+                >
+                  <template #empty>
+                    <p>Drag and drop files to here to upload.</p>
+                  </template>
+                </FileUpload>
+              </AccordionTab>
+            </Accordion>
+          </Panel>
+          <Panel class="mt-4">
+            <template #header>
+              Recordings
+            </template>
+            <DataTable
+              :value="recordings"
+              striped-rows
+              row-hover
+              responsive-layout="scroll"
+              selection-mode="single"
+              @row-click="selectUpload"
+            >
+              <Column
+                field="displayName"
+                header="Name"
+              />
+              <Column
+                field="name"
+                header="File Name"
+              />
+              <template #empty>
+                No Recordings found.
+              </template>
+            </DataTable>
+            <Accordion>
+              <AccordionTab header="upload">
+                <FileUpload
+                  name="recordings[]"
+                  :url="chart.id + '/upload'"
+                  :multiple="true"
+                  :custom-upload="true"
+                  @uploader="uploadMusic"
+                >
+                  <template #empty>
+                    <p>Drag and drop files to here to upload.</p>
+                  </template>
+                </FileUpload>
+              </AccordionTab>
+            </Accordion>
+          </Panel>
         </div>
       </div>
-    </div>
+    </Container>
   </breeze-authenticated-layout>
 </template>
 
@@ -345,3 +342,11 @@
         }
     }
 </script>
+<style>
+  .p-fileupload-filename{
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+</style>

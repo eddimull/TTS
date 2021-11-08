@@ -19,7 +19,6 @@ class UserPermissionsController extends Controller
     {       
         
         $permissions = userPermissions::firstOrCreate(['band_id'=>$band->id, 'user_id'=>$user->id]);
-        
         return Inertia::render('Band/ShowPermissions',['band'=>$band,'user'=>$user,'permissions'=>$permissions]);
     }
 
@@ -43,19 +42,18 @@ class UserPermissionsController extends Controller
     {
         
         $permissions = userPermissions::firstOrCreate(['band_id'=>$band->id, 'user_id'=>$user->id]);
-        
-        $permissions->read_events = $request->permissions['read_events'];
-        $permissions->write_events = $request->permissions['write_events'];
-        $permissions->read_proposals = $request->permissions['read_proposals'];
-        $permissions->write_proposals = $request->permissions['write_proposals'];
-        $permissions->read_invoices = $request->permissions['read_invoices'];
-        $permissions->write_invoices = $request->permissions['write_invoices'];
-        $permissions->read_colors = $request->permissions['read_colors'];
-        $permissions->write_colors = $request->permissions['write_colors'];
-        $permissions->read_charts = $request->permissions['read_charts'];
-        $permissions->write_charts = $request->permissions['write_charts'];
+        $permissions->read_events = !empty($request->permissions['read_events']) ? $request->permissions['read_events'] : false;
+        $permissions->write_events = !empty($request->permissions['write_events']) ? $request->permissions['write_events'] : false;
+        $permissions->read_proposals = !empty($request->permissions['read_proposals']) ? $request->permissions['read_proposals'] : false;
+        $permissions->write_proposals = !empty($request->permissions['write_proposals']) ? $request->permissions['write_proposals'] : false;
+        $permissions->read_invoices = !empty($request->permissions['read_invoices']) ? $request->permissions['read_invoices'] : false;
+        $permissions->write_invoices = !empty($request->permissions['write_invoices']) ? $request->permissions['write_invoices'] : false;
+        $permissions->read_colors = !empty($request->permissions['read_colors']) ? $request->permissions['read_colors'] : false;
+        $permissions->write_colors = !empty($request->permissions['write_colors']) ? $request->permissions['write_colors'] : false;
+        $permissions->read_charts = !empty($request->permissions['read_charts']) ? $request->permissions['read_charts'] : false;
+        $permissions->write_charts = !empty($request->permissions['write_charts']) ? $request->permissions['write_charts'] : false;
         $permissions->save();
-        return back()->with('successMessage','Permissions Updated!');
+        return redirect()->back()->with('successMessage','Permissions Updated!');
     }
 
     /**

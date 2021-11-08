@@ -37,19 +37,44 @@
                 row-hover
                 responsive-layout="scroll"
                 selection-mode="single"
-                @row-click="selectedChart"
+                @row-click="gotoProposal"
               >
                 <Column
                   field="name"
                   header="Name"
+                  :sortable="true"
                 />
                 <Column
                   field="price"
-                  header="price"
-                />
+                  header="Price"
+                  :sortable="true"
+                >
+                  <template #body="slotProps">
+                    ${{ parseFloat(slotProps.data.price).toFixed(2) }}
+                  </template>
+                </Column>
+                <Column
+                  field="amountPaid"
+                  header="Paid"
+                  :sortable="true"
+                >
+                  <template #body="slotProps">
+                    <div class="border flex flex-row relative p-2">
+                      <div class="z-50">
+                        {{ slotProps.data.amountPaid.replace(/,/g,'') }} / {{ parseFloat(slotProps.data.price).toFixed(2) }}
+                      </div>
+                      <div
+                        class="z-40 absolute top-0 left-0 h-full"
+                        style="min-width:10px;"
+                        :style="getStats(slotProps.data.amountPaid, slotProps.data.price)"
+                      />
+                    </div>
+                  </template>
+                </Column>
                 <Column
                   field="date"
                   header="Event Date"
+                  :sortable="true"
                 />
                 <template #empty>
                   No Records found. Click 'new' to create one.
@@ -66,6 +91,7 @@
           >
             <div class="card">
               <h5>{{ band.name }}</h5>
+              paid
               <DataTable
                 :value="band.paid"
                 striped-rows
@@ -77,15 +103,34 @@
                 <Column
                   field="name"
                   header="Name"
+                  :sortable="true"
                 />
                 <Column
                   field="price"
-                  header="price"
-                />
+                  header="Price"
+                  :sortable="true"
+                >
+                  <template #body="slotProps">
+                    ${{ parseFloat(slotProps.data.price).toFixed(2) }}
+                  </template>
+                </Column>
                 <Column
                   field="date"
                   header="Event Date"
+                  :sortable="true"
                 />
+                <Column
+                  field="amountLeft"
+                  header="Payment Overridden"
+                  :sortable="true"
+                >
+                  <template #body="slotProps">
+                    <div v-if="slotProps.data.amountLeft !== '0.00' && slotProps.data.paid">
+                      <i class="pi pi-check" />
+                      Still Owed ${{ slotProps.data.amountLeft }}
+                    </div>
+                  </template>
+                </Column>
                 <template #empty>
                   No Records found. Click 'new' to create one.
                 </template>
@@ -142,6 +187,47 @@
           this.parseProposals();
         },
         methods:{
+          getStats(paid,price)
+          {
+            const percentagePaid = (parseFloat(paid.replace(/,/g,'')).toFixed(2)/parseFloat(price).toFixed(2))*100;
+            let background = 'red';
+            switch(true){
+              case(percentagePaid < 10):
+                background = '#ff2d03'
+                break;
+              case(percentagePaid < 20):
+                background = '#ff7d03'
+                break;
+              case(percentagePaid < 30):
+                background = '#ffc803'
+                break;
+              case(percentagePaid < 40):
+                background = '#fff203'
+                break;
+              case(percentagePaid < 50):
+                background = '#d9ff03'
+                break;
+              case(percentagePaid < 60):
+                background = '#c0ff03'
+                break;
+              case(percentagePaid < 70):
+                background = '#afff03'
+                break;
+              case(percentagePaid < 80):
+                background = '#92ff03'
+                break;
+              case(percentagePaid < 90):
+                background = '#3eff03'
+                break;
+            }
+            return [{'width': percentagePaid +'%'},{'background':background}]
+          },
+          gotoProposal(event)
+          {
+            const proposal = event.data;
+            window.location = '/proposals/' + proposal.key + '/payments';
+            
+          },
           parseProposals()
           {
             
@@ -175,15 +261,16 @@
 
               this.completedProposals[band].data = data;
               this.completedProposals[band].unpaid = completedProposals.filter(proposal=>{
-                (!proposal.paid)
+                if(!proposal.paid)
                 {
                   return proposal
                 }
               })
 
-              this.completedProposals[band].unpaid = completedProposals.filter(proposal=>{
-                (proposal.paid)
+              this.completedProposals[band].paid = completedProposals.filter(proposal=>{
+                if(proposal.paid || proposal.amountLeft == '0.00')
                 {
+                  // console.log('paid',proposal.amountLeft);
                   return proposal
                 }
               })

@@ -6,7 +6,7 @@
       </h2>
     </template>
 
-    <div class="md:container md:mx-auto">
+    <Container class="md:container md:mx-auto">
       <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
           <div
@@ -47,6 +47,17 @@
                         placeholder="Keyword Search"
                       />
                     </span>
+                    <div class="hidden float-right mt-2">
+                      <label
+                        for="switch"
+                        class="mr-2"
+                      >Only Show In Progress</label>
+                      <InputSwitch
+                        id="switch"
+                        v-model="dontShowCompleted"
+                        class="float-right"
+                      />
+                    </div>
                   </div>
                 </template>
                 <template #empty>
@@ -71,10 +82,10 @@
                   :sortable="true"
                 />
               </DataTable>
-              <div class="my-4">
+              <div class="flex justify-center items-center my-4">
                 <button
                   type="button"
-                  class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline m-10 p-5"
+                  class="self-center bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline m-10 p-5"
                   @click="toggleCreateModal(band.site_name)"
                 >
                   Draft Proposal for {{ band.name }}
@@ -84,16 +95,16 @@
           </div>
           <div v-else>
             It looks like you don't have any bands to create a proposal for. 
-            <button
+            <!-- <button
               type="button"
               class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
             >
               Draft Proposal
-            </button>
+            </button> -->
           </div>
         </div>
       </div>
-    </div>
+    </Container>
 
     <card-modal
       v-if="showModal"
@@ -412,6 +423,7 @@
     import axios from 'axios';
     import CurrencyInput from '@/Components/CurrencyInput';
     import {FilterMatchMode,FilterOperator} from 'primevue/api';
+import Label from '../../Components/Label.vue';
 
 
     export default {
@@ -421,7 +433,8 @@
             Column,
             InputText,
             Button,
-            CurrencyInput
+            CurrencyInput,
+                Label
         },
         props:['bandsAndProposals','successMessage','eventTypes','proposal_phases','bookedDates','proposedDates'],
         data(){
@@ -431,6 +444,7 @@
                 activeProposal:{},
                 searchParams : {},
                 activeBandSite:'',
+                dontShowCompleted:false,
                 filters1: null,
                 showFields:[
                     {name:'Author',property:'author',subProperty:'name'},

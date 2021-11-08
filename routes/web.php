@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\EventsController;
+use App\Http\Controllers\FinalizedProposalController;
 use App\Http\Controllers\FinancesController;
 use App\Http\Controllers\InvoicesController;
 use App\Http\Controllers\InvitationsController;
@@ -93,6 +94,9 @@ Route::group(['prefix'=>'proposals'],function(){
         Route::post('/createContact/{proposal:key}', 'ProposalsController@createContact')->name('proposals.createContact');
         Route::post('/editContact/{contact}', 'ProposalsController@editContact')->name('proposals.editContact');
         Route::delete('/deleteContact/{contact}', 'ProposalsController@deleteContact')->name('proposals.deleteContact');
+        Route::get('/{proposal:key}/payments',[FinalizedProposalController::class,'paymentIndex'])->name('proposals.paymentReview');
+        Route::post('/{proposal:key}/payment',[FinalizedProposalController::class,'submitPayment'])->name('proposals.submitPayment');
+        Route::delete('/{proposal:key}/deletePayment/{payment}',[FinalizedProposalController::class,'deletePayment'])->name('proposals.deletePayment');
     });
 
     Route::get('/{proposal:key}/details', 'ProposalsController@details')->name('proposals.details');

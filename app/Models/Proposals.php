@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Carbon;
 
 class Proposals extends Model
 {
@@ -80,9 +81,7 @@ class Proposals extends Model
 
     public function getAmountLeftAttribute()
     {   
-        return number_format($this->price - $this->amountPaid,2);
+        return number_format(floatval($this->price) - floatval(str_replace(",","",$this->amountPaid)),2);
     }
-
-
 
 }

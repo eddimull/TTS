@@ -22,6 +22,7 @@ import Button from 'primevue/button';
 import RadioButton from 'primevue/radiobutton';
 import InputText from 'primevue/inputtext';
 import DataTable from 'primevue/datatable';
+import InputSwitch from 'primevue/inputswitch';
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea';
 import Dialog from 'primevue/dialog';
@@ -38,7 +39,7 @@ import Container from '@/Components/Container'
 import 'sweetalert2/dist/sweetalert2.min.css';
 import 'primevue/resources/themes/saga-blue/theme.css'
 import 'primevue/resources/primevue.min.css'
-import 'primeflex/primeflex.css';                 
+// import 'primeflex/primeflex.css';                 
 import 'primeicons/primeicons.css'    
 
 
@@ -75,6 +76,7 @@ const app = createApp({
     .component('InputText',InputText)
     .component('Image',Image)
     .component('InputNumber',InputNumber)
+    .component('InputSwitch',InputSwitch)
     .component('Textarea',Textarea)
     .component('Dialog',Dialog)
     .component('Dropdown',Dropdown)

@@ -5,7 +5,7 @@
   >
     <div
       v-if="successMessage && visible"
-      class="absolute flex max-w-xs w-full mt-4 mr-4 top-0 right-0 bg-white rounded shadow p-4"
+      class="fixed flex max-w-xs w-full mt-4 mr-4 top-0.5 right-0.5 bg-white rounded shadow p-4"
     >
       <div class="mr-2">
         <svg
@@ -55,7 +55,7 @@
   >
     <div
       v-if="Object.keys(errors).length > 0 && visible"
-      class="absolute flex max-w-xs w-full mt-4 mr-4 top-0 right-0 bg-white rounded shadow p-4"
+      class="fixed flex max-w-xs w-full mt-4 mr-4 top-0.5 right-0.5 bg-white rounded shadow p-4"
     >
       <div class="mr-2">
         <svg

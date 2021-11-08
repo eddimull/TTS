@@ -39,7 +39,7 @@
           >
             <!-- button close -->
             <button 
-              class="fixed -top-3 -right-3 bg-red-500 hover:bg-red-600 text-2xl w-1 h-10 rounded-full focus:outline-none text-white"
+              class="fixed -top-3 -right-3 bg-red-500 hover:bg-red-600 text-2xl w-10 h-10 rounded-full focus:outline-none text-white"
               @click="closeModal()"
             >
               &cross;

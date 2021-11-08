@@ -64,7 +64,7 @@
                 </breeze-nav-link>             
               </div>
             </div>
- 
+            <!-- notifications and username -->
             <div class="hidden sm:flex sm:items-center sm:ml-6">
               <div class="ml-3 relative">
                 <breeze-dropdown
@@ -174,6 +174,65 @@
               </div>
             </div>
 
+            <!-- notifications on mobile -->
+            <div class="flex items-center sm:hidden">
+              <breeze-dropdown
+                align="full"
+                width="full"
+              >
+                <template #trigger>
+                  <span class="inline-flex rounded-md">
+                    <button
+                      type="button"
+                      class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
+                      @click="markSeen"
+                    >
+                      <span
+                        v-if="unseenNotifications > 0"
+                        class="absolute top-0 right-0.5 rounded-full flex items-center justify-center bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-white h-4 w-f px-1 py-1.5"
+                      >{{ unseenNotifications }}</span>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </template>
+                <template #content>
+                  <div class="flex flex-col flex-grow max-h-72">
+                    <div class="overflow-y-auto flex-auto">
+                      <notification-link
+                        v-for="(notification,index) in notifications"
+                        :key="index"
+                        :unread="notification.read_at === null"
+                        :href="route(notification.data.route,notification.data.routeParams == null ? '' : !notification.data.routeParams.split ? '' : notification.data.routeParams.split(','))"
+                        method="get"
+                        as="button"
+                        @click="markAsRead(notification)"
+                      >
+                        {{ notification.data.text }}
+                      </notification-link>
+                    </div>
+                  </div>
+                  <button
+                    :class="['block', 'w-full', 'px-4', 'py-2','hover:underline', 'text-center', 'text-sm', 'border-t-2', 'leading-5', 'text-blue-700', 'focus:outline-none','focus:bg-gray-100','transition duration-150','ease-in-out']"
+                    @click="markAllAsRead()"
+                  >
+                    Mark all as read
+                  </button>
+                </template>
+              </breeze-dropdown>
+            </div>
             <!-- Hamburger -->
             <div class="-mr-2 flex items-center sm:hidden">
               <button

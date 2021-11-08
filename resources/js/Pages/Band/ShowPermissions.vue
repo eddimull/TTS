@@ -30,14 +30,17 @@
             <li>
               Read <Checkbox
                 v-model="permissions['read_' + permission.name]"
-                value="Read"
                 :binary="true"
+                :true-value="1"
+                :false-value="0"
               />
             </li>
             <li class="mb-2">
               Write <Checkbox
                 v-model="permissions['write_' + permission.name]"
                 :binary="true"
+                :true-value="1"
+                :false-value="0"
               />
             </li>
           </ul>
@@ -84,6 +87,9 @@ import Button from 'primevue/button';
                     {name:'charts',readProp:'read_charts',writeProp:'read_charts'}
                 ]
             }
+        },
+        created(){
+  
         },
         methods:{
             save(){

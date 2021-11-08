@@ -103,7 +103,7 @@ class User extends Authenticatable
         }
         $bandIds = array_unique($bandIds);
         
-        $charts = Charts::whereIn('band_id',$bandIds)->get();
+        $charts = Charts::whereIn('band_id',$bandIds)->orderBy('title','desc')->get();
     
         return $charts;
 

@@ -511,7 +511,7 @@ class ProposalsController extends Controller
             'url'=>'/proposals/'
             ]));
         }
-
+        
         $this->make_pandadoc_contract($proposal);
         $proposal->phase_id = 5;
         $proposal->save();
@@ -581,13 +581,19 @@ class ProposalsController extends Controller
         //     "messsage"=>'Please sign this contract so we can make this official!',
         //     "subject"=>'Contract for ' . $proposal->band->name
         // ]);
-
-        $sent = Http::withHeaders([
-            'Authorization'=>'API-Key '  . env('PANDADOC_KEY')
-        ])->post('https://api.pandadoc.com/public/v1/documents/' . $uploadedDocumentId . '/send',[
-            "messsage"=>'Please sign this contract so we can make this official!',
-            "subject"=>'Contract for ' . $proposal->band->name
-        ]);
+        if($proposal->proposal_contacts[0]->name === 'TESTING')
+        {
+            $sent = true;
+        }
+        else
+        {
+            $sent = Http::withHeaders([
+                'Authorization'=>'API-Key '  . env('PANDADOC_KEY')
+                ])->post('https://api.pandadoc.com/public/v1/documents/' . $uploadedDocumentId . '/send',[
+                    "messsage"=>'Please sign this contract so we can make this official!',
+                    "subject"=>'Contract for ' . $proposal->band->name
+                ]);
+        }
 
         Contracts::create([
             'proposal_id'=>$proposal->id,

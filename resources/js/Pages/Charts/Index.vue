@@ -5,7 +5,8 @@
         Band Charts
       </h2>
     </template>
-    <div class="min-w-full max-w-7xl">
+
+    <Container>
       <div class="card">
         <Toolbar class="p-mb-4">
           <template #left>
@@ -45,10 +46,12 @@
           <Column
             field="title"
             header="Title"
+            :sortable="true"
           />
           <Column
             field="composer"
             header="Composer"
+            :sortable="true"
           />
           <template #empty>
             No Records found. Click 'new' to create one.
@@ -158,7 +161,7 @@
           />
         </template>
       </Dialog>
-    </div>
+    </Container>
   </breeze-authenticated-layout>
 </template>
 
@@ -197,7 +200,6 @@
         computed:{
           availableBands(){
             const bands = [];
-            console.log(this.$page.props.auth);
             if(this.$page.props.auth.user.band_owner)
             {
               this.$page.props.auth.user.band_owner.forEach(band=>{
