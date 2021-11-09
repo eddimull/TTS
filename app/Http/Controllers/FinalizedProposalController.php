@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ProposalPayments;
 use App\Models\Proposals;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia; 
 
@@ -17,7 +18,7 @@ class FinalizedProposalController extends Controller
 
         foreach($proposal->payments as $payment)
         {
-            $payment->paymentDate = $payment->paymentDate;
+            $payment->formattedPaymentDate = $payment->formattedPaymentDate;
         }
         
         return Inertia::render('Proposals/ProposalPayments',compact('proposal'));
@@ -28,7 +29,8 @@ class FinalizedProposalController extends Controller
         ProposalPayments::create([
             'proposal_id'=>$proposal->id,
             'name'=>$request->name,
-            'amount'=>$request->amount
+            'amount'=>$request->amount,
+            'paymentDate'=>Carbon::parse($request->paymentDate)
         ]);
         if($proposal->amountLeft == '0.00')
         {

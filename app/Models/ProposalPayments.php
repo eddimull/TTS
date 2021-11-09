@@ -14,8 +14,8 @@ class ProposalPayments extends Model
 
     protected $table = 'payments';
 
-    public function getpaymentDateAttribute()
+    public function getformattedPaymentDateAttribute()
     {
-        return Carbon::parse($this->created_at)->format('Y-m-d');
+        return Carbon::parse($this->paymentDate)->format('Y-m-d');
     }
 }

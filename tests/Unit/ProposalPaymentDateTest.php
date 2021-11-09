@@ -29,11 +29,11 @@ class ProposalPaymentDate extends TestCase
         $payment = ProposalPayments::create([
             'amount'=>50000,
             'name'=>'Test',
-            'proposal_id'=>$proposal->id
+            'proposal_id'=>$proposal->id,
+            'paymentDate'=>Carbon::parse('-1 week')
         ]);
         
-        
 
-        $this->assertEquals(Carbon::now()->format('Y-m-d'),$payment->paymentDate);
+        $this->assertEquals(Carbon::parse('-1 week')->format('Y-m-d'),$payment->formattedPaymentDate);
     }
 }

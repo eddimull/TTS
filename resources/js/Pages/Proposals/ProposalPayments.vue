@@ -33,12 +33,24 @@
             mode="currency"
             currency="USD"
             locale="en-US"
-            :max="proposal.amountLeft.replace(/,/g,'')"
+            :max="parseInt(proposal.amountLeft.replace(/,/g,''))"
           />
           <small
             v-if="submitted && !newPayment.amount"
             class="p-error"
           >Amount is required.</small>
+        </div>  
+        <div class="p-field">
+          <label for="paymentDate">Payment Date</label>
+          <calendar
+            id="paymentDate"
+            v-model="newPayment.paymentDate"
+            :show-icon="true"
+          />
+          <small
+            v-if="submitted && !newPayment.paymentDate"
+            class="p-error"
+          >Date is required.</small>
         </div>  
 
         <template #footer>
@@ -107,7 +119,7 @@
                           <p
                             class="lg:hidden text-gray-500"
                           >
-                            {{ payment.paymentDate }}
+                            {{ payment.formattedPaymentDate }}
                           </p>
                           <p class="md:hidden text-lg text-blue-500 font-bold font-heading">
                             ${{ (parseInt(payment.amount)/100).toFixed(2) }}
@@ -123,7 +135,7 @@
 
                     <div class="hidden lg:block lg:w-3/12 px-4">
                       <p class="text-lg text-blue-500 font-bold font-heading">
-                        {{ payment.paymentDate }}
+                        {{ payment.formattedPaymentDate }}
                       </p>
                     </div>
 
@@ -203,7 +215,8 @@
           submitted:false,
           newPayment:{
             name:'',
-            amount:''
+            amount:'',
+            paymentDate:null
           }
         }
       },
@@ -220,12 +233,14 @@
         submitPayment(){
           this.$inertia.post('/proposals/' + this.proposal.key + '/payment',{
             'name':this.newPayment.name,
-            'amount':this.newPayment.amount * 100
+            'amount':this.newPayment.amount * 100,
+            'paymentDate':this.newPayment.paymentDate
           },{
              preserveScroll:true,
             onSuccess:()=>{
-              this.newPayment.name = '',
-              this.newPayment.amount = ''
+              this.newPayment.name = '';
+              this.newPayment.amount = '';
+              this.newPayment.paymentDate = null;
               this.saving = false;
               this.closeDialog()
             }
