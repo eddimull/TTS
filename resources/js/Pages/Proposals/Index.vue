@@ -7,6 +7,16 @@
     </template>
 
     <Container class="md:container md:mx-auto">
+      <div
+        v-if="false"
+        class="max-w-md"
+      >
+        <Chart
+          type="doughnut"
+          :data="chartData"
+          :options="lightOptions"
+        />
+      </div>
       <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
           <div
@@ -32,14 +42,16 @@
                 @rowSelect="selectProposal"
               >
                 <template #header>
-                  <div class="p-d-flex p-jc-between">
-                    <Button
-                      type="button"
-                      icon="pi pi-filter-slash"
-                      label="Clear"
-                      class="p-button-outlined"
-                      @click="clearFilter1()"
-                    />
+                  <div class="flex flex-row">
+                    <div class="hidden md:flex">
+                      <Button
+                        class="p-button-outlined"
+                        type="button"
+                        icon="pi pi-filter-slash"
+                        label="Clear"
+                        @click="clearFilter1()"
+                      />
+                    </div>
                     <span class="p-input-icon-left">
                       <i class="pi pi-search" />
                       <InputText
@@ -47,16 +59,20 @@
                         placeholder="Keyword Search"
                       />
                     </span>
-                    <div class="hidden float-right mt-2">
-                      <label
-                        for="switch"
-                        class="mr-2"
-                      >Only Show In Progress</label>
-                      <InputSwitch
-                        id="switch"
-                        v-model="dontShowCompleted"
-                        class="float-right"
-                      />
+                    <div class="flex-grow mt-2">
+                      <div class="flex justify-end content-between">
+                        <label
+                          for="switch"
+                          class="mr-2"
+                        >Completed</label>
+                        <InputSwitch
+                          id="switch"
+                          v-model="filters1['phase_id'].value"
+                          class="float-right"
+                          :true-value="6"
+                          :false-value="null"
+                        />
+                      </div>
                     </div>
                   </div>
                 </template>
@@ -446,6 +462,25 @@ import Label from '../../Components/Label.vue';
                 activeBandSite:'',
                 dontShowCompleted:false,
                 filters1: null,
+                chartData: {
+                  labels: ['A','B','C'],
+                  datasets: [
+                                {
+                                    data: [300, 50, 100],
+                                    backgroundColor: ["#FF6384","#36A2EB","#FFCE56"],
+                                    hoverBackgroundColor: ["#FF6384","#36A2EB","#FFCE56"]
+                                }
+                            ]
+                },
+                lightOptions: {
+                  plugins: {
+                              legend: {
+                                  labels: {
+                                      color: '#495057'
+                                  }
+                              }
+                          }
+                },
                 showFields:[
                     {name:'Author',property:'author',subProperty:'name'},
                     {name:'Proposed Date/Time',property:'date'},
@@ -511,6 +546,7 @@ import Label from '../../Components/Label.vue';
         },
         created(){
             this.initFilters1();
+            this.setChartData();
             this.searchParams = this.$qs.parse(location.search.slice(1));
             
         },
@@ -531,6 +567,10 @@ import Label from '../../Components/Label.vue';
             }
         },
         methods:{
+            setChartData()
+            {
+              
+            },
             findReservedDate(date)
             {
                 
@@ -659,7 +699,8 @@ import Label from '../../Components/Label.vue';
             },
             initFilters1() {
                 this.filters1 = {
-                    'global': {value: null, matchMode: FilterMatchMode.CONTAINS}
+                    'global': {value: null, matchMode: FilterMatchMode.CONTAINS},
+                    'phase_id': {value: null, matchMode: FilterMatchMode.CONTAINS}
                 }
             }            
         }

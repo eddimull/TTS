@@ -32,6 +32,7 @@
             <div class="card">
               <h5>{{ band.name }}</h5>
               <DataTable
+                v-model:filters="unpaidProposalFilter"
                 :value="band.unpaid"
                 striped-rows
                 row-hover
@@ -39,6 +40,24 @@
                 selection-mode="single"
                 @row-click="gotoProposal"
               >
+                <template #header>
+                  <div class="p-d-flex p-jc-between">
+                    <Button
+                      type="button"
+                      icon="pi pi-filter-slash"
+                      label="Clear"
+                      class="p-button-outlined"
+                      @click="initializedunPaidProposalFilter()"
+                    />
+                    <span class="p-input-icon-left">
+                      <i class="pi pi-search" />
+                      <InputText
+                        v-model="unpaidProposalFilter['global'].value"
+                        placeholder="Keyword Search"
+                      />
+                    </span>
+                  </div>
+                </template>
                 <Column
                   field="name"
                   header="Name"
@@ -91,15 +110,32 @@
           >
             <div class="card">
               <h5>{{ band.name }}</h5>
-              paid
               <DataTable
+                v-model:filters="paidProposalFilter"
                 :value="band.paid"
                 striped-rows
                 row-hover
                 responsive-layout="scroll"
                 selection-mode="single"
-                @row-click="selectedChart"
               >
+                <template #header>
+                  <div class="p-d-flex p-jc-between">
+                    <Button
+                      type="button"
+                      icon="pi pi-filter-slash"
+                      label="Clear"
+                      class="p-button-outlined"
+                      @click="initializedPaidProposalFilter()"
+                    />
+                    <span class="p-input-icon-left">
+                      <i class="pi pi-search" />
+                      <InputText
+                        v-model="paidProposalFilter['global'].value"
+                        placeholder="Keyword Search"
+                      />
+                    </span>
+                  </div>
+                </template>
                 <Column
                   field="name"
                   header="Name"
@@ -145,6 +181,7 @@
 
 <script>
     import moment from 'moment';
+    import {FilterMatchMode,FilterOperator} from 'primevue/api';
     export default {
         components: {
           
@@ -152,6 +189,8 @@
         data(){
           return{
             completedProposals: [],
+            paidProposalFilter: null,
+            unpaidProposalFilter: null,
             basicOptions: {
                 plugins: {
                     legend: {
@@ -185,6 +224,8 @@
           
           this.completedProposals = this.$page.props.completedProposals;
           this.parseProposals();
+          this.initializedPaidProposalFilter();
+          this.initializedunPaidProposalFilter();
         },
         methods:{
           getStats(paid,price)
@@ -228,6 +269,16 @@
             window.location = '/proposals/' + proposal.key + '/payments';
             
           },
+          initializedPaidProposalFilter() {
+                this.paidProposalFilter = {
+                    'global': {value: null, matchMode: FilterMatchMode.CONTAINS}
+                }
+            },     
+          initializedunPaidProposalFilter() {
+                this.unpaidProposalFilter = {
+                    'global': {value: null, matchMode: FilterMatchMode.CONTAINS}
+                }
+            },   
           parseProposals()
           {
             
