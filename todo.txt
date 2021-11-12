@@ -24,4 +24,27 @@ Invoicing / Money tools
 
 
 
+-------------------------------
+Automatically write to calendar completed Contracts
+Proposal
+    Dates TBD
+
+Questionaire
+    template(s)
+    save template
+    default to go on all 
+    schedule
+        notify user email
+    components
+        header
+        open ended
+        multiple choice
+        true false
+
+Money tools 
+    Let user know their payment was received
+
+Dashboard
+    ?????
+
 

@@ -47,6 +47,11 @@ class ProposalsController extends Controller
         $proposedDates = [];
         foreach($bands as $band)
         {
+            foreach($band->proposals as $proposal)
+            {
+                $proposal->formattedDraftDate = $proposal->formattedDraftDate;
+            }
+            
             compact($band->proposals);
             compact($band->events);
             foreach($band->events as $event)

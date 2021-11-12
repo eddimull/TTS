@@ -44,7 +44,7 @@ class Bands extends Model
 
     public function proposals()
     {
-        return $this->hasMany(Proposals::class,'band_id');
+        return $this->hasMany(Proposals::class,'band_id')->orderBy('created_at','desc');
     }
     public function completedProposals()
     {

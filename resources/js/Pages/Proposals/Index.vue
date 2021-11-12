@@ -86,9 +86,14 @@
                   :sortable="true"
                 />
                 <Column
+                  field="formattedDraftDate"
+                  header="Draft Date"
+                  sortable
+                />
+                <Column
                   field="date"
                   filter-field="date"
-                  header="Date"
+                  header="Performance Date"
                   :sortable="true"
                 />
                 <Column

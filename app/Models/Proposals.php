@@ -66,6 +66,11 @@ class Proposals extends Model
         return $this->hasMany(ProposalPayments::class,'proposal_id');
     }
 
+    public function getformattedDraftDateAttribute()
+    {
+        return Carbon::parse($this->created_at)->format('Y-m-d');
+    }
+
     public function getAmountPaidAttribute()
     {
         
