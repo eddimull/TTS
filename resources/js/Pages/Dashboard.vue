@@ -6,7 +6,10 @@
       </h2>
     </template>
     <default-component v-if="events.length == 0" />
-    <div class="w-full grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+    <div
+      v-else
+      class="w-full grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+    >
       <div class="hidden xl:block">
         <ul>
           Quick links
