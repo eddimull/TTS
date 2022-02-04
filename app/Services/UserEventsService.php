@@ -20,11 +20,13 @@ class UserEventsService{
         {
             array_push($bands,$band->id);
         }
+        // dd(implode(',',$bands));
+        $list = implode(',',$bands);
         $events = DB::select(DB::raw('SELECT band_events.*,ET.name AS event_type 
         FROM band_events 
         JOIN event_types ET ON ET.id = band_events.event_type_id 
-        WHERE band_id IN (?) AND event_time < DATE_ADD(NOW(),INTERVAL 30 DAY) AND band_events.deleted_at IS NULL 
-        ORDER BY event_time DESC'),[implode(',',$bands)]);
+        WHERE band_id IN (' . $list . ') AND DATE(event_time) < DATE(DATE_ADD(NOW(),INTERVAL 45 DAY)) AND band_events.deleted_at IS NULL 
+        ORDER BY event_time DESC'));
 
         return $events;
     }
