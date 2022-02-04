@@ -10,6 +10,7 @@ use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 use Illuminate\Support\Facades\Http;
 use App\Models\User;
 use App\Notifications\TTSNotification;
+use App\Services\ProposalServices;
 use Symfony\Component\ErrorHandler\Debug;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Carbon;
@@ -82,6 +83,9 @@ class Kernel extends ConsoleKernel
                     }  
                     
                     $contract->save();
+
+                    $proposalService = new ProposalServices($proposal);
+                    $proposalService->writeToCalendar();
                 }
             }
         })->everyMinute();

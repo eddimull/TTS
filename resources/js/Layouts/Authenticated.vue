@@ -298,6 +298,14 @@
               Proposals
             </breeze-responsive-nav-link> 
             <breeze-responsive-nav-link
+              v-if="$page.props.auth.user.navigation.Proposals"
+              class="pl-4"
+              :href="route('questionnaire')"
+              :active="route().current('questionnaire')"
+            >
+              Questionnaires
+            </breeze-responsive-nav-link> 
+            <breeze-responsive-nav-link
               v-if="$page.props.auth.user.navigation.Invoices"
               :href="route('finances')"
               :active="route().current('finances')"
@@ -325,9 +333,9 @@
           <div class="pt-4 pb-1 border-t border-gray-200">
             <div class="flex items-center px-4">
               <div class="font-medium text-base text-gray-800">
-                {{ $page.props.auth.user.name }}
+                {{ $page.props.auth.user.name }} 
               </div>
-              <div class="font-medium text-sm text-gray-500">
+              <div class="px-2 font-medium text-sm text-gray-500">
                 {{ $page.props.auth.user.email }}
               </div>
             </div>

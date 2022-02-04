@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\QuestionnaireComponents;
+use App\Observers\QuestionnaireComponentObserver;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
 
@@ -31,6 +33,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        QuestionnaireComponents::observe(QuestionnaireComponentObserver::class);
     }
 }

@@ -5,6 +5,7 @@ use App\Http\Controllers\FinalizedProposalController;
 use App\Http\Controllers\FinancesController;
 use App\Http\Controllers\InvoicesController;
 use App\Http\Controllers\InvitationsController;
+use App\Http\Controllers\QuestionnaireController;
 use App\Mail\Proposal;
 use App\Models\ProposalContacts;
 use App\Models\Bands;
@@ -158,6 +159,14 @@ Route::post('/seentIt',function(){
     return false;
 })->middleware(['auth','verified']);
 
+Route::group(['prefix'=>'questionnaire','middleware'=>['auth','verified']],function(){
+    // Route::resource('/','QuestionnaireController');
+    Route::get('/',[QuestionnaireController::class,'index'])->name('questionnaire');
+    Route::post('/new',[QuestionnaireController::class,'store'])->name('questionnaire.new');
+    Route::get('/{questionnaire:slug}',[QuestionnaireController::class,'edit'])->name('questionnaire.edit');
+    Route::post('/{questionnaire:slug}/add',[QuestionnaireController::class,'addQuestion'])->name('questionnaire.addQuestion');
+
+});
 
 Route::any('/info/',function(){
     return phpinfo();

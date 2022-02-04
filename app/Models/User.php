@@ -109,6 +109,29 @@ class User extends Authenticatable
 
     }
 
+    public function questionnaires()
+    {
+        $bandIds = [];
+
+        $ownedBands = $this->bandOwner;
+        $bandMember = $this->bandMember;
+
+        foreach($ownedBands as $band)
+        {
+            array_push($bandIds,$band->id);
+        }
+
+        foreach($bandMember as $band)
+        {
+            array_push($bandIds,$band->id);
+        }
+        $bandIds = array_unique($bandIds);
+        
+        $charts = Questionnairres::whereIn('band_id',$bandIds)->orderBy('name')->get();
+    
+        return $charts;
+    }
+
     public function getNav(){
         $availableNav = [
             'Events'=>false,

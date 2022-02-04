@@ -19,8 +19,10 @@ class DatabaseSeeder extends Seeder
     {
         \App\Models\User::factory(10)->create();
         \App\Models\Bands::factory(10)->create();
+        $this->call(EddiesStuff::class);
         $this->call(CountriesTableSeeder::class);
         $this->call(StatesTableSeeder::class);
+        
         // $this->call(EventTypeSeeder::class); //it calls itself on the migration
         // $this->call(ProposalPhasesSeeder::class);
         \App\Models\Proposals::factory(300)->create();

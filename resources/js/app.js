@@ -78,6 +78,7 @@ const app = createApp({
     .component('InputNumber',InputNumber)
     .component('InputSwitch',InputSwitch)
     .component('Textarea',Textarea)
+    .component('PVtextarea',Textarea)
     .component('Dialog',Dialog)
     .component('Dropdown',Dropdown)
     .component('DataTable',DataTable)

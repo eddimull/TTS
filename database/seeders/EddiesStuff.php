@@ -24,7 +24,7 @@ class EddiesStuff extends Seeder
         $user = User::create([
             'name' => 'Eddie Muller',
             'email'=>'eddimull@gmail.com',
-            'password'=>'$2y$10$jLWEDdrJriO7UE4RAnTOtOjfV0HRu6p6dNfYGtnqerzfx1bBqSvNe'
+            'password'=>'$2y$10$fKSg384iukPTIEfYPDcjoumuMssSPqr/AGEqA1gvoHX7uIApokMHS'
         ]);
         $band = Bands::create([
             'name' => 'Three Thirty Seven',
@@ -34,9 +34,9 @@ class EddiesStuff extends Seeder
             'user_id'=>$user->id,
             'band_id'=>$band->id
         ]);
-
-        $dbSeeder = new DatabaseSeeder();
-        $dbSeeder->run();
+        \App\Models\Proposals::factory(300)->create(['band_id'=>$band->id]);
+        // $dbSeeder = new DatabaseSeeder();
+        // $dbSeeder->run();
 
     }
 }

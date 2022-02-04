@@ -23,6 +23,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
 use App\Models\User;
 use App\Notifications\TTSNotification;
+use App\Services\ProposalServices;
 use LaravelDocusign\Facades\DocuSign;
 use DocuSign\eSign\Model\EnvelopeDefinition;
 use PDF;
@@ -347,154 +348,8 @@ class ProposalsController extends Controller
     public function writeToCalendar(Proposals $proposal)
     {
 
-        // BandEvents::create({})
-
-        $sessionToken = Str::random();
-        $googleResponse = Http::get("https://maps.googleapis.com/maps/api/place/autocomplete/json",[
-            'input'=> $proposal->location,
-            'key' => $_ENV['GOOGLE_MAPS_API_KEY'],
-            'sessiontoken' => $sessionToken
-        ]);
-        $parsedResponse = json_decode($googleResponse->body());
-        $usableAddress = [
-            'venue'=>'Unnamed Venue',
-            'street_number' => '',
-            'route' => '',
-            'locality' => '',
-            'state' => 'Louisiana',
-            'postal_code' => ''
-        ];
-        if($parsedResponse->status !== 'INVALID_REQUEST')
-        {
-            $usableAddress['venue'] = $parsedResponse->predictions[0]->structured_formatting->main_text;
-            $place_id = $parsedResponse->predictions[0]->place_id;
-            $detailedResponse = Http::get("https://maps.googleapis.com/maps/api/place/details/json",[
-                'place_id'=>$place_id,
-                'key' => $_ENV['GOOGLE_MAPS_API_KEY'],
-                'sessiontoken'=> $sessionToken
-            ]);
-            $parsedDetails = json_decode($detailedResponse->body());
-
-            if($parsedDetails->status !== 'INVALID_REQUEST')
-            {
-                $addressComponents = $parsedDetails->result->address_components;                 
-                foreach($addressComponents as $component)
-                {
-                    
-                    if(array_search('street_number', $component->types) !== false)
-                    {
-                        $usableAddress['street_number'] = $component->long_name;                                        
-                    }
-                    if(array_search('route', $component->types) !== false)
-                    {
-                        $usableAddress['route'] = $component->long_name;                                
-                    }
-                    if(array_search('locality', $component->types) !== false)
-                    {
-                        $usableAddress['locality'] = $component->long_name;                                
-                    }
-                    if(array_search('administrative_area_level_1', $component->types) !== false)
-                    {
-                        $usableAddress['state'] = $component->long_name;                                
-                    }
-                    if(array_search('postal_code', $component->types) !== false)
-                    {
-                        $usableAddress['postal_code'] = $component->long_name;                                
-                    }
-                }   
-            }
-            
-
-        }
-        
-        $state = State::where('state_name',$usableAddress['state'])->first();
-
-        
-        $event = BandEvents::create([
-            'band_id' => $proposal->band->id,
-            'event_name' => $proposal->name,
-            'venue_name' => $usableAddress['venue'],
-            'first_dance' => 'TBD',
-            'father_daughter' => 'TBD',
-            'mother_groom' => 'TBD',
-            'money_dance' => 'TBD',
-            'bouquet_garter' => 'TBD',
-            'address_street' => $usableAddress['street_number'] . ' ' . $usableAddress['route'],
-            'production_needed'=>true,
-            'backline_provided'=>false,
-            'zip' => $usableAddress['postal_code'],
-            'notes' => $proposal->notes,
-            'event_time' => date('Y-m-d H:i:s',strtotime($proposal->date)),
-            'band_loadin_time' =>  date('Y-m-d H:i:s',strtotime($proposal->date)),
-            'rhythm_loadin_time' => date('Y-m-d H:i:s',strtotime($proposal->date)),
-            'production_loadin_time' => date('Y-m-d H:i:s',strtotime($proposal->date)),
-            'pay' => $proposal->price,
-            'depositReceived' => true,
-            'event_key' => Str::uuid(),
-            'public' => false,
-            'event_type_id' => $proposal->event_type_id,
-            'lodging' => false,
-            'state_id' => $state->state_id,
-            'city' => $usableAddress['locality'],
-            'colorway_id'=>0,
-            'quiet_time'=> date('Y-m-d H:i:s',strtotime($proposal->date)),
-            'end_time'=> date('Y-m-d H:i:s',strtotime($proposal->date . '+ ' . $proposal->hours . ' hours')),
-            'ceremony_time'=> date('Y-m-d H:i:s',strtotime($proposal->date)),
-            'outside'=>false,
-            'second_line'=>false,
-            'onsite'=>false,
-            'event_key'=>Str::uuid()
-        ]);
-
-        $proposal->event_id = $event->id;
-        $proposal->save();
-
-        $band = Bands::find($event->band_id);
-        if($band->calendar_id !== '' && $band->calendar_id !== null)
-        {
-
-            Config::set('google-calendar.service_account_credentials_json',storage_path('/app/google-calendar/service-account-credentials.json'));
-            Config::set('google-calendar.calendar_id',$band->calendar_id);
-            
-            // dd(Carbon::parse($event->event_time));
-
-            if($event->google_calendar_event_id !== null)
-            {
-                $calendarEvent = CalendarEvent::find($event->google_calendar_event_id);
-            }
-            else
-            {
-                $calendarEvent = new CalendarEvent;
-            }
-            $calendarEvent->name = $event->event_name;
-
-            $startTime = Carbon::parse($event->event_time);
-            $endDateTimeFixed = date('Y-m-d',strtotime($event->event_time)) . ' ' . date('H:i:s', strtotime($event->end_time));
-            if($endDateTimeFixed < $startTime)//when events end after midnight
-            {
-                $endDateTimeFixed = date('Y-m-d',strtotime($event->event_time . ' +1 day')) . ' ' . date('H:i:s', strtotime($event->end_time));
-            }
-            $endTime = Carbon::parse($endDateTimeFixed);
-            $calendarEvent->startDateTime = $startTime;
-            $calendarEvent->endDateTime = $endTime;   
-            $calendarEvent->description = 'https://tts.band/events/' . $event->event_key . '/advance';
-            $google_id = $calendarEvent->save();  
-            $event->google_calendar_event_id = $google_id->id;
-            $event->save();
-        }
-
-        $editor = Auth::user();
-        compact($band->owners);
-        foreach($band->owners as $owner)
-        {
-           $user = User::find($owner->user_id);
-           $user->notify(new TTSNotification([
-            'text'=>$editor->name . ' added ' . $event->event_name . ' created from proposal',
-            'route'=>'events.advance',
-            'routeParams'=>$event->event_key,
-            'url'=>'/events/' . $event->event_key . '/advance'
-            ]));
-        }
+        $proposalService = new ProposalServices($proposal);
+        $event = $proposalService->writeToCalendar();
 
         return redirect('/events/' . $event->event_key . '/edit');
     }

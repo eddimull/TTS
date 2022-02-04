@@ -266,10 +266,44 @@
               </ul>
             </div>
           </div>
+          <div :class="['md:grid', 'md:grid-cols-2', 'hover:bg-gray-50', 'md:space-y-0', 'space-y-1', 'p-4']">
+            <p class="text-gray-600">
+              <label for="name">Proposal Acceptance Link</label>
+            </p>
+            <div>
+              <div>
+                <span>{{ route('proposals.details',{'key':activeProposal.key}) }}</span><div>
+                  <div class="mt-2">
+                    <span class="text-sm">(this is for when the client cannot seem to receive the proposal acceptance email)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </template>
       <template #footerBody>
         <div class="flex-auto">
+          <button
+            v-show="activeProposal.phase_id == 6"
+            type="button"
+            class="mx-2 bg-green-500 hover:bg-green-600 px-4 py-2 rounded text-white focus:outline-none"
+            @click="writeToCalendar()"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="inline h-6 w-6"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            Write to calendar
+          </button>
           <button
             v-if="activeProposal.phase_id == 2"
             :disabled="loading"
@@ -655,6 +689,9 @@ import Label from '../../Components/Label.vue';
             },
             draftProposal(){
                 this.$inertia.post('/proposals/' + this.activeBandSite + '/create',this.proposalData);
+            },
+             writeToCalendar(){
+              this.$inertia.post('/proposals/' + this.activeProposal.key + '/writeToCalendar');
             },
             sendIt(){
                 
