@@ -51,7 +51,7 @@ class BandEvents extends Model
     ];
 
 
-    protected $with = ['band','event_contacts','event_type'];
+    protected $with = ['band','event_contacts','event_type','state'];
 
     public function event_type()
     {

@@ -19,7 +19,6 @@ class DashboardController extends Controller
         
         
         $stats = (new MileageService())->handle($events);
-        
         // dd($stats);
         return Inertia::render('Dashboard',
         [

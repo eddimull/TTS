@@ -9,6 +9,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Models\Charts;
 use App\Models\userPermissions;
+use Illuminate\Support\Carbon;
 
 class User extends Authenticatable
 {
@@ -212,6 +213,28 @@ class User extends Authenticatable
         }
 
         return $owns;
+    }
+
+    public function bands()
+    {
+        $ownerOf = $this->bandOwner;
+        $memberOf = $this->bandMember;
+        return $ownerOf->merge($memberOf);
+    }
+
+    public function getEventsAttribute()
+    {
+        $bands = $this->bands();
+        $events = collect();
+        foreach($bands as $band)
+        {
+            foreach($band->events as $event)
+            {
+                $events->add($event);
+            }
+        }
+
+        return $events->sortByDesc('event_time')->values();
     }
 
 }

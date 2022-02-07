@@ -2,7 +2,7 @@
   <div class="bg-white border block p-2 my-2">
     <event-header
       :name="event.event_name"
-      :type="event.event_type"
+      :type="event.event_type.name"
       :date="event.event_time"
     />
     <event-body :event="event" />

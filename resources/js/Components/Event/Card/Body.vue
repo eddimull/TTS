@@ -1,16 +1,46 @@
 <template>
-  <div>
+  <div class="grid grid-cols-1 content-center">
     <ul>
-      <li>Venue: {{ event.venue_name }}</li>
-      <li>What should go here? Maybe special notes?</li>
+      <li class="p-2">
+        Venue: <strong>{{ event.venue_name }}</strong>
+      </li>
+      <li class="p-2">
+        Location: <strong v-if="event.city">{{ event.city }}, </strong> <strong>{{ event.state.state_name }}</strong>
+      </li>
+      <li class="p-2">
+        Load In times:
+
+        <ul class="list-outside indent-1">
+          <li class="mt-2 pl-3">
+            Production: <strong>{{ toTime(event.production_loadin_time) }}</strong>
+          </li>
+          <li class="mt-2 pl-3">
+            Rhythm: <strong>{{ toTime(event.rhythm_loadin_time) }}</strong>
+          </li>
+          <li class="mt-2 pl-3">
+            Production: <strong>{{ toTime(event.band_loadin_time) }}</strong>
+          </li>
+        </ul>
+      </li>
+      <li
+        v-if="event.notes !== null"
+        class="p-2"
+      >
+        Notes: {{ event.notes }}
+      </li>
     </ul>
     <!-- {{ event }} -->
   </div>
 </template>
 
 <script>
-
+import moment from 'moment'
 export default {
-    props:['event']    
+    props:['event'],
+    methods:{
+      toTime(time){
+        return moment(time).format('h:mm A')
+      }
+    }
 }
 </script>
