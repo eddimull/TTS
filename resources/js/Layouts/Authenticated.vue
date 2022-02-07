@@ -1,184 +1,74 @@
 <template>
   <div>
-    <div class="min-h-screen bg-gradient-to-r from-blue-800 to-blue-200">
-      <nav class="bg-white border-b border-gray-100">
-        <!-- Primary Navigation Menu -->
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div class="flex justify-between h-16">
-            <div class="flex">
-              <!-- Logo -->
-              <div class="flex-shrink-0 flex items-center">
-                <inertia-link :href="route('dashboard')">
-                  <breeze-application-logo class="block h-9 w-auto" />
-                </inertia-link>
-              </div>
-
-              <!-- Navigation Links -->
-              <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
-                <breeze-nav-link
-                  :href="route('dashboard')"
-                  :active="route().current('dashboard')"
-                >
-                  Dashboard
-                </breeze-nav-link>
-                <breeze-nav-link
-                  :href="route('bands')"
-                  :active="route().current('bands')"
-                >
-                  Bands
-                </breeze-nav-link>                  
-                <breeze-nav-link
-                  v-if="$page.props.auth.user.navigation.Events"
-                  :href="route('events')"
-                  :active="route().current('events')"
-                >
-                  Events
-                </breeze-nav-link> 
-                <breeze-nav-link
-                  v-if="$page.props.auth.user.navigation.Proposals"
-                  :href="route('proposals')"
-                  :active="route().current('proposals')"
-                >
-                  Proposals
-                </breeze-nav-link>       
-                <breeze-nav-link
-                  v-if="$page.props.auth.user.navigation.Invoices"
-                  :href="route('finances')"
-                  :active="route().current('finances')"
-                >
-                  Finances
-                </breeze-nav-link>                             
-                <breeze-nav-link
-                  v-if="$page.props.auth.user.navigation.Colors"
-                  :href="route('colors')"
-                  :active="route().current('colors')"
-                >
-                  Colors
-                </breeze-nav-link>        
-                <breeze-nav-link
-                  v-if="$page.props.auth.user.navigation.Charts"
-                  :href="route('charts')"
-                  :active="route().current('charts')"
-                >
-                  Charts
-                </breeze-nav-link>             
-              </div>
-            </div>
-            <!-- notifications and username -->
-            <div class="hidden sm:flex sm:items-center sm:ml-6">
-              <div class="ml-3 relative">
-                <breeze-dropdown
-                  align="right"
-                  width="56"
-                >
-                  <template #trigger>
-                    <span class="inline-flex rounded-md">
-                      <button
-                        type="button"
-                        class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
-                        @click="markSeen"
-                      >
-                        <span
-                          v-if="unseenNotifications > 0"
-                          class="absolute top-0 right-0.5 rounded-full flex items-center justify-center bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-white h-4 w-f px-1 py-1.5"
-                        >{{ unseenNotifications }}</span>
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          class="h-6 w-6"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                          />
-                        </svg>
-                      </button>
-                    </span>
-                  </template>
-                  <template #content>
-                    <div class="flex flex-col max-h-72">
-                      <div class="overflow-y-auto flex-auto">
-                        <notification-link
-                          v-for="(notification,index) in notifications"
-                          :key="index"
-                          :unread="notification.read_at === null"
-                          :href="route(notification.data.route,notification.data.routeParams == null ? '' : !notification.data.routeParams.split ? '' : notification.data.routeParams.split(','))"
-                          method="get"
-                          as="button"
-                          @click="markAsRead(notification)"
-                        >
-                          {{ notification.data.text }}
-                        </notification-link>
-                      </div>
-                    </div>
-                    <button
-                      :class="['block', 'w-full', 'px-4', 'py-2','hover:underline', 'text-center', 'text-sm', 'border-t-2', 'leading-5', 'text-blue-700', 'focus:outline-none','focus:bg-gray-100','transition duration-150','ease-in-out']"
-                      @click="markAllAsRead()"
-                    >
-                      Mark all as read
-                    </button>
-                  </template>
-                </breeze-dropdown>
-              </div>
-              <!-- Settings Dropdown -->
-              <div class="ml-3 relative">
-                <breeze-dropdown
-                  align="right"
-                  width="48"
-                >
-                  <template #trigger>
-                    <span class="inline-flex rounded-md">
-                      <button
-                        type="button"
-                        class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
-                      >
-                        {{ $page.props.auth.user.name }}
-
-                        <svg
-                          class="ml-2 -mr-0.5 h-4 w-4"
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fill-rule="evenodd"
-                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
-                            clip-rule="evenodd"
-                          />
-                        </svg>
-                      </button>
-                    </span>
-                  </template>
-                                       
-                  <template #content>
-                    <breeze-dropdown-link
-                      :href="route('account')"
-                      method="get"
-                      as="button"
-                    >
-                      Account
-                    </breeze-dropdown-link>
-                    <breeze-dropdown-link
-                      :href="route('logout')"
-                      method="post"
-                      as="button"
-                    >
-                      Log Out
-                    </breeze-dropdown-link>
-                  </template>
-                </breeze-dropdown>
-              </div>
+    <nav class="fixed z-50 w-full bg-white border-b border-gray-100">
+      <!-- Primary Navigation Menu -->
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between h-16">
+          <div class="flex">
+            <!-- Logo -->
+            <div class="flex-shrink-0 flex items-center">
+              <inertia-link :href="route('dashboard')">
+                <breeze-application-logo class="block h-9 w-auto" />
+              </inertia-link>
             </div>
 
-            <!-- notifications on mobile -->
-            <div class="flex items-center sm:hidden">
+            <!-- Navigation Links -->
+            <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
+              <breeze-nav-link
+                :href="route('dashboard')"
+                :active="route().current('dashboard')"
+              >
+                Dashboard
+              </breeze-nav-link>
+              <breeze-nav-link
+                :href="route('bands')"
+                :active="route().current('bands')"
+              >
+                Bands
+              </breeze-nav-link>                  
+              <breeze-nav-link
+                v-if="$page.props.auth.user.navigation.Events"
+                :href="route('events')"
+                :active="route().current('events')"
+              >
+                Events
+              </breeze-nav-link> 
+              <breeze-nav-link
+                v-if="$page.props.auth.user.navigation.Proposals"
+                :href="route('proposals')"
+                :active="route().current('proposals')"
+              >
+                Proposals
+              </breeze-nav-link>       
+              <breeze-nav-link
+                v-if="$page.props.auth.user.navigation.Invoices"
+                :href="route('finances')"
+                :active="route().current('finances')"
+              >
+                Finances
+              </breeze-nav-link>                             
+              <breeze-nav-link
+                v-if="$page.props.auth.user.navigation.Colors"
+                :href="route('colors')"
+                :active="route().current('colors')"
+              >
+                Colors
+              </breeze-nav-link>        
+              <breeze-nav-link
+                v-if="$page.props.auth.user.navigation.Charts"
+                :href="route('charts')"
+                :active="route().current('charts')"
+              >
+                Charts
+              </breeze-nav-link>             
+            </div>
+          </div>
+          <!-- notifications and username -->
+          <div class="hidden sm:flex sm:items-center sm:ml-6">
+            <div class="ml-3 relative">
               <breeze-dropdown
-                align="full"
-                width="full"
+                align="right"
+                width="56"
               >
                 <template #trigger>
                   <span class="inline-flex rounded-md">
@@ -209,7 +99,7 @@
                   </span>
                 </template>
                 <template #content>
-                  <div class="flex flex-col flex-grow max-h-72">
+                  <div class="flex flex-col max-h-72">
                     <div class="overflow-y-auto flex-auto">
                       <notification-link
                         v-for="(notification,index) in notifications"
@@ -233,132 +123,242 @@
                 </template>
               </breeze-dropdown>
             </div>
-            <!-- Hamburger -->
-            <div class="-mr-2 flex items-center sm:hidden">
-              <button
-                class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out"
-                @click="showingNavigationDropdown = ! showingNavigationDropdown"
+            <!-- Settings Dropdown -->
+            <div class="ml-3 relative">
+              <breeze-dropdown
+                align="right"
+                width="48"
               >
-                <svg
-                  class="h-6 w-6"
-                  stroke="currentColor"
-                  fill="none"
-                  viewBox="0 0 24 24"
+                <template #trigger>
+                  <span class="inline-flex rounded-md">
+                    <button
+                      type="button"
+                      class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
+                    >
+                      {{ $page.props.auth.user.name }}
+
+                      <svg
+                        class="ml-2 -mr-0.5 h-4 w-4"
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fill-rule="evenodd"
+                          d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                          clip-rule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                  </span>
+                </template>
+                                       
+                <template #content>
+                  <breeze-dropdown-link
+                    :href="route('account')"
+                    method="get"
+                    as="button"
+                  >
+                    Account
+                  </breeze-dropdown-link>
+                  <breeze-dropdown-link
+                    :href="route('logout')"
+                    method="post"
+                    as="button"
+                  >
+                    Log Out
+                  </breeze-dropdown-link>
+                </template>
+              </breeze-dropdown>
+            </div>
+          </div>
+
+          <!-- notifications on mobile -->
+          <div class="flex items-center sm:hidden">
+            <breeze-dropdown
+              align="full"
+              width="full"
+            >
+              <template #trigger>
+                <span class="inline-flex rounded-md">
+                  <button
+                    type="button"
+                    class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
+                    @click="markSeen"
+                  >
+                    <span
+                      v-if="unseenNotifications > 0"
+                      class="absolute top-0 right-0.5 rounded-full flex items-center justify-center bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-white h-4 w-f px-1 py-1.5"
+                    >{{ unseenNotifications }}</span>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                      />
+                    </svg>
+                  </button>
+                </span>
+              </template>
+              <template #content>
+                <div class="flex flex-col flex-grow max-h-72">
+                  <div class="overflow-y-auto flex-auto">
+                    <notification-link
+                      v-for="(notification,index) in notifications"
+                      :key="index"
+                      :unread="notification.read_at === null"
+                      :href="route(notification.data.route,notification.data.routeParams == null ? '' : !notification.data.routeParams.split ? '' : notification.data.routeParams.split(','))"
+                      method="get"
+                      as="button"
+                      @click="markAsRead(notification)"
+                    >
+                      {{ notification.data.text }}
+                    </notification-link>
+                  </div>
+                </div>
+                <button
+                  :class="['block', 'w-full', 'px-4', 'py-2','hover:underline', 'text-center', 'text-sm', 'border-t-2', 'leading-5', 'text-blue-700', 'focus:outline-none','focus:bg-gray-100','transition duration-150','ease-in-out']"
+                  @click="markAllAsRead()"
                 >
-                  <path
-                    :class="{'hidden': showingNavigationDropdown, 'inline-flex': ! showingNavigationDropdown }"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M4 6h16M4 12h16M4 18h16"
-                  />
-                  <path
-                    :class="{'hidden': ! showingNavigationDropdown, 'inline-flex': showingNavigationDropdown }"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
+                  Mark all as read
+                </button>
+              </template>
+            </breeze-dropdown>
+          </div>
+          <!-- Hamburger -->
+          <div class="-mr-2 flex items-center sm:hidden">
+            <button
+              class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out"
+              @click="showingNavigationDropdown = ! showingNavigationDropdown"
+            >
+              <svg
+                class="h-6 w-6"
+                stroke="currentColor"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  :class="{'hidden': showingNavigationDropdown, 'inline-flex': ! showingNavigationDropdown }"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+                <path
+                  :class="{'hidden': ! showingNavigationDropdown, 'inline-flex': showingNavigationDropdown }"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
           </div>
         </div>
+      </div>
 
-        <!-- Responsive Navigation Menu -->
-        <div
-          :class="{'block': showingNavigationDropdown, 'hidden': ! showingNavigationDropdown}"
-          class="sm:hidden"
-        >
-          <div class="pt-2 pb-3 space-y-1">
-            <breeze-responsive-nav-link
-              :href="route('dashboard')"
-              :active="route().current('dashboard')"
-            >
-              Dashboard
-            </breeze-responsive-nav-link>
-            <breeze-responsive-nav-link
-              :href="route('bands')"
-              :active="route().current('bands')"
-            >
-              Bands
-            </breeze-responsive-nav-link>
-            <breeze-responsive-nav-link
-              v-if="$page.props.auth.user.navigation.Events"
-              :href="route('events')"
-              :active="route().current('events')"
-            >
-              Events
-            </breeze-responsive-nav-link> 
-            <breeze-responsive-nav-link
-              v-if="$page.props.auth.user.navigation.Proposals"
-              :href="route('proposals')"
-              :active="route().current('proposals')"
-            >
-              Proposals
-            </breeze-responsive-nav-link> 
-            <breeze-responsive-nav-link
-              v-if="$page.props.auth.user.navigation.Proposals"
-              class="pl-4"
-              :href="route('questionnaire')"
-              :active="route().current('questionnaire')"
-            >
-              Questionnaires
-            </breeze-responsive-nav-link> 
-            <breeze-responsive-nav-link
-              v-if="$page.props.auth.user.navigation.Invoices"
-              :href="route('finances')"
-              :active="route().current('finances')"
-            >
-              Finances
-            </breeze-responsive-nav-link> 
-            <breeze-responsive-nav-link
-              v-if="$page.props.auth.user.navigation.Colors"
-              :href="route('colors')"
-              :active="route().current('colors')"
-            >
-              Colors
-            </breeze-responsive-nav-link>   
+      <!-- Responsive Navigation Menu -->
+      <div
+        :class="{'block': showingNavigationDropdown, 'hidden': ! showingNavigationDropdown}"
+        class="sm:hidden"
+      >
+        <div class="pt-2 pb-3 space-y-1">
+          <breeze-responsive-nav-link
+            :href="route('dashboard')"
+            :active="route().current('dashboard')"
+          >
+            Dashboard
+          </breeze-responsive-nav-link>
+          <breeze-responsive-nav-link
+            :href="route('bands')"
+            :active="route().current('bands')"
+          >
+            Bands
+          </breeze-responsive-nav-link>
+          <breeze-responsive-nav-link
+            v-if="$page.props.auth.user.navigation.Events"
+            :href="route('events')"
+            :active="route().current('events')"
+          >
+            Events
+          </breeze-responsive-nav-link> 
+          <breeze-responsive-nav-link
+            v-if="$page.props.auth.user.navigation.Proposals"
+            :href="route('proposals')"
+            :active="route().current('proposals')"
+          >
+            Proposals
+          </breeze-responsive-nav-link> 
+          <breeze-responsive-nav-link
+            v-if="$page.props.auth.user.navigation.Proposals"
+            class="pl-4"
+            :href="route('questionnaire')"
+            :active="route().current('questionnaire')"
+          >
+            Questionnaires
+          </breeze-responsive-nav-link> 
+          <breeze-responsive-nav-link
+            v-if="$page.props.auth.user.navigation.Invoices"
+            :href="route('finances')"
+            :active="route().current('finances')"
+          >
+            Finances
+          </breeze-responsive-nav-link> 
+          <breeze-responsive-nav-link
+            v-if="$page.props.auth.user.navigation.Colors"
+            :href="route('colors')"
+            :active="route().current('colors')"
+          >
+            Colors
+          </breeze-responsive-nav-link>   
 
-            <breeze-responsive-nav-link
-              v-if="$page.props.auth.user.navigation.Charts"
-              :href="route('charts')"
-              :active="route().current('charts')"
-            >
-              Charts
-            </breeze-responsive-nav-link>   
-          </div> 
+          <breeze-responsive-nav-link
+            v-if="$page.props.auth.user.navigation.Charts"
+            :href="route('charts')"
+            :active="route().current('charts')"
+          >
+            Charts
+          </breeze-responsive-nav-link>   
+        </div> 
 
-          <!-- Responsive Settings Options -->
-          <div class="pt-4 pb-1 border-t border-gray-200">
-            <div class="flex items-center px-4">
-              <div class="font-medium text-base text-gray-800">
-                {{ $page.props.auth.user.name }} 
-              </div>
-              <div class="px-2 font-medium text-sm text-gray-500">
-                {{ $page.props.auth.user.email }}
-              </div>
+        <!-- Responsive Settings Options -->
+        <div class="pt-4 pb-1 border-t border-gray-200">
+          <div class="flex items-center px-4">
+            <div class="font-medium text-base text-gray-800">
+              {{ $page.props.auth.user.name }} 
             </div>
-
-            <div class="mt-3 space-y-1">
-              <breeze-dropdown-link
-                :href="route('account')"
-                method="get"
-                as="button"
-              >
-                Account
-              </breeze-dropdown-link>
-              <breeze-responsive-nav-link
-                :href="route('logout')"
-                method="post"
-                as="button"
-              >
-                Log Out
-              </breeze-responsive-nav-link>
+            <div class="px-2 font-medium text-sm text-gray-500">
+              {{ $page.props.auth.user.email }}
             </div>
           </div>
+
+          <div class="mt-3 space-y-1">
+            <breeze-dropdown-link
+              :href="route('account')"
+              method="get"
+              as="button"
+            >
+              Account
+            </breeze-dropdown-link>
+            <breeze-responsive-nav-link
+              :href="route('logout')"
+              method="post"
+              as="button"
+            >
+              Log Out
+            </breeze-responsive-nav-link>
+          </div>
         </div>
-      </nav>
+      </div>
+    </nav>
+    <div class="pt-16 min-h-screen bg-gradient-to-r from-blue-800 to-blue-200">
       <!-- Page Heading -->
       <header
         v-if="$slots.header"
@@ -370,7 +370,7 @@
       </header>
 
       <!-- Page Content -->
-      <main class="rounded-t-lg overflow-hidden border-t border-l border-r border-gray-400 px-3 py-10 flex justify-center">
+      <main class="rounded-t-lg overflow-hidden border-t border-l border-r border-gray-400 px-3 py-4 flex justify-center">
         <toast
           :success-message="$page.props.successMessage"
           :errors="$page.props.errors"
