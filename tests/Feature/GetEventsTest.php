@@ -7,6 +7,7 @@ use App\Models\BandMembers;
 use App\Models\BandOwners;
 use App\Models\Bands;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
@@ -127,4 +128,22 @@ class GetEventsTest extends TestCase
         $user = User::factory()->create();
         $this->assertCount(0,$user->events);
     }    
+
+    public function test_getOlderEvents()
+    {
+        $band = Bands::factory()->create();
+        $user = User::factory()->create();
+
+        BandMembers::create([
+            'band_id'=>$band->id,
+            'user_id'=>$user->id
+        ]);
+        
+        $eventCount = $this->faker->numberBetween(0,10);
+        BandEvents::factory($eventCount)->create([
+            'band_id'=>$band->id,
+            'event_time'=>Carbon::parse("-{$eventCount} months")
+        ]);
+        $this->assertCount($eventCount,$user->events);
+    }
 }
