@@ -98,12 +98,12 @@ class Kernel extends ConsoleKernel
             {
 
                 $band = $event->band;
-                $bandOwners = $band->owners;
+                $everybody = $band->everyone();
                 
-                foreach($bandOwners as $owner)
+                foreach($everybody as $person)
                 {
-                    $owneruser = $owner->user;
-                    Mail::to($owneruser->email)->send(new EventReminder($event));
+                    $member = $person->user;
+                    Mail::to($member->email)->send(new EventReminder($event));
                 }
             }
         })->dailyAt('9:00');

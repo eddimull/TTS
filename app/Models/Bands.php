@@ -23,6 +23,15 @@ class Bands extends Model
         // return $this->hasManyThrough(User::class,BandMembers::class,)
     }
 
+    public function everyone()
+    {
+        $owners = $this->owners;
+        $members = $this->members;
+        
+
+        return $owners->merge($members);
+    }
+
     public function stripe_accounts()
     {
         return $this->hasOne(stripe_accounts::class,'band_id');
