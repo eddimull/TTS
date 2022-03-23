@@ -157,6 +157,7 @@ class EventsController extends Controller
             'state_id' => $request->state_id,
             'city' => $request->city,
             'colorway_id'=>$request->colorway_id,
+            'colorway_text'=>$request->colorway_text,
             'quiet_time'=> date('Y-m-d H:i:s',strtotime($request->quiet_time)),
             'end_time'=> date('Y-m-d H:i:s',strtotime($request->end_time)),
             'ceremony_time'=> date('Y-m-d H:i:s',strtotime($request->ceremony_time)),
@@ -292,6 +293,7 @@ class EventsController extends Controller
         $event->production_loadin_time = date('Y-m-d H:i:s',strtotime($request->production_loadin_time));
         $event->ceremony_time = date('Y-m-d H:i:s',strtotime($request->ceremony_time));
         $event->pay = $request->pay;
+        $event->colorway_text = $request->colorway_text;
         $event->depositReceived = $request->depositReceived;
         $event->event_key = $request->event_key;
         $event->created_at = $request->created_at;

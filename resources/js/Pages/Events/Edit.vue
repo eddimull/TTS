@@ -408,10 +408,9 @@
                   Notes
                 </p>
                 <p>
-                  <textarea
+                  <Editor
                     v-model="form.notes"
-                    class="min-w-full"
-                    placeholder=""
+                    editor-style="height: 320px"
                   />
                 </p>
               </div>                                                                                                                                                                                                                                                                                                                                    
@@ -431,7 +430,11 @@
                   Color
                 </p>
                 <p>
-                  <select
+                  <Editor
+                    v-model="form.colorway_text"
+                    editor-style="height: 150px"
+                  />
+                  <!-- <select
                     id="colorway"
                     v-model="form.colorway_id"
                     class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded"
@@ -443,7 +446,7 @@
                     >
                       {{ color.color_title }}
                     </option>
-                  </select> 
+                  </select>  -->
                 </p>
               </div>
               <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
@@ -629,6 +632,13 @@
             >
               Update Event
             </button>
+            <Button
+              icon="pi pi-check"
+              label="Show Advance"
+              @click="$inertia.visit($route('events.advance',{key:event.event_key}))"
+            />
+
+            
             <button
               id="deleteButton"
               class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
@@ -652,6 +662,7 @@
     import ButtonComponent from '@/Components/Button'
     import CurrencyInput from '@/Components/CurrencyInput'
     import moment from 'moment';
+    
     export default {
         components: {
             BreezeAuthenticatedLayout,Datepicker,VueTimepicker,ButtonComponent,CurrencyInput
@@ -695,6 +706,7 @@
                     zip:this.event.zip,
                     city:this.event.city,
                     colorway_id:this.event.colorway_id,
+                    colorway_text:this.event.colorway_text,
                     ceremony_time:new Date(moment(this.event.ceremony_time)),
                     quiet_time:new Date(moment(this.event.quiet_time)),
                     onsite:this.event.onsite ? true : false,

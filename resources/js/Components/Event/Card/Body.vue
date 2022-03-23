@@ -26,7 +26,18 @@
         v-if="event.notes !== null"
         class="p-2"
       >
-        Notes: {{ event.notes }}
+        Notes: <div
+          style="background-color: rgb(244 244 245);"
+          class="ml-3 p-3 shadow-lg rounded"
+          v-html="event.notes"
+        />
+      </li>
+      <li v-if="event.colorway_text">
+        Attire: <div
+          style="background-color: rgb(244 244 245);"
+          class="ml-3 p-3 shadow-lg rounded"
+          v-html="event.colorway_text"
+        />
       </li>
     </ul>
     <!-- {{ event }} -->

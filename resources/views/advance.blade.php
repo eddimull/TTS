@@ -131,7 +131,7 @@
                         <td class="w-1/6">&nbsp;</td>
                         <td class="border border-black border-2 px-4 py-2 w-1/6 bg-gray-200">Attire:</td>
                         <td class="border border-black border-2 px-4 py-2">
-                            {{$event['colorway'] ? $event['colorway']['color_title'] : 'TBD'}}
+                            {!!$event['colorway_text'] ? $event['colorway_text'] : 'TBD'!!}
                         </td>                                                    
                     </tr>       
                     @if($event['event_type']['name'] == 'Wedding')             
@@ -189,7 +189,7 @@
                         <td class="w-1/6">&nbsp;</td>
                         <td class="border border-black border-2 px-4 py-2 w-1/6 bg-gray-200">Notes:</td>
                         <td class="border border-black border-2 px-4 py-2">
-                            {{$event['notes']}}
+                            {!!$event['notes']!!}
                         </td>                                                    
                     </tr>       
                     

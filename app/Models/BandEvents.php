@@ -43,6 +43,7 @@ class BandEvents extends Model
         'state_id',
         'city',
         'colorway_id',
+        'colorway_text',
         'quiet_time',
         'end_time',
         'ceremony_time',
