@@ -142,8 +142,13 @@ class GetEventsTest extends TestCase
         $eventCount = $this->faker->numberBetween(0,10);
         BandEvents::factory($eventCount)->create([
             'band_id'=>$band->id,
-            'event_time'=>Carbon::parse("-{$eventCount} months")
+            'event_time'=>Carbon::parse("-{$eventCount} months"),
+            'end_time'=>Carbon::parse("-{$eventCount} months")
         ]);
         $this->assertCount($eventCount,$user->events);
+        foreach($user->events as $event)
+        {
+            $this->assertTrue($event->OldEvent);
+        }
     }
 }

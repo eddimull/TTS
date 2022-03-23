@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 class BandEvents extends Model
 {
@@ -47,11 +48,15 @@ class BandEvents extends Model
         'ceremony_time',
         'onsite',
         'google_calendar_event_id'
-
     ];
 
 
     protected $with = ['band','event_contacts','event_type','state'];
+
+    public function getOldEventAttribute()
+    {
+        return Carbon::parse($this->end_time) < Carbon::now();
+    }
 
     public function event_type()
     {

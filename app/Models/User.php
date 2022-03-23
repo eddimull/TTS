@@ -230,11 +230,12 @@ class User extends Authenticatable
         {
             foreach($band->events as $event)
             {
+                $event->OldEvent = $event->OldEvent;
                 $events->add($event);
             }
         }
 
-        return $events->sortByDesc('event_time')->values();
+        return $events->sortBy('event_time')->values();
     }
 
 }

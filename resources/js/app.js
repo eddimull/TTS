@@ -87,6 +87,7 @@ const app = createApp({
     .component('TabPanel',TabPanel)
 
 app.config.globalProperties.$qs = qs;
+app.config.globalProperties.$route = route;
 app.mount(el)
 
 
