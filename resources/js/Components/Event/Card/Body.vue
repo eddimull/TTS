@@ -18,7 +18,7 @@
             Rhythm: <strong>{{ toTime(event.rhythm_loadin_time) }}</strong>
           </li>
           <li class="mt-2 pl-3">
-            Production: <strong>{{ toTime(event.band_loadin_time) }}</strong>
+            Band: <strong>{{ toTime(event.band_loadin_time) }}</strong>
           </li>
         </ul>
       </li>

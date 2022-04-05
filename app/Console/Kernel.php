@@ -4,12 +4,14 @@ namespace App\Console;
 
 use App\Mail\EventReminder;
 use App\Models\BandEvents;
+use App\Models\Bands;
 use App\Models\Contracts;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 use Illuminate\Support\Facades\Http;
 use App\Models\User;
 use App\Notifications\TTSNotification;
+use App\Services\AdvanceReminderService;
 use App\Services\ProposalServices;
 use Symfony\Component\ErrorHandler\Debug;
 use Illuminate\Support\Facades\Storage;
@@ -107,6 +109,16 @@ class Kernel extends ConsoleKernel
                 }
             }
         })->dailyAt('9:00');
+
+        $schedule->call(function(){
+            $bands = Bands::all();
+
+            foreach($bands as $band)
+            {
+                $reminder = new AdvanceReminderService($band);
+                $reminder->searchAndSend();
+            }
+        })->weeklyOn(2, '23:00');
     }
 
     /**

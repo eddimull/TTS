@@ -69,6 +69,11 @@ class BandEvents extends Model
         return $this->hasOne(Bands::class,'id','band_id');
     }
 
+    public function advanceURL()
+    {
+        return config('app.url') . '/events/' . $this->event_key. '/advance';
+    }
+
     public function colorway()
     {
         return $this->hasOne(Colorways::class,'id','colorway_id');

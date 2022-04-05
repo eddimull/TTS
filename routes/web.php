@@ -7,8 +7,11 @@ use App\Http\Controllers\InvoicesController;
 use App\Http\Controllers\InvitationsController;
 use App\Http\Controllers\QuestionnaireController;
 use App\Mail\Proposal;
+use App\Mail\WeeklyAdvance;
 use App\Models\ProposalContacts;
+use App\Services\AdvanceReminderService;
 use App\Models\Bands;
+use App\Models\BandEvents;
 use App\Models\Proposals;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -137,7 +140,16 @@ Route::post('/notification/{id}',function($id){
     return false;
 })->middleware(['auth','verified']);
 
+Route::get('advanceTest',function(){
+    $bands = Bands::all();
 
+            foreach($bands as $band)
+            {
+                $reminder = new AdvanceReminderService($band);
+                $reminder->searchAndSend();
+            }
+    return 'sent';
+});
 Route::post('/readAllNotifications',function(){
     $notifications = Auth::user()->unreadNotifications;
     foreach($notifications as $notification)
