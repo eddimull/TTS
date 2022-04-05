@@ -18,13 +18,21 @@ class AdvanceReminderService{
 
    public function searchAndSend()
    {
-    $BandEvents = BandEvents::whereBetween('event_time',[Carbon::now(),Carbon::now()->addWeek()])->where('band_id',$this->band->id)->get();
+    $BandEvents = BandEvents::whereBetween('event_time',[Carbon::now(),Carbon::now()->addWeek(30)])->where('band_id',$this->band->id)->get();
     if(count($BandEvents) > 0)
     {
-        $everyone = $this->band->everyone();
-        foreach($everyone as $associate)
+        $owners = $this->band->owners;
+        foreach($owners as $owner)
         {
-            Mail::to($associate->user->email)->send(
+            Mail::to($owner->user->email)->send(
+                new WeeklyAdvance($BandEvents)
+            );
+        }
+
+        $members = $this->band->members;
+        foreach($members as $member)
+        {
+            Mail::to($member->user->email)->send(
                 new WeeklyAdvance($BandEvents)
             );
         }

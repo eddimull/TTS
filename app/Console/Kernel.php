@@ -100,9 +100,14 @@ class Kernel extends ConsoleKernel
             {
 
                 $band = $event->band;
-                $everybody = $band->everyone();
-                
-                foreach($everybody as $person)
+                $owners = $band->owners;
+                $members = $band->members;
+                foreach($owners as $person)
+                {
+                    $member = $person->user;
+                    Mail::to($member->email)->send(new EventReminder($event));
+                }
+                foreach($members as $person)
                 {
                     $member = $person->user;
                     Mail::to($member->email)->send(new EventReminder($event));
