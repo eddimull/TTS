@@ -18,7 +18,7 @@ class AdvanceReminderService{
 
    public function searchAndSend()
    {
-    $BandEvents = BandEvents::whereBetween('event_time',[Carbon::now(),Carbon::now()->addWeek(30)])->where('band_id',$this->band->id)->get();
+    $BandEvents = BandEvents::whereBetween('event_time',[Carbon::now(),Carbon::now()->addWeek()])->where('band_id',$this->band->id)->get();
     if(count($BandEvents) > 0)
     {
         $owners = $this->band->owners;
