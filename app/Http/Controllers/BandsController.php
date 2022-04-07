@@ -10,6 +10,7 @@ use App\Models\stripe_accounts;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Notifications\TTSNotification;
+use App\Services\CalendarService;
 use Illuminate\Support\Facades\Storage;
 
 class BandsController extends Controller
@@ -104,6 +105,14 @@ class BandsController extends Controller
         return Inertia::render('Band/Edit',[
             'band' => $band
         ]);
+    }
+
+    public function syncCalendar(Bands $band)
+    {
+        $calService = new CalendarService($band);
+        $calService->syncEvents();
+
+        return back()->with('successMessage','Events written to your calendar!');
     }
 
     /**

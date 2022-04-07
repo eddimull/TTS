@@ -133,13 +133,18 @@
               Stripe account setup
             </p>
           </div>
-          <div class="flex items-center justify-between">
-            <button
-              class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+          <div class="flex items-center justify-around">
+            <Button
+              label="Update"
               type="submit"
             >
               Update 
             </button>
+            <Button
+              :disabled="syncing"
+              :label="syncing ? 'Syncing...' : 'Sync Calendar'"
+              @click="syncCalendar"
+            />
           </div>
         </form>
 
@@ -276,6 +281,7 @@
         data(){
             return{
                 urlWarn:false,
+                syncing:false,
                 showInstructions:false,
                 activePanel:'Details',
                 inviting:false,
@@ -394,6 +400,17 @@
                     this.$refs.fileUpload.clear()
                 }
                 });
+            },
+
+            syncCalendar()
+            {
+              this.syncing = true;
+              this.$inertia.post('./syncCalendar',{},{
+                                onSuccess:()=>{
+                    this.$swal.fire("Calendar Synced","","success");
+                    this.syncing = false;
+                }
+              })
             }
         }
     }

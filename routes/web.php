@@ -62,6 +62,7 @@ Route::delete('/bands/{band}', 'BandsController@destroy')->middleware(['auth', '
 Route::delete('/deleteOwner/{band}/{owner}','BandsController@deleteOwner')->middleware(['auth','verified'])->name('bands.deleteOwner');
 Route::post('/bands/{band}/uploadLogo','BandsController@uploadLogo')->middleware(['auth', 'verified'])->name('bands.uploadLogo');
 Route::get('/bands/{band}/setupStripe','BandsController@setupStripe')->middleware(['auth', 'verified'])->name('bands.setupStripe');
+Route::post('/bands/{band}/syncCalendar','BandsController@syncCalendar')->middleware(['auth', 'verified'])->name('bands.syncCalendar');
 
 
 Route::get('/events', 'EventsController@index')->middleware(['auth', 'verified'])->name('events');

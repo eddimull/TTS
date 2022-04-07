@@ -24,6 +24,7 @@ use App\Notifications\EventAdded;
 use App\Notifications\EventUpdated;
 use App\Models\User;
 use App\Notifications\TTSNotification;
+use App\Services\CalendarService;
 use Doctrine\DBAL\Schema\View;
 use Illuminate\Support\Facades\Http;
 
@@ -169,38 +170,8 @@ class EventsController extends Controller
 
 
         $band = Bands::find($event->band_id);
-        if($band->calendar_id !== '' && $band->calendar_id !== null)
-        {
-
-            Config::set('google-calendar.service_account_credentials_json',storage_path('/app/google-calendar/service-account-credentials.json'));
-            Config::set('google-calendar.calendar_id',$band->calendar_id);
-            
-            // dd(Carbon::parse($event->event_time));
-
-            if($event->google_calendar_event_id !== null)
-            {
-                $calendarEvent = CalendarEvent::find($event->google_calendar_event_id);
-            }
-            else
-            {
-                $calendarEvent = new CalendarEvent;
-            }
-            $calendarEvent->name = $event->event_name;
-
-            $startTime = Carbon::parse($event->event_time);
-            $endDateTimeFixed = date('Y-m-d',strtotime($event->event_time)) . ' ' . date('H:i:s', strtotime($event->end_time));
-            if($endDateTimeFixed < $startTime)//when events end after midnight
-            {
-                $endDateTimeFixed = date('Y-m-d',strtotime($event->event_time . ' +1 day')) . ' ' . date('H:i:s', strtotime($event->end_time));
-            }
-            $endTime = Carbon::parse($endDateTimeFixed);
-            $calendarEvent->startDateTime = $startTime;
-            $calendarEvent->endDateTime = $endTime;   
-            $calendarEvent->description = 'http://tts.band/events/' . $event->event_key . '/advance';
-            $google_id = $calendarEvent->save();  
-            $event->google_calendar_event_id = $google_id->id;
-            $event->save();
-        }
+        $calService = new CalendarService($band);
+        $calService->writeEventToCalendar($event);
 
         $editor = Auth::user();
         compact($band->owners);
