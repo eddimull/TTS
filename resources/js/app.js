@@ -86,6 +86,7 @@ const app = createApp({
     .component('TabView',TabView)
     .component('TabPanel',TabPanel)
 
+app.config.globalProperties.$moment = moment;
 app.config.globalProperties.$qs = qs;
 app.config.globalProperties.$route = route;
 app.mount(el)

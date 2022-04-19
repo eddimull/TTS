@@ -180,58 +180,14 @@
                   />
                 </div>
                 <div v-if="input.type == 'date'">
-                  <calendar
-                    v-model="proposalData[input.field]"
-                    :show-time="true"
-                    :disabled-dates="getDisabledDates()"
-                    :step-minute="15"
-                    hour-format="12"
-                    @date-select="unsavedChanges=true"
-                  >
-                    <template #date="slotProps">
-                      <strong
-                        v-if="findReservedDate(slotProps.date)"
-                        :title="findReservedDateName(slotProps.date)"
-                        class="rounded-full h-24 w-24 flex items-center justify-center bg-red-300"
-                      >{{ slotProps.date.day }}</strong>
-                      <strong
-                        v-else-if="findProposedDate(slotProps.date)"
-                        :title="findProposedDateName(slotProps.date)"
-                        class="rounded-full h-24 w-24 flex items-center justify-center bg-yellow-300"
-                      >{{ slotProps.date.day }}</strong>
-                      <template v-else>
-                        {{ slotProps.date.day }}
-                      </template>
-                    </template>
-                  </calendar>
+                  <reserved-calendar v-model="proposalData[input.field]" />
+                  
                   <div
                     v-for="(date,index) in recurringDates"
                     :key="index"
                   >
-                    <calendar
-                      v-model="recurringDates[index].date"
-                      :show-time="true"
-                      :disabled-dates="getDisabledDates()"
-                      :step-minute="15"
-                      hour-format="12"
-                      @date-select="unsavedChanges=true"
-                    >
-                      <template #date="slotProps">
-                        <strong
-                          v-if="findReservedDate(slotProps.date)"
-                          :title="findReservedDateName(slotProps.date)"
-                          class="rounded-full h-24 w-24 flex items-center justify-center bg-red-300"
-                        >{{ slotProps.date.day }}</strong>
-                        <strong
-                          v-else-if="findProposedDate(slotProps.date)"
-                          :title="findProposedDateName(slotProps.date)"
-                          class="rounded-full h-24 w-24 flex items-center justify-center bg-yellow-300"
-                        >{{ slotProps.date.day }}</strong>
-                        <template v-else>
-                          {{ slotProps.date.day }}
-                        </template>
-                      </template>
-                    </calendar>    
+                    <reserved-calendar v-model="recurringDates[index].date" />
+                      
                     <button
                       class="transform translate-y-1 bg-red-500 text-white active:bg-purple-600 font-bold uppercase text-xs px-4 py-2 rounded shadow hover:shadow-md outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150"
                       type="button"
@@ -327,12 +283,14 @@
     import Datepicker from 'vue3-datepicker'
     import VueTimepicker from 'vue3-timepicker'
     import 'vue3-timepicker/dist/VueTimepicker.css'
+    import ReservedCalendar from '../../Components/ReservedCalendar.vue'
+
     import moment from 'moment';
 import axios from 'axios'
 import { forEach } from 'lodash'
     export default {
         components: {
-            BreezeAuthenticatedLayout,Datepicker,VueTimepicker,ButtonComponent,CurrencyInput
+            BreezeAuthenticatedLayout,Datepicker,VueTimepicker,ButtonComponent,CurrencyInput,ReservedCalendar
         },
         props:['proposal','eventTypes','bookedDates','proposedDates','recurringDates'], 
         data(){
@@ -428,80 +386,7 @@ import { forEach } from 'lodash'
             }
         },
         methods:{
-            findReservedDate(date)
-            {
-                
-                const jsDate = moment(String(date.month + 1) + '-' + String(date.day) + '-' + String(date.year)).format('YYYY-MM-DD');
-                var booked = false;
-                this.bookedDates.forEach(bookedDate =>{
-                    const parsedDate = moment(bookedDate.event_time).format('YYYY-MM-DD');
-                    if(parsedDate === jsDate)
-                    {
-                        booked = true;
-                    }
-                })
-                return booked
-            },
-            findReservedDateName(date)
-            {
-                const jsDate = moment(String(date.month + 1) + '-' + String(date.day) + '-' + String(date.year)).format('YYYY-MM-DD');
-                var name = '';
-                this.bookedDates.forEach(bookedDate =>{
-                    const parsedDate = moment(bookedDate.event_time).format('YYYY-MM-DD');
-                    if(parsedDate === jsDate)
-                    {
-                        name = bookedDate.event_name;
-                    }
-                })
-                return name
-            },
-            findProposedDate(date)
-            {
-                
-                const jsDate = moment(String(date.month + 1) + '-' + String(date.day) + '-' + String(date.year)).format('YYYY-MM-DD');
-                var booked = false;
-                this.proposedDates.forEach(proposedDate =>{
-                    const parsedDate = moment(proposedDate.date).format('YYYY-MM-DD');
-                    if(parsedDate === jsDate)
-                    {
-                        booked = true;
-                    }
-                })
-                return booked
-            },
-            findProposedDateName(date)
-            {
-                const jsDate = moment(String(date.month + 1) + '-' + String(date.day) + '-' + String(date.year)).format('YYYY-MM-DD');
-                var name = '';
-                this.proposedDates.forEach(proposedDate =>{
-                    const parsedDate = moment(proposedDate.date).format('YYYY-MM-DD');
-                    if(parsedDate === jsDate)
-                    {
-                        name = proposedDate.name;
-                    }
-                })
-                return name
-            },
-            getDisabledDates()
-            {
-                let dateArray = [];
-                this.bookedDates.forEach(date=>{
-                    dateArray.push(new Date(moment(String(date.event_time))));
-                })
-                return dateArray;
-            },            
-            getMonth(date)
-            {
-                return moment(date).month()
-            },
-            getDay(date)
-            {
-                return moment(date).day()
-            },
-            getYear(date)
-            {
-                return moment(date).year()
-            },
+           
             saveContact(){
                this.$inertia.post('/proposals/createContact/' + this.proposal.key,this.newContact,{preserveScroll:true,onSuccess:(data)=>{
                    this.newContact.name = '';

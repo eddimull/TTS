@@ -425,31 +425,7 @@
             />
           </div>
           <div v-if="input.type == 'date'">
-            <calendar
-              v-model="proposalData[input.field]"
-              :disabled-dates="getDisabledDates()"
-              :show-time="true"
-              :step-minute="15"
-              hour-format="12"
-            >
-              <template #date="slotProps">
-                <strong
-                  v-if="findReservedDate(slotProps.date)"
-                  :title="findReservedDateName(slotProps.date)"
-                  class="rounded-full h-24 w-24 flex items-center justify-center bg-red-300"
-                  @click="$swal.fire('Date already booked with ' + findReservedDateName(slotProps.date))"
-                >{{ slotProps.date.day }}</strong>
-                <strong
-                  v-else-if="findProposedDate(slotProps.date)"
-                  :title="findProposedDateName(slotProps.date)"
-                  class="rounded-full h-24 w-24 flex items-center justify-center bg-yellow-300"
-                  @click="$swal.fire('Date under proposal with ' + findProposedDateName(slotProps.date))"
-                >{{ slotProps.date.day }}</strong>
-                <template v-else>
-                  {{ slotProps.date.day }}
-                </template>
-              </template>
-            </calendar>
+            <reserved-calendar v-model="proposalData[input.field]" />
           </div>
           <div v-if="input.type == 'eventTypeDropdown'">
             <select v-model="proposalData[input.field]">
@@ -478,6 +454,7 @@
     import axios from 'axios';
     import CurrencyInput from '@/Components/CurrencyInput';
     import {FilterMatchMode,FilterOperator} from 'primevue/api';
+    import ReservedCalendar from '../../Components/ReservedCalendar.vue'
 import Label from '../../Components/Label.vue';
 
 
@@ -489,6 +466,7 @@ import Label from '../../Components/Label.vue';
             InputText,
             Button,
             CurrencyInput,
+            ReservedCalendar,
                 Label
         },
         props:['bandsAndProposals','successMessage','eventTypes','proposal_phases','bookedDates','proposedDates'],
@@ -530,14 +508,14 @@ import Label from '../../Components/Label.vue';
                     {name:'Price',property:'price'},
                     {name:'Color',property:'color'},
                     {name:'Locked',property:'locked'},
-                    {name:'Notes (client does not see this)',property:'notes'},
+                    // {name:'Notes (client does not see this)',property:'notes'},
                     {name:'Client Notes',property:'client_notes'},
                     {name:'Created',property:'created_at'},
                     {name:'Contract PDF',property:'contract',subProperty:'image_url'}
                 ],
                 proposalData:{
                     name:'',
-                    date:new Date(moment().set({'hour':19,'minute':0}).add('month',1)),
+                    date:new Date(moment().set({'hour':19,'minute':0}).add(1,'month')),
                     event_type_id:0,
                     hours:0,
                     price:0,
@@ -570,24 +548,35 @@ import Label from '../../Components/Label.vue';
                         type:'currency',
                         field:'price'
                     },
-                    {
-                        name:'Notes (for band)',
-                        type:'textArea',
-                        field:'notes'
-                    },      
-                    {
-                        name:'Notes for client',
-                        type:'textArea',
-                        field:'client_notes'
-                    },               
+                    // {
+                    //     name:'Notes (for band)',
+                    //     type:'textArea',
+                    //     field:'notes'
+                    // },      
+                    // {
+                    //     name:'Notes for client',
+                    //     type:'textArea',
+                    //     field:'client_notes'
+                    // },               
                 ]
             }
         },
+        computed:{
+          reservedDates(){
+            const bookedDates = this.bookedDates.map(date=>{
+              date.level = 2
+              return date
+            })
+            const proposedDates = this.proposedDates.map(date=>{
+              date.level = 1
+              return date
+            })
+            return [...bookedDates, ...proposedDates]
+          }
+        },
         created(){
             this.initFilters1();
-            this.setChartData();
             this.searchParams = this.$qs.parse(location.search.slice(1));
-            
         },
         mounted(){
             if(this.searchParams.open)
@@ -606,72 +595,6 @@ import Label from '../../Components/Label.vue';
             }
         },
         methods:{
-            setChartData()
-            {
-              
-            },
-            findReservedDate(date)
-            {
-                
-                const jsDate = moment(String(date.month + 1) + '-' + String(date.day) + '-' + String(date.year)).format('YYYY-MM-DD');
-                var booked = false;
-                this.bookedDates.forEach(bookedDate =>{
-                    const parsedDate = moment(bookedDate.event_time).format('YYYY-MM-DD');
-                    if(parsedDate === jsDate)
-                    {
-                        booked = true;
-                    }
-                })
-                return booked
-            },
-            findReservedDateName(date)
-            {
-                const jsDate = moment(String(date.month + 1) + '-' + String(date.day) + '-' + String(date.year)).format('YYYY-MM-DD');
-                var name = '';
-                this.bookedDates.forEach(bookedDate =>{
-                    const parsedDate = moment(bookedDate.event_time).format('YYYY-MM-DD');
-                    if(parsedDate === jsDate)
-                    {
-                        name = bookedDate.event_name;
-                    }
-                })
-                return name
-            },
-            findProposedDate(date)
-            {
-                
-                const jsDate = moment(String(date.month + 1) + '-' + String(date.day) + '-' + String(date.year)).format('YYYY-MM-DD');
-                var booked = false;
-                this.proposedDates.forEach(proposedDate =>{
-                    const parsedDate = moment(proposedDate.date).format('YYYY-MM-DD');
-                    if(parsedDate === jsDate)
-                    {
-                        booked = true;
-                    }
-                })
-                return booked
-            },
-            findProposedDateName(date)
-            {
-                const jsDate = moment(String(date.month + 1) + '-' + String(date.day) + '-' + String(date.year)).format('YYYY-MM-DD');
-                var name = '';
-                this.proposedDates.forEach(proposedDate =>{
-                    const parsedDate = moment(proposedDate.date).format('YYYY-MM-DD');
-                    if(parsedDate === jsDate)
-                    {
-                        name = proposedDate.name;
-                    }
-                })
-                return name
-            },
-            getDisabledDates()
-            {
-                let dateArray = [];
-                this.bookedDates.forEach(date=>{
-                    dateArray.push(new Date(moment(String(date.event_time))));
-                })
-                return dateArray;
-            },
             toggleCreateModal(sitename){
                 this.activeBandSite = sitename;
                 this.showCreateModal = !this.showCreateModal
