@@ -41,7 +41,7 @@ class MileageService{
                         $response = json_decode($response);
                     }
                     
-                    $mileage->miles = str_replace(" mi","",$response->rows[0]->elements[0]->distance->text);
+                    $mileage->miles = preg_replace('/\D/', '', $response->rows[0]->elements[0]->distance->text);
                     
                     if(str_contains($response->rows[0]->elements[0]->duration->text,'hours'))
                     {
