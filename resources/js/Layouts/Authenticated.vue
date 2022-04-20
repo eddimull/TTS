@@ -280,101 +280,100 @@
       <Toast
         position="bottom-center"
         group="bc"
+      />
+      <!-- Responsive Navigation Menu -->
+      <div
+        :class="{'block': showingNavigationDropdown, 'hidden': ! showingNavigationDropdown}"
+        class="sm:hidden"
       >
-        <!-- Responsive Navigation Menu -->
-        <div
-          :class="{'block': showingNavigationDropdown, 'hidden': ! showingNavigationDropdown}"
-          class="sm:hidden"
-        >
-          <div class="pt-2 pb-3 space-y-1">
-            <breeze-responsive-nav-link
-              :href="route('dashboard')"
-              :active="route().current('dashboard')"
-            >
-              Dashboard
-            </breeze-responsive-nav-link>
-            <breeze-responsive-nav-link
-              :href="route('bands')"
-              :active="route().current('bands')"
-            >
-              Bands
-            </breeze-responsive-nav-link>
-            <breeze-responsive-nav-link
-              v-if="$page.props.auth.user.navigation.Events"
-              :href="route('events')"
-              :active="route().current('events')"
-            >
-              Events
-            </breeze-responsive-nav-link> 
-            <breeze-responsive-nav-link
-              v-if="$page.props.auth.user.navigation.Proposals"
-              :href="route('proposals')"
-              :active="route().current('proposals')"
-            >
-              Proposals
-            </breeze-responsive-nav-link> 
-            <breeze-responsive-nav-link
-              v-if="$page.props.auth.user.navigation.Proposals"
-              class="pl-4"
-              :href="route('questionnaire')"
-              :active="route().current('questionnaire')"
-            >
-              Questionnaires
-            </breeze-responsive-nav-link> 
-            <breeze-responsive-nav-link
-              v-if="$page.props.auth.user.navigation.Invoices"
-              :href="route('finances')"
-              :active="route().current('finances')"
-            >
-              Finances
-            </breeze-responsive-nav-link> 
-            <breeze-responsive-nav-link
-              v-if="$page.props.auth.user.navigation.Colors"
-              :href="route('colors')"
-              :active="route().current('colors')"
-            >
-              Colors
-            </breeze-responsive-nav-link>   
+        <div class="pt-2 pb-3 space-y-1">
+          <breeze-responsive-nav-link
+            :href="route('dashboard')"
+            :active="route().current('dashboard')"
+          >
+            Dashboard
+          </breeze-responsive-nav-link>
+          <breeze-responsive-nav-link
+            :href="route('bands')"
+            :active="route().current('bands')"
+          >
+            Bands
+          </breeze-responsive-nav-link>
+          <breeze-responsive-nav-link
+            v-if="$page.props.auth.user.navigation.Events"
+            :href="route('events')"
+            :active="route().current('events')"
+          >
+            Events
+          </breeze-responsive-nav-link> 
+          <breeze-responsive-nav-link
+            v-if="$page.props.auth.user.navigation.Proposals"
+            :href="route('proposals')"
+            :active="route().current('proposals')"
+          >
+            Proposals
+          </breeze-responsive-nav-link> 
+          <breeze-responsive-nav-link
+            v-if="$page.props.auth.user.navigation.Proposals"
+            class="pl-4"
+            :href="route('questionnaire')"
+            :active="route().current('questionnaire')"
+          >
+            Questionnaires
+          </breeze-responsive-nav-link> 
+          <breeze-responsive-nav-link
+            v-if="$page.props.auth.user.navigation.Invoices"
+            :href="route('finances')"
+            :active="route().current('finances')"
+          >
+            Finances
+          </breeze-responsive-nav-link> 
+          <breeze-responsive-nav-link
+            v-if="$page.props.auth.user.navigation.Colors"
+            :href="route('colors')"
+            :active="route().current('colors')"
+          >
+            Colors
+          </breeze-responsive-nav-link>   
 
-            <breeze-responsive-nav-link
-              v-if="$page.props.auth.user.navigation.Charts"
-              :href="route('charts')"
-              :active="route().current('charts')"
-            >
-              Charts
-            </breeze-responsive-nav-link>   
-          </div> 
+          <breeze-responsive-nav-link
+            v-if="$page.props.auth.user.navigation.Charts"
+            :href="route('charts')"
+            :active="route().current('charts')"
+          >
+            Charts
+          </breeze-responsive-nav-link>   
+        </div> 
 
-          <!-- Responsive Settings Options -->
-          <div class="pt-4 pb-1 border-t border-gray-200">
-            <div class="flex items-center px-4">
-              <div class="font-medium text-base text-gray-800">
-                {{ $page.props.auth.user.name }} 
-              </div>
-              <div class="px-2 font-medium text-sm text-gray-500">
-                {{ $page.props.auth.user.email }}
-              </div>
+        <!-- Responsive Settings Options -->
+        <div class="pt-4 pb-1 border-t border-gray-200">
+          <div class="flex items-center px-4">
+            <div class="font-medium text-base text-gray-800">
+              {{ $page.props.auth.user.name }} 
             </div>
-
-            <div class="mt-3 space-y-1">
-              <breeze-dropdown-link
-                :href="route('account')"
-                method="get"
-                as="button"
-              >
-                Account
-              </breeze-dropdown-link>
-              <breeze-responsive-nav-link
-                :href="route('logout')"
-                method="post"
-                as="button"
-              >
-                Log Out
-              </breeze-responsive-nav-link>
+            <div class="px-2 font-medium text-sm text-gray-500">
+              {{ $page.props.auth.user.email }}
             </div>
           </div>
+
+          <div class="mt-3 space-y-1">
+            <breeze-dropdown-link
+              :href="route('account')"
+              method="get"
+              as="button"
+            >
+              Account
+            </breeze-dropdown-link>
+            <breeze-responsive-nav-link
+              :href="route('logout')"
+              method="post"
+              as="button"
+            >
+              Log Out
+            </breeze-responsive-nav-link>
+          </div>
         </div>
-      </toast>
+      </div>
     </nav>
     <div class="pt-16 min-h-screen bg-gradient-to-r from-blue-800 to-blue-200">
       <!-- Page Heading -->
