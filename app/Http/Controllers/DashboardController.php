@@ -18,12 +18,12 @@ class DashboardController extends Controller
         $events = (new UserEventsService())->getEvents();
         
         
-        $stats = (new MileageService())->handle($events);
+        // $stats = (new MileageService())->handle($events);
         // dd($stats);
         return Inertia::render('Dashboard',
         [
             'events'=>$events,
-            'stats'=>$stats
+            'stats'=>[]
             ]);
         }
 }
