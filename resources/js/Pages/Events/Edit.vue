@@ -110,7 +110,10 @@
                   </div>
                 </div>
               </div>      
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+              <div
+                v-if="form.event_type_id == 3 || form.event_type_id === 6"
+                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
+              >
                 <p class="text-gray-600">
                   Backline Provided
                 </p>
@@ -416,17 +419,6 @@
               </div>                                                                                                                                                                                                                                                                                                                                    
               <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                 <p class="text-gray-600">
-                  Pay $
-                </p>
-                <p>
-                  <currency-input 
-                    v-model.lazy="value"
-                    v-model="form.pay"
-                  />
-                </p>
-              </div>
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
                   Color
                 </p>
                 <p>
@@ -523,7 +515,10 @@
                   />
                 </p>
               </div>   
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+              <div
+                v-if="form.production_needed"
+                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
+              >
                 <p class="text-gray-600">
                   Production Load In Time
                 </p>
@@ -564,18 +559,7 @@
                     hour-format="12"
                   />
                 </p>
-              </div>              
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  Deposit Received
-                </p>
-                <p>
-                  <input
-                    v-model="form.depositReceived"
-                    type="checkbox"
-                  >
-                </p>
-              </div>    
+              </div>                
               <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                 <p class="text-gray-600">
                   Public
@@ -718,7 +702,7 @@
                     production_loadin_time:new Date(moment(this.event.production_loadin_time)),
                     production_needed:this.event.production_needed,
                     backline_provided:this.event.backline_provided,                   
-                    pay:this.event.pay, 
+                    pay:0, 
                     depositReceived:this.event.depositReceived ? true : false,
                     event_key:this.event.event_key,
                     created_at:this.event.created_at,

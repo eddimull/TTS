@@ -66,6 +66,18 @@
               </div>
               <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                 <p class="text-gray-600">
+                  Event Date
+                </p>
+                <p>
+                  <calendar
+                    id="eventDate"
+                    v-model="form.event_time"
+                    @date-select="assumeSeven()"
+                  />
+                </p>
+              </div>
+              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+                <p class="text-gray-600">
                   <label for="eventType">Event Type</label>
                 </p>
                 <div>
@@ -105,7 +117,10 @@
                   </div>
                 </div>
               </div>      
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+              <div
+                v-if="form.event_type_id == 3 || form.event_type_id === 6"
+                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
+              >
                 <p class="text-gray-600">
                   Backline Provided
                 </p>
@@ -302,20 +317,6 @@
               </div>                                                                                                                                                                                                                                                                                                                                    
               <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                 <p class="text-gray-600">
-                  Pay $
-                </p>
-                <p>
-                  <input
-                    id="pay"
-                    v-model="form.pay"
-                    type="number"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="0"
-                  >
-                </p>
-              </div>
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
                   Color
                 </p>
                 <p>
@@ -338,18 +339,7 @@
                   </select>  -->
                 </p>
               </div>
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  Event Date
-                </p>
-                <p>
-                  <calendar
-                    id="eventDate"
-                    v-model="form.event_time"
-                    @date-select="assumeSeven()"
-                  />
-                </p>
-              </div>
+
               <transition
                 name="slide-down"
                 appear
@@ -508,18 +498,7 @@
                     </p>
                   </div>
                 </div>   
-              </transition>          
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  Deposit Received
-                </p>
-                <p>
-                  <input
-                    v-model="form.depositReceived"
-                    type="checkbox"
-                  >
-                </p>
-              </div>    
+              </transition>           
               <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
                 <p class="text-gray-600">
                   Public
@@ -626,7 +605,7 @@
                     end_time:'',
                     rhythm_loadin_time:'',
                     production_loadin_time:'',
-                    pay:'',
+                    pay:'0',
                     depositReceived:'',
                     event_key:'',
                     created_at:'',

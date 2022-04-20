@@ -2,6 +2,22 @@
   <Container class="md:container md:mx-auto">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
       <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
+        <div class="flex justify-center items-center my-4">
+          <button
+            type="button"
+            class="self-center bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline m-10 p-5"
+            @click="$inertia.visit($route('events.create'))"
+          >
+            Draft New Event
+          </button>
+          <div class="card">
+            <h5>Upcoming Events</h5>
+            <Chart
+              type="bar"
+              :data="gigs"
+            />
+          </div>
+        </div>
         <DataTable
           v-model:filters="filters1"
           :value="events"
@@ -90,15 +106,6 @@
             :sortable="true"
           /> -->
         </DataTable>
-        <div class="flex justify-center items-center my-4">
-          <button
-            type="button"
-            class="self-center bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline m-10 p-5"
-            @click="$inertia.visit($route('events.create'))"
-          >
-            Draft Event
-          </button>
-        </div>
       </div>
     </div>
   </Container>
@@ -116,6 +123,43 @@ export default {
       dontShowCompleted:false,
       filters1: null,
       band:{}
+    }
+  },
+  computed:{
+    gigs(){
+      let upcomingEvents = this.events.filter(o => this.$moment(o.event_time, 'YYYY-MM-DD').isBetween(this.$moment().subtract(6, 'months'), this.$moment(), undefined, '[]'));
+      
+      const chartData = {
+        labels:[],
+        datasets:[{
+          label: 'Events For the Month',
+                        backgroundColor: '#42A5F5',
+                        data:[]
+        }]
+      }
+      const tempData = {};
+      upcomingEvents.forEach(event=>{
+        const parsedDate = this.$moment(event.event_time);
+        console.log(parsedDate);
+
+        if(tempData[parsedDate.format('MMMM')])
+        {
+          tempData[parsedDate.format('MMMM')] += 1
+        }
+        else
+        {
+          tempData[parsedDate.format('MMMM')] = 1
+        }
+
+      })
+
+      for(let i in tempData)
+      {
+        chartData.labels.push(i)
+        chartData.datasets[0].data.push(tempData[i])
+      }
+      
+      return chartData
     }
   },
     created(){

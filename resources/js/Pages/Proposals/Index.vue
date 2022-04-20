@@ -403,6 +403,7 @@
             <input
               :id="input.name"
               v-model="proposalData[input.field]"
+              :disabled="input.disabled"
               :type="input.type"
               class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
               :placeholder="input.name"
@@ -415,7 +416,11 @@
             <currency-input
               v-model.lazy="value"
               v-model="proposalData[input.field]"
+              :disabled="input.disabled"
             />
+            <div>
+              <label>Average Price: ${{ averagePrice }}</label>
+            </div>
           </div>
           <div v-if="input.type == 'textArea'">
             <textarea
@@ -467,7 +472,7 @@ import Label from '../../Components/Label.vue';
             Button,
             CurrencyInput,
             ReservedCalendar,
-                Label
+            Label
         },
         props:['bandsAndProposals','successMessage','eventTypes','proposal_phases','bookedDates','proposedDates'],
         data(){
@@ -562,16 +567,19 @@ import Label from '../../Components/Label.vue';
             }
         },
         computed:{
-          reservedDates(){
-            const bookedDates = this.bookedDates.map(date=>{
-              date.level = 2
-              return date
+          averagePrice(){
+            const relevantDates = this.proposedDates.filter(date=>{
+              return (date.event_type_id === this.proposalData.event_type_id) && date.price > 0
             })
-            const proposedDates = this.proposedDates.map(date=>{
-              date.level = 1
-              return date
+
+            let sum = 0;
+
+            relevantDates.forEach(date=>{
+              sum += parseFloat(date.price);
             })
-            return [...bookedDates, ...proposedDates]
+            const avg = (sum / relevantDates.length) || 0;
+            
+            return avg.toFixed(2);
           }
         },
         created(){
@@ -646,6 +654,7 @@ import Label from '../../Components/Label.vue';
                 });
                 
             },
+            
             sendContract(){
                this.loading = true;
                setTimeout(()=>{

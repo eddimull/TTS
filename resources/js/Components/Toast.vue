@@ -5,6 +5,7 @@
   >
     <div
       v-if="successMessage && visible"
+      style="z-index: 9999"
       class="fixed flex max-w-xs w-full mt-4 mr-4 top-0.5 right-0.5 bg-white rounded shadow p-4"
     >
       <div class="mr-2">
@@ -142,7 +143,7 @@
                         }
                         this.timeout = setTimeout(()=>{
                             this.visible = false
-                        },4000);
+                        },40000);
                     }
                 },
                 deep:true

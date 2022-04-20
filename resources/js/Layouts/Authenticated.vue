@@ -263,100 +263,118 @@
           </div>
         </div>
       </div>
+      <Toast />
+      <Toast
+        position="top-left"
+        group="tl"
+      />
+      <Toast
+        position="bottom-left"
+        group="bl"
+      />
+      <Toast
+        position="bottom-right"
+        group="br"
+      />
 
-      <!-- Responsive Navigation Menu -->
-      <div
-        :class="{'block': showingNavigationDropdown, 'hidden': ! showingNavigationDropdown}"
-        class="sm:hidden"
+      <Toast
+        position="bottom-center"
+        group="bc"
       >
-        <div class="pt-2 pb-3 space-y-1">
-          <breeze-responsive-nav-link
-            :href="route('dashboard')"
-            :active="route().current('dashboard')"
-          >
-            Dashboard
-          </breeze-responsive-nav-link>
-          <breeze-responsive-nav-link
-            :href="route('bands')"
-            :active="route().current('bands')"
-          >
-            Bands
-          </breeze-responsive-nav-link>
-          <breeze-responsive-nav-link
-            v-if="$page.props.auth.user.navigation.Events"
-            :href="route('events')"
-            :active="route().current('events')"
-          >
-            Events
-          </breeze-responsive-nav-link> 
-          <breeze-responsive-nav-link
-            v-if="$page.props.auth.user.navigation.Proposals"
-            :href="route('proposals')"
-            :active="route().current('proposals')"
-          >
-            Proposals
-          </breeze-responsive-nav-link> 
-          <breeze-responsive-nav-link
-            v-if="$page.props.auth.user.navigation.Proposals"
-            class="pl-4"
-            :href="route('questionnaire')"
-            :active="route().current('questionnaire')"
-          >
-            Questionnaires
-          </breeze-responsive-nav-link> 
-          <breeze-responsive-nav-link
-            v-if="$page.props.auth.user.navigation.Invoices"
-            :href="route('finances')"
-            :active="route().current('finances')"
-          >
-            Finances
-          </breeze-responsive-nav-link> 
-          <breeze-responsive-nav-link
-            v-if="$page.props.auth.user.navigation.Colors"
-            :href="route('colors')"
-            :active="route().current('colors')"
-          >
-            Colors
-          </breeze-responsive-nav-link>   
-
-          <breeze-responsive-nav-link
-            v-if="$page.props.auth.user.navigation.Charts"
-            :href="route('charts')"
-            :active="route().current('charts')"
-          >
-            Charts
-          </breeze-responsive-nav-link>   
-        </div> 
-
-        <!-- Responsive Settings Options -->
-        <div class="pt-4 pb-1 border-t border-gray-200">
-          <div class="flex items-center px-4">
-            <div class="font-medium text-base text-gray-800">
-              {{ $page.props.auth.user.name }} 
-            </div>
-            <div class="px-2 font-medium text-sm text-gray-500">
-              {{ $page.props.auth.user.email }}
-            </div>
-          </div>
-
-          <div class="mt-3 space-y-1">
-            <breeze-dropdown-link
-              :href="route('account')"
-              method="get"
-              as="button"
-            >
-              Account
-            </breeze-dropdown-link>
+        <!-- Responsive Navigation Menu -->
+        <div
+          :class="{'block': showingNavigationDropdown, 'hidden': ! showingNavigationDropdown}"
+          class="sm:hidden"
+        >
+          <div class="pt-2 pb-3 space-y-1">
             <breeze-responsive-nav-link
-              :href="route('logout')"
-              method="post"
-              as="button"
+              :href="route('dashboard')"
+              :active="route().current('dashboard')"
             >
-              Log Out
+              Dashboard
             </breeze-responsive-nav-link>
+            <breeze-responsive-nav-link
+              :href="route('bands')"
+              :active="route().current('bands')"
+            >
+              Bands
+            </breeze-responsive-nav-link>
+            <breeze-responsive-nav-link
+              v-if="$page.props.auth.user.navigation.Events"
+              :href="route('events')"
+              :active="route().current('events')"
+            >
+              Events
+            </breeze-responsive-nav-link> 
+            <breeze-responsive-nav-link
+              v-if="$page.props.auth.user.navigation.Proposals"
+              :href="route('proposals')"
+              :active="route().current('proposals')"
+            >
+              Proposals
+            </breeze-responsive-nav-link> 
+            <breeze-responsive-nav-link
+              v-if="$page.props.auth.user.navigation.Proposals"
+              class="pl-4"
+              :href="route('questionnaire')"
+              :active="route().current('questionnaire')"
+            >
+              Questionnaires
+            </breeze-responsive-nav-link> 
+            <breeze-responsive-nav-link
+              v-if="$page.props.auth.user.navigation.Invoices"
+              :href="route('finances')"
+              :active="route().current('finances')"
+            >
+              Finances
+            </breeze-responsive-nav-link> 
+            <breeze-responsive-nav-link
+              v-if="$page.props.auth.user.navigation.Colors"
+              :href="route('colors')"
+              :active="route().current('colors')"
+            >
+              Colors
+            </breeze-responsive-nav-link>   
+
+            <breeze-responsive-nav-link
+              v-if="$page.props.auth.user.navigation.Charts"
+              :href="route('charts')"
+              :active="route().current('charts')"
+            >
+              Charts
+            </breeze-responsive-nav-link>   
+          </div> 
+
+          <!-- Responsive Settings Options -->
+          <div class="pt-4 pb-1 border-t border-gray-200">
+            <div class="flex items-center px-4">
+              <div class="font-medium text-base text-gray-800">
+                {{ $page.props.auth.user.name }} 
+              </div>
+              <div class="px-2 font-medium text-sm text-gray-500">
+                {{ $page.props.auth.user.email }}
+              </div>
+            </div>
+
+            <div class="mt-3 space-y-1">
+              <breeze-dropdown-link
+                :href="route('account')"
+                method="get"
+                as="button"
+              >
+                Account
+              </breeze-dropdown-link>
+              <breeze-responsive-nav-link
+                :href="route('logout')"
+                method="post"
+                as="button"
+              >
+                Log Out
+              </breeze-responsive-nav-link>
+            </div>
           </div>
         </div>
-      </div>
+      </toast>
     </nav>
     <div class="pt-16 min-h-screen bg-gradient-to-r from-blue-800 to-blue-200">
       <!-- Page Heading -->
@@ -371,10 +389,10 @@
 
       <!-- Page Content -->
       <main class="rounded-t-lg overflow-hidden border-t border-l border-r border-gray-400 px-3 py-4 flex justify-center">
-        <toast
+        <!-- <toast
           :success-message="$page.props.successMessage"
           :errors="$page.props.errors"
-        />
+        /> -->
         <slot />
         <div class="layout-main-container">
           <slot name="content" />
@@ -392,7 +410,7 @@
     import NotificationLink from '@/Components/NotificationDropdown'
     import BreezeNavLink from '@/Components/NavLink'
     import BreezeResponsiveNavLink from '@/Components/ResponsiveNavLink'
-    import Toast from '@/Components/Toast'
+    import Toast from 'primevue/toast';
     import axios from 'axios';
 
     export default {
@@ -412,6 +430,31 @@
                 unseenNotifications: 0,
                 notifications:[]
             }
+        },
+        watch: {
+          $page: {
+            handler:function(val,oldval){
+             
+              if(this.$page.props.errors !== null && Object.keys(this.$page.props.errors).length > 0)
+              {
+                const errors = this.$page.props.errors;
+                for(const i in errors){
+                  
+                  this.$toast.add({severity:'error', summary: 'Error', detail:errors[i], life: 3000});		
+                };			
+              }
+              console.log(this.$page.props)
+              if(this.$page.props.successMessage !== null && Object.keys(this.$page.props.successMessage).length > 0)
+              {
+                const successMessages = this.$page.props.successMessage;
+                for(const i in successMessages){
+                  this.$toast.add({severity:'success', summary: 'Success', detail:successMessages[i], life: 3000});		
+                };			
+              }
+              
+            },
+            deep:true
+          }
         },
         created:async function(){
             this.unseenNotifications = this.$page.props.auth.user.notifications.filter(notification=>notification.seen_at === null).length

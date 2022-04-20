@@ -57,11 +57,15 @@ class ProposalsController extends Controller
             compact($band->events);
             foreach($band->events as $event)
             {
+                // $event->event_date = $event->ISODate;
                 $bookedDates[] = $event;
 
             }
             foreach($band->proposals as $proposal)
             {
+
+                
+                // $proposal->date = $proposal->ISODate;
                 $proposedDates[] = $proposal;
 
             }
@@ -91,6 +95,12 @@ class ProposalsController extends Controller
     public function create(Request $request, Bands $band)
     {
         $author = Auth::user();
+        $validated = $request->validate([
+            'name' => 'required',
+            'price' => 'required',
+            'hours' => 'required',
+        ]);
+
         $proposal = Proposals::create([
             'band_id'=>$band->id,
             'phase_id'=>1,

@@ -36,6 +36,7 @@ import TabPanel from 'primevue/tabpanel';
 import BreezeNavLink from '@/Components/InlineLink'
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
 import Container from '@/Components/Container'
+import ToastService from 'primevue/toastservice';
 import 'sweetalert2/dist/sweetalert2.min.css';
 import 'primevue/resources/themes/saga-blue/theme.css'
 import 'primevue/resources/primevue.min.css'
@@ -89,6 +90,8 @@ const app = createApp({
 app.config.globalProperties.$moment = moment;
 app.config.globalProperties.$qs = qs;
 app.config.globalProperties.$route = route;
+app.use(ToastService);
+
 app.mount(el)
 
 
