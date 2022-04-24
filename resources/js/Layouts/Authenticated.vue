@@ -445,10 +445,10 @@
               console.log(this.$page.props)
               if(this.$page.props.successMessage !== null && Object.keys(this.$page.props.successMessage).length > 0)
               {
-                const successMessages = this.$page.props.successMessage;
-                for(const i in successMessages){
-                  this.$toast.add({severity:'success', summary: 'Success', detail:successMessages[i], life: 3000});		
-                };			
+                const successMessage = this.$page.props.successMessage;
+                
+                  this.$toast.add({severity:'success', summary: 'Success', detail:successMessage, life: 3000});		
+                
               }
               
             },
