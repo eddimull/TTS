@@ -12,6 +12,7 @@ use Spatie\GoogleCalendar\Event as CalendarEvent;
 use Illuminate\Support\Facades\Auth;
 use App\Notifications\TTSNotification;
 use App\Models\User;
+use App\Models\EventContacts;
 
 
 class ProposalServices
@@ -20,6 +21,21 @@ class ProposalServices
     public function __construct($proposal)
     {
         $this->proposal = $proposal;
+    }
+
+
+    private function addContactsToEvent($eventId)
+    {
+        $contacts = $this->proposal->proposal_contacts;
+        foreach($contacts as $contact)
+        {
+            EventContacts::create([
+                'event_id'=>$eventId,
+                'name'=>$contact->name,
+                'phonenumber'=>$contact->phonenumber,
+                'email'=>$contact->email
+            ]);
+        }
     }
 
     public function writeToCalendar()
@@ -157,6 +173,8 @@ class ProposalServices
             $event->google_calendar_event_id = $google_id->id;
             $event->save();
         }
+
+        $this->addContactsToEvent($event->id);
 
         return $event;
         // $editor = Auth::user();
