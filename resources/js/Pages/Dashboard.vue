@@ -2,7 +2,7 @@
   <breeze-authenticated-layout>
     <template #header>
       <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-        Dashboard - {{ date }}
+        Dashboard
       </h2>
     </template>
     <default-component v-if="events.length == 0" />
