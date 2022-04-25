@@ -9,7 +9,24 @@
     <Container>
       <div class="card">
         Questions  
-
+        <div
+          v-for="component in components"
+          :key="component.id"
+          @click="$refs.sideEditor.show()"
+        >
+          <Header
+            v-if="component.type === 'header'"
+            :value="component.name"
+          />
+          <Multichoice
+            v-if="component.type === 'multichoice'"
+            :value="component"
+          />
+          <OpenEnded
+            v-if="component.type === 'openEnded'"
+            :value="component"
+          />
+        </div>
         <div>
           <Button @click="addQuestion">
             + Add Question
@@ -20,7 +37,7 @@
       <Header :value="headerText" />
       <Multichoice :value="multipleChoice" />
       <OpenEnded :value="openEnded" /> -->
-      
+
       <Dialog
         v-model:visible="addingQuestion"
         :style="{width: '450px'}"
@@ -73,26 +90,26 @@
         </template>
       </Dialog>
     </Container>
-    Quest: {{ questionnaire }}
+    <SideEditor ref="sideEditor" />
   </Layout>
 </template>
 <script>
 import Header from '@/Components/Questionnaire/Header'
 import Multichoice from '@/Components/Questionnaire/MultipleChoice'
 import OpenEnded from '@/Components/Questionnaire/OpenEnded'
+import SideEditor from '@/Components/Questionnaire/SideEditor'
 
 export default {
   components:{
+    SideEditor,
     Header,
     Multichoice,
     OpenEnded
   },
-  props:['questionnaire'],
-  setup() {
-    
-  },
+  props:['questionnaire','questionnaireData'],
   data(){
     return {
+      components:[],
       addingQuestion:false,
       questionTypes:[
         {label:'Header',value:'header'},
@@ -121,6 +138,15 @@ export default {
       }
 
     }
+  },
+  created() {
+    this.components = this.questionnaireData.map(component=>{
+      const parsedData = JSON.parse(component.data);
+      return {
+        id:component.id,
+        ...parsedData
+      }
+    })
   },
   methods:{
 

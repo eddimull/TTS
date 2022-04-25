@@ -387,7 +387,7 @@
       </header>
 
       <!-- Page Content -->
-      <main class="rounded-t-lg overflow-hidden border-t border-l border-r border-gray-400 px-3 py-4 flex justify-center">
+      <main class="rounded-t-lg relative border-t border-l border-r border-gray-400 px-3 py-4 flex justify-center">
         <!-- <toast
           :success-message="$page.props.successMessage"
           :errors="$page.props.errors"
