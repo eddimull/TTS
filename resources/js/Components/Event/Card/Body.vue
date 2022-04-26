@@ -12,7 +12,7 @@
 
         <ul class="list-outside indent-1">
           <li class="mt-2 pl-3">
-            Production: <strong>{{ toTime(event.production_loadin_time) }}</strong>
+            Production: <strong>{{ productionTime(event) }}</strong>
           </li>
           <li class="mt-2 pl-3">
             Rhythm: <strong>{{ toTime(event.rhythm_loadin_time) }}</strong>
@@ -39,6 +39,36 @@
           v-html="event.colorway_text"
         />
       </li>
+      <li
+        v-if="event.event_contacts.length > 0"
+        class="mt-2"
+      >
+        <Accordion>
+          <AccordionTab header="Contacts">
+            <ul 
+              v-for="contact in event.event_contacts"
+              :key="contact.id"
+              class="hover:bg-gray-100"
+            >
+              <li>
+                <div>
+                  <ul class="p-3">
+                    <li>
+                      Name: {{ contact.name }}
+                    </li>
+                    <li>
+                      Phone: {{ contact.phonenumber }}
+                    </li>
+                    <li>
+                      Email: {{ contact.email }}
+                    </li>
+                  </ul>
+                </div>
+              </li>
+            </ul>
+          </AccordionTab>
+        </Accordion>
+      </li>
     </ul>
     <!-- {{ event }} -->
   </div>
@@ -49,6 +79,16 @@ import moment from 'moment'
 export default {
     props:['event'],
     methods:{
+      productionTime(event)
+      {
+        let timeOrNot = this.toTime(event.production_loadin_time);
+        if(!event.production_needed)
+        {
+          timeOrNot = "N/A"
+        }
+
+        return timeOrNot;
+      },
       toTime(time){
         return moment(time).format('h:mm A')
       }
