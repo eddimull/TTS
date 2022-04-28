@@ -7,6 +7,22 @@
     </template>
     <Container>
       <TabView>
+        <TabPanel header="Revenue for year">
+          <div
+            v-for="band in revenue"
+            :key="band.name"
+          >
+            <h2 class="underline text-2xl">
+              {{ band.name }}
+            </h2>
+            <ul
+              v-for="(money,index) in band.aggregatedRevenue"
+              :key="index"
+            >
+              <li>{{ index }}: {{ moneyFormat(money) }}</li>
+            </ul>
+          </div>
+        </TabPanel>
         <TabPanel header="Paid/Unpaid">
           <div
             v-for="(band,index) in completedProposals"
@@ -220,6 +236,38 @@
             },            
           }
         },
+        computed:
+        {
+          revenue()
+          {
+
+            const data = [];
+            for(const band in this.completedProposals)
+            {
+              const bandData = {
+                name: this.completedProposals[band].name
+              }
+
+              const completedProposals = [...this.completedProposals[band].completed_proposals];
+                var years = completedProposals.map(function(d) {
+                    const year = moment(d.date).format('YYYY');
+                    return [year,parseFloat(d.price)];
+                });
+                
+                
+                var sums = years.reduce(function(prev, curr, idx, arr) {
+                    var sum = prev[curr[0]];
+                    prev[curr[0]] = sum ? sum + curr[1] : curr[1];
+                    return prev; 
+                }, {});
+                bandData.aggregatedRevenue = sums;
+                data.push(bandData);
+                
+              }
+
+            return data;
+          }
+        },
         created(){
           
           this.completedProposals = this.$page.props.completedProposals;
@@ -228,6 +276,15 @@
           this.initializedunPaidProposalFilter();
         },
         methods:{
+
+          moneyFormat(number)
+          {
+             var formatter = new Intl.NumberFormat('en-US', {
+                  style: 'currency',
+                  currency: 'USD'
+              });
+              return formatter.format(number);
+          },
           getStats(paid,price)
           {
             const percentagePaid = (parseFloat(paid.replace(/,/g,'')).toFixed(2)/parseFloat(price).toFixed(2))*100;
