@@ -170,7 +170,10 @@
         </div>
       </template>
       <template #footerBody>
-        <div class="flex-auto">
+        <div
+          v-if="false"
+          class="flex-auto"
+        >
           <button
             v-show="!activeProposal.event_id"
             type="button"
@@ -389,11 +392,10 @@
             },
             sendInvoice()
             {
-                this.$inertia.post('/invoices/' + this.activeProposal.key + '/send',{
+                this.$inertia.post('/finances/invoices/' + this.activeProposal.key + '/send',{
                     amount:this.activeProposal.amount,
                     buyer_pays_convenience:this.activeProposal.buyer_pays_convenience
                 });
-                console.log('sending invoice');
             },
             toggleModal(){
                 this.showModal = !this.showModal

@@ -57,6 +57,7 @@ Route::get('/bands', 'BandsController@index')->middleware(['auth', 'verified'])-
 Route::get('/bands/create', 'BandsController@create')->middleware(['auth', 'verified'])->name('bands.create');
 Route::post('/bands', 'BandsController@store')->middleware(['auth', 'verified'])->name('bands.store');
 Route::get('/bands/{band}/edit', 'BandsController@edit')->middleware(['auth', 'verified'])->name('bands.edit');
+Route::get('/bands/{band}/edit/{setting}', 'BandsController@edit')->middleware(['auth', 'verified'])->name('bands.editSettings');
 Route::patch('/bands/{band}', 'BandsController@update')->middleware(['auth', 'verified'])->name('bands.update');
 Route::delete('/bands/{band}', 'BandsController@destroy')->middleware(['auth', 'verified'])->name('bands.destroy');
 Route::delete('/deleteOwner/{band}/{owner}','BandsController@deleteOwner')->middleware(['auth','verified'])->name('bands.deleteOwner');
@@ -114,7 +115,7 @@ Route::get('/getLocation','ProposalsController@searchDetails')->middleware(['aut
 
 Route::group(['prefix'=>'finances','middleware'=>['auth','verified']],function(){
     Route::get('/',[FinancesController::class,'index'])->name('finances');
-    Route::get('/invoices',)->name('invoices');
+    Route::get('/invoices',[InvoicesController::class,'index'])->name('invoices');
     Route::post('/invoices/{proposal:key}/send',[InvoicesController::class,'create'])->name('invoices.create');
 });
 
@@ -173,7 +174,7 @@ Route::post('/seentIt',function(){
 })->middleware(['auth','verified']);
 
 Route::group(['prefix'=>'questionnaire','middleware'=>['auth','verified']],function(){
-    // Route::resource('/','QuestionnaireController');
+    // Route::resource('/','QuestionnaireController'); 
     Route::get('/',[QuestionnaireController::class,'index'])->name('questionnaire');
     Route::post('/new',[QuestionnaireController::class,'store'])->name('questionnaire.new');
     Route::get('/{questionnaire:slug}',[QuestionnaireController::class,'edit'])->name('questionnaire.edit');
