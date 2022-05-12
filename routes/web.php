@@ -183,6 +183,10 @@ Route::group(['prefix'=>'questionnaire','middleware'=>['auth','verified']],funct
 });
 
 Route::any('/info/',function(){
+    if(!env('APP_DEBUG'))
+    {
+        abort(403);
+    }
     return phpinfo();
 });
 
