@@ -6,6 +6,7 @@ use App\Http\Controllers\FinancesController;
 use App\Http\Controllers\InvoicesController;
 use App\Http\Controllers\InvitationsController;
 use App\Http\Controllers\QuestionnaireController;
+use App\Http\Controllers\StripeWebhookController;
 use App\Mail\Proposal;
 use App\Mail\WeeklyAdvance;
 use App\Models\ProposalContacts;
@@ -179,7 +180,6 @@ Route::group(['prefix'=>'questionnaire','middleware'=>['auth','verified']],funct
     Route::post('/new',[QuestionnaireController::class,'store'])->name('questionnaire.new');
     Route::get('/{questionnaire:slug}',[QuestionnaireController::class,'edit'])->name('questionnaire.edit');
     Route::post('/{questionnaire:slug}/add',[QuestionnaireController::class,'addQuestion'])->name('questionnaire.addQuestion');
-
 });
 
 Route::any('/info/',function(){

@@ -59,6 +59,11 @@ class BandEvents extends Model
         return Carbon::parse($this->end_time) < Carbon::now();
     }
 
+    public function getISODateAttribute()
+    {
+        return Carbon::parse($this->event_time)->isoFormat('YYYY-MM-DD Thh:mm:ss.sss');
+    }
+
     public function event_type()
     {
         return $this->hasOne(EventTypes::class,'id','event_type_id');

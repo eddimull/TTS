@@ -15,6 +15,10 @@ class Proposals extends Model
     protected $guarded = [];
 
 
+    public function getISODateAttribute()
+    {
+        return Carbon::parse($this->date)->isoFormat('YYYY-MM-DD Thh:mm:ss.sss');
+    }
 
     public function band()
     {
@@ -88,5 +92,19 @@ class Proposals extends Model
     {   
         return number_format(floatval($this->price) - floatval(str_replace(",","",$this->amountPaid)),2);
     }
+
+    public function attachPayments()
+    {
+        $this->amountLeft = $this->amountLeft;
+        $this->amountPaid = $this->amountPaid;    
+
+        foreach($this->payments as $payment)
+        {
+            $payment->formattedPaymentDate = $payment->formattedPaymentDate;
+        }
+        
+    }
+
+    
 
 }

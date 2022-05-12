@@ -9,6 +9,7 @@ use App\Models\Proposals;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use App\Services\InvoiceServices;
+use App\Services\FinanceServices;
 
 class InvoicesController extends Controller
 {
@@ -19,12 +20,23 @@ class InvoicesController extends Controller
      */
     public function index()
     {
-        $user = Auth::user();
-        $bands = $user->bandOwner;
-                   
+        $bands = Auth::user()->bandOwner;
+
+        $bandsWithProposals = (new FinanceServices())->getBandFinances($bands);
+        $proposals = [];
+        foreach($bandsWithProposals as $band)
+        {
+            foreach($band->proposals as $proposal)
+            {
+                $proposal->attachPayments();
+                $proposal->contacts = $proposal->proposal_contacts;
+                $proposal->invoices = $proposal->invoices;
+                $proposals[] = $proposal;
+            }
+        }
         $eventTypes = EventTypes::all();
-        $proposals = Proposals::where('band_id','=',$bands[0]->id)->where('phase_id','=',6)->with('invoices')->get();
-        // dd($proposals);
+
+        
         return Inertia::render('Invoices/Index',[
             'proposals'=>$proposals,
             'eventTypes'=>$eventTypes
@@ -38,6 +50,11 @@ class InvoicesController extends Controller
      */
     public function create(Proposals $proposal, Request $request)
     {
+        $validated = $request->validate([
+            'amount' => 'required|numeric',
+            'contact_id' => 'required|exists:App\Models\ProposalContacts,id',
+            'buyer_pays_convenience' => 'required|boolean'
+        ]);
         
         (new InvoiceServices())->createInvoice($proposal,$request);
 

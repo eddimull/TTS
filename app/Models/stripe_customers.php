@@ -8,5 +8,5 @@ use Illuminate\Database\Eloquent\Model;
 class stripe_customers extends Model
 {
     use HasFactory;
-    protected $fillable = ['stripe_account_id','proposal_id','status'];
+    protected $fillable = ['stripe_account_id','proposal_id','status','proposal_contact_id'];
 }

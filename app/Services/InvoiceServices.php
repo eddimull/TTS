@@ -3,36 +3,49 @@
 namespace App\Services;
 
 use App\Models\Invoices;
+use App\Models\ProposalContacts;
 use App\Models\stripe_customers;
 use App\Models\stripe_products;
 use App\Models\stripe_invoice_prices;
 
 
 class InvoiceServices{
+
+    private function createStripeCustomers($proposal,$stripe,$contact_id)
+    {
+       
+        $contact = ProposalContacts::find($contact_id);
+
+        if(!stripe_customers::where('proposal_id',$proposal->id)->where('proposal_contact_id',$contact_id)->exists())
+        {
+
+            $createdCustomer = $stripe->customers->create([
+                'description' => 'Customer for ' . $proposal->name,
+                'email'=>$contact->email,
+                'name'=>$contact->name
+            ]);
+            
+            stripe_customers::create([
+                'stripe_account_id'=>$createdCustomer->id,
+                'proposal_id'=>$proposal->id,
+                'status'=>'connected',
+                'proposal_contact_id'=>$contact->id
+            ]);
+            
+            $proposal->refresh();
+        }
+            
+        
+
+        
+    }
+
     public function createInvoice($proposal, $request)
     {
         $stripe = new \Stripe\StripeClient(env('STRIPE_KEY'));
           
-        if($proposal->stripe_customers->count() == 0)
-        {
-            foreach($proposal->proposal_contacts as $contact)
-            {
-                
-                $createdCustomer = $stripe->customers->create([
-                    'description' => 'Customer for ' . $proposal->name,
-                    'email'=>$contact->email,
-                    'name'=>$contact->name
-                  ]);
-
-                stripe_customers::create([
-                    'stripe_account_id'=>$createdCustomer->id,
-                    'proposal_id'=>$proposal->id,
-                    'status'=>'connected'
-                ]);
-
-                
-            }
-        }
+        $this->createStripeCustomers($proposal,$stripe,$request->contact_id);
+        
 
         $amount = $request->amount * 100;
 
@@ -64,9 +77,9 @@ class InvoiceServices{
             'proposal_id'=>$proposal->id,
             'stripe_price_id'=>$price->id
         ]);
-        
+        $customer = stripe_customers::where('proposal_id',$proposal->id)->where('proposal_contact_id',$request->contact_id)->first();
         $invoice_item = \Stripe\InvoiceItem::create([
-            'customer' =>  $proposal->stripe_customers[0]->stripe_account_id,
+            'customer' =>  $customer->stripe_account_id,
             'price' => $price->id,
         ]);
         
@@ -78,14 +91,15 @@ class InvoiceServices{
             'transfer_data' => [
                 'destination' => $proposal->band->stripe_accounts->stripe_account_id,
             ],
-            'customer' => $proposal->stripe_customers[0]->stripe_account_id
+            'customer' => $customer->stripe_account_id
         ]);
 
         Invoices::create([
             'proposal_id'=>$proposal->id,
             'amount'=>$amount/100,
             'status'=>'open',
-            'stripe_id'=>$invoice->id
+            'stripe_id'=>$invoice->id,
+            'convenience_fee'=>$request->buyer_pays_convenience
         ]);
         
         $stripe->invoices->sendInvoice($invoice->id,[]);

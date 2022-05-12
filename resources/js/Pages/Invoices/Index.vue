@@ -114,7 +114,13 @@
                   v-for="(property,index) in activeProposal[field.property]"
                   :key="index"
                 >
-                  ${{ property.amount }} - Sent {{ property.created_at }}
+                  <div>
+                    ${{ property.amount }} - Sent {{ property.created_at }}
+                  </div>
+                  <div>Status: {{ property.status }}</div>
+                  <div v-if="property.status === 'paid'">
+                    Payment Date: {{ property.updated_at }}
+                  </div>
                 </li>
               </ul>
             </div>
@@ -201,6 +207,7 @@
       v-if="showInvoiceModal"
       ref="proposalCreateInvoice"
       :save-text="'Create Invoice'"
+      :show-save="parseFloat(activeProposal.amountLeft) >= 0"
       @save="sendInvoice"
       @closing="toggleInvoiceModal()"
     >
@@ -241,12 +248,30 @@
               v-model="activeProposal[input.field]"
             />
           </div>
+          <div v-if="input.type == 'formattedPrice'">
+            {{ formatMoney(activeProposal[input.field]) }}
+          </div>
           <div v-if="input.type == 'textArea'">
             <textarea
               v-model="activeProposal[input.field]"
               class="min-w-full"
               placeholder=""
             />
+          </div>
+          <div v-if="input.type == 'contactDropdown'">
+            <select
+              id="grid-state"
+              v-model="activeProposal.contact_id"
+              class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded"
+            >
+              <option
+                v-for="contact in activeProposal[input.field]"
+                :key="contact.id"
+                :value="contact.id"
+              >
+                {{ contact.name }} - {{ contact.email }}
+              </option>
+            </select>
           </div>
           <div v-if="input.type == 'toggle'">
             <InputSwitch v-model="activeProposal[input.field]" />
@@ -328,20 +353,20 @@
                     },   
                     {
                         name:'Agreed upon price',
-                        type:'text',
+                        type:'formattedPrice',
                         field:'price',
                         editable:false
                     },              
                     {
                         name:'Amount Paid',
-                        type:'text',
+                        type:'formattedPrice',
                         field:'amountPaid',
                         editable:false
                     },
                     {
                         name:'Amount Owed',
-                        type:'text',
-                        field:'amountOwed',
+                        type:'formattedPrice',
+                        field:'amountLeft',
                         editable:false,
                     },
                     {
@@ -351,6 +376,11 @@
                         editable:true
                     },
                     {
+                       name:'Person to receive invoice',
+                       type:'contactDropdown',
+                       field:'contacts'
+                    },
+                    {
                         name:'Buyer pays the 2.9% convenience fee',
                         type:'toggle',
                         field:'buyer_pays_convenience',
@@ -358,35 +388,31 @@
                         editable:true
                     }
 
-                ]
+                ],
             }
         },
         created(){
             this.initFilters1();
         },
         methods:{
+            formatMoney(amount)
+            {
+              
+              const withoutCommas = amount.toString().replace(/,/g, '');
+              const formatter = new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+              });
+
+              return formatter.format(withoutCommas); 
+            },
             toggleInvoiceModal(sitename){
                 this.showInvoiceModal = !this.showInvoiceModal
             },
             createInvoice(proposal)
             {
-                console.log('create the invoice',proposal);
-
                 proposal.buyer_pays_convenience = true;
 
-                proposal.amountPaid = 0;
-
-                for(let i in proposal.invoices)
-                {
-                    const invoice = proposal.invoices[i];
-
-                    proposal.amountPaid += invoice.amount;
-                }
-            
-
-                proposal.amountOwed = proposal.price - proposal.amountPaid;
-                proposal.amount = proposal.amountOwed;
-                
                 this.activeProposal = proposal;
                 this.showInvoiceModal = true;
             },
@@ -394,6 +420,7 @@
             {
                 this.$inertia.post('/finances/invoices/' + this.activeProposal.key + '/send',{
                     amount:this.activeProposal.amount,
+                    contact_id: this.activeProposal.contact_id,
                     buyer_pays_convenience:this.activeProposal.buyer_pays_convenience
                 });
             },
