@@ -54,7 +54,7 @@
                 row-hover
                 responsive-layout="scroll"
                 selection-mode="single"
-                @row-click="gotoProposal"
+                @row-click="gotoPayments"
               >
                 <template #header>
                   <div class="p-d-flex p-jc-between">
@@ -133,6 +133,7 @@
                 row-hover
                 responsive-layout="scroll"
                 selection-mode="single"
+                @row-click="gotoPayments"
               >
                 <template #header>
                   <div class="p-d-flex p-jc-between">
@@ -328,7 +329,7 @@
             }
             return [{'width': percentagePaid +'%'},{'background':background}]
           },
-          gotoProposal(event)
+          gotoPayments(event)
           {
             const proposal = event.data;
             window.location = '/proposals/' + proposal.key + '/payments';

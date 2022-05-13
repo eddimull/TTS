@@ -46,15 +46,21 @@ class InvoiceServices{
           
         $this->createStripeCustomers($proposal,$stripe,$request->contact_id);
         
-
+        $staticApplicationPercent = 0.029;
+        $staticApplicationFee = 500;
+        $staticStripeCharge = 30;
+        $staticStripePercent = 1.029;
         $amount = $request->amount * 100;
 
         if($request->buyer_pays_convenience)
         {
-            $amount = ($amount * 1.029) + 30;
+            $amount = ($amount * $staticStripePercent) + $staticStripeCharge + $staticApplicationFee;
         }
+        $application_fee = round((($amount * $staticApplicationPercent) + $staticStripeCharge) + $staticApplicationFee,0);
 
         $amount = round($amount,0);
+
+
         
         \Stripe\Stripe::setApiKey(env('STRIPE_KEY'));
         $product = \Stripe\Product::create([
@@ -85,7 +91,7 @@ class InvoiceServices{
         
         $invoice = \Stripe\Invoice::create([
             'on_behalf_of' => $proposal->band->stripe_accounts->stripe_account_id,
-            'application_fee_amount' => 500,
+            'application_fee_amount' => $application_fee,
             'collection_method'=>'send_invoice',
             'days_until_due' => 30,
             'transfer_data' => [

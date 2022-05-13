@@ -50,10 +50,16 @@ class StripeWebhookController extends Controller
               $ttsInvoice->status = $stripeInvoice->status;
             $ttsInvoice->save();
             $amount = $stripeInvoice->amount_paid;
+
+            $staticApplicationFee = 500;
+            $staticStripeFee = 30;
+            $stripePercent = 1.029;
+
             if($ttsInvoice->convenience_fee)
             {
-                $amount = ($amount- 30)/1.029;
+                $amount = (($amount- $staticStripeFee) - $staticApplicationFee)/$stripePercent;
             }
+
 
             (new FinanceServices())->makePayment($ttsInvoice->proposal,'Invoice Payment', $amount,Carbon::now());
 
