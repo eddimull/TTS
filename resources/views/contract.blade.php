@@ -17,7 +17,7 @@
                 <hr/>
                 <div>
                     <p><strong>{{ $proposal['band']['name'] }}</strong> (hereinafter referred to as "Artist"), enter into this Agreement
-with <strong> {{ $proposal['proposal_contacts'][0]['name'] }} </strong> (hereinafter referred to as “Buyer”), for the engagement of a live musical performance
+with  <strong> {{ $proposal['proposal_contacts'][0]['name'] }} </strong> (hereinafter referred to as “Buyer”), for the engagement of a live musical performance
 (hereinafter referred to as the “Venue”), subject to the following conditions:
                 </div>
                 <div class="mt-3 mb-12">
@@ -29,7 +29,6 @@ with <strong> {{ $proposal['proposal_contacts'][0]['name'] }} </strong> (hereina
                             @else
                             <li><span class="font-bold">Date:</span> {{ date('m/d/Y',strtotime($proposal['date'])) }} </li>
                             @endif
-                            <li><span class="font-bold">Performance Time:</span> {{ date('g:i A',strtotime($proposal['date'])) }}</li>
                             <li><span class="font-bold">Performance Length:</span> {{ $proposal['hours'] }} hours</li>
                             <li><span class="font-bold">Sound Check Time: </span> at least 1 hour before performance</li>
                             <li><span class="font-bold">Venue:</span> {{ $proposal['location'] }}</li>
@@ -47,29 +46,29 @@ with <strong> {{ $proposal['proposal_contacts'][0]['name'] }} </strong> (hereina
 
                 <div class="my-3">
                     <p class="text-lg font-bold my-2 uppercase">Compensation and deposit</p>
-                    <p class="mb-3">Buyer will pay a total of <span class="font-bold">${{ number_format($proposal['price'],2) }}</span> to Artist as compensation for Artist’s performance. Unless otherwise specied, the contract price paid to Artist shall be inclusive of Agent’s agreed upon commission.</p>
-                    <p class="mb-3">Buyer will pay Agent a deposit of <span class="font-bold">${{ number_format($proposal['price']/2,2) }}</span>, within three weeks of the execution of this Agreement. The deposit
+                    <p class="mb-3">Buyer will pay a total of <span class="font-bold">${{ number_format($proposal['price'],2) }}</span> to Artist as compensation for Artist’s performance.</p>
+                    <p class="mb-3">Buyer will pay a deposit of <span class="font-bold">${{ number_format($proposal['price']/2,2) }}</span>, within three weeks of the execution of this Agreement. The deposit
 is non-refundable after execution of this contract. The deposit shall be made payable to <strong>{{ $proposal['band']['name'] }}</strong> and
-shall be in form of <strong>check, money order, Chase Quick Pay, Venmo, cashier’s check, or credit card
+shall be in form of  <strong>check, money order, Venmo, cashier’s check, invoice, or credit card
 (additional fees may apply)</strong>. If the Buyer pays the Deposit by check, which should be mailed to:</p>
                     <div class="mb-3">
                         <ul>
                             <li>{{ $proposal['band']['name'] }}</li>
-                            <li>100 Desire</li>
+                            <li>200 St Michael St</li>
                             <li>Lafayette, LA 70506</li>
                         </ul>
                     </div>
                     <p class="mb-3">
-                    Agent shall withhold Agent’s booking fee from the deposit paid by Buyer, and shall release the remainder of
-                    the deposit to Artist following the Performance. In the event Artist and Agent agree that Agent shall release
+                    Artist shall withhold booking fee from the deposit paid by Buyer, and shall release the remainder of
+                    the deposit to Artist following the Performance. In the event Artist shall release
                     the Artist's compensation from the deposit prior to the performance date, Artist shall be liable to the Buyer for
                     such amounts if Artist should breach this Contract.
                     </p>
                     <p class="mb-3">
-                    Buyer shall pay Agent the remaining gross compensation of <span class="font-bold">${{ number_format($proposal['price']/2,2) }}</span> at least ten (10) days before
+                    Buyer shall pay the remaining gross compensation of <span class="font-bold">${{ number_format($proposal['price']/2,2) }}</span> at least ten (10) days before
                     Performance. <strong>If Buyer elects to pay via check, money order, or cashier's check, payment shall be made to
                     {{ $proposal['band']['name'] }} and must be received at least ten (10) days prior to Performance. If Buyer
-                    elects to pay via Chase Quick Pay, Venmo, or credit card, payment shall be made to {{ $proposal['band']['name'] }}
+                    elects to pay via Invoice, Venmo, or credit card, payment shall be made to {{ $proposal['band']['name'] }}
                     ten (10) days prior to the Performance. (Additional fees may apply to credit card payments.)</strong> In the event
                     that Buyer requests that Artist perform past the end time set forth in this Agreement, and Artist chooses
                     to continue performing, Buyer shall pay Artist <strong>${{ number_format(($proposal['price']/$proposal['hours'])*1.5,2) }}</strong> directly for each additional sixty minutes of the
@@ -109,17 +108,14 @@ shall be in form of <strong>check, money order, Chase Quick Pay, Venmo, cashier�
                 @if($proposal['event_type_id'] === 1)
                 <div class="my-3">
                     <p class="text-lg font-bold my-2 uppercase">SPECIAL INSTRUCTIONS</p>
-                    <p class="mb-3"><span class="underline">Song/Artist Request</span>: TBD Buyer must provide song suggestions and/or specic requests via
-                    iTunes playlist and share with Agent and Artist. Suggested song lists shall be provided no later than 30 days
+                    <p class="mb-3"><span class="underline">Song/Artist Request</span>: TBD Buyer must provide song suggestions and/or specic requests via questionnaire sent prior to the event. Suggested song lists shall be provided no later than 30 days
                     prior to the Performance. Specic Artist Request lists shall be provided no later than 60 days prior to
                     Performance.
                     </p>
                     <p class="mb-3"><span class="underline">Break Music</span>: Artist provides break music</p>
-                    <p class="mb-3 font-bold">***Buyer is responsible for all pre recorded music. <span class="underline">Pre recorded Versions will be provided by the Buyer
-                    no later than 30 days prior to event date</span></p>
-                                        <p class="mb-3"><span class="underline">Attire</span>: Artist shall dress in SEMI-FORMAL. Please ask Agent if there are any questions.</p>
+                                        <p class="mb-3"><span class="underline">Attire</span>: Artist shall dress in SEMI-FORMAL. Please ask if there are any questions.</p>
                                         <p class="mb-3"><span class="underline">Stage, Performance Area, and Size of Event:</span> <br/>Artist shall NOT be required to provide a stage on which to perform, unless otherwise agreed to in writing by
-                    Artist, Agent, and Buyer. Additional fees may be incurred if Artist provides a stage.</p>
+                    Artist and Buyer. Additional fees may be incurred if Artist provides a stage.</p>
                                         <p class="mb-3"><span class="underline">Hospitality</span>:Vendor meals will be provided for Artist at discretion of buyer. TBD Guest(s) of Artist(s) are
                     permitted. Buyer must provide a dedicated, private space for Artist to dress and otherwise prepare for
                     Performance. Buyer must provide a case of water for Artist.
@@ -133,7 +129,7 @@ shall be in form of <strong>check, money order, Chase Quick Pay, Venmo, cashier�
                 <div class="my-3">
                 <p class="text-lg font-bold my-2 uppercase">CANCELLATION:</p>
                 <p class="mb-3">If Buyer cancels <strong>30 days or less</strong> before the performance, Buyer will pay Artist 100% of the guaranteed fee for
-                the performance. In the event of any such cancellation, Agent shall be entitled to agreed upon commission.</p>
+                the performance. In the event of any such cancellation, Artist shall be entitled to agreed upon commission.</p>
                 </div>
                 <div class="my-3">
                     <p class="text-lg font-bold my-2 uppercase">FORCE MAJEURE</p>
@@ -143,8 +139,8 @@ shall be in form of <strong>check, money order, Chase Quick Pay, Venmo, cashier�
                     extent that the relevant breach of its obligations would have occurred, or the relevant losses or damages
                     would have arisen, even if the Force Majeure Event had not occurred. In this Clause, "Force Majeure Event"
                     means an event beyond the control of the Parties, which prevents a Party from complying with any of its
-                    obligations under this Contract, including but not limited to Acts of God (such as, but not limited to, res,
-                    explosions, earthquakes, drought, tidal waves and oods); specic incidents of exceptional adverse weather
+                    obligations under this Contract, including but not limited to Acts of God (such as, but not limited to,
+                    explosions, earthquakes, drought, and tidal waves); specic incidents of exceptional adverse weather
                     conditions (such as, but not limited to, hurricane, earthquake, tornado, or any other natural disaster of
                     overwhelming proportions); discontinuation of electricity supply; and other unforeseeable circumstances
                     beyond the control of the Parties against which it would have been unreasonable for the aected party to
@@ -168,7 +164,7 @@ shall be in form of <strong>check, money order, Chase Quick Pay, Venmo, cashier�
                     non-performance, the deposit payment (if any) advanced to the Artist shall be returned promptly.
                     Artist is responsible for securing reliable transportation to the performance, and any transportation issues that
                     arise do not in any way aect Artist's duty to perform pursuant to the terms of this Agreement. Artist shall not
-                    be reimbursed or compensated by Agent or Buyer for additional costs resulting from transportation issues,
+                    be reimbursed or compensated by Buyer for additional costs resulting from transportation issues,
                     either foreseen or unforeseen.
                     </p>
                 </div>     
