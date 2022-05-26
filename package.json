@@ -60,7 +60,6 @@
         "vue2-dropzone": "^3.6.0",
         "vue3-datepicker": "^0.2.4",
         "vue3-dropzone": "^0.0.7",
-        "vue3-timepicker": "*",
-        "vuex": "^4.0.2"
+        "vue3-timepicker": "*"
     }
 }

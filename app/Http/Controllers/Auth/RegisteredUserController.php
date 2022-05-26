@@ -23,18 +23,7 @@ class RegisteredUserController extends Controller
      */
     public function create()
     {
-        
-        $invitationEmail = '';
-
-        if(request('key')){
-            $invitation = Invitations::where('key',request('key'))
-            ->where('pending',true)
-            ->firstOrFail();
-            
-            $invitationEmail = $invitation->email;
-            
-        }
-        return Inertia::render('Auth/Register',compact('invitationEmail'));
+        return Inertia::render('Auth/Register');
     }
 
     /**

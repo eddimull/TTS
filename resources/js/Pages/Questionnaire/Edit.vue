@@ -12,6 +12,7 @@
         <div
           v-for="component in components"
           :key="component.id"
+          @click="$refs.sideEditor.show()"
         >
           <Header
             v-if="component.type === 'header'"
