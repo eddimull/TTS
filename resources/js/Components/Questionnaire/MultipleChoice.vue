@@ -17,13 +17,15 @@
       </div>
     </template>
     <template #edit>
-      <div>
+      <div class="border-4 border-blue-300 p-4 rounded-md">
         <div>
           <label for="titleText">Title</label>
-          <InputText 
-            id="titleText"
-            v-model="content.title"
-          />
+          <div>
+            <InputText 
+              id="titleText"
+              v-model="content.title"
+            />
+          </div>
         </div>
         <div>
           Choices:

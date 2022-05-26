@@ -69,7 +69,7 @@ class QuestionnaireController extends Controller
     public function edit(Questionnairres $questionnaire)
     {
         // dd($questionnaire);
-        return Inertia::render('Questionnaire/Edit',['questionnaire'=>$questionnaire]);
+        return Inertia::render('Questionnaire/Edit',['questionnaire'=>$questionnaire,'questionnaireData'=>$questionnaire->components]);
     }
 
     /**

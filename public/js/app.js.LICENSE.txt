@@ -29,6 +29,12 @@
  * Released under MIT License
  */
 
+/*!
+ * vuex v4.0.2
+ * (c) 2021 Evan You
+ * @license MIT
+ */
+
 /*! *****************************************************************************
     Copyright (c) Microsoft Corporation. All rights reserved.
     Licensed under the Apache License, Version 2.0 (the "License"); you may not use
@@ -45,6 +51,8 @@
     ***************************************************************************** */
 
 /*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> */
+
+/*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/facebook/regenerator/blob/main/LICENSE */
 
 /**
    * A class to parse color values
