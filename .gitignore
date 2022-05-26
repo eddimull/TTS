@@ -13,3 +13,9 @@ Homestead.json
 Homestead.yaml
 npm-debug.log
 yarn-error.log
+*.pem
+cert.pem
+chain.pem
+fullchain.pem
+nohup.out
+wkhtmltox-0.12.6-1.amazonlinux2.x86_64.rpm
