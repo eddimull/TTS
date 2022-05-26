@@ -4,14 +4,12 @@
       {{ content }}
     </template>
     <template #edit>
-      <div class="border-4 border-blue-300 p-4 rounded-md">
-        <PVtextarea
-          v-model="content"
-          :auto-resize="true"
-          rows="5"
-          cols="30"
-        />
-      </div>
+      <PVtextarea
+        v-model="content"
+        :auto-resize="true"
+        rows="5"
+        cols="30"
+      />
     </template>
   </editable-component>
 </template>

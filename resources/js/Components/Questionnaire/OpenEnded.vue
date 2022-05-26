@@ -17,24 +17,23 @@
       </div>
     </template>
     <template #edit>
-      <div class="border-4 border-blue-300 p-4 rounded-md">
-        <div>
-          <label for="titleText">Title</label>
-          <InputText 
-            id="titleText"
-            v-model="content.title"
-          />
-        </div>
-        <div>
-          <Dropdown
-            v-model="content.singleLine"
-            :options="choices"
-            option-label="name"
-            option-value="value"
-            placeholder="Multiple Line or single line"
-          />
-        </div>
+      <div>
+        <label for="titleText">Title</label>
+        <InputText 
+          id="titleText"
+          v-model="content.title"
+        />
       </div>
+      <div>
+        <Dropdown
+          v-model="content.singleLine"
+          :options="choices"
+          option-label="name"
+          option-value="value"
+          placeholder="Multiple Line or single line"
+        />
+      </div>
+      {{ originalData }}
     </template>
   </editable-component>
 </template>

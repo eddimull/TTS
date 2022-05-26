@@ -4,7 +4,6 @@ require('./bootstrap');
 import { createApp, h, Vue } from 'vue';
 import { App as InertiaApp, plugin as InertiaPlugin } from '@inertiajs/inertia-vue3';
 import { InertiaProgress } from '@inertiajs/progress';
-import { createStore } from 'vuex'
 import VueSweetalert2 from 'vue-sweetalert2';
 import Link from '@inertiajs/inertia-vue3'
 import moment from 'moment';
@@ -44,15 +43,8 @@ import 'primevue/resources/primevue.min.css'
 // import 'primeflex/primeflex.css';                 
 import 'primeicons/primeicons.css'    
 
-import questionnaire from './Store/questionnaire';
 
 const el = document.getElementById('app');
-
-const store = createStore({
-    modules: {
-        questionnaire
-    }
-  })
 
 const app = createApp({
     render: () =>
@@ -63,7 +55,6 @@ const app = createApp({
 })
     .mixin({ methods: { route } })
     .use(InertiaPlugin)
-    .use(store)
     .use(VueSweetalert2)
     .use(moment)
     .use(PrimeVue)

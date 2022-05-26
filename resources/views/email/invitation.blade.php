@@ -6,7 +6,7 @@
     
     
 
-@component('mail::button',['url'=>$invitationLink ])
+@component('mail::button',['url'=>config('app.url') . '/register/' ])
 Join Band
 @endcomponent
 
