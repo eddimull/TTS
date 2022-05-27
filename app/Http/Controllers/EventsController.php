@@ -83,7 +83,7 @@ class EventsController extends Controller
         // return Inertia::render('Events/Advance',[
         //     'event'=>$event            
         // ]);
-        return View('advance',['event'=>$event]);
+        return View('advance.advance',['event'=>$event]);
 
     }
     public function createPDF($id)
