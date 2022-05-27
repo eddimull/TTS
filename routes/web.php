@@ -67,19 +67,19 @@ Route::get('/bands/{band}/setupStripe','BandsController@setupStripe')->middlewar
 Route::post('/bands/{band}/syncCalendar','BandsController@syncCalendar')->middleware(['auth', 'verified'])->name('bands.syncCalendar');
 
 
-Route::get('/events', 'EventsController@index')->middleware(['auth', 'verified'])->name('events');
-Route::get('/events/create', 'EventsController@create')->middleware(['auth', 'verified'])->name('events.create');
-Route::post('/events', 'EventsController@store')->middleware(['auth', 'verified'])->name('events.store');
-Route::get('/events/{key}/edit', 'EventsController@edit')->middleware(['auth', 'verified'])->name('events.edit');
-Route::get('/events/{key}/advance', 'EventsController@advance')->name('events.advance');
-Route::patch('/events/{key}', 'EventsController@update')->middleware(['auth', 'verified'])->name('events.update');
-Route::delete('/events/{key}', 'EventsController@destroy')->middleware(['auth', 'verified'])->name('events.destroy');
-Route::get('/events/createAdvance/{id}','EventsController@createPDF')->middleware(['auth', 'verified']);
-Route::get('/events/downloadPDF/{id}','EventsController@downloadPDF')->middleware(['auth', 'verified']);
-Route::get('/events/{event:event_key}/locationImage','EventsController@getGoogleMapsImage')->name('events.locationImage');
-Route::post('/events/createContact/{event:event_key}', 'EventsController@createContact')->middleware(['auth', 'verified'])->name('events.createContact');
-Route::post('/events/editContact/{contact}', 'EventsController@editContact')->middleware(['auth', 'verified'])->name('events.editContact');
-Route::delete('/events/deleteContact/{contact}', 'EventsController@deleteContact')->middleware(['auth', 'verified'])->name('events.deleteContact');
+Route::get('/events', [EventsController::class,'index'])->middleware(['auth', 'verified'])->name('events');
+Route::get('/events/create', [EventsController::class,'create'])->middleware(['auth', 'verified'])->name('events.create');
+Route::post('/events', [EventsController::class,'store'])->middleware(['auth', 'verified'])->name('events.store');
+Route::get('/events/{key}/edit', [EventsController::class,'edit'])->middleware(['auth', 'verified'])->name('events.edit');
+Route::get('/events/{key}/advance', [EventsController::class,'advance'])->name('events.advance');
+Route::patch('/events/{key}', [EventsController::class,'update'])->middleware(['auth', 'verified'])->name('events.update');
+Route::delete('/events/{key}', [EventsController::class,'destroy'])->middleware(['auth', 'verified'])->name('events.destroy');
+Route::get('/events/createAdvance/{id}',[EventsController::class,'createPDF'])->middleware(['auth', 'verified']);
+Route::get('/events/downloadPDF/{id}',[EventsController::class,'downloadPDF'])->middleware(['auth', 'verified']);
+Route::get('/events/{event:event_key}/locationImage',[EventsController::class,'getGoogleMapsImage'])->name('events.locationImage');
+Route::post('/events/createContact/{event:event_key}', [EventsController::class,'createContact'])->middleware(['auth', 'verified'])->name('events.createContact');
+Route::post('/events/editContact/{contact}', [EventsController::class,'editContact'])->middleware(['auth', 'verified'])->name('events.editContact');
+Route::delete('/events/deleteContact/{contact}', [EventsController::class,'deleteContact'])->middleware(['auth', 'verified'])->name('events.deleteContact');
 
 
 Route::get('/colors','ColorsController@index')->middleware(['auth', 'verified'])->name('colors');
