@@ -1,4 +1,5 @@
 const mix = require('laravel-mix');
+require('laravel-mix-blade-reload');
 const path = require('path');
 const fs = require('fs');
 /*
@@ -19,6 +20,7 @@ mix.js('resources/js/app.js', 'public/js')
         require('tailwindcss'),
         require('autoprefixer'),
     ])
+    .bladeReload()
     .options({
         hmrOptions: {
             host: 'dev.tts.band',
