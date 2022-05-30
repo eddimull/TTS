@@ -25,13 +25,13 @@ class ProposalsFactory extends Factory
     public function definition()
     {
         $eventDate = $this->faker->dateTimeBetween($startDate = 'now', $endDate = '3 years');
-        $band = Bands::factory()->hasOwners(1)->create();
-        $owners = $band->owners;
-
+        $band = Bands::factory()->hasOwner()->create();
+        $owner = $band->owner[0]->user;
+        
         return [
             'band_id'=>$band->id,
             'phase_id'=>$this->faker->numberBetween(1,6),
-            'author_id'=>$owners[0]->id,
+            'author_id'=>$owner->id,
             'date'=>Carbon::parse($eventDate),
             'hours'=>$this->faker->numberBetween(1,6),
             'price'=>number_format($this->faker->numberBetween(1000,25000),2,'.',''),

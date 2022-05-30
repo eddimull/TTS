@@ -11,12 +11,20 @@ class Bands extends Model
     protected $fillable = ['name','site_name','calendar_id'];
     // protected $with = ['proposals'];
 
+    public function owner()
+    {
+        return $this->hasMany(BandOwners::class,'band_id')->orderBy('created_at')->limit(1);
+    }
 
     public function owners()
     {
         return $this->hasMany(BandOwners::class,'band_id');
     }
 
+    public function member()
+    {
+        return $this->hasMany(BandMembers::class,'band_id')->orderBy('created_at')->limit(1);
+    }
     public function members()
     {
         return $this->hasMany(BandMembers::class,'band_id');
@@ -24,10 +32,10 @@ class Bands extends Model
 
     public function everyone()
     {
-        $owners = $this->owners;
-        $members = $this->members;
+        $owners = collect($this->owners);
+        $members = collect($this->members);
         
-
+        
         return $owners->merge($members);
     }
 
