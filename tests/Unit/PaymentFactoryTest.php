@@ -24,7 +24,7 @@ class PaymentFactoryTest extends TestCase
         $owners = $band->owners;
         $author = $proposal->author;
 
-        $this->assertEquals($owners[0]->id,$author->id);
+        $this->assertEquals($owners[0]->user->id,$author->id);
 
     }
 }
