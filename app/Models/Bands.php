@@ -14,13 +14,12 @@ class Bands extends Model
 
     public function owners()
     {
-        return $this->hasManyThrough(BandOwners::class,User::class,'id','band_id');
+        return $this->hasMany(BandOwners::class,'band_id');
     }
 
     public function members()
     {
         return $this->hasMany(BandMembers::class,'band_id');
-        // return $this->hasManyThrough(User::class,BandMembers::class,)
     }
 
     public function everyone()

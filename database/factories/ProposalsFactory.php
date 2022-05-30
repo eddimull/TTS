@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Bands;
 use App\Models\Proposals;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Carbon;
@@ -24,18 +25,21 @@ class ProposalsFactory extends Factory
     public function definition()
     {
         $eventDate = $this->faker->dateTimeBetween($startDate = 'now', $endDate = '3 years');
+        $band = Bands::factory()->hasOwners(1)->create();
+        $owners = $band->owners;
+
         return [
-            'band_id'=>1,
+            'band_id'=>$band->id,
             'phase_id'=>$this->faker->numberBetween(1,6),
-            'author_id'=>1,
+            'author_id'=>$owners[0]->id,
             'date'=>Carbon::parse($eventDate),
             'hours'=>$this->faker->numberBetween(1,6),
             'price'=>number_format($this->faker->numberBetween(1000,25000),2,'.',''),
-            'name'=>$this->faker->company,
+            'name'=>$this->faker->company(),
             'locked'=>false,
             'key'=>Str::uuid(),
             'event_type_id'=>$this->faker->numberBetween(1,9),
-            'location'=>$this->faker->address,
+            'location'=>$this->faker->address(),
             'paid'=>$this->faker->numberBetween(0,1)
         ];
     }

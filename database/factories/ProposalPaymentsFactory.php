@@ -2,20 +2,18 @@
 
 namespace Database\Factories;
 
-use App\Models\BandOwners;
-use App\Models\Bands;
-use App\Models\User;
+use App\Models\ProposalPayments;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
+use App\Models\Proposals;
 
-class BandsFactory extends Factory
+class ProposalPaymentsFactory extends Factory
 {
     /**
      * The name of the factory's corresponding model.
      *
      * @var string
      */
-    protected $model = Bands::class;
+    protected $model = ProposalPayments::class;
 
     /**
      * Define the model's default state.
@@ -24,10 +22,11 @@ class BandsFactory extends Factory
      */
     public function definition()
     {
-        $band = $this->faker->company();
+        $proposal = Proposals::factory()->create();
         return [
-            'name' => $band,
-            'site_name' => str_replace(' ','_',$band)
+            'name'=>'Test Payment',
+            'proposal_id'=> $proposal->id,
+            'amount'=>$proposal->price/2,
         ];
     }
 }

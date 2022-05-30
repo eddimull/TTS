@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 class ProposalPayments extends Model
@@ -17,5 +18,10 @@ class ProposalPayments extends Model
     public function getformattedPaymentDateAttribute()
     {
         return Carbon::parse($this->paymentDate)->format('Y-m-d');
+    }
+
+    public function proposal()
+    {
+        return $this->belongsTo(Proposals::class);
     }
 }
