@@ -2,20 +2,19 @@
 
 namespace Database\Factories;
 
-use App\Models\BandOwners;
-use App\Models\Bands;
-use App\Models\User;
+use App\Models\BandMembers;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use Illuminate\Support\Str;
+use App\Models\User;
+use App\Models\Bands;
 
-class BandsFactory extends Factory
+class BandMembersFactory extends Factory
 {
     /**
      * The name of the factory's corresponding model.
      *
      * @var string
      */
-    protected $model = Bands::class;
+    protected $model = BandMembers::class;
 
     /**
      * Define the model's default state.
@@ -24,10 +23,9 @@ class BandsFactory extends Factory
      */
     public function definition()
     {
-        $band = $this->faker->company();
         return [
-            'name' => $band,
-            'site_name' => str_replace(' ','_',$band)
+            'user_id'=>User::factory()->create()->id,
+            'band_id'=>Bands::factory()->create()->id
         ];
     }
 }
