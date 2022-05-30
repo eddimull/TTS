@@ -30,6 +30,11 @@ class Proposals extends Model
         return $this->hasOne(Contracts::class,'proposal_id');
     }
 
+    public function proposalContacts() //did this to satisfy laravel's 'magic' factory methods
+    {
+        return $this->proposal_contacts();
+    }
+
     public function proposal_contacts()
     {
         return $this->hasMany(ProposalContacts::class,'proposal_id');
