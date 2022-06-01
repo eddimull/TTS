@@ -182,6 +182,13 @@ Route::group(['prefix'=>'questionnaire','middleware'=>['auth','verified']],funct
     Route::post('/{questionnaire:slug}/add',[QuestionnaireController::class,'addQuestion'])->name('questionnaire.addQuestion');
 });
 
+Route::group(['prefix'=>'mail','middleware'=>['dev']],function(){
+    Route::get('/payment',function(){
+        
+        return new App\Mail\PaymentMade();
+    });
+});
+
 Route::any('/info/',function(){
     if(!env('APP_DEBUG'))
     {
