@@ -14,6 +14,7 @@ use Carbon\Carbon;
 
 class PaymentsTest extends TestCase
 {
+
     
     /**
      * A basic feature test example.
@@ -49,24 +50,13 @@ class PaymentsTest extends TestCase
     }
     public function test_deletePayment()
     {
-        $user = User::factory()->create();
-        $band = Bands::factory()->create();
-        BandOwners::create([
-            'band_id'=>$band->id,
-            'user_id'=>$user->id
-        ]);
-        $proposal = Proposals::factory()->create([
-            'band_id'=>$band->id,
-            'author_id'=>$user->id,
-            'phase_id'=>6
-        ]);
+        
         $paymentName = 'Should Be Deleted ' . Carbon::now()->timestamp;
-        $payment = ProposalPayments::create([
-            'proposal_id'=>$proposal->id,
+        $payment = ProposalPayments::factory()->create([
             'name'=>$paymentName,
-            'amount'=>1000,
-            'paymentDate'=>Carbon::now()
         ]);
+        $proposal = $payment->proposal;
+        $user = $payment->proposal->author;
 
         $response = $this->actingAs($user)->delete('/proposals/' . $proposal->key . '/deletePayment/' . $payment->id);
         
@@ -76,5 +66,11 @@ class PaymentsTest extends TestCase
             'name'=>$paymentName,
             'proposal_id'=>$proposal->id
         ]);
+    }
+
+
+    public function test_paymentEmailSent()
+    {
+        
     }
 }
