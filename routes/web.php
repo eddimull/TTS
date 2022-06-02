@@ -93,8 +93,8 @@ Route::group(['prefix'=>'proposals'],function(){
         Route::patch('/{proposal:key}/update', 'ProposalsController@update')->name('proposals.update');
         Route::post('/{band:site_name}/create', 'ProposalsController@create')->name('proposals.create');
         Route::delete('/{proposal:key}/delete','ProposalsController@destroy')->name('proposals.delete');
-        Route::get('/{proposal:key}/finalize', 'ProposalsController@finalize')->name('proposals.finalize');
-        Route::post('/{proposal:key}/finalize', 'ProposalsController@finalize')->name('proposals.finalize');
+        Route::get('/{proposal:key}/finalize', 'ProposalsController@finalize')->name('proposals.finalize.get');
+        Route::post('/{proposal:key}/finalize', 'ProposalsController@finalize')->name('proposals.finalize.post');
         Route::post('/{proposal:key}/sendit', 'ProposalsController@sendIt')->name('proposals.sendIt');
         Route::post('/{proposal:key}/sendContract', 'ProposalsController@sendContract')->name('proposals.sendContract');
         Route::post('/{proposal:key}/writeToCalendar', 'ProposalsController@writeToCalendar')->name('proposals.writeToCalendar');
@@ -111,8 +111,8 @@ Route::group(['prefix'=>'proposals'],function(){
     Route::post('/{proposal:key}/accept', 'ProposalsController@accept')->name('proposals.accept');
 
 });
-Route::post('/autocompleteLocation','ProposalsController@searchLocations')->middleware(['auth','verified'])->name('proposals.search');
-Route::get('/getLocation','ProposalsController@searchDetails')->middleware(['auth','verified'])->name('proposals.search');
+Route::post('/autocompleteLocation','ProposalsController@searchLocations')->middleware(['auth','verified'])->name('proposals.searchLocations');
+Route::get('/getLocation','ProposalsController@searchDetails')->middleware(['auth','verified'])->name('proposals.searchDetails');
 
 Route::group(['prefix'=>'finances','middleware'=>['auth','verified']],function(){
     Route::get('/',[FinancesController::class,'index'])->name('finances');
@@ -182,12 +182,19 @@ Route::group(['prefix'=>'questionnaire','middleware'=>['auth','verified']],funct
     Route::post('/{questionnaire:slug}/add',[QuestionnaireController::class,'addQuestion'])->name('questionnaire.addQuestion');
 });
 
+
+
 Route::group(['prefix'=>'mail','middleware'=>['dev']],function(){
     Route::get('/payment',function(){
-        
         return new App\Mail\PaymentMade();
     });
+
+    Route::get('paymentpdf',function(){
+        return view('pdf.payment');
+    });
+    
 });
+
 
 Route::any('/info/',function(){
     if(!env('APP_DEBUG'))
