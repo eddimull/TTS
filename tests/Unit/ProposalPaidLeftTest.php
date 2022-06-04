@@ -41,6 +41,10 @@ class ProposalPaidLeft extends TestCase
         $this->assertEquals(number_format(10000 - 600,2),$amountLeft);
     }
 
-
+    public function testCanGetTotalFormattedPrice()
+    {
+        $proposal = Proposals::factory()->create();
+        $this->assertEquals(number_format(floatval($proposal->price),2),$proposal->formattedPrice);
+    }
     
 }

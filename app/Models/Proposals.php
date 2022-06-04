@@ -80,6 +80,16 @@ class Proposals extends Model
         return Carbon::parse($this->created_at)->format('Y-m-d');
     }
 
+    public function getformattedPerformanceDateAttribute()
+    {
+        return Carbon::parse($this->date)->format('Y-m-d');
+    }
+
+    public function getformattedPriceAttribute()
+    {
+        return number_format(floatval($this->price),2);
+    }    
+
     public function getAmountPaidAttribute()
     {
         

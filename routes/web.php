@@ -190,7 +190,9 @@ Route::group(['prefix'=>'mail','middleware'=>['dev']],function(){
     });
 
     Route::get('paymentpdf',function(){
-        return view('pdf.payment');
+        $payment = App\Models\ProposalPayments::first();
+        // $pdf = PDF::loadView('pdf.payment',['payment'=>$payment]);
+        return view('pdf.payment',['payment'=>$payment]);
     });
     
 });

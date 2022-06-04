@@ -21,3 +21,4 @@ nohup.out
 wkhtmltox-0.12.6-1.amazonlinux2.x86_64.rpm
 cert.pem
 chain.pem
+storage/fonts/*
