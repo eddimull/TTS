@@ -26,7 +26,10 @@ class FinalizedProposalController extends Controller
             'amount'=>'required|Numeric',
             'paymentDate'=>'required|Date',
         ]);
-        (new FinanceServices())->makePayment($proposal,$request->name,$request->amount,$request->paymentDate);
+        $payment = (new FinanceServices())->makePayment($proposal,$request->name,$request->amount,$request->paymentDate);
+        
+        $payment->sendReceipt();
+        
 
         return back()->with('successMessage','Payment received');
     }

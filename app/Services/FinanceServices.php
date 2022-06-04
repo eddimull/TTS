@@ -27,7 +27,7 @@ class FinanceServices
     {
         try{
 
-            ProposalPayments::create([
+            $payment = ProposalPayments::create([
                 'proposal_id'=>$proposal->id,
                 'name'=>$paymentName,
                 'amount'=>$amount,
@@ -38,12 +38,11 @@ class FinanceServices
                 $proposal->paid = true;
                 $proposal->save();
             }
-            return true;
+            return $payment;
         } catch(\Exception $e)
         {
             return back()->withError($e->getMessage())->withInput();
         }
-
     }
 
     function removePayment($proposal,$payment)
