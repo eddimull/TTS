@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Mail\PaymentMade;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
@@ -11,6 +12,7 @@ use App\Models\Proposals;
 use App\Models\BandOwners;
 use App\Models\ProposalPayments;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Mail;
 
 class PaymentsTest extends TestCase
 {
@@ -71,6 +73,10 @@ class PaymentsTest extends TestCase
 
     public function test_paymentEmailSent()
     {
-        
+        Mail::fake();
+        $payment = ProposalPayments::factory()->create();
+        Mail::send(new PaymentMade($payment));
+        Mail::assertSent(PaymentMade::class);
     }
+
 }

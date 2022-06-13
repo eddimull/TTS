@@ -40,4 +40,9 @@ class FinalizedProposalController extends Controller
         
         return back()->with('successMessage','Payment Removed');
     }
+
+    public function paymentPDF(ProposalPayments $payment)
+    {
+        return view('pdf.payment',['payment'=>$payment]);
+    }
 }

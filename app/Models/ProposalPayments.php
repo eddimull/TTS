@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Http\Traits\PaymentTrait;
 use App\Mail\PaymentMade;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Mail;
 class ProposalPayments extends Model
 {
     use HasFactory;
+    use PaymentTrait;
 
     protected $guarded = [];
 

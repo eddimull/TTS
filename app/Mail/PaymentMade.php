@@ -7,6 +7,10 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Spatie\Browsershot\Browsershot;
+use Illuminate\Support\Facades\URL;
+use App\Models\ProposalPayments;
+use Illuminate\Support\Facades\Storage;
 
 class PaymentMade extends Mailable
 {
@@ -14,15 +18,33 @@ class PaymentMade extends Mailable
 
     protected $payment;
     protected $pdf;
+    protected $receiptName;
     /**
      * Create a new message instance.
      *
      * @return void
      */
-    public function __construct($payment)
+    public function __construct(ProposalPayments $payment)
     {
         $this->payment = $payment;
-        $this->pdf = Pdf::loadView('pdf.payment',['payment'=>$payment]);
+        $this->receiptName = $this->payment->id . ' - Receipt.pdf';
+        $this->setupPDF();
+    }
+
+    /**
+     * Store the file to attach to the PDF
+     * 
+     */
+    private function setupPDF()
+    {
+        $signedURL = URL::temporarySignedRoute('paymentpdf',now()->addMinutes(5),['payment'=>$this->payment]);
+
+        $this->pdf = \Spatie\Browsershot\Browsershot::url($signedURL)
+            ->setNodeBinary('/home/ec2-user/.nvm/versions/node/v16.3.0/bin/node')
+            ->setNpmBinary('/home/ec2-user/.nvm/versions/node/v16.3.0/bin/npm')
+            ->format('Legal')
+            ->showBackground();
+        
     }
 
     /**
@@ -32,10 +54,11 @@ class PaymentMade extends Mailable
      */
     public function build()
     {
-        $this->pdf->render();
-        $output = $this->pdf->output();
-        $filename = $this->payment->id . ' - Receipt.pdf';
-        file_put_contents($filename,$output);
-        return $this->view('email.payment')->subject('Payment Received')->attach($filename);
+        return $this->view('email.payment')
+                    ->subject('Payment Received')
+                    ->attachData($this->pdf->pdf(),$this->receiptName,[
+                        'mime'=>'application/pdf'
+                    ])
+                ;
     }
 }
