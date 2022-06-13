@@ -20,6 +20,7 @@
         "laravel/sanctum": "^2.6",
         "laravel/tinker": "^2.5",
         "league/flysystem-aws-s3-v3": "~1.0",
+        "spatie/browsershot": "^3.54",
         "spatie/laravel-google-calendar": "^3.3",
         "stripe/stripe-php": "^7.85",
         "tightenco/ziggy": "^1.0",

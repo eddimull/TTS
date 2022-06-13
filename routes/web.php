@@ -22,6 +22,9 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use App\Models\ProposalPayments;
 
 /*
 |--------------------------------------------------------------------------
@@ -106,6 +109,8 @@ Route::group(['prefix'=>'proposals'],function(){
         Route::delete('/{proposal:key}/deletePayment/{payment}',[FinalizedProposalController::class,'deletePayment'])->name('proposals.deletePayment');
     });
 
+    Route::get('paymentpdf/{payment}',[FinalizedProposalController::class,'paymentPDF'])->name('paymentpdf')->middleware('signed');
+
     Route::get('/{proposal:key}/details', 'ProposalsController@details')->name('proposals.details');
     Route::get('/{proposal:key}/accepted', 'ProposalsController@accepted')->name('proposals.accepted');
     Route::post('/{proposal:key}/accept', 'ProposalsController@accept')->name('proposals.accept');
@@ -119,6 +124,8 @@ Route::group(['prefix'=>'finances','middleware'=>['auth','verified']],function()
     Route::get('/invoices',[InvoicesController::class,'index'])->name('invoices');
     Route::post('/invoices/{proposal:key}/send',[InvoicesController::class,'create'])->name('invoices.create');
 });
+
+
 
 Route::get('/images/{uri}','ImageController@index');
 Route::get('/images/{band_site}/{uri}','ImageController@siteImages');
@@ -183,17 +190,32 @@ Route::group(['prefix'=>'questionnaire','middleware'=>['auth','verified']],funct
 });
 
 
-
 Route::group(['prefix'=>'mail','middleware'=>['dev']],function(){
     Route::get('/payment',function(){
-        return new App\Mail\PaymentMade();
+        $payment = App\Models\ProposalPayments::first();
+        $payment->sendReceipt();
+        return 'sent';
     });
 
-    Route::get('paymentpdf',function(){
+    Route::get('signedRoute',function(){
         $payment = App\Models\ProposalPayments::first();
-        // $pdf = PDF::loadView('pdf.payment',['payment'=>$payment]);
-        return view('pdf.payment',['payment'=>$payment]);
+
+        return URL::temporarySignedRoute('paymentpdf',now()->addMinutes(1),['payment'=>$payment]);
     });
+    Route::get('test',function(){
+        $payment = App\Models\ProposalPayments::first();
+        $signedURL = URL::temporarySignedRoute('paymentpdf',now()->addMinutes(1),['payment'=>$payment]);
+        $pdf = \Spatie\Browsershot\Browsershot::url($signedURL)
+            ->setNodeBinary('/home/ec2-user/.nvm/versions/node/v16.3.0/bin/node')
+            ->setNpmBinary('/home/ec2-user/.nvm/versions/node/v16.3.0/bin/npm')
+            ->format('Legal')
+            ->showBackground();
+
+        Storage::put('receipt.pdf',$pdf->pdf());
+        return Storage::download('receipt.pdf');
+    });
+
+
     
 });
 

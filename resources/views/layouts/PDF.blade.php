@@ -17,7 +17,7 @@
         <link rel="icon" type="image/svg+xml" href="favicon.svg">
         <link rel="icon" type="image/png" href="favicon.png">
     </head>
-    <body style="size: legal; width: 1280px;" class="font-sans antialiased">
+    <body style="width: 22cm;" class="font-sans antialiased">
         <div class="min-w-full max-w-7xl mx-auto sm:px-6 lg:px-8">
             {{$slot}}
         </div>
