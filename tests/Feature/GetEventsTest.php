@@ -7,6 +7,7 @@ use App\Models\BandMembers;
 use App\Models\BandOwners;
 use App\Models\Bands;
 use App\Models\User;
+use Database\Factories\BandEventsFactory;
 use Illuminate\Support\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
@@ -151,4 +152,31 @@ class GetEventsTest extends TestCase
             $this->assertTrue($event->OldEvent);
         }
     }
+
+    public function test_ISO_event_Date()
+    {
+        $event = BandEvents::factory()->create([
+            'event_time'=>Carbon::now()
+        ]);
+
+        $this->assertEquals(Carbon::now()->isoFormat('YYYY-MM-DD Thh:mm:ss.sss'),$event->ISODate);
+    }
+
+    public function test_old_event()
+    {
+        $event = BandEvents::factory()->create([
+            'event_time'=>Carbon::parse('1 month ago'),
+            'end_time'=>Carbon::parse('1 month ago')
+        ]);
+
+        $this->assertTrue($event->OldEvent);
+    }
+
+    public function test_get_advance_url()
+    {
+        $event = BandEvents::factory()->create();
+
+        $this->assertEquals(config('app.url') . '/events/' . $event->event_key. '/advance', $event->advanceURL());
+    }
+    
 }
