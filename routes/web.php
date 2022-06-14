@@ -214,11 +214,7 @@ Route::group(['prefix'=>'mail','middleware'=>['dev']],function(){
         Storage::put('receipt.pdf',$pdf->pdf());
         return Storage::download('receipt.pdf');
     });
-
-
-    
 });
-
 
 Route::any('/info/',function(){
     if(!env('APP_DEBUG'))

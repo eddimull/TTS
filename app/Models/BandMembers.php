@@ -9,12 +9,7 @@ class BandMembers extends Model
 {
     protected $fillable = ['user_id','band_id'];
     use HasFactory;
-
-    public function users()
-    {
-        return $this->belongsToMany(User::class);
-    }
-
+    
     public function user()
     {
         return $this->hasOne(User::class,'id','user_id');
