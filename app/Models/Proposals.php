@@ -75,6 +75,11 @@ class Proposals extends Model
         return $this->hasMany(ProposalPayments::class,'proposal_id');
     }
 
+    public function lastPayment()
+    {
+        return $this->hasOne(ProposalPayments::class,'proposal_id')->latestOfMany();
+    }
+
     public function getformattedDraftDateAttribute()
     {
         return Carbon::parse($this->created_at)->format('Y-m-d');

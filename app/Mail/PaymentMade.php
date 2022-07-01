@@ -37,14 +37,7 @@ class PaymentMade extends Mailable
      */
     private function setupPDF()
     {
-        $signedURL = URL::temporarySignedRoute('paymentpdf',now()->addMinutes(5),['payment'=>$this->payment]);
-
-        $this->pdf = \Spatie\Browsershot\Browsershot::url($signedURL)
-            ->setNodeBinary('/home/ec2-user/.nvm/versions/node/v16.3.0/bin/node')
-            ->setNpmBinary('/home/ec2-user/.nvm/versions/node/v16.3.0/bin/npm')
-            ->format('Legal')
-            ->showBackground();
-        
+        $this->pdf = $this->payment->getPdf();
     }
 
     /**
@@ -54,7 +47,11 @@ class PaymentMade extends Mailable
      */
     public function build()
     {
-        return $this->view('email.payment')
+        return $this->view('email.payment',[
+                            'performance'=>$this->payment->proposal->name,
+                            'amount'=>$this->payment->formattedPaymentAmount,
+                            'balance'=>$this->payment->proposal->AmountLeft
+                            ])
                     ->subject('Payment Received')
                     ->attachData($this->pdf->pdf(),$this->receiptName,[
                         'mime'=>'application/pdf'

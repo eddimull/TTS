@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
 class PaymentTest extends TestCase
 {
     // use RefreshDatabase;
-    public function testformattedPayment()
+    public function test_formattedPayment()
     {
         $payment = ProposalPayments::factory()->create();
 
@@ -21,6 +21,17 @@ class PaymentTest extends TestCase
 
     }
 
-
+    public function test_proposalReturnsLatestPayment()
+    {
+        $payment = ProposalPayments::factory()->create();
+        $testAmount = 1000;
+        ProposalPayments::factory([
+            'amount'=>$testAmount,
+            'proposal_id'=>$payment->proposal->id
+        ])->create();
+        
+        
+        $this->assertEquals($payment->proposal->lastPayment->amount,$testAmount);
+    }
     
 }
