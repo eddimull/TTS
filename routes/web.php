@@ -107,6 +107,7 @@ Route::group(['prefix'=>'proposals'],function(){
         Route::get('/{proposal:key}/payments',[FinalizedProposalController::class,'paymentIndex'])->name('proposals.paymentReview');
         Route::post('/{proposal:key}/payment',[FinalizedProposalController::class,'submitPayment'])->name('proposals.submitPayment');
         Route::delete('/{proposal:key}/deletePayment/{payment}',[FinalizedProposalController::class,'deletePayment'])->name('proposals.deletePayment');
+        Route::get('/{proposal:key}/downloadReceipt',[FinalizedProposalController::class,'getReceipt'])->name('proposal.receipt');
     });
 
     Route::get('paymentpdf/{payment}',[FinalizedProposalController::class,'paymentPDF'])->name('paymentpdf')->middleware('signed');
@@ -193,8 +194,12 @@ Route::group(['prefix'=>'questionnaire','middleware'=>['auth','verified']],funct
 Route::group(['prefix'=>'mail','middleware'=>['dev']],function(){
     Route::get('/payment',function(){
         $payment = App\Models\ProposalPayments::first();
-        $payment->sendReceipt();
-        return 'sent';
+        // $payment->sendReceipt();
+        return view('email.payment',[
+            'performance'=>$payment->proposal->name,
+            'amount'=>$payment->formattedPaymentAmount,
+            'balance'=>$payment->proposal->AmountLeft
+            ]);
     });
 
     Route::get('signedRoute',function(){
