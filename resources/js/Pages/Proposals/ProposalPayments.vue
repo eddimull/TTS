@@ -152,7 +152,7 @@
                   </div>
                 </div>                
                 <div
-                  class="flex flex-wrap items-center lg:-mb-4"
+                  class="flex flex-wrap content-around justify-evenly lg:-mb-4"
                 >
                   <Button
                     v-if="proposal.amountLeft !== '0.00'"
@@ -160,6 +160,12 @@
                     label="Make Payment"
                     class="p-button-success"
                     @click="openDialog"
+                  />
+                  <Button
+                    icon="pi pi-download"
+                    label="Download Receipt"
+                    class="p-button-default"
+                    @click="downloadReceipt"
                   />
                 </div>
               </div>
@@ -246,8 +252,10 @@
             }
           })
         },
+        downloadReceipt(){
+          window.open('/proposals/' + this.proposal.key + '/downloadReceipt', '_blank');
+        },
         deletePayment(payment){
-          console.log(payment);
           this.$inertia.delete('/proposals/' + this.proposal.key + '/deletePayment/' + payment.id,{
             preserveScroll:true
           })

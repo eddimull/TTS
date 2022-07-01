@@ -30,4 +30,13 @@ class ProposalDraftDate extends TestCase
 
         $this->assertEquals(Carbon::now()->format('Y-m-d'),$proposal->formattedDraftDate);
     }
+
+    public function testCanGetThePerformanceDate()
+    {
+        $proposal = Proposals::factory()->create();
+        
+        
+        
+        $this->assertEquals(Carbon::parse($proposal->date)->format('Y-m-d'),$proposal->formattedPerformanceDate);
+    }
 }

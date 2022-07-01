@@ -66,6 +66,7 @@ class Kernel extends HttpKernel
         'owner' => \App\Http\Middleware\Owner::class,
         'userInBand'=> \App\Http\Middleware\userInBand::class,
         'charts.read'=> \App\Http\Middleware\CanReadCharts::class,
-        'charts.write'=> \App\Http\Middleware\CanWriteCharts::class
+        'charts.write'=> \App\Http\Middleware\CanWriteCharts::class,
+        'dev' => \App\Http\Middleware\dev::class
     ];
 }

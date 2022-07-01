@@ -2,7 +2,9 @@
 
 namespace Database\Factories;
 
+use App\Models\BandOwners;
 use App\Models\Bands;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -22,11 +24,10 @@ class BandsFactory extends Factory
      */
     public function definition()
     {
-        $band = $this->faker->company;
+        $band = $this->faker->company();
         return [
             'name' => $band,
             'site_name' => str_replace(' ','_',$band)
         ];
     }
-
 }

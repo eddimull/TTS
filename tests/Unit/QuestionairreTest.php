@@ -40,6 +40,9 @@ class QuestionairreTest extends TestCase
 
     public function test_checkSlug()
     {
+        $this->markTestIncomplete(
+            'This feature has not been implemented yet.'
+          );
         $band = Bands::factory()->create();
         $quest = Questionnairres::create([
             'band_id'=>$band->id,
@@ -50,6 +53,9 @@ class QuestionairreTest extends TestCase
 
     public function test_checkDuplicateSlug()
     {
+        $this->markTestIncomplete(
+            'This feature has not been implemented yet.'
+          );
         $band = Bands::factory()->create();
         $quest = Questionnairres::create([
             'band_id'=>$band->id,

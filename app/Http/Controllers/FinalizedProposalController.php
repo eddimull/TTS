@@ -8,6 +8,8 @@ use App\Services\FinanceServices;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia; 
+use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Str;
 
 class FinalizedProposalController extends Controller
 {
@@ -26,7 +28,10 @@ class FinalizedProposalController extends Controller
             'amount'=>'required|Numeric',
             'paymentDate'=>'required|Date',
         ]);
-        (new FinanceServices())->makePayment($proposal,$request->name,$request->amount,$request->paymentDate);
+        $payment = (new FinanceServices())->makePayment($proposal,$request->name,$request->amount,$request->paymentDate);
+        
+        $payment->sendReceipt();
+        
 
         return back()->with('successMessage','Payment received');
     }
@@ -36,5 +41,23 @@ class FinalizedProposalController extends Controller
         (new FinanceServices())->removePayment($proposal,$payment);
         
         return back()->with('successMessage','Payment Removed');
+    }
+
+    //This is very much like the payment PDF, but downloading the receipt from the site for authorized users
+    public function getReceipt(Proposals $proposal)
+    {
+        $paymentPDF = $proposal->lastPayment->getPdf();
+
+        return Response::streamDownload(function() use ($paymentPDF){
+           echo $paymentPDF->pdf();
+        },Str::slug($proposal->name . ' Receipt', '_') . '.pdf',
+        [
+            'Content-type'=>'application/pdf'
+        ]);
+    }
+
+    public function paymentPDF(ProposalPayments $payment)
+    {
+        return view('pdf.payment',['payment'=>$payment]);
     }
 }

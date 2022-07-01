@@ -30,6 +30,11 @@ class Proposals extends Model
         return $this->hasOne(Contracts::class,'proposal_id');
     }
 
+    public function proposalContacts() //did this to satisfy laravel's 'magic' factory methods
+    {
+        return $this->proposal_contacts();
+    }
+
     public function proposal_contacts()
     {
         return $this->hasMany(ProposalContacts::class,'proposal_id');
@@ -70,10 +75,25 @@ class Proposals extends Model
         return $this->hasMany(ProposalPayments::class,'proposal_id');
     }
 
+    public function lastPayment()
+    {
+        return $this->hasOne(ProposalPayments::class,'proposal_id')->latestOfMany();
+    }
+
     public function getformattedDraftDateAttribute()
     {
         return Carbon::parse($this->created_at)->format('Y-m-d');
     }
+
+    public function getformattedPerformanceDateAttribute()
+    {
+        return Carbon::parse($this->date)->format('Y-m-d');
+    }
+
+    public function getformattedPriceAttribute()
+    {
+        return number_format(floatval($this->price),2);
+    }    
 
     public function getAmountPaidAttribute()
     {

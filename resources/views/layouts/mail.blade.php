@@ -244,18 +244,14 @@
           <div class="content">
             <span class="preheader"></span>
             <table class="main">
-
               <!-- START MAIN CONTENT AREA -->
               <tr>
+                <div><img src="{{url('/images/application-logo.png')}}"/>TTS</div>
                 <td class="wrapper">
                   <table border="0" cellpadding="0" cellspacing="0">
                     <tr>
                       <td>
-                        <h1>TTS.band - @yield('title')</h1>
-                        @yield('body')
-                        
-                        <p>If you received this email by mistake, simply delete it. You won't be subscribed if you don't click the confirmation link above.</p>
-      
+                       {{$slot}}
                       </td>
                     </tr>
                   </table>
