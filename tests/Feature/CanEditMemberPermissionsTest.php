@@ -20,21 +20,11 @@ class CanEditMemberPermissionsTest extends TestCase
 
     protected function setupBandAndUser()
     {
-        $this->band = Bands::factory()->create();
-        $this->user = User::factory()->create();
-        $this->member = User::factory()->create([
-            'email'=>'testPermissionsUser@gmail.com'
-        ]);
-        BandOwners::create([
-            'user_id'=>$this->user->id,
-            'band_id'=>$this->band->id
-        ]);
-
-        BandMembers::create([
-            'user_id'=>$this->member->id,
-            'band_id'=>$this->band->id
-        ]);
+        $this->band = Bands::factory()->hasOwner()->hasMember()->create();
+        $this->user = $this->band->owner[0]->user;
+        $this->member = $this->band->member[0]->user;
     }
+
     public function test_cannotUpdatePermissionsAsRandomUser()
     {
         $this->setupBandAndUser();

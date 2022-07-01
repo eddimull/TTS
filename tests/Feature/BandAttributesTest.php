@@ -12,6 +12,7 @@ use App\Models\User;
 
 class BandAttributesTest extends TestCase
 {
+    use RefreshDatabase;
     /**
      * A basic feature test example.
      *
@@ -19,25 +20,10 @@ class BandAttributesTest extends TestCase
      */
     public function test_getEveryone()
     {
-        $band = Bands::factory()->create();
-        $members = User::factory(rand(1,10))->create();
-        $owners = User::factory(rand(1,10))->create();
-        foreach($members as $member)
-        {
-            BandMembers::create([
-                'band_id'=>$band->id,
-                'user_id'=>$member->id
-            ]);
-        }
-
-        foreach($owners as $owner)
-        {
-            BandOwners::create([
-                'band_id'=>$band->id,
-                'user_id'=>$owner->id
-            ]);
-        }
-        
-        $this->assertEquals(count($members)+count($owners), count($band->everyone()));
+        Bands::factory()->count(10)->create();
+        $count = rand(1,10);
+        $band = Bands::factory()->hasOwners($count)->hasMembers($count)->create();
+        // dd($count,count($band->members),count($band->owners), $band->everyone());
+        $this->assertEquals(count($band->members)+count($band->owners), count($band->everyone()));
     }
 }
