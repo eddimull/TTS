@@ -8,6 +8,7 @@ use App\Models\Questionnairres;
 use App\Services\QuestionnaireServices;
 use Illuminate\Support\Facades\Auth;
 use QuestionnaireComponents;
+use MattDaneshvar\Survey\Models\Survey;
 
 class QuestionnaireController extends Controller
 {
@@ -52,12 +53,13 @@ class QuestionnaireController extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show()
     {
-        //
+        $survey = Survey::first();
+        // dd($survey);
+        return view('questionnaire/standard',['survey'=>$survey, 'eligible'=>true,'lastEntry'=>false]);
     }
 
 /**

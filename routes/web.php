@@ -185,6 +185,7 @@ Route::post('/seentIt',function(){
 Route::group(['prefix'=>'questionnaire','middleware'=>['auth','verified']],function(){
     // Route::resource('/','QuestionnaireController'); 
     Route::get('/',[QuestionnaireController::class,'index'])->name('questionnaire');
+    Route::get('/test',[QuestionnaireController::class,'show'])->name('questionnaire.test');
     Route::post('/new',[QuestionnaireController::class,'store'])->name('questionnaire.new');
     Route::get('/{questionnaire:slug}',[QuestionnaireController::class,'edit'])->name('questionnaire.edit');
     Route::post('/{questionnaire:slug}/add',[QuestionnaireController::class,'addQuestion'])->name('questionnaire.addQuestion');
