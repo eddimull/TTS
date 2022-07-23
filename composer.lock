@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "5b3fa84cb72f9d5fdf5bfb16474aa2e2",
+    "content-hash": "26be34a5419391a762a9fc5ba5888d13",
     "packages": [
         {
             "name": "alexpechkarev/geometry-library",
@@ -3015,6 +3015,65 @@
                 }
             ],
             "time": "2021-01-18T20:58:21+00:00"
+        },
+        {
+            "name": "matt-daneshvar/laravel-survey",
+            "version": "v0.2.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/matt-daneshvar/laravel-survey.git",
+                "reference": "3201fd4bba9c4cf5d403688cf7537fca7cd2a0b7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/matt-daneshvar/laravel-survey/zipball/3201fd4bba9c4cf5d403688cf7537fca7cd2a0b7",
+                "reference": "3201fd4bba9c4cf5d403688cf7537fca7cd2a0b7",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/database": "^6.0|^7.0|^8.0|^9.0",
+                "php": "^7.3|^7.4|^8.0|^8.1"
+            },
+            "require-dev": {
+                "illuminate/http": ">=6",
+                "laravel/legacy-factories": "^1.1",
+                "mockery/mockery": "^1.3.2|^1.4",
+                "orchestra/testbench": "^4.0|^5.0|^6.0",
+                "phpunit/phpunit": "^8.0|^9.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "MattDaneshvar\\Survey\\SurveyServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "MattDaneshvar\\Survey\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Matt Daneshvar",
+                    "email": "matt.daneshvar@gmail.com"
+                }
+            ],
+            "description": "Create surveys inside your Laravel app",
+            "keywords": [
+                "laravel",
+                "survey"
+            ],
+            "support": {
+                "issues": "https://github.com/matt-daneshvar/laravel-survey/issues",
+                "source": "https://github.com/matt-daneshvar/laravel-survey/tree/v0.2.1"
+            },
+            "time": "2022-02-11T01:37:46+00:00"
         },
         {
             "name": "maximebf/debugbar",
