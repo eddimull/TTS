@@ -1,5 +1,5 @@
 <template>
-  <div class="mt-3 grid place-items-center text-lime-200">
+  <div class="mt-4 pt-3 grid place-items-center text-black border-t border-gray-200">
     <a :href="route('events.advance',{'key':event.event_key})">
       <svg
         xmlns="http://www.w3.org/2000/svg"
