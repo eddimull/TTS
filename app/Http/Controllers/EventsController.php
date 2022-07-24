@@ -185,6 +185,18 @@ class EventsController extends Controller
             'url'=>'/events/' . $event->event_key . '/advance'
             ]));
         }
+        compact($band->members);
+
+        foreach($band->members as $member)
+        {
+           $user = User::find($member->user_id);
+           $user->notify(new TTSNotification([
+            'text'=>$editor->name . ' added ' . $event->event_name,
+            'route'=>'events.advance',
+            'routeParams'=>$event->event_key,
+            'url'=>'/events/' . $event->event_key . '/advance'
+            ]));
+        }
         return redirect()->route('events')->with('successMessage','Event was successfully added');
     }
 
@@ -316,6 +328,18 @@ class EventsController extends Controller
         foreach($band->owners as $owner)
         {
            $user = User::find($owner->user_id);
+           $user->notify(new TTSNotification([
+            'text'=>$editor->name . ' updated ' . $event->event_name,
+            'route'=>'events.advance',
+            'routeParams'=>$event->event_key,
+            'url'=>'/events/' . $event->event_key . '/advance'
+            ]));
+        }
+
+        compact($band->members);
+        foreach($band->members as $member)
+        {
+           $user = User::find($member->user_id);
            $user->notify(new TTSNotification([
             'text'=>$editor->name . ' updated ' . $event->event_name,
             'route'=>'events.advance',
