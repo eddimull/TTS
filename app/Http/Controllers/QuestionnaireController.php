@@ -66,7 +66,7 @@ class QuestionnaireController extends Controller
      * Show the form for editing the specified resource.
      *
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return \Inertia\Response
      */
     public function edit(Questionnairres $questionnaire)
     {
@@ -74,6 +74,18 @@ class QuestionnaireController extends Controller
         return Inertia::render('Questionnaire/Edit',['questionnaire'=>$questionnaire,'questionnaireData'=>$questionnaire->components]);
     }
 
+
+    /**
+     * Show the form for editing the specified resource.
+     *
+     * @param  int  $id
+     * @return \Inertia\Response
+     */
+    public function editSurvey(Survey $survey)
+    {
+        
+        return Inertia::render('Survey/Edit',['survey'=>$survey,'questions'=>$survey->questions]);
+    }
     /**
      * Update the specified resource in storage.
      *
