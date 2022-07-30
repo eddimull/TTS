@@ -61,10 +61,11 @@
             @click="closeDialog"
           />
           <Button
-            :label="saving ? 'Saving...': 'Submit Payment'"
+            :label="saving ? 'Submitting Payment': 'Submit Payment'"
             :disabled="saving"
             icon="pi pi-check"
             class="p-button-text"
+            :loading="saving"
             @click="submitPayment"
           />
         </template>      
@@ -205,6 +206,7 @@
   </Layout>
 </template>
 <script>
+
     export default{
 
         props:{
@@ -237,6 +239,7 @@
           this.paymentDialog = true
         },
         submitPayment(){
+          this.saving = true;
           this.$inertia.post('/proposals/' + this.proposal.key + '/payment',{
             'name':this.newPayment.name,
             'amount':this.newPayment.amount * 100,
@@ -247,8 +250,10 @@
               this.newPayment.name = '';
               this.newPayment.amount = '';
               this.newPayment.paymentDate = null;
-              this.saving = false;
               this.closeDialog()
+            },
+            onFinish:()=>{
+              this.saving = false;
             }
           })
         },

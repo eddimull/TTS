@@ -34,7 +34,8 @@ import AudioVisual from 'vue-audio-visual'
 import Chart from 'primevue/chart';
 import TabView from 'primevue/tabview';
 import TabPanel from 'primevue/tabpanel';
-import BreezeNavLink from '@/Components/InlineLink'
+import BreezeNavLink from '@/Components/InlineLink';
+import ProgressSpinner from 'primevue/progressspinner';
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
 import Container from '@/Components/Container'
 import ToastService from 'primevue/toastservice';
