@@ -2,9 +2,14 @@
   <Layout>
     <template #header>
       <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-        Edit Survey
+        Edit Survey :: 
       </h2>
     </template>
+    <Container>
+      <div class="flex flex-col">
+        {{ survey->name }}
+      </div>
+    </Container>
   </Layout>
 </template>
 <script>
