@@ -14,7 +14,7 @@ class FinancesController extends Controller
         $bands = Auth::user()->bandOwner;
 
         $completedProposals = (new FinanceServices())->getBandFinances($bands);
-
-        return Inertia::render('Finances/index',compact('completedProposals'));
+        $payments = (new FinanceServices())->getBandPayments($bands);
+        return Inertia::render('Finances/index',compact('completedProposals','payments'));
     }
 }

@@ -27,6 +27,7 @@ use App\Notifications\TTSNotification;
 use App\Services\CalendarService;
 use Doctrine\DBAL\Schema\View;
 use Illuminate\Support\Facades\Http;
+use App\Http\Requests\EventRequest;
 
 class EventsController extends Controller
 {
@@ -119,12 +120,9 @@ class EventsController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function store(EventRequest $request)
     {
-        //
-        $request->validate([
-            'event_name'=>'required'
-        ]);
+
         // dd($request);
         $strtotime = strtotime($request->event_time);
         $formattedTime = date('Y-m-d',$strtotime);

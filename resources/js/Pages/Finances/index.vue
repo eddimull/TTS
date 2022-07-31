@@ -199,6 +199,11 @@
             >Invoices</a>
           </div>
         </TabPanel>
+        <TabPanel header="Payments">
+          <div>
+            <Payments/>
+          </div>
+        </TabPanel>
       </TabView>
     </Container>
   </Layout>
@@ -206,10 +211,11 @@
 
 <script>
     import moment from 'moment';
+    import Payments from '../../Components/Finances/AllPayments.vue';
     import {FilterMatchMode,FilterOperator} from 'primevue/api';
     export default {
         components: {
-          
+          Payments
         },
         data(){
           return{
