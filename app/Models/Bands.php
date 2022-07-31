@@ -77,4 +77,9 @@ class Bands extends Model
         return $this->hasMany(Colorways::class,'band_id');
     }
 
+    public function payments()
+    {
+        return $this->hasManyThrough(ProposalPayments::class,Proposals::class,'band_id','proposal_id');
+    }
+
 }
