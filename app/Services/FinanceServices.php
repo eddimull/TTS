@@ -23,6 +23,15 @@ class FinanceServices
         return $bands;
     }
 
+    function getBandPayments($bands)
+    {
+        foreach($bands as $band)
+        {
+            $band->payments;
+        }
+        return $bands;
+    }
+
     function makePayment($proposal,$paymentName,$amount,$date)
     {
         try{

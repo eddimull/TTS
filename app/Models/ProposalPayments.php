@@ -18,6 +18,8 @@ class ProposalPayments extends Model
 
     protected $guarded = [];
 
+    protected $with = ['proposal:id,name,key'];
+    protected $appends = ['formattedPaymentDate','formattedPaymentAmount'];
     protected $table = 'payments';
 
     public function getformattedPaymentDateAttribute()

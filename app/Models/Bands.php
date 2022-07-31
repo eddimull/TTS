@@ -79,7 +79,6 @@ class Bands extends Model
 
     public function payments()
     {
-        return $this->hasManyThrough(ProposalPayments::class,Proposals::class,'band_id','proposal_id');
+        return $this->hasManyThrough(ProposalPayments::class,Proposals::class,'band_id','proposal_id')->orderBy('paymentDate','desc');
     }
-
 }
