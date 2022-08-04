@@ -6,6 +6,7 @@ use App\Mail\EventReminder;
 use App\Models\BandEvents;
 use App\Models\Bands;
 use App\Models\Contracts;
+use App\Models\Proposals;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 use Illuminate\Support\Facades\Http;
@@ -116,6 +117,10 @@ class Kernel extends ConsoleKernel
         })->dailyAt('9:00');
 
         $schedule->call(function(){
+            
+        })->dailyAt('9:00');
+
+        $schedule->call(function(){
             $bands = Bands::all();
 
             foreach($bands as $band)
@@ -124,6 +129,13 @@ class Kernel extends ConsoleKernel
                 $reminder->searchAndSend();
             }
         })->weeklyOn(2, '23:00');
+
+        $schedule->call(function(){
+            $notPaidProposal = Proposals::where('status','!=','paid')->get();
+            $notPaidProposal->each(function($proposal){
+                (new ProposalServices($proposal))->sendPaymentReminder();
+            });
+        })->weeklyOn(1, '12:00');
     }
 
     /**
