@@ -191,4 +191,9 @@ class ProposalServices
         // }
     }
 
+    public function sendPaymentReminder()
+    {
+        //remind user
+    }
+
 }
