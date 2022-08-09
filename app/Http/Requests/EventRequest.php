@@ -30,12 +30,11 @@ class EventRequest extends FormRequest
             'production_needed'=>'required|boolean',
             'backline_provided'=>'required|boolean',
             'zip'=>'required|numeric',
-            'date'=>'required|Date',
-            'event_time'=>'required|DateTime',
-            'band_loadin_time'=>'required|DateTime',
-            'rhythm_loadin_time'=>'required|DateTime',
-            'production_loadin_time'=>'required|DateTime',
-            'band_loadin_time'=>'required|DateTime',
+            'event_time'=>'required|Date',
+            'band_loadin_time'=>'required|Date',
+            'rhythm_loadin_time'=>'required|Date',
+            'production_loadin_time'=>'required|Date',
+            'band_loadin_time'=>'required|Date',
         ];
     }
 }
