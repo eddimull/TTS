@@ -33,8 +33,6 @@ class EventRequest extends FormRequest
             'event_time'=>'required|Date',
             'band_loadin_time'=>'required|Date',
             'rhythm_loadin_time'=>'required|Date',
-            'production_loadin_time'=>'required|Date',
-            'band_loadin_time'=>'required|Date',
         ];
     }
 }

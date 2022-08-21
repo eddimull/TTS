@@ -671,18 +671,28 @@
                     clearTimeout(this.searchTimer);
                     this.searchTimer = null;
                 }
-                this.searchTimer = setTimeout(()=>{
+                try{
+
+                  this.searchTimer = setTimeout(()=>{
                     axios.post('/autocompleteLocation',{
-                        sessionToken:this.sessionToken,
+                      sessionToken:this.sessionToken,
                         searchParams:this.form.venue_name,
                     }).then((response)=>{
-                        this.searchResults = response.data.predictions
+                      this.searchResults = response.data.predictions
                     })
-                },800)
+                  },800)
+                } 
+                catch (e)
+                {
+                  this.$page.props.errors = ['Error in autocomplete' + e]
+                }
             },
 
             getLocationDetails(place_id)
             {
+              try{
+
+              
                 axios.get('/getLocation',{
                     params:{
                         place_id:place_id,
@@ -713,6 +723,11 @@
                     }
 
                 })
+              } 
+              catch (e)
+              {
+                this.$page.props.errors = ['Error in getLocationDetails' + e]
+              }
             }
         }
     }
