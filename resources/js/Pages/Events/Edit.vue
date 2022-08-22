@@ -25,7 +25,7 @@
           class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4"
           @submit.prevent="updateEvent"
         >
-          <div class="bg-white w-full rounded-lg shadow-xl">
+          <div class="bg-white w-full rounded-lg">
             <div class="p-4 border-b">
               <h2 class="text-2xl ">
                 Event Information
@@ -34,398 +34,473 @@
                 Event name/type/load in etc. 
               </p>
             </div>
-            <div>
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  <label for="name">Band</label>
-                </p>
-                <div>
-                  <select
-                    id="grid-state"
-                    v-model="form.band_id"
-                    class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded"
-                    @change="colorsForBand()"
-                  >
-                    <option
-                      v-for="band in bands"
-                      :key="band.id"
-                      :value="band.id"
-                    >
-                      {{ band.name }}
-                    </option>
-                  </select>
-                </div>
-              </div>
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  <label for="name">Event Name</label>
-                </p>
-                <div class="mb-4">
-                  <input
-                    id="name"
-                    v-model="form.event_name"
-                    type="text"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="Event Name"
-                  >
-                </div>
-              </div>
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  <label for="eventType">Event Type</label>
-                </p>
-                <div>
-                  <select
-                    id="grid-state"
-                    v-model="form.event_type_id"
-                    class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded"
-                  >
-                    <option
-                      v-for="eventType in eventTypes"
-                      :key="eventType.id"
-                      :value="eventType.id"
-                    >
-                      {{ eventType.name }}
-                    </option>
-                  </select>
-                </div>
-              </div>
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  <label for="eventType">Production</label>
-                </p>
-                <div>
-                  <div class="mb-4">
+            <div class="flex flex-col gap-8 mt-8">
+              <div class="section">
+                <SectionTitle
+                  :number="1"
+                  :title="'Initial Information'"
+                />
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    <label for="name">Band</label>
+                  </p>
+                  <div>
                     <select
-                      v-model="form.production_needed"
+                      id="grid-state"
+                      v-model="form.band_id"
                       class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded"
+                      @change="colorsForBand()"
                     >
-                      <option :value="1">
-                        Provided by band
-                      </option>
-                      <option :value="0">
-                        Provided by venue
+                      <option
+                        v-for="band in bands"
+                        :key="band.id"
+                        :value="band.id"
+                      >
+                        {{ band.name }}
                       </option>
                     </select>
                   </div>
                 </div>
-              </div>      
-              <div
-                v-if="form.event_type_id == 3 || form.event_type_id === 6"
-                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
-              >
-                <p class="text-gray-600">
-                  Backline Provided
-                </p>
-                <p>
-                  <input
-                    v-model="form.backline_provided"
-                    type="checkbox"
-                  >
-                </p>
-              </div>       
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  Contacts
-                </p>
-                <div>
-                  <ul
-                    v-for="contact in form.event_contacts"
-                    :key="contact.id"
-                    class="hover:bg-gray-100 cursor-pointer"
-                    @click="form.event_contacts.forEach(tempContact=>tempContact.editing = false); if(!contact.editing){ contact.editing = true }"
-                  >
-                    <li v-if="!contact.editing">
-                      Name: {{ contact.name }}
-                    </li>
-                    <li v-if="!contact.editing">
-                      Phone: {{ contact.phonenumber }}
-                    </li>
-                    <li v-if="!contact.editing">
-                      Email: {{ contact.email }}
-                    </li>
-                    <li v-if="contact.editing">
-                      Name: <input
-                        v-model="contact.name"
-                        :class="inputClass"
-                        required
-                        type="text"
-                      >
-                    </li>
-                    <li v-if="contact.editing">
-                      Phone: <input
-                        v-model="contact.phonenumber"
-                        :class="inputClass"
-                        type="tel"
-                      >
-                    </li>
-                    <li v-if="contact.editing">
-                      Email: <input
-                        v-model="contact.email"
-                        :class="inputClass"
-                        type="email"
-                      >
-                    </li>
-                    <li v-if="contact.editing">
-                      <button-component
-                        :type="'button'"
-                        @click.stop="updateContact(contact)"
-                      >
-                        Save
-                      </button-component>
-                      <button-component
-                        :type="'button'"
-                        @click.stop="contact.editing = false"
-                      >
-                        Cancel
-                      </button-component>
-                      <button-component
-                        :type="'button'"
-                        @click.stop="removeContact(contact)"
-                      >
-                        Delete
-                      </button-component>
-                    </li>
-                  </ul>
-                  <ul v-if="showCreateNewContact">
-                    <li>
-                      Name: <input
-                        v-model="newContact.name"
-                        :class="inputClass"
-                        required
-                        type="text"
-                      >
-                    </li>
-                    <li>
-                      Phone: <input
-                        v-model="newContact.phonenumber"
-                        :class="inputClass"
-                        type="tel"
-                      >
-                    </li>
-                    <li>
-                      Email: <input
-                        v-model="newContact.email"
-                        :class="inputClass"
-                        type="email"
-                      >
-                    </li>
-                  </ul>
-                  <button-component
-                    v-if="!showCreateNewContact"
-                    :type="'button'"
-                    @click="showCreateNewContact = true"
-                  >
-                    Create New
-                  </button-component>
-                  <button-component
-                    v-if="showCreateNewContact"
-                    :type="'button'"
-                    @click="showCreateNewContact = false"
-                  >
-                    Cancel
-                  </button-component>
-                  <button-component
-                    v-if="showCreateNewContact"
-                    :type="'button'"
-                    @click="saveContact"
-                  >
-                    Save
-                  </button-component>
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    <label for="name">Name</label>
+                  </p>
+                  <div class="mb-4">
+                    <input
+                      id="name"
+                      v-model="form.event_name"
+                      type="text"
+                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      placeholder="Event Name"
+                    >
+                  </div>
                 </div>
-              </div>                                                          
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  Venue Name
-                </p>
-                <p>
-                  <input
-                    v-model="form.venue_name"
-                    type="text"
-                    placeholder="Venue Name"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    @input="unsavedChanges=true"
-                    @keyup="autoComplete()"
-                  >
-                  <ul class="">
-                    <li
-                      v-for="(result,index) in searchResults"
-                      :key="index"
-                      class="border-black my-4 p-4 bg-gray-200 hover:bg-gray-300 cursor-pointer"
-                      @click="getLocationDetails(result.place_id); form.venue_name = result.structured_formatting.main_text; searchResults = null"
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    Event Date
+                  </p>
+                  <p>
+                    <calendar
+                      v-model="form.event_time"
+                      @date-select="setDate()"
+                    />
+                  </p>
+                </div>
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    <label for="eventType">Event Type</label>
+                  </p>
+                  <div>
+                    <select
+                      id="grid-state"
+                      v-model="form.event_type_id"
+                      class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded"
                     >
-                      {{ result.description }}
-                    </li>
-                  </ul>
-                </p>
-              </div>
-              <div
-                v-if="form.event_type_id === 1"
-                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
-              >
-                <p class="text-gray-600">
-                  <label for="firstDance">First Dance</label>
-                </p>
-                <p>
-                  <input
-                    id="firstDance"
-                    v-model="form.first_dance"
-                    type="text"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="First Dance"
-                  >
-                </p>
-              </div>
-              <div
-                v-if="form.event_type_id === 1"
-                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
-              >
-                <p class="text-gray-600">
-                  <label for="father_daughter">Father / Daughter Dance:</label>
-                </p>
-                <p>
-                  <input
-                    id="secondDance"
-                    v-model="form.father_daughter"
-                    type="text"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="Second Dance"
-                  >
-                </p>
-              </div>  
-              <div
-                v-if="form.event_type_id === 1"
-                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
-              >
-                <p class="text-gray-600">
-                  <label for="father_daughter">Mother / Groom Dance:</label>
-                </p>
-                <p>
-                  <input
-                    id="secondDance"
-                    v-model="form.mother_groom"
-                    type="text"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="Second Dance"
-                  >
-                </p>
-              </div>                                  
-              <div
-                v-if="form.event_type_id === 1"
-                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
-              >
-                <p class="text-gray-600">
-                  <label for="moneyDance">Money Dance</label>
-                </p>
-                <p>
-                  <input
-                    id="moneyDance"
-                    v-model="form.money_dance"
-                    type="text"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="Money Dance"
-                  >
-                </p>
-              </div>      
-              <div
-                v-if="form.event_type_id === 1"
-                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
-              >
-                <p class="text-gray-600">
-                  <label for="secondDance">Bouquet / Garter</label>
-                </p>
-                <p>
-                  <input
-                    id="bouquetDance"
-                    v-model="form.bouquet_garter"
-                    type="text"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="Bouquet Stuff"
-                  >
-                </p>
-              </div>    
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  <label for="streetAddress">Street Address</label>
-                </p>
-                <p>
-                  <input
-                    id="streetAddress"
-                    v-model="form.address_street"
-                    type="text"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="P. Sherman, 42"
-                  >
-                </p>
-              </div>       
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  <label for="zipCode">Zip Code</label>
-                </p>
-                <p>
-                  <input
-                    id="zipCode"
-                    v-model="form.zip"
-                    type="text"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="70506"
-                  >
-                </p>
-              </div>     
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  <label for="zipCode">City</label>
-                </p>
-                <p>
-                  <input
-                    id="city"
-                    v-model="form.city"
-                    type="text"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="Townsville"
-                  >
-                </p>
-              </div>                                 
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  <label for="state">State</label>
-                </p>
-                <p>
-                  <select
-                    id="grid-state"
-                    v-model="form.state_id"
-                    class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded"
-                  >
-                    <option
-                      v-for="state in states"
-                      :key="state.state_id"
-                      :value="state.state_id"
+                      <option
+                        v-for="eventType in eventTypes"
+                        :key="eventType.id"
+                        :value="eventType.id"
+                      >
+                        {{ eventType.name }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    Public
+                  </p>
+                  <p>
+                    <input
+                      v-model="form.public"
+                      type="checkbox"
                     >
-                      {{ state.state_name }}
-                    </option>
-                  </select>                                        
-                </p>
-              </div>   
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  Notes
-                </p>
-                <p>
-                  <Editor
-                    v-model="form.notes"
-                    editor-style="height: 320px"
-                  />
-                </p>
-              </div>                                                                                                                                                                                                                                                                                                                                    
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  Color
-                </p>
-                <p>
-                  <Editor
-                    v-model="form.colorway_text"
-                    editor-style="height: 150px"
-                  />
+                  </p>
+                </div>
+              </div>
+
+              <div
+                v-if="form.event_type_id === 1"
+                class="section"
+              >
+                <SectionTitle
+                  :number="'1a'"
+                  :title="'Wedding Information'"
+                />
+                <div
+                  class="createEventInput"
+                >
+                  <p class="text-gray-600">
+                    <label for="firstDance">First Dance</label>
+                  </p>
+                  <p>
+                    <input
+                      id="firstDance"
+                      v-model="form.first_dance"
+                      type="text"
+                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      placeholder="First Dance"
+                    >
+                  </p>
+                </div>
+                <div
+                  v-if="form.event_type_id === 1"
+                  class="createEventInput"
+                >
+                  <p class="text-gray-600">
+                    <label for="father_daughter">Father / Daughter Dance:</label>
+                  </p>
+                  <p>
+                    <input
+                      id="secondDance"
+                      v-model="form.father_daughter"
+                      type="text"
+                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      placeholder="Second Dance"
+                    >
+                  </p>
+                </div>  
+                <div
+                  v-if="form.event_type_id === 1"
+                  class="createEventInput"
+                >
+                  <p class="text-gray-600">
+                    <label for="father_daughter">Mother / Groom Dance:</label>
+                  </p>
+                  <p>
+                    <input
+                      id="secondDance"
+                      v-model="form.mother_groom"
+                      type="text"
+                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      placeholder="Second Dance"
+                    >
+                  </p>
+                </div>                                  
+                <div
+                  v-if="form.event_type_id === 1"
+                  class="createEventInput"
+                >
+                  <p class="text-gray-600">
+                    <label for="moneyDance">Money Dance</label>
+                  </p>
+                  <p>
+                    <input
+                      id="moneyDance"
+                      v-model="form.money_dance"
+                      type="text"
+                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      placeholder="Money Dance"
+                    >
+                  </p>
+                </div>      
+                <div
+                  
+                  class="createEventInput"
+                >
+                  <p class="text-gray-600">
+                    <label for="secondDance">Bouquet / Garter</label>
+                  </p>
+                  <p>
+                    <input
+                      id="bouquetDance"
+                      v-model="form.bouquet_garter"
+                      type="text"
+                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      placeholder="Bouquet Stuff"
+                    >
+                  </p>
+                </div>  
+
+                <div
+                  v-if="form.event_type_id === 1"
+                  class="createEventInput"
+                >
+                  <p class="text-gray-600">
+                    Second Line
+                  </p>
+                  <p>
+                    <input
+                      v-model="form.second_line"
+                      type="checkbox"
+                    >
+                  </p>
+                </div> 
+              </div>
+              <div class="section">
+                <SectionTitle
+                  :number="2"
+                  :title="'Venue Information'"
+                />
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    <label for="eventType">Production</label>
+                  </p>
+                  <div>
+                    <div class="mb-4">
+                      <select
+                        v-model="form.production_needed"
+                        class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded"
+                      >
+                        <option :value="1">
+                          Provided by band
+                        </option>
+                        <option :value="0">
+                          Provided by venue
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+                </div>      
+                <div
+                  v-if="form.event_type_id == 3 || form.event_type_id === 6"
+                  class="createEventInput"
+                >
+                  <p class="text-gray-600">
+                    Backline Provided
+                  </p>
+                  <p>
+                    <input
+                      v-model="form.backline_provided"
+                      type="checkbox"
+                    >
+                  </p>
+                </div>       
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    Contacts
+                  </p>
+                  <div>
+                    <ul
+                      v-for="contact in form.event_contacts"
+                      :key="contact.id"
+                      class="hover:bg-gray-100 cursor-pointer"
+                      @click="form.event_contacts.forEach(tempContact=>tempContact.editing = false); if(!contact.editing){ contact.editing = true }"
+                    >
+                      <li v-if="!contact.editing">
+                        Name: {{ contact.name }}
+                      </li>
+                      <li v-if="!contact.editing">
+                        Phone: {{ contact.phonenumber }}
+                      </li>
+                      <li v-if="!contact.editing">
+                        Email: {{ contact.email }}
+                      </li>
+                      <li v-if="contact.editing">
+                        Name: <input
+                          v-model="contact.name"
+                          :class="inputClass"
+                          required
+                          type="text"
+                        >
+                      </li>
+                      <li v-if="contact.editing">
+                        Phone: <input
+                          v-model="contact.phonenumber"
+                          :class="inputClass"
+                          type="tel"
+                        >
+                      </li>
+                      <li v-if="contact.editing">
+                        Email: <input
+                          v-model="contact.email"
+                          :class="inputClass"
+                          type="email"
+                        >
+                      </li>
+                      <li v-if="contact.editing">
+                        <button-component
+                          :type="'button'"
+                          @click.stop="updateContact(contact)"
+                        >
+                          Save
+                        </button-component>
+                        <button-component
+                          :type="'button'"
+                          @click.stop="contact.editing = false"
+                        >
+                          Cancel
+                        </button-component>
+                        <button-component
+                          :type="'button'"
+                          @click.stop="removeContact(contact)"
+                        >
+                          Delete
+                        </button-component>
+                      </li>
+                    </ul>
+                    <ul v-if="showCreateNewContact">
+                      <li>
+                        Name: <input
+                          v-model="newContact.name"
+                          :class="inputClass"
+                          required
+                          type="text"
+                        >
+                      </li>
+                      <li>
+                        Phone: <input
+                          v-model="newContact.phonenumber"
+                          :class="inputClass"
+                          type="tel"
+                        >
+                      </li>
+                      <li>
+                        Email: <input
+                          v-model="newContact.email"
+                          :class="inputClass"
+                          type="email"
+                        >
+                      </li>
+                    </ul>
+                    <button-component
+                      v-if="!showCreateNewContact"
+                      :type="'button'"
+                      @click="showCreateNewContact = true"
+                    >
+                      Create New
+                    </button-component>
+                    <button-component
+                      v-if="showCreateNewContact"
+                      :type="'button'"
+                      @click="showCreateNewContact = false"
+                    >
+                      Cancel
+                    </button-component>
+                    <button-component
+                      v-if="showCreateNewContact"
+                      :type="'button'"
+                      @click="saveContact"
+                    >
+                      Save
+                    </button-component>
+                  </div>
+                </div>  
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    Venue Name
+                  </p>
+                  <p>
+                    <input
+                      v-model="form.venue_name"
+                      type="text"
+                      placeholder="Venue Name"
+                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      @input="unsavedChanges=true"
+                      @keyup="autoComplete()"
+                    >
+                    <ul class="">
+                      <li
+                        v-for="(result,index) in searchResults"
+                        :key="index"
+                        class="border-black my-4 p-4 bg-gray-200 hover:bg-gray-300 cursor-pointer"
+                        @click="getLocationDetails(result.place_id); form.venue_name = result.structured_formatting.main_text; searchResults = null"
+                      >
+                        {{ result.description }}
+                      </li>
+                    </ul>
+                  </p>
+                </div>
+  
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    <label for="streetAddress">Street Address</label>
+                  </p>
+                  <p>
+                    <input
+                      id="streetAddress"
+                      v-model="form.address_street"
+                      type="text"
+                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      placeholder="P. Sherman, 42"
+                    >
+                  </p>
+                </div>       
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    <label for="zipCode">Zip Code</label>
+                  </p>
+                  <p>
+                    <input
+                      id="zipCode"
+                      v-model="form.zip"
+                      type="text"
+                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      placeholder="70506"
+                    >
+                  </p>
+                </div>     
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    <label for="zipCode">City</label>
+                  </p>
+                  <p>
+                    <input
+                      id="city"
+                      v-model="form.city"
+                      type="text"
+                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      placeholder="Townsville"
+                    >
+                  </p>
+                </div>                                 
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    <label for="state">State</label>
+                  </p>
+                  <p>
+                    <select
+                      id="grid-state"
+                      v-model="form.state_id"
+                      class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded"
+                    >
+                      <option
+                        v-for="state in states"
+                        :key="state.state_id"
+                        :value="state.state_id"
+                      >
+                        {{ state.state_name }}
+                      </option>
+                    </select>                                        
+                  </p>
+                </div>  
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    Outside
+                  </p>
+                  <p>
+                    <input
+                      v-model="form.outside"
+                      type="checkbox"
+                    >
+                  </p>
+                </div> 
+              </div>
+              <div class="section">
+                <SectionTitle
+                  :number="3"
+                  :title="'Band Notes'"
+                />
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    Notes
+                  </p>
+                  <p>
+                    <Editor
+                      v-model="form.notes"
+                      editor-style="height: 320px"
+                    />
+                  </p>
+                </div>                                                                                                                                                                                                                                                                                                                                    
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    Color
+                  </p>
+                  <p>
+                    <Editor
+                      v-model="form.colorway_text"
+                      editor-style="height: 150px"
+                    />
                   <!-- <select
                     id="colorway"
                     v-model="form.colorway_id"
@@ -439,177 +514,139 @@
                       {{ color.color_title }}
                     </option>
                   </select>  -->
-                </p>
+                  </p>
+                </div>
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    Lodging Required
+                  </p>
+                  <p>
+                    <input
+                      v-model="form.lodging"
+                      type="checkbox"
+                    >
+                  </p>
+                </div>
               </div>
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  Event Date
-                </p>
-                <p>
-                  <calendar
-                    v-model="form.event_time"
-                    @date-select="setDate()"
-                  />
-                </p>
+
+
+              <div class="section">
+                <SectionTitle
+                  :number="4"
+                  :title="'Load in Times'"
+                />
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    Show Time
+                  </p>
+                  <p>
+                    <calendar
+                      v-model="form.event_time"
+                      :show-time="true"
+                      :time-only="true"
+                      hour-format="12"
+                      @date-select="setDate()"
+                    />
+                  </p>
+                </div>
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    Quiet Time
+                  </p>
+                  <p>
+                    <calendar
+                      v-model="form.quiet_time"
+                      :step-minute="15"
+                      :show-time="true"
+                      :time-only="true"
+                      hour-format="12"
+                    />
+                  </p>
+                </div>   
+                <div
+                  v-if="form.event_type_id === 1"
+                  class="createEventInput"
+                >
+                  <p class="text-gray-600">
+                    Ceremony Time
+                  </p>
+                  <p>
+                    <calendar
+                      v-model="form.ceremony_time"
+                      :step-minute="15"
+                      :show-time="true"
+                      :time-only="true"
+                      hour-format="12"
+                    />
+                    On Site: <input
+                      v-model="form.onsite"
+                      type="checkbox"
+                    >
+                  </p>
+                </div>                               
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    End Time
+                  </p>
+                  <p>
+                    <calendar
+                      v-model="form.end_time"
+                      :step-minute="15"
+                      :show-time="true"
+                      :time-only="true"
+                      hour-format="12"
+                    />
+                  </p>
+                </div>   
+                <div
+                  v-if="form.production_needed"
+                  class="createEventInput"
+                >
+                  <p class="text-gray-600">
+                    Production Load In Time
+                  </p>
+                  <p>
+                    <calendar
+                      v-model="form.production_loadin_time"
+                      :step-minute="15"
+                      :show-time="true"
+                      :time-only="true"
+                      hour-format="12"
+                    />
+                  </p>
+                </div>  
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    Rhythm Load In Time
+                  </p>
+                  <p>
+                    <calendar
+                      v-model="form.rhythm_loadin_time"
+                      :step-minute="15"
+                      :show-time="true"
+                      :time-only="true"
+                      hour-format="12"
+                    />
+                  </p>
+                </div>                                                                 
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    Band Load In Time
+                  </p>
+                  <p>
+                    <calendar
+                      v-model="form.band_loadin_time"
+                      :step-minute="15"
+                      :show-time="true"
+                      :time-only="true"
+                      hour-format="12"
+                    />
+                  </p>
+                </div>                
               </div>
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  Show Time
-                </p>
-                <p>
-                  <calendar
-                    v-model="form.event_time"
-                    :show-time="true"
-                    :time-only="true"
-                    hour-format="12"
-                    @date-select="setDate()"
-                  />
-                </p>
-              </div>
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  Quiet Time
-                </p>
-                <p>
-                  <calendar
-                    v-model="form.quiet_time"
-                    :step-minute="15"
-                    :show-time="true"
-                    :time-only="true"
-                    hour-format="12"
-                  />
-                </p>
-              </div>   
-              <div
-                v-if="form.event_type_id === 1"
-                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
-              >
-                <p class="text-gray-600">
-                  Ceremony Time
-                </p>
-                <p>
-                  <calendar
-                    v-model="form.ceremony_time"
-                    :step-minute="15"
-                    :show-time="true"
-                    :time-only="true"
-                    hour-format="12"
-                  />
-                  On Site: <input
-                    v-model="form.onsite"
-                    type="checkbox"
-                  >
-                </p>
-              </div>                               
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  End Time
-                </p>
-                <p>
-                  <calendar
-                    v-model="form.end_time"
-                    :step-minute="15"
-                    :show-time="true"
-                    :time-only="true"
-                    hour-format="12"
-                  />
-                </p>
-              </div>   
-              <div
-                v-if="form.production_needed"
-                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
-              >
-                <p class="text-gray-600">
-                  Production Load In Time
-                </p>
-                <p>
-                  <calendar
-                    v-model="form.production_loadin_time"
-                    :step-minute="15"
-                    :show-time="true"
-                    :time-only="true"
-                    hour-format="12"
-                  />
-                </p>
-              </div>  
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  Rhythm Load In Time
-                </p>
-                <p>
-                  <calendar
-                    v-model="form.rhythm_loadin_time"
-                    :step-minute="15"
-                    :show-time="true"
-                    :time-only="true"
-                    hour-format="12"
-                  />
-                </p>
-              </div>                                                                 
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  Band Load In Time
-                </p>
-                <p>
-                  <calendar
-                    v-model="form.band_loadin_time"
-                    :step-minute="15"
-                    :show-time="true"
-                    :time-only="true"
-                    hour-format="12"
-                  />
-                </p>
-              </div>                
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  Public
-                </p>
-                <p>
-                  <input
-                    v-model="form.public"
-                    type="checkbox"
-                  >
-                </p>
-              </div>       
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  Lodging Required
-                </p>
-                <p>
-                  <input
-                    v-model="form.lodging"
-                    type="checkbox"
-                  >
-                </p>
-              </div>  
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  Outside
-                </p>
-                <p>
-                  <input
-                    v-model="form.outside"
-                    type="checkbox"
-                  >
-                </p>
-              </div>     
-              <div
-                v-if="form.event_type_id === 1"
-                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
-              >
-                <p class="text-gray-600">
-                  Second Line
-                </p>
-                <p>
-                  <input
-                    v-model="form.second_line"
-                    type="checkbox"
-                  >
-                </p>
-              </div>                                                                                                                                             
             </div>
           </div>
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between mt-8">
             <button
               class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
               type="submit"
@@ -640,16 +677,13 @@
 
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
-    import Datepicker from 'vue3-datepicker'
-    import VueTimepicker from 'vue3-timepicker'
-    import 'vue3-timepicker/dist/VueTimepicker.css'
     import ButtonComponent from '@/Components/Button'
-    import CurrencyInput from '@/Components/CurrencyInput'
     import moment from 'moment';
+    import SectionTitle from './CreateSectionTitle.vue';
     
     export default {
         components: {
-            BreezeAuthenticatedLayout,Datepicker,VueTimepicker,ButtonComponent,CurrencyInput
+            BreezeAuthenticatedLayout,ButtonComponent,SectionTitle
         },
         props:['event','eventTypes','bands','states','errors'], 
         data(){
@@ -835,3 +869,15 @@
         }
     }
 </script>
+
+<style lang="postcss" scoped>
+.section{
+  @apply bg-gray-100 shadow-lg rounded-lg p-4;
+}
+.createEventInput:last-child{
+  @apply border-none
+}
+.createEventInput{
+  @apply md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b
+}
+</style>
