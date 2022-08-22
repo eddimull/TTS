@@ -28,6 +28,21 @@ mix.js('resources/js/app.js', 'public/js')
         }
     })
     mix.webpackConfig({
+        module: {
+            rules: [
+              {
+                test: /\.postcss$/,
+                use: [
+                    'vue-style-loader',
+                    {
+                      loader: 'css-loader',
+                      options: { importLoaders: 1 }
+                    },
+                    'postcss-loader'
+                ]
+              }
+            ]
+          },
         devServer: {
           https: {
             key: fs.readFileSync('./ssl/privkey.pem'),

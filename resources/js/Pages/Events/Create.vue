@@ -18,7 +18,7 @@
           class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4"
           @submit.prevent="createEvent"
         >
-          <div class="bg-white w-full rounded-lg shadow-xl">
+          <div class="flex flex-col gap-8">
             <div class="p-4 border-b">
               <h2 class="text-2xl ">
                 Event Information
@@ -27,8 +27,14 @@
                 Event name/type/load in etc. 
               </p>
             </div>
-            <div>
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+
+
+            <div class="section">
+              <SectionTitle
+                :number="1"
+                :title="'Initial Information'"
+              />
+              <div class="createEventInput">
                 <p class="text-gray-600">
                   <label for="name">Band</label>
                 </p>
@@ -49,7 +55,7 @@
                   </select>
                 </div>
               </div>
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+              <div class="createEventInput">
                 <p class="text-gray-600">
                   <label for="name">Name</label>
                 </p>
@@ -64,7 +70,7 @@
                   >
                 </div>
               </div>
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+              <div class="createEventInput">
                 <p class="text-gray-600">
                   Event Date
                 </p>
@@ -76,7 +82,7 @@
                   />
                 </p>
               </div>
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+              <div class="createEventInput">
                 <p class="text-gray-600">
                   <label for="eventType">Event Type</label>
                 </p>
@@ -97,69 +103,29 @@
                   </select>
                 </div>
               </div>
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+              <div class="createEventInput">
                 <p class="text-gray-600">
-                  <label for="eventType">Production</label>
-                </p>
-                <div>
-                  <div class="mb-4">
-                    <select
-                      v-model="form.production_needed"
-                      class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded"
-                    >
-                      <option :value="true">
-                        Provided by band
-                      </option>
-                      <option :value="false">
-                        Provided by venue
-                      </option>
-                    </select>
-                  </div>
-                </div>
-              </div>      
-              <div
-                v-if="form.event_type_id == 3 || form.event_type_id === 6"
-                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
-              >
-                <p class="text-gray-600">
-                  Backline Provided
+                  Public
                 </p>
                 <p>
                   <input
-                    v-model="form.backline_provided"
+                    v-model="form.public"
                     type="checkbox"
                   >
                 </p>
-              </div>                          
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  Venue Name
-                </p>
-                <p>
-                  <input
-                    v-model="form.venue_name"
-                    type="text"
-                    placeholder="Venue Name"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    @input="unsavedChanges=true"
-                    @keyup="autoComplete()"
-                  >
-                                    
-                  <ul class="">
-                    <li
-                      v-for="(result,index) in searchResults"
-                      :key="index"
-                      class="border-black my-4 p-4 bg-gray-200 hover:bg-gray-300 cursor-pointer"
-                      @click="getLocationDetails(result.place_id); form.venue_name = result.structured_formatting.main_text; searchResults = null"
-                    >
-                      {{ result.description }}
-                    </li>
-                  </ul>
-                </p>
-              </div>
+              </div> 
+            </div>
+
+            <div
+              v-if="form.event_type_id === 1"
+              class="section"
+            >
+              <SectionTitle
+                :number="'1a'"
+                :title="'Wedding Information'"
+              />
               <div
-                v-if="form.event_type_id === 1"
-                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
+                class="createEventInput"
               >
                 <p class="text-gray-600">
                   <label for="firstDance">First Dance</label>
@@ -175,8 +141,7 @@
                 </p>
               </div>
               <div
-                v-if="form.event_type_id === 1"
-                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
+                class="createEventInput"
               >
                 <p class="text-gray-600">
                   <label for="father_daughter">Father / Daughter Dance:</label>
@@ -192,8 +157,7 @@
                 </p>
               </div>  
               <div
-                v-if="form.event_type_id === 1"
-                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
+                class="createEventInput"
               >
                 <p class="text-gray-600">
                   <label for="father_daughter">Mother / Groom Dance:</label>
@@ -209,8 +173,7 @@
                 </p>
               </div>                                 
               <div
-                v-if="form.event_type_id === 1"
-                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
+                class="createEventInput"
               >
                 <p class="text-gray-600">
                   <label for="moneyDance">Money Dance</label>
@@ -226,8 +189,7 @@
                 </p>
               </div>      
               <div
-                v-if="form.event_type_id === 1"
-                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
+                class="createEventInput"
               >
                 <p class="text-gray-600">
                   <label for="secondDance">Bouquet / Garter</label>
@@ -241,70 +203,174 @@
                     placeholder="Bouquet Stuff"
                   >
                 </p>
-              </div>    
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+              </div> 
+              <div
+                class="createEventInput"
+              >
                 <p class="text-gray-600">
-                  <label for="streetAddress">Street Address</label>
+                  Second Line
                 </p>
                 <p>
                   <input
-                    id="streetAddress"
-                    v-model="form.address_street"
-                    type="text"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="P. Sherman, 42"
+                    v-model="form.second_line"
+                    type="checkbox"
                   >
-                </p>
-              </div>          
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  <label for="zipCode">City</label>
-                </p>
-                <p>
-                  <input
-                    id="city"
-                    v-model="form.city"
-                    type="text"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="Townsville"
-                  >
-                </p>
-              </div>                                 
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  <label for="state">State</label>
-                </p>
-                <p>
-                  <select
-                    id="stateDropdown"
-                    v-model="form.state_id"
-                    class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded"
-                  >
-                    <option
-                      v-for="state in states"
-                      :key="state.state_id"
-                      :value="state.state_id"
-                    >
-                      {{ state.state_name }}
-                    </option>
-                  </select>                                        
                 </p>
               </div>   
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  <label for="zipCode">Zip Code</label>
-                </p>
-                <p>
-                  <input
-                    id="zipCode"
-                    v-model="form.zip"
-                    type="text"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="70506"
-                  >
-                </p>
-              </div>                                  
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+            </div>
+
+            <div class="section">
+              <SectionTitle
+                :number="2"
+                :title="'Venue Information'"
+              />
+              <div>
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    <label for="eventType">Production</label>
+                  </p>
+                  <div>
+                    <div class="mb-4">
+                      <select
+                        v-model="form.production_needed"
+                        class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded"
+                      >
+                        <option :value="true">
+                          Provided by band
+                        </option>
+                        <option :value="false">
+                          Provided by venue
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+                </div>      
+                <div
+                  v-if="form.event_type_id == 3 || form.event_type_id === 6"
+                  class="createEventInput"
+                >
+                  <p class="text-gray-600">
+                    Backline Provided
+                  </p>
+                  <p>
+                    <input
+                      v-model="form.backline_provided"
+                      type="checkbox"
+                    >
+                  </p>
+                </div>                          
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    Venue Name
+                  </p>
+                  <p>
+                    <input
+                      v-model="form.venue_name"
+                      type="text"
+                      placeholder="Venue Name"
+                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      @input="unsavedChanges=true"
+                      @keyup="autoComplete()"
+                    >
+                                    
+                    <ul class="">
+                      <li
+                        v-for="(result,index) in searchResults"
+                        :key="index"
+                        class="border-black my-4 p-4 bg-gray-200 hover:bg-gray-300 cursor-pointer"
+                        @click="getLocationDetails(result.place_id); form.venue_name = result.structured_formatting.main_text; searchResults = null"
+                      >
+                        {{ result.description }}
+                      </li>
+                    </ul>
+                  </p>
+                </div>
+ 
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    <label for="streetAddress">Street Address</label>
+                  </p>
+                  <p>
+                    <input
+                      id="streetAddress"
+                      v-model="form.address_street"
+                      type="text"
+                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      placeholder="P. Sherman, 42"
+                    >
+                  </p>
+                </div>          
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    <label for="zipCode">City</label>
+                  </p>
+                  <p>
+                    <input
+                      id="city"
+                      v-model="form.city"
+                      type="text"
+                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      placeholder="Townsville"
+                    >
+                  </p>
+                </div>                                 
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    <label for="state">State</label>
+                  </p>
+                  <p>
+                    <select
+                      id="stateDropdown"
+                      v-model="form.state_id"
+                      class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded"
+                    >
+                      <option
+                        v-for="state in states"
+                        :key="state.state_id"
+                        :value="state.state_id"
+                      >
+                        {{ state.state_name }}
+                      </option>
+                    </select>                                        
+                  </p>
+                </div>   
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    <label for="zipCode">Zip Code</label>
+                  </p>
+                  <p>
+                    <input
+                      id="zipCode"
+                      v-model="form.zip"
+                      type="text"
+                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                      placeholder="70506"
+                    >
+                  </p>
+                </div> 
+                
+                <div class="createEventInput">
+                  <p class="text-gray-600">
+                    Outdoors
+                  </p>
+                  <p>
+                    <input
+                      v-model="form.outdoors"
+                      type="checkbox"
+                    >
+                  </p>
+                </div>
+              </div>     
+            </div>
+
+
+
+            <div class="section">  
+              <SectionTitle
+                :number="3"
+                :title="'Band Notes'"
+              />                          
+              <div class="createEventInput">
                 <p class="text-gray-600">
                   Notes
                 </p>
@@ -315,7 +381,7 @@
                   />
                 </p>
               </div>                                                                                                                                                                                                                                                                                                                                    
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
+              <div class="createEventInput">
                 <p class="text-gray-600">
                   Color
                 </p>
@@ -324,30 +390,38 @@
                     v-model="form.colorway_text"
                     editor-style="height: 150px"
                   />    
-                  <!-- <select
-                    id="colorway"
-                    v-model="form.colorway_id"
-                    class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded"
-                  >
-                    <option
-                      v-for="color in colors"
-                      :key="color.id"
-                      :value="color.id"
-                    >
-                      {{ color.color_title }}
-                    </option>
-                  </select>  -->
                 </p>
               </div>
+              <div class="createEventInput">
+                <p class="text-gray-600">
+                  Lodging Provided
+                </p>
+                <p>
+                  <input
+                    v-model="form.lodging"
+                    type="checkbox"
+                  >
+                </p>
+              </div>  
+            </div>
 
+            
+            <div
+              v-if="form.event_time !== ''"
+              class="section"
+            >
+              <SectionTitle
+                :number="4"
+                :title="'Load in times'"
+              />
               <transition
                 name="slide-down"
                 appear
               >
-                <div v-if="form.event_time !== ''">
+                <div>
                   <div
                     v-if="form.event_time !== ''"
-                    class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
+                    class="createEventInput"
                   >
                     <p class="text-gray-600">
                       Show Time
@@ -364,7 +438,7 @@
                   </div>
                   <div
                     v-if="form.event_time !== ''"
-                    class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
+                    class="createEventInput"
                   >
                     <p class="text-gray-600">
                       End Time
@@ -382,7 +456,7 @@
                   </div>   
                   <div
                     v-if="form.event_type_id === 1 && form.event_time !== ''"
-                    class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
+                    class="createEventInput"
                   >
                     <p class="text-gray-600">
                       Ceremony Time
@@ -404,7 +478,7 @@
                   </div>                                               
                   <div
                     v-if="form.event_time !== ''"
-                    class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
+                    class="createEventInput"
                   >
                     <p class="text-gray-600">
                       Quiet Time                                        
@@ -445,7 +519,7 @@
                   </div>                           
                   <div
                     v-if="form.event_time !== '' && form.production_needed"
-                    class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
+                    class="createEventInput"
                   >
                     <p class="text-gray-600">
                       Production Load In Time
@@ -463,7 +537,7 @@
                   </div>  
                   <div
                     v-if="form.event_time !== ''"
-                    class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
+                    class="createEventInput"
                   >
                     <p class="text-gray-600">
                       Rhythm Load In Time
@@ -481,7 +555,7 @@
                   </div>                                                                 
                   <div
                     v-if="form.event_time !== ''"
-                    class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
+                    class="createEventInput"
                   >
                     <p class="text-gray-600">
                       Band Load In Time
@@ -498,57 +572,10 @@
                     </p>
                   </div>
                 </div>   
-              </transition>           
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  Public
-                </p>
-                <p>
-                  <input
-                    v-model="form.public"
-                    type="checkbox"
-                  >
-                </p>
-              </div>       
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  Lodging Required
-                </p>
-                <p>
-                  <input
-                    v-model="form.lodging"
-                    type="checkbox"
-                  >
-                </p>
-              </div>  
-              <div class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b">
-                <p class="text-gray-600">
-                  Outdoors
-                </p>
-                <p>
-                  <input
-                    v-model="form.outdoors"
-                    type="checkbox"
-                  >
-                </p>
-              </div>     
-              <div
-                v-if="form.event_type_id === 1"
-                class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
-              >
-                <p class="text-gray-600">
-                  Second Line
-                </p>
-                <p>
-                  <input
-                    v-model="form.second_line"
-                    type="checkbox"
-                  >
-                </p>
-              </div>                                                                                                                                            
+              </transition>
             </div>
           </div>
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-center mt-8 mb-4">
             <button
               class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
               type="submit"
@@ -564,15 +591,12 @@
 
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
-    import Datepicker from 'vue3-datepicker'
     import moment from 'moment'
-    import VueTimepicker from 'vue3-timepicker'
-    import 'vue3-timepicker/dist/VueTimepicker.css'
-    
+    import SectionTitle from './CreateSectionTitle.vue';
 
     export default {
         components: {
-            BreezeAuthenticatedLayout,Datepicker,VueTimepicker
+            BreezeAuthenticatedLayout,SectionTitle
         },
         props:['eventTypes','bands','states','errors'],
         data(){
@@ -732,7 +756,7 @@
         }
     }
 </script>
-<style scoped>
+<style lang="postcss" scoped>
 .fade-enter-active, .fade-leave-active {
   transition: opacity .5s;
 }
@@ -750,5 +774,15 @@
 .slide-down-enter-from, .slide-down-leave-to
 /* .slide-fade-leave-active below version 2.1.8 */ {
   transform: translateY(-50px);
+}
+
+.section{
+  @apply bg-gray-100 shadow-lg rounded-lg p-4;
+}
+.createEventInput:last-child{
+  @apply border-none
+}
+.createEventInput{
+  @apply md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b
 }
 </style>
