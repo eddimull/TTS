@@ -18,7 +18,7 @@ class ProposalPayments extends Model
 
     protected $guarded = [];
 
-    protected $with = ['proposal:id,name,key'];
+    protected $with = ['proposal:id,name,key,band_id,author_id'];
     protected $appends = ['formattedPaymentDate','formattedPaymentAmount'];
     protected $table = 'payments';
 
