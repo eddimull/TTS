@@ -27,82 +27,104 @@
               v-for="band in bandsAndProposals"
               :key="band.id"
             >
-              <span class="font-semibold">{{ band.name }}</span>
-
-              <DataTable
-                v-model:filters="filters1"
-                :value="band.proposals"
-                responsive-layout="scroll"
-                selection-mode="single" 
-                :paginator="true"
-                :rows="10"
-                :rows-per-page-options="[10,20,50]"
-                :global-filter-fields="['name','date','phase.name']"
-                filter-display="menu"
-                @rowSelect="selectProposal"
-              >
-                <template #header>
-                  <div class="flex flex-row">
-                    <div class="hidden md:flex">
-                      <Button
-                        class="p-button-outlined"
-                        type="button"
-                        icon="pi pi-filter-slash"
-                        label="Clear"
-                        @click="clearFilter1()"
-                      />
-                    </div>
-                    <span class="p-input-icon-left">
-                      <i class="pi pi-search" />
-                      <InputText
-                        v-model="filters1['global'].value"
-                        placeholder="Keyword Search"
-                      />
-                    </span>
-                    <div class="flex-grow mt-2">
-                      <div class="flex justify-end content-between">
-                        <label
-                          for="switch"
-                          class="mr-2"
-                        >Completed</label>
-                        <InputSwitch
-                          id="switch"
-                          v-model="filters1['phase_id'].value"
-                          class="float-right"
-                          :true-value="6"
-                          :false-value="null"
+              <div class="flex justify-between">
+                <div class="flex items-center">
+                  <span class="font-semibold display:block">{{ band.name }}</span>
+                </div>
+                <div class="display:block">
+                  <button
+                    type="button"
+                    class="self-center bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline m-10 p-5"
+                    @click="toggleCreateModal(band.site_name)"
+                  >
+                    Draft Proposal
+                  </button>
+                </div>
+              </div>
+              <div>
+                <DataTable
+                  v-model:filters="filters1"
+                  :value="band.proposals"
+                  responsive-layout="scroll"
+                  selection-mode="single" 
+                  :paginator="true"
+                  :rows="10"
+                  :rows-per-page-options="[10,20,50]"
+                  :global-filter-fields="['name','date','phase.name']"
+                  filter-display="menu"
+                  @rowSelect="selectProposal"
+                >
+                  <template #header>
+                    <div class="flex flex-row">
+                      <div class="hidden md:flex">
+                        <Button
+                          class="p-button-outlined"
+                          type="button"
+                          icon="pi pi-filter-slash"
+                          label="Clear"
+                          @click="clearFilter1()"
                         />
                       </div>
+                      <span class="p-input-icon-left">
+                        <i class="pi pi-search" />
+                        <InputText
+                          v-model="filters1['global'].value"
+                          placeholder="Keyword Search"
+                        />
+                      </span>
+                      <div class="flex-grow mt-2">
+                        <div class="flex justify-end content-between">
+                          <label
+                            for="switch"
+                            class="mr-2"
+                          >Completed</label>
+                          <InputSwitch
+                            id="switch"
+                            v-model="filters1['phase_id'].value"
+                            class="float-right"
+                            :true-value="6"
+                            :false-value="null"
+                          />
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </template>
-                <template #empty>
-                  No Proposals.
-                </template>
-                <Column
-                  field="name"
-                  filter-field="name"
-                  header="Name"
-                  :sortable="true"
-                />
-                <Column
-                  field="formattedDraftDate"
-                  header="Draft Date"
-                  sortable
-                />
-                <Column
-                  field="date"
-                  filter-field="date"
-                  header="Performance Date"
-                  :sortable="true"
-                />
-                <Column
-                  field="phase.name"
-                  filter-field="phase.name"
-                  header="Phase"
-                  :sortable="true"
-                />
-              </DataTable>
+                  </template>
+                  <template #empty>
+                    No Proposals.
+                  </template>
+                  <Column
+                    field="name"
+                    filter-field="name"
+                    header="Name"
+                    :sortable="true"
+                  />
+                  <Column
+                    field="formattedDraftDate"
+                    header="Draft Date"
+                    sortable
+                  >
+                    <template #body="slotProps">
+                      {{ parseDate(slotProps.data.formattedDraftDate) }}
+                    </template>
+                  </Column>
+                  <Column
+                    field="date"
+                    filter-field="date"
+                    header="Performance Date"
+                    :sortable="true"
+                  >
+                    <template #body="slotProps">
+                      {{ parseDate(slotProps.data.date) }}
+                    </template>
+                  </Column>
+                  <Column
+                    field="phase.name"
+                    filter-field="phase.name"
+                    header="Phase"
+                    :sortable="true"
+                  />
+                </DataTable>
+              </div>
               <div class="flex justify-center items-center my-4">
                 <button
                   type="button"
@@ -654,7 +676,9 @@ import Label from '../../Components/Label.vue';
                 });
                 
             },
-            
+            parseDate(date){
+                return moment(date).format('YYYY-MM-DD');
+            },
             sendContract(){
                this.loading = true;
                setTimeout(()=>{
