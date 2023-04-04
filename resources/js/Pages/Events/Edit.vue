@@ -82,7 +82,6 @@
                   <p>
                     <calendar
                       v-model="form.event_time"
-                      @date-select="setDate()"
                     />
                   </p>
                 </div>
@@ -545,7 +544,6 @@
                       :show-time="true"
                       :time-only="true"
                       hour-format="12"
-                      @date-select="setDate()"
                     />
                   </p>
                 </div>
