@@ -270,109 +270,128 @@
                     Contacts
                   </p>
                   <div>
-                    <ul
-                      v-for="contact in form.event_contacts"
-                      :key="contact.id"
-                      class="hover:bg-gray-100 cursor-pointer"
-                      @click="form.event_contacts.forEach(tempContact=>tempContact.editing = false); if(!contact.editing){ contact.editing = true }"
-                    >
-                      <li v-if="!contact.editing">
-                        Name: {{ contact.name }}
-                      </li>
-                      <li v-if="!contact.editing">
-                        Phone: {{ contact.phonenumber }}
-                      </li>
-                      <li v-if="!contact.editing">
-                        Email: {{ contact.email }}
-                      </li>
-                      <li v-if="contact.editing">
-                        Name: <input
-                          v-model="contact.name"
-                          :class="inputClass"
-                          required
-                          type="text"
+                    <div v-if="contacts">
+                      <div
+                        v-for="contact in contacts"
+                        :key="contact.id"
+                      >
+                        <ul
+                          class="hover:bg-gray-100 cursor-pointer p-2 border-l-4 border-gray-400 mb-4"
+                          @click="form.event_contacts.forEach(tempContact=>tempContact.editing = false); if(!contact.editing){ contact.editing = true }"
                         >
-                      </li>
-                      <li v-if="contact.editing">
-                        Phone: <input
-                          v-model="contact.phonenumber"
-                          :class="inputClass"
-                          type="tel"
-                        >
-                      </li>
-                      <li v-if="contact.editing">
-                        Email: <input
-                          v-model="contact.email"
-                          :class="inputClass"
-                          type="email"
-                        >
-                      </li>
-                      <li v-if="contact.editing">
+                          <li v-if="!contact.editing">
+                            Name: {{ contact.name }}
+                          </li>
+                          <li v-if="!contact.editing">
+                            Phone: {{ contact.phonenumber }}
+                          </li>
+                          <li v-if="!contact.editing">
+                            Email: {{ contact.email }}
+                          </li>
+                          <li v-if="contact.editing">
+                            Name: <input
+                              v-model="contact.name"
+                              :class="inputClass"
+                              required
+                              type="text"
+                            >
+                          </li>
+                          <li v-if="contact.editing">
+                            Phone: <input
+                              v-model="contact.phonenumber"
+                              :class="inputClass"
+                              type="tel"
+                            >
+                          </li>
+                          <li v-if="contact.editing">
+                            Email: <input
+                              v-model="contact.email"
+                              :class="inputClass"
+                              type="email"
+                            >
+                          </li>
+                          <li
+                            v-if="contact.editing"
+                            class="flex justify-center gap-2 mt-4"
+                          >
+                            <button-component
+                              :type="'button'"
+                              @click.stop="updateContact(contact)"
+                            >
+                              Save
+                            </button-component>
+                            <button-component
+                              :type="'button'"
+                              @click.stop="contact.editing = false"
+                            >
+                              Cancel
+                            </button-component>
+                            <button-component
+                              :type="'button'"
+                              @click.stop="removeContact(contact)"
+                            >
+                              Delete
+                            </button-component>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                    <div v-if="newContact">
+                      <ul v-if="showCreateNewContact">
+                        <li>
+                          Name: <input
+                            v-model="newContact.name"
+                            :class="inputClass"
+                            required
+                            type="text"
+                          >
+                        </li>
+                        <li>
+                          Phone: <input
+                            v-model="newContact.phonenumber"
+                            :class="inputClass"
+                            type="tel"
+                          >
+                        </li>
+                        <li>
+                          Email: <input
+                            v-model="newContact.email"
+                            :class="inputClass"
+                            type="email"
+                          >
+                        </li>
+                      </ul>
+                    </div>
+                    <div>
+                      <div
+                        v-show="!showCreateNewContact"
+                        class="flex justify-center gap-4 my-4"
+                      >
                         <button-component
                           :type="'button'"
-                          @click.stop="updateContact(contact)"
+                          @click="showCreateNewContact = true"
                         >
-                          Save
+                          Create New
                         </button-component>
+                      </div>
+                      <div
+                        v-show="showCreateNewContact"
+                        class="flex justify-center gap-4 my-4"
+                      >
                         <button-component
                           :type="'button'"
-                          @click.stop="contact.editing = false"
+                          @click="showCreateNewContact = false"
                         >
                           Cancel
                         </button-component>
                         <button-component
                           :type="'button'"
-                          @click.stop="removeContact(contact)"
+                          @click="saveContact()"
                         >
-                          Delete
+                          Save
                         </button-component>
-                      </li>
-                    </ul>
-                    <ul v-if="showCreateNewContact">
-                      <li>
-                        Name: <input
-                          v-model="newContact.name"
-                          :class="inputClass"
-                          required
-                          type="text"
-                        >
-                      </li>
-                      <li>
-                        Phone: <input
-                          v-model="newContact.phonenumber"
-                          :class="inputClass"
-                          type="tel"
-                        >
-                      </li>
-                      <li>
-                        Email: <input
-                          v-model="newContact.email"
-                          :class="inputClass"
-                          type="email"
-                        >
-                      </li>
-                    </ul>
-                    <button-component
-                      v-if="!showCreateNewContact"
-                      :type="'button'"
-                      @click="showCreateNewContact = true"
-                    >
-                      Create New
-                    </button-component>
-                    <button-component
-                      v-if="showCreateNewContact"
-                      :type="'button'"
-                      @click="showCreateNewContact = false"
-                    >
-                      Cancel
-                    </button-component>
-                    <button-component
-                      v-if="showCreateNewContact"
-                      :type="'button'"
-                      @click="saveContact"
-                    >
-                      Save
-                    </button-component>
+                      </div>
+                    </div>
                   </div>
                 </div>  
                 <div class="createEventInput">
@@ -679,6 +698,7 @@
     import moment from 'moment';
     import SectionTitle from './CreateSectionTitle.vue';
     
+    
     export default {
         components: {
             BreezeAuthenticatedLayout,ButtonComponent,SectionTitle
@@ -746,6 +766,18 @@
                     outside:this.event.outside ? true : false
                 }
             }
+        },
+        computed:{
+
+          contacts:{
+            get(){
+              return Object.assign([],this.form.event_contacts);
+            },
+            set(value){
+              this.form.event_contacts = value;
+            }
+          },
+          
         },
         created(){
             this.colorsForBand()
@@ -839,14 +871,30 @@
                     })
             },
             saveContact(){
-               this.$inertia.post('/events/createContact/' + this.event.event_key,this.newContact,{preserveScroll:true,onSuccess:(data)=>{
-                //    console.log(data);
-                   this.newContact.name = '';
-                   this.newContact.phonenumber = '';
-                   this.newContact.email = '';
-                   this.showCreateNewContact = false;
-                   this.form.event_contacts = data.props.event.event_contacts;
-               }})
+              axios.post('/events/createContact/' + this.event.event_key,this.newContact).then(data=>{
+                console.log(data.data);
+
+                if(data.data.successMessage)
+                {
+                  this.$page.props.successMessage = data.data.successMessage;
+                  this.form.event_contacts = data.data.contacts;
+                  this.resetContact();
+                }
+              }).catch(error=>{
+                console.log(error.response)
+                  this.$page.props.successMessage = '';
+                  this.$page.props.errors = Object.keys(error.response.data.errors).map(key=>{
+                      return error.response.data.errors[key][0];
+                  });
+              })
+            },
+            resetContact(){
+              this.showCreateNewContact = false;
+              this.newContact = {
+                                  name:'',
+                                  phonenumber:'',
+                                  email:'',
+                                }
             },
             updateContact(contact){
                 // console.log(contact);
