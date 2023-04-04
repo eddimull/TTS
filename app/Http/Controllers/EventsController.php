@@ -406,8 +406,8 @@ class EventsController extends Controller
             'phonenumber'=>$request->phonenumber,
             'name'=>$request->name
         ]);
-
-        return back()->with('successMessage','Added ' . $request->name . ' as contact');
+        $event->refresh();
+        return response()->json(['successMessage'=>'Added ' . $request->name . ' as contact','contacts'=>$event->event_contacts]);
     }
 
 
