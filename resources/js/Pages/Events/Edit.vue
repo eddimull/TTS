@@ -404,15 +404,14 @@
                       type="text"
                       placeholder="Venue Name"
                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                      @input="unsavedChanges=true"
                       @keyup="autoComplete()"
                     >
-                    <ul class="">
+                    <ul v-show="searchResults.length > 0">
                       <li
-                        v-for="(result,index) in searchResults"
-                        :key="index"
+                        v-for="result in searchResults"
+                        :key="result.place_id"
                         class="border-black my-4 p-4 bg-gray-200 hover:bg-gray-300 cursor-pointer"
-                        @click="getLocationDetails(result.place_id); form.venue_name = result.structured_formatting.main_text; searchResults = null"
+                        @click="getLocationDetails(result.place_id); form.venue_name = result.structured_formatting.main_text; searchResults = []"
                       >
                         {{ result.description }}
                       </li>
@@ -707,7 +706,7 @@
         data(){
             return{
                 sessionToken : Math.floor(Math.random() * 1000000000),
-                searchResults:'',
+                searchResults:[],
                 searchTimer: null,
                 showCreateNewContact:false,
                 newContact:{
@@ -815,6 +814,7 @@
                         sessionToken:this.sessionToken,
                         searchParams:this.form.venue_name,
                     }).then((response)=>{
+                        console.log(response.data);
                         this.searchResults = response.data.predictions
                     })
                 },800)
