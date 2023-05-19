@@ -49,13 +49,19 @@ class Kernel extends ConsoleKernel
                 ])
                 ->acceptJson()
                 ->get('https://api.pandadoc.com/public/v1/documents/' . $contract->envelope_id);
-                
+
+                if(!$response->ok()) //don't try to parse failed requests
+                {
+                    continue;
+                }
+
                 if($response['status'] == "document.completed")
                 {
                     $proposal = $contract->proposal;
                     $proposal->phase_id = 6;
                     $proposal->save();
                     $contract->status = 'completed';
+
 
         
                     $opts = array(
