@@ -40,7 +40,7 @@ class Kernel extends ConsoleKernel
         // $schedule->command('inspire')->hourly();
         $schedule->call(function(){
             
-            $contracts = Contracts::where('status','!=','completed')->get();
+            $contracts = Contracts::where('status','!=','completed')->where('created_at','>',Carbon::now()->subMonths(2))->get();
             
             foreach($contracts as $contract)
             {
