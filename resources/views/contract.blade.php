@@ -59,12 +59,6 @@ shall be in form of  <strong>check, money order, Venmo, cashier’s check, invoi
                         </ul>
                     </div>
                     <p class="mb-3">
-                    Artist shall withhold booking fee from the deposit paid by Buyer, and shall release the remainder of
-                    the deposit to Artist following the Performance. In the event Artist shall release
-                    the Artist's compensation from the deposit prior to the performance date, Artist shall be liable to the Buyer for
-                    such amounts if Artist should breach this Contract.
-                    </p>
-                    <p class="mb-3">
                     Buyer shall pay the remaining gross compensation of <span class="font-bold">${{ number_format($proposal['price']/2,2) }}</span> at least ten (10) days before
                     Performance. <strong>If Buyer elects to pay via check, money order, or cashier's check, payment shall be made to
                     {{ $proposal['band']['name'] }} and must be received at least ten (10) days prior to Performance. If Buyer
@@ -117,8 +111,7 @@ shall be in form of  <strong>check, money order, Venmo, cashier’s check, invoi
                                         <p class="mb-3"><span class="underline">Stage, Performance Area, and Size of Event:</span> <br/>Artist shall NOT be required to provide a stage on which to perform, unless otherwise agreed to in writing by
                     Artist and Buyer. Additional fees may be incurred if Artist provides a stage.</p>
                                         <p class="mb-3"><span class="underline">Hospitality</span>:Vendor meals will be provided for Artist at discretion of buyer. TBD Guest(s) of Artist(s) are
-                    permitted. Buyer must provide a dedicated, private space for Artist to dress and otherwise prepare for
-                    Performance. Buyer must provide a case of water for Artist.
+                    permitted. 
                     </p>
                     <p class="mb-3"><span class="underline">Dances</span>: <span class="font-bold underline"> Exact versions must be provided by buyer no later than 30 days prior to the performance.
                     </span> FIRST DANCE, FATHER BRIDE, MOTHER GROOM, MONEY DANCE, GARTER</p>
