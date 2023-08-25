@@ -52,7 +52,7 @@ class BandEvents extends Model
     ];
 
 
-    protected $with = ['band','event_contacts','event_type','state'];
+    protected $with = ['band', 'event_contacts', 'event_type', 'state'];
 
     public function getOldEventAttribute()
     {
@@ -66,33 +66,36 @@ class BandEvents extends Model
 
     public function event_type()
     {
-        return $this->hasOne(EventTypes::class,'id','event_type_id');
+        return $this->hasOne(EventTypes::class, 'id', 'event_type_id');
     }
 
     public function band()
     {
-        return $this->hasOne(Bands::class,'id','band_id');
+        return $this->hasOne(Bands::class, 'id', 'band_id');
     }
 
     public function advanceURL()
     {
-        return config('app.url') . '/events/' . $this->event_key. '/advance';
+        return config('app.url') . '/events/' . $this->event_key . '/advance';
     }
 
     public function colorway()
     {
-        return $this->hasOne(Colorways::class,'id','colorway_id');
+        return $this->hasOne(Colorways::class, 'id', 'colorway_id');
     }
 
     public function state()
     {
-        return $this->hasOne(State::class,'state_id','state_id');
+        return $this->hasOne(State::class, 'state_id', 'state_id');
     }
 
     public function event_contacts()
     {
-        return $this->hasMany(EventContacts::class,'event_id');
+        return $this->hasMany(EventContacts::class, 'event_id');
+    }
+
+    public function getKeyAttribute()
+    {
+        return $this->attributes['event_key']->toString();
     }
 }
-
-
