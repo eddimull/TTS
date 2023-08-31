@@ -6,6 +6,7 @@ use App\Http\Controllers\FinancesController;
 use App\Http\Controllers\InvoicesController;
 use App\Http\Controllers\InvitationsController;
 use App\Http\Controllers\QuestionnaireController;
+use App\Http\Controllers\ProposalsController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Mail\Proposal;
 use App\Mail\WeeklyAdvance;
@@ -99,7 +100,7 @@ Route::group(['prefix'=>'proposals'],function(){
         Route::get('/{proposal:key}/finalize', 'ProposalsController@finalize')->name('proposals.finalize.get');
         Route::post('/{proposal:key}/finalize', 'ProposalsController@finalize')->name('proposals.finalize.post');
         Route::post('/{proposal:key}/sendit', 'ProposalsController@sendIt')->name('proposals.sendIt');
-        Route::post('/{proposal:key}/sendContract', 'ProposalsController@sendContract')->name('proposals.sendContract');
+        Route::post('/{proposal:key}/sendContract', [ProposalsController::class,'sendContract'])->name('proposals.sendContract');
         Route::post('/{proposal:key}/writeToCalendar', 'ProposalsController@writeToCalendar')->name('proposals.writeToCalendar');
         Route::post('/createContact/{proposal:key}', 'ProposalsController@createContact')->name('proposals.createContact');
         Route::post('/editContact/{contact}', 'ProposalsController@editContact')->name('proposals.editContact');

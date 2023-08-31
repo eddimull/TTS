@@ -1,5 +1,7 @@
 <?php
 namespace App\Services;
+
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
@@ -7,13 +9,15 @@ use Illuminate\Support\Str;
 use App\Models\State;
 use App\Models\BandEvents;
 use App\Models\Bands;
+use App\Models\Contracts;
 use Illuminate\Support\Facades\Config;
 use Spatie\GoogleCalendar\Event as CalendarEvent;
 use Illuminate\Support\Facades\Auth;
 use App\Notifications\TTSNotification;
 use App\Models\User;
+use PDF;
 use App\Models\EventContacts;
-
+use App\Models\Proposals;
 
 class ProposalServices
 {
@@ -38,6 +42,7 @@ class ProposalServices
         }
     }
 
+    
     public function writeToCalendar()
     {
         $sessionToken = Str::random();
@@ -145,9 +150,7 @@ class ProposalServices
         {
 
             Config::set('google-calendar.service_account_credentials_json',storage_path('/app/google-calendar/service-account-credentials.json'));
-            Config::set('google-calendar.calendar_id',$band->calendar_id);
-            
-            // dd(Carbon::parse($event->event_time));
+            Config::set('google-calendar.calendar_id',$band->calendar_id);            
 
             if($event->google_calendar_event_id !== null)
             {
@@ -177,18 +180,105 @@ class ProposalServices
         $this->addContactsToEvent($event->id);
 
         return $event;
-        // $editor = Auth::user();
-        // compact($band->owners);
-        // foreach($band->owners as $owner)
-        // {
-        //    $user = User::find($owner->user_id);
-        //    $user->notify(new TTSNotification([
-        //     'text'=>$editor->name . ' added ' . $event->event_name . ' created from proposal',
-        //     'route'=>'events.advance',
-        //     'routeParams'=>$event->event_key,
-        //     'url'=>'/events/' . $event->event_key . '/advance'
-        //     ]));
-        // }
+    }
+
+
+    static function make_pandadoc_contract(Proposals $proposal)
+    {
+        $pdf = PDF::loadView('contract',['proposal'=>$proposal]);
+        $base64PDF = base64_encode($pdf->output());
+        $imagePath = $proposal->band->site_name . '/' . $proposal->name . '_contract_' . time() . '.pdf';
+
+        $path = Storage::disk('s3')->put($imagePath,
+        base64_decode($base64PDF),
+        ['visibility'=>'public']);
+
+        $recipients = [];
+        foreach($proposal->proposal_contacts as $index => $contact)
+        {
+            $fullName = $contact->name;
+            $nameParts = preg_split('/\s+/', $fullName);
+            $firstName = $nameParts[0];
+            $lastName = $nameParts[1];
+
+            $recipients[] = [
+                "email"=> $contact->email,
+                "first_name"=>$firstName,
+                "last_name"=>$lastName,
+                "role"=> "user$index"
+            ];
+        }
+        
+        
+        $body =  [
+            "name"=> "Contract for " . $proposal->band->name . " for " . $proposal->name,
+            "url"=>Storage::disk('s3')->url($imagePath),
+            "tags"=> [
+            "tag_1"
+            ],
+            "recipients"=> $recipients,
+            "fields"=> [  
+                "name"=> [  
+                    "value"=> "",
+                    "role"=> "user"
+                ]
+            ],
+            "parse_form_fields"=> false
+        ];
+
+        
+        
+        $response = Http::withHeaders([
+            'Authorization'=>'API-Key ' . env('PANDADOC_KEY')
+        ])
+        ->acceptJson()
+        ->post('https://api.pandadoc.com/public/v1/documents',$body);
+        
+
+        sleep(5);
+        dd($response);
+        $uploadedDocumentId = $response['id'];
+
+        if($proposal->proposal_contacts[0]->name === 'TESTING')
+        {
+            $sent = true;
+        }
+        else
+        {
+            $sent = Http::withHeaders([
+                'Authorization'=>'API-Key '  . env('PANDADOC_KEY')
+                ])->post('https://api.pandadoc.com/public/v1/documents/' . $uploadedDocumentId . '/send',[
+                    "messsage"=>'Please sign this contract so we can make this official!',
+                    "subject"=>'Contract for ' . $proposal->band->name
+                ]);
+        }
+
+        Contracts::create([
+            'proposal_id'=>$proposal->id,
+            'envelope_id'=>$uploadedDocumentId,
+            'status'=>'sent',
+            'image_url'=>Storage::disk('s3')->url($imagePath)
+        ]);
+
+        return $sent;
+    }
+
+    static function straightToContract(Proposals $proposal)
+    {
+        
+        $sentStatus = self::make_pandadoc_contract($proposal);
+        $proposal->phase_id = 5;
+        $proposal->save();
+        
+        
+        Notification::send($proposal->band->owners, new TTSNotification([
+            'text'=>'A new contract has been created for ' . $proposal->name . '.',
+            'route'=>'proposals',
+            'routeParams'=>'',
+            'url'=>'/proposals'
+        ]));
+        
+        return $sentStatus;
     }
 
 }

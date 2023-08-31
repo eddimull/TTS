@@ -649,6 +649,36 @@ import Label from '../../Components/Label.vue';
             sendIt(){
                 
                 this.loading = true;
+
+                this.$swal.fire({
+                  title: 'Send proposal or Skip to Contract?',
+                  text: 'You can send the contract now or get the proposal accepted first',
+                  icon: 'question',
+                  showDenyButton: true,
+                  showCancelButton: true,
+                  confirmButtonText: 'Send Contract',
+                  denyButtonText: 'Send Proposal',
+                  confirmButtonColor: '#3085d6',
+                  denyButtonColor: '#3085d6',
+                }).then((result) => {
+                  if(result.isDismissed)
+                  {
+                    this.loading = false;
+                    return;
+                  }
+
+
+                  if (result.isConfirmed) {
+                    this.sendContract();
+                  } else {
+                    this.sendProposal();
+                  }
+                })                
+            },
+            parseDate(date){
+                return moment(date).format('YYYY-MM-DD');
+            },
+            sendProposal(){
                 this.$swal.fire({
                     inputLabel: 'Customized message for the proposal email',
                     inputPlaceholder: 'Type your message here...',
@@ -673,11 +703,7 @@ import Label from '../../Components/Label.vue';
                     {
                         this.loading = false;
                     }
-                });
-                
-            },
-            parseDate(date){
-                return moment(date).format('YYYY-MM-DD');
+                })
             },
             sendContract(){
                this.loading = true;
@@ -686,8 +712,7 @@ import Label from '../../Components/Label.vue';
                   this.$inertia.post('/proposals/' + this.activeProposal.key + '/sendContract',{},{
                       onSuccess:()=>{
                           this.activeProposal.phase_id = 5;
-                          this.loading = false;
-                      // this.toggleModal();
+                          this.loading = false;                    
                       }
                   });
               },1000)
