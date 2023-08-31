@@ -40,9 +40,7 @@ class ProposalsController extends Controller
     {
         $user = Auth::user();
 
-        // $bands = $user->bandOwner->with('proposals')->get()->pluck('proposals')->flatten();
-        // $bands = $user->bandOwner();
-        // $band = Bands::with('proposals')->find(1);
+
         $bands = $user->bandOwner;
         $bookedDates = [];
         $proposedDates = [];
@@ -135,13 +133,7 @@ class ProposalsController extends Controller
         compact($proposal->proposal_contacts);
         $eventTypes = EventTypes::all();
         return redirect('/proposals/' . $proposal->key . '/edit');
-        // return Inertia::render('Proposals/Edit',[
-        //     'proposal'=>$proposal,
-        //     'eventTypes'=>$eventTypes,
-        //     'bookedDates'=>$bookedDates,
-        //     'proposedDates'=>$proposedDates,
-        //     'recurringDates'=>$proposal->recurring_dates
-        // ]);
+
     }
 
     /**
@@ -383,95 +375,18 @@ class ProposalsController extends Controller
         }
         
         $this->make_pandadoc_contract($proposal);
-        $proposal->phase_id = 5;
-        $proposal->save();
         return redirect('/proposals/' . $proposal->key . '/accepted')->with('successMessage','Proposal has been accepted. Await a finalized contract');
     }
 
-    public function sendContract(Request $request, Proposals $proposal)
+    public function sendContract(Proposals $proposal)
     {
-        if($proposal->phase_id != 4)
-        {
-            return redirect()->route('proposals')->withErrors('Proposal has not been approved. Cannot send out.');
-        }
-        
-        $this->make_pandadoc_contract($proposal);
-        $proposal->phase_id = 5;
-        $proposal->save();
+        $status = ProposalServices::straightToContract($proposal);
+        dd($status);
         return redirect()->route('proposals')->with('successMessage', $proposal->name . ' contract manually sent!');
     }
+    
     private function make_pandadoc_contract($proposal)
     {
-        $pdf = PDF::loadView('contract',['proposal'=>$proposal]);
-        $base64PDF = base64_encode($pdf->output());
-        $imagePath = $proposal->band->site_name . '/' . $proposal->name . '_contract_' . time() . '.pdf';
-
-        $path = Storage::disk('s3')->put($imagePath,
-        base64_decode($base64PDF),
-        ['visibility'=>'public']);
-
-        $body =  [
-            "name"=> "Contract for " . $proposal->band->name,
-            "url"=>Storage::disk('s3')->url($imagePath),
-            "tags"=> [
-            "tag_1"
-            ],
-        "recipients"=> [  
-            [  
-                "email"=> $proposal->proposal_contacts[0]->email,
-                "first_name"=>$proposal->proposal_contacts[0]->name,
-                "last_name"=>".",
-                "role"=> "user"
-            ]
-        ],
-        "fields"=> [  
-            "name"=> [  
-                "value"=> $proposal->proposal_contacts[0]->name,
-                "role"=> "user"
-            ]
-        ],
-        "parse_form_fields"=> false
-        ];
-
-        
-
-        $response = Http::withHeaders([
-            'Authorization'=>'API-Key ' . env('PANDADOC_KEY')
-        ])
-        ->acceptJson()
-        ->post('https://api.pandadoc.com/public/v1/documents',$body);
-        
-
-        sleep(5);
-        $uploadedDocumentId = $response['id'];
-
-        // $sent = Http::withHeaders([
-        //     'Authorization'=>'API-Key ' . env('PANDADOC_KEY')
-        // ])->post('https://api.pandadoc.com/https://dev.tts.band/pandadocWebhook',[
-        //     "messsage"=>'Please sign this contract so we can make this official!',
-        //     "subject"=>'Contract for ' . $proposal->band->name
-        // ]);
-        if($proposal->proposal_contacts[0]->name === 'TESTING')
-        {
-            $sent = true;
-        }
-        else
-        {
-            $sent = Http::withHeaders([
-                'Authorization'=>'API-Key '  . env('PANDADOC_KEY')
-                ])->post('https://api.pandadoc.com/public/v1/documents/' . $uploadedDocumentId . '/send',[
-                    "messsage"=>'Please sign this contract so we can make this official!',
-                    "subject"=>'Contract for ' . $proposal->band->name
-                ]);
-        }
-
-        Contracts::create([
-            'proposal_id'=>$proposal->id,
-            'envelope_id'=>$uploadedDocumentId,
-            'status'=>'sent',
-            'image_url'=>Storage::disk('s3')->url($imagePath)
-        ]);
-
-        return $sent;
+        return ProposalServices::make_pandadoc_contract($proposal);
     }  
 }
