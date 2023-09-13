@@ -1,6 +1,6 @@
 <?php
 
-use Illuminate\Http\Request;
+use App\Http\Controllers\PandadocWebhookController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\StripeWebhookController;
 
@@ -15,10 +15,7 @@ use App\Http\Controllers\StripeWebhookController;
 |
 */
 
-// Route::middleware('auth:api')->get('/user', function (Request $request) {
-//     return $request->user();
-// });
-
 Route::any('/stripe',[StripeWebhookController::class,'index'])->name('webhook.stripe');
+Route::any('/pandadoc',[PandadocWebhookController::class,'index'])->name('webhook.pandadoc');
 
 

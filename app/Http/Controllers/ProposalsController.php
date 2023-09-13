@@ -381,7 +381,7 @@ class ProposalsController extends Controller
     public function sendContract(Proposals $proposal)
     {
         $status = ProposalServices::straightToContract($proposal);
-        dd($status);
+        
         return redirect()->route('proposals')->with('successMessage', $proposal->name . ' contract manually sent!');
     }
     

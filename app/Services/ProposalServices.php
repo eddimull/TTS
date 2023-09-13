@@ -220,7 +220,7 @@ class ProposalServices
             "fields"=> [  
                 "name"=> [  
                     "value"=> "",
-                    "role"=> "user"
+                    "role"=> "user0"
                 ]
             ],
             "parse_form_fields"=> false
@@ -234,24 +234,25 @@ class ProposalServices
         ->acceptJson()
         ->post('https://api.pandadoc.com/public/v1/documents',$body);
         
+        $response->throw();
 
-        sleep(5);
-        dd($response);
-        $uploadedDocumentId = $response['id'];
+        $data = $response->json();
 
-        if($proposal->proposal_contacts[0]->name === 'TESTING')
-        {
-            $sent = true;
-        }
-        else
-        {
-            $sent = Http::withHeaders([
-                'Authorization'=>'API-Key '  . env('PANDADOC_KEY')
-                ])->post('https://api.pandadoc.com/public/v1/documents/' . $uploadedDocumentId . '/send',[
-                    "messsage"=>'Please sign this contract so we can make this official!',
-                    "subject"=>'Contract for ' . $proposal->band->name
-                ]);
-        }
+        $uploadedDocumentId = $data['id'];
+        
+        // if($proposal->proposal_contacts[0]->name === 'TESTING')
+        // {
+        //     $sent = true;
+        // }
+        // else
+        // {
+        //     $sent = Http::withHeaders([
+        //         'Authorization'=>'API-Key '  . env('PANDADOC_KEY')
+        //         ])->post('https://api.pandadoc.com/public/v1/documents/' . $uploadedDocumentId . '/send',[
+        //             "messsage"=>'Please sign this contract so we can make this official!',
+        //             "subject"=>'Contract for ' . $proposal->band->name
+        //         ]);
+        // }
 
         Contracts::create([
             'proposal_id'=>$proposal->id,
@@ -260,13 +261,13 @@ class ProposalServices
             'image_url'=>Storage::disk('s3')->url($imagePath)
         ]);
 
-        return $sent;
+        return $data;
     }
 
     static function straightToContract(Proposals $proposal)
     {
         
-        $sentStatus = self::make_pandadoc_contract($proposal);
+        $data = self::make_pandadoc_contract($proposal);
         $proposal->phase_id = 5;
         $proposal->save();
         
@@ -278,7 +279,7 @@ class ProposalServices
             'url'=>'/proposals'
         ]));
         
-        return $sentStatus;
+        return $data;
     }
 
 }
