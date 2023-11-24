@@ -56,7 +56,8 @@ class BandEvents extends Model
 
     public function getOldEventAttribute()
     {
-        return Carbon::parse($this->end_time) < Carbon::now();
+        //return dates that are older than today plus a day
+        return Carbon::parse($this->event_time) < Carbon::now()->subDay();
     }
 
     public function getISODateAttribute()
