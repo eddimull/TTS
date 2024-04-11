@@ -16,9 +16,10 @@
             <a
               href="/bands/create"
               class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline m-10 p-5"
-            >Create Band</a>
-            <div class="shadow overflow-hidden rounded border-b border-gray-200">
-              <table class="min-w-full bg-white m-5 rounded">
+            >Create
+              Band</a>
+            <div class="shadow overflow-hidden rounded border-b border-gray-200 flex">
+              <table class="grow bg-white m-5 rounded">
                 <thead class="bg-gray-800 text-white">
                   <tr>
                     <th scope="w-1/3 text-left py-3 uppercase font-semibold text-sm">
@@ -29,12 +30,12 @@
                     </th>
                     <th scope="w-1/3 text-left py-3 uppercase font-semibold text-sm" />
                   </tr>
-                </thead>  
+                </thead>
                 <tbody class="text-gray-700">
                   <tr
                     v-for="band in bands"
                     :key="band.id"
-                    :class="{'bg-gray-100': $index % 2 === 0, 'border-b': $index % 2 !== 0 }"
+                    :class="{ 'bg-gray-100': $index % 2 === 0, 'border-b': $index % 2 !== 0 }"
                   >
                     <td class="w-1/3 text-center py-3 px-4">
                       {{ band.name }}
@@ -43,24 +44,27 @@
                       {{ band.site_name }}
                     </td>
                     <td>
-                      <inertia-link
-                        class="border bg-white hover:bg-blue-500 rounded p-1"
-                        :href="`/bands/${band.id}/edit`"
-                      >
-                        Edit
-                      </inertia-link>
+                      <div class="flex justify-center items-center">
+                        <inertia-link
+                          class="border bg-white hover:bg-blue-500 rounded p-1 px-4 flex no-grow"
+                          :href="`/bands/${band.id}/edit`"
+                        >
+                          Edit
+                        </inertia-link>
+                      </div>
                     </td>
                   </tr>
-                </tbody>  
+                </tbody>
               </table>
             </div>
           </div>
           <div v-else>
-            It looks like you don't have any bands. 
+            It looks like you don't have any bands.
             <a
               href="/bands/create"
               class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-            >Create Band</a>
+            >Create
+              Band</a>
           </div>
         </div>
       </div>
@@ -69,12 +73,12 @@
 </template>
 
 <script>
-    import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
+import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
 
-    export default {
-        components: {
-            BreezeAuthenticatedLayout,
-        },
-        props:['bands','successMessage'],
-    }
+export default {
+  components: {
+    BreezeAuthenticatedLayout,
+  },
+  props: ['bands', 'successMessage'],
+}
 </script>
