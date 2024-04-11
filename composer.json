@@ -31,7 +31,7 @@
         "fakerphp/faker": "^1.9.1",
         "laravel/breeze": "^1.1",
         "laravel/dusk": "^6.15",
-        "laravel/sail": "^1.0.1",
+        "laravel/sail": "*",
         "mockery/mockery": "^1.4.2",
         "nunomaduro/collision": "^5.0",
         "phpunit/php-code-coverage": "^9.2",

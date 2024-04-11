@@ -45,7 +45,7 @@ Route::get('/', function () {
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
     ]);
-});
+})->middleware(['guest']);
 
 Route::get('/dashboard','DashboardController@index')->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -228,5 +228,7 @@ Route::any('/info/',function(){
     }
     return phpinfo();
 });
+
+URL::forceScheme('https');
 
 require __DIR__.'/auth.php';

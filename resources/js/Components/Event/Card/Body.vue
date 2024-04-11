@@ -10,7 +10,10 @@
       <li class="p-2">
         Load In times:
 
-        <ul class="list-outside indent-1">
+        <ul
+          style="background-color: rgb(244 244 245);"
+          class="list-outside indent-1 ml-3 p-3 shadow-lg rounded"
+        >
           <li class="mt-2 pl-3">
             Production: <strong>{{ productionTime(event) }}</strong>
           </li>
