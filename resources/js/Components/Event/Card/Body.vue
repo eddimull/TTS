@@ -1,5 +1,5 @@
 <template>
-  <div class="grid grid-cols-1 content-center truncate">
+  <div class="grid grid-cols-1 content-center">
     <ul>
       <li class="p-2">
         Venue: <strong>{{ event.venue_name }}</strong>
@@ -31,7 +31,7 @@
       >
         Notes: <div
           style="background-color: rgb(244 244 245);"
-          class="ml-3 p-3 shadow-lg rounded truncate"
+          class="ml-3 p-3 shadow-lg rounded break-normal content-container"
           v-html="event.notes"
         />
       </li>
@@ -64,7 +64,7 @@
       <li v-if="event.colorway_text">
         Attire: <div
           style="background-color: rgb(244 244 245);"
-          class="ml-3 p-3 shadow-lg rounded"
+          class="ml-3 p-3 shadow-lg rounded truncate"
           v-html="event.colorway_text"
         />
       </li>
