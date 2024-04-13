@@ -23,8 +23,8 @@ mix.js('resources/js/app.js', 'public/js')
     .bladeReload()
     .options({
         hmrOptions: {
-            host: 'dev.tts.band',
-            port: '8080'
+            host: 'hmr.emuller.dev',
+            port: '443'
         }
     })
     mix.webpackConfig({
@@ -44,10 +44,12 @@ mix.js('resources/js/app.js', 'public/js')
             ]
           },
         devServer: {
-          https: {
-            key: fs.readFileSync('./ssl/privkey.pem'),
-            cert: fs.readFileSync('./ssl/fullchain.pem')
-          }
+          host: 'hmr.emuller.dev',
+          port: '8080'
+          // https: {
+          //   key: fs.readFileSync('./ssl/privkey.pem'),
+          //   cert: fs.readFileSync('./ssl/fullchain.pem')
+          // }
         },
         resolve: {
             alias: {
