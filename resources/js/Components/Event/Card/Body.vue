@@ -1,5 +1,5 @@
 <template>
-  <div class="grid grid-cols-1 content-center">
+  <div class="grid grid-cols-1 content-center truncate">
     <ul>
       <li class="p-2">
         Venue: <strong>{{ event.venue_name }}</strong>
@@ -31,7 +31,7 @@
       >
         Notes: <div
           style="background-color: rgb(244 244 245);"
-          class="ml-3 p-3 shadow-lg rounded"
+          class="ml-3 p-3 shadow-lg rounded truncate"
           v-html="event.notes"
         />
       </li>
@@ -51,7 +51,7 @@
             Father Daughter: <strong>{{ event.father_daughter }}</strong>
           </li>
           <li class="mt-2 pl-3">
-            Mother Son: <strong>{{ event.mother_son }}</strong>
+            Mother Son: <strong>{{ event.mother_groom }}</strong>
           </li>
           <li class="mt-2 pl-3">
             Money Dance: <strong>{{ event.money_dance }}</strong>
