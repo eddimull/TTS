@@ -44,8 +44,8 @@ mix.js('resources/js/app.js', 'public/js')
             ]
           },
         devServer: {
-          host: 'hmr.emuller.dev',
-          port: '8080'
+          host: '0.0.0.0',
+          port: '9000'
           // https: {
           //   key: fs.readFileSync('./ssl/privkey.pem'),
           //   cert: fs.readFileSync('./ssl/fullchain.pem')
