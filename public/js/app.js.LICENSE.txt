@@ -10,13 +10,6 @@
  */
 
 /*!
- * Quill Editor v1.3.7
- * https://quilljs.com/
- * Copyright (c) 2014, Jason Chen
- * Copyright (c) 2013, salesforce.com
- */
-
-/*!
  * The buffer module from node.js, for the browser.
  *
  * @author   Feross Aboukhadijeh <http://feross.org>
@@ -24,30 +17,32 @@
  */
 
 /*!
- * html2canvas 1.0.0-rc.7 <https://html2canvas.hertzen.com>
- * Copyright (c) 2020 Niklas von Hertzen <https://hertzen.com>
+ * html2canvas 1.4.1 <https://html2canvas.hertzen.com>
+ * Copyright (c) 2022 Niklas von Hertzen <https://hertzen.com>
  * Released under MIT License
  */
 
 /*!
- * vuex v4.0.2
- * (c) 2021 Evan You
+ * vuex v4.1.0
+ * (c) 2022 Evan You
  * @license MIT
  */
 
+/*! #__NO_SIDE_EFFECTS__ */
+
 /*! *****************************************************************************
-    Copyright (c) Microsoft Corporation. All rights reserved.
-    Licensed under the Apache License, Version 2.0 (the "License"); you may not use
-    this file except in compliance with the License. You may obtain a copy of the
-    License at http://www.apache.org/licenses/LICENSE-2.0
+    Copyright (c) Microsoft Corporation.
 
-    THIS CODE IS PROVIDED ON AN *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-    KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
-    WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
-    MERCHANTABLITY OR NON-INFRINGEMENT.
+    Permission to use, copy, modify, and/or distribute this software for any
+    purpose with or without fee is hereby granted.
 
-    See the Apache Version 2.0 License for specific language governing permissions
-    and limitations under the License.
+    THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+    REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+    AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+    INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+    LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+    OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+    PERFORMANCE OF THIS SOFTWARE.
     ***************************************************************************** */
 
 /*! ieee754. BSD-3-Clause License. Feross Aboukhadijeh <https://feross.org/opensource> */
@@ -72,9 +67,9 @@
 
 /**
  * @licstart The following is the entire license notice for the
- * Javascript code in this page
+ * JavaScript code in this page
  *
- * Copyright 2021 Mozilla Foundation
+ * Copyright 2022 Mozilla Foundation
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -89,14 +84,38 @@
  * limitations under the License.
  *
  * @licend The above is the entire license notice for the
- * Javascript code in this page
+ * JavaScript code in this page
  */
 
 /**
- * Vue Currency Input 2.0.0
- * (c) 2018-2021 Matthias Stiller
+ * Vue Currency Input 2.4.0
+ * (c) 2018-2022 Matthias Stiller
  * @license MIT
  */
+
+/**
+* @vue/reactivity v3.4.21
+* (c) 2018-present Yuxi (Evan) You and Vue contributors
+* @license MIT
+**/
+
+/**
+* @vue/runtime-core v3.4.21
+* (c) 2018-present Yuxi (Evan) You and Vue contributors
+* @license MIT
+**/
+
+/**
+* @vue/runtime-dom v3.4.21
+* (c) 2018-present Yuxi (Evan) You and Vue contributors
+* @license MIT
+**/
+
+/**
+* @vue/shared v3.4.21
+* (c) 2018-present Yuxi (Evan) You and Vue contributors
+* @license MIT
+**/
 
 /** @preserve
    * jsPDF - PDF Document creation from JavaScript
