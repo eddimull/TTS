@@ -64,7 +64,7 @@
       <li v-if="event.colorway_text">
         Attire: <div
           style="background-color: rgb(244 244 245);"
-          class="ml-3 p-3 shadow-lg rounded truncate"
+          class="ml-3 p-3 shadow-lg rounded break-normal"
           v-html="event.colorway_text"
         />
       </li>
