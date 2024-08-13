@@ -28,7 +28,7 @@
         <div class="p-field p-col my-4">
           <label for="name">Preview</label>
           <div class="flex">
-            <div class="max-w-md py-4 mx-auto">
+            <div class="max-w-md py-4 mx-auto truncate">
               <Image
                 v-if="selectedUpload.fileType.indexOf('image') !== -1"
                 :src="selectedUpload.chart_id + '/chartDownload/' + selectedUpload.name"
@@ -39,7 +39,9 @@
               <pdf 
                 v-else-if="selectedUpload.fileType.indexOf('pdf') !== -1"
                 :src="selectedUpload.chart_id + '/chartDownload/' + selectedUpload.name"
+                class="w-full"
               />
+
               <av-waveform
                 v-else-if="selectedUpload.fileType.indexOf('audio') !== -1"
                 :audio-src="selectedUpload.chart_id + '/chartDownload/' + selectedUpload.name"
@@ -91,7 +93,6 @@
         <Button
           label="Update"
           icon="pi pi-save"
-          autofocus
           @click="updateUpload"
         />
       </template>

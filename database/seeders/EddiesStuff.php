@@ -24,7 +24,7 @@ class EddiesStuff extends Seeder
         $user = User::create([
             'name' => 'Eddie Muller',
             'email'=>'eddimull@gmail.com',
-            'password'=>'$2y$10$fKSg384iukPTIEfYPDcjoumuMssSPqr/AGEqA1gvoHX7uIApokMHS'
+            'password'=>'$2y$10$9qoA9D9VwXtszzBAF/D4aetJNzpbVI8/5fTtFm.RktK9lCKGSbNcq'
         ]);
         $band = Bands::create([
             'name' => 'Three Thirty Seven',
