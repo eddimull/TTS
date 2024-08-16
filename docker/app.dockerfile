@@ -13,9 +13,11 @@ FROM php:8.0-fpm
 COPY --from=php-build /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
 COPY --from=php-build /usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
 
+# Install needed libraries and tools
 RUN apt-get update && apt-get install -y \
     libmagickwand-dev \
     libzip-dev \
+    wkhtmltopdf \
     --no-install-recommends \
     && pecl install imagick \
     && docker-php-ext-enable imagick \
