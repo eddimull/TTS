@@ -8,14 +8,14 @@ services:
         working_dir: /var/www
         volumes:
             - ./:/var/www
-            - './ssl/sail-selfsigned.crt:/etc/nginx/ssl/nginx.crt'
-            - './ssl/sail-selfsigned.key:/etc/nginx/ssl/nginx.key'
         networks:
             - sail
         depends_on:
             - mysql
             - redis
             - selenium
+        ports:
+          - 8000:9000
     web:
         build:
             context: .
@@ -28,7 +28,7 @@ services:
         depends_on:
             - app
         ports:
-            - 8710:443 
+            - 8710:443
     mysql:
         image: 'mysql:8.0'
         ports:
@@ -76,6 +76,21 @@ services:
             - '/dev/shm:/dev/shm'
        networks:
            - sail
+    minio:
+      image: 'minio/minio:latest'
+      environment:
+        MINIO_ROOT_USER: '${AWS_ACCESS_KEY_ID:-minioadmin}'
+        MINIO_ROOT_PASSWORD: '${AWS_SECRET_ACCESS_KEY-minioadmin}'
+        MINIO_DEFAULT_BUCKET: '${AWS_BUCKET:-default-bucket}'
+      command: minio server /data/minio --console-address ":9001"
+      volumes:
+        - 'sailminio:/data'
+      ports:
+        - '${FORWARD_MINIO_PORT:-9000}:9000'
+        - '${FORWARD_MINIO_CONSOLE_PORT:-9001}:9001'
+      networks:
+        - sail
+
 networks:
     sail:
         driver: bridge
@@ -85,4 +100,6 @@ volumes:
     sailredis:
         driver: local
     sailmeilisearch:
+        driver: local
+    sailminio:
         driver: local
