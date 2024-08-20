@@ -39,9 +39,9 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')->hourly();
         $schedule->call(function(){
-            
+
             $contracts = Contracts::where('status','!=','completed')->where('created_at','>',Carbon::now()->subMonths(2))->get();
-            
+
             foreach($contracts as $contract)
             {
                 $response = Http::withHeaders([
@@ -63,20 +63,22 @@ class Kernel extends ConsoleKernel
                     $contract->status = 'completed';
 
 
-        
+
                     $opts = array(
                         'http'=>array(
                             'method'=>"GET",
-                            'header'=>"Authorization: API-Key " . env('PANDADOC_KEY') 
+                            'header'=>"Authorization: API-Key " . env('PANDADOC_KEY')
                         )
                         );
                     $context = stream_context_create($opts);
 
                     $imagePath = $proposal->band->site_name . '/' . $proposal->name . '_signed_contract_' . time() . '.pdf';
 
-                    $path = Storage::disk('s3')->put($imagePath,
-                    file_get_contents('https://api.pandadoc.com/public/v1/documents/' . $contract->envelope_id . '/download',false,$context),
-                    ['visibility'=>'public']);
+                    Storage::disk('s3')->put(
+                        $imagePath,
+                        file_get_contents('https://api.pandadoc.com/public/v1/documents/' . $contract->envelope_id . '/download',false,$context),
+                        ['visibility'=>'public']
+                    );
                     $contract->image_url = Storage::disk('s3')->url($imagePath);
 
                     foreach($proposal->band->owners as $owner)
@@ -88,20 +90,20 @@ class Kernel extends ConsoleKernel
                             'routeParams'=>'',
                             'url'=>'/proposals/'
                             ]));
-                    }  
-                    
+                    }
+
                     $contract->save();
 
                     $proposalService = new ProposalServices($proposal);
                     $proposalService->writeToCalendar();
                 }
             }
-        })->everyMinute();
+        })->everyMinute()->name('check-signed-contracts')->withoutOverlapping();
 
 
         $schedule->call(function(){
             $BandEvents = BandEvents::whereDate('event_time', Carbon::today())->get();
-            
+
             foreach($BandEvents as $event)
             {
 
