@@ -177,6 +177,7 @@ class User extends Authenticatable
     public function notifications()
     {
         return $this->morphMany(Bandnotification::class, 'notifiable')
+                        ->limit(50)
                         ->orderBy('created_at','desc');
     }
 
