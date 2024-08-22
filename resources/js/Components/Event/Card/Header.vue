@@ -1,19 +1,19 @@
 <template>
   <div class="border-b-2 pt-1 pb-3 grid grid-cols-2 items-center">
-    <div class="flex">
-      <div class="mr-3">
+    <div class="flex flex-col min-[320px]:flex-row items-start min-[320px]:items-center">
+      <div class="mb-2 sm:mb-0 sm:mr-3">
         <card-icon :type="type" />
       </div>
-      <div class="flex flex-col">
-        <div class="font-bold">
+      <div class="flex flex-col -mr-20">
+        <div class="font-bold break-words">
           {{ name }}
         </div>
         <div class="text-gray-400 text-sm font-bold">
-          {{ parsedDate.date }} - {{ parsedDate.day }}
+          {{ parsedDate.date }} <span class="hidden sm:inline">- {{ parsedDate.day }}</span>
         </div>
       </div>
     </div>
-    <div class="text-right pr-4">
+    <div class="ml-4 text-right pr-4">
       <span
         class="text-2xl font-bold leading-none cursor-pointer select-none"
         @click="confirmEdit(name)"
