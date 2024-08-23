@@ -46,12 +46,14 @@ import 'primevue/resources/primevue.min.css'
 import 'primeicons/primeicons.css'    
 
 import questionnaire from './Store/questionnaire';
+import user from './Store/userStore';
 
 const el = document.getElementById('app');
 
 const store = createStore({
     modules: {
-        questionnaire
+        questionnaire,
+        user
     }
   })
 
