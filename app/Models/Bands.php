@@ -64,7 +64,7 @@ class Bands extends Model
     }
     public function completedProposals()
     {
-        return $this->hasMany(Proposals::class, 'band_id')->where('phase_id', '=', '6')->with('invoices')->orderBy('name', 'asc');
+        return $this->hasMany(Proposals::class, 'band_id')->where('phase_id', '=', '6')->with(['invoices', 'payments'])->orderBy('name', 'asc');
     }
 
     public function events()
