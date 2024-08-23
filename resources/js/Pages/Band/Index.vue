@@ -33,9 +33,9 @@
                 </thead>
                 <tbody class="text-gray-700">
                   <tr
-                    v-for="band in bands"
+                    v-for="(band, index) in bands"
                     :key="band.id"
-                    :class="{ 'bg-gray-100': $index % 2 === 0, 'border-b': $index % 2 !== 0 }"
+                    :class="{ 'bg-gray-100': index % 2 === 0, 'border-b': index % 2 !== 0 }"
                   >
                     <td class="w-1/3 text-center py-3 px-4">
                       {{ band.name }}
