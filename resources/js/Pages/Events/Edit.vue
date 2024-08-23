@@ -872,7 +872,6 @@
             },
             saveContact(){
               axios.post('/events/createContact/' + this.event.event_key,this.newContact).then(data=>{
-                console.log(data.data);
 
                 if(data.data.successMessage)
                 {
@@ -881,7 +880,7 @@
                   this.resetContact();
                 }
               }).catch(error=>{
-                console.log(error.response)
+                console.error(error.response)
                   this.$page.props.successMessage = '';
                   this.$page.props.errors = Object.keys(error.response.data.errors).map(key=>{
                       return error.response.data.errors[key][0];
