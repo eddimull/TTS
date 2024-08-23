@@ -152,7 +152,6 @@ export default {
     addQuestion()
     {
       this.addingQuestion = !this.addingQuestion;
-      console.log('adding question');
     },
     closeDialog(){
       this.addingQuestion = false;
