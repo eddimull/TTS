@@ -40,7 +40,6 @@ export default {
       fetchNotifications({ commit }) {
         const page = usePage()
         const notifications = page.props.value.auth.user.notifications
-        console.table(notifications);
         commit('SET_NOTIFICATIONS', notifications)
       },
     
