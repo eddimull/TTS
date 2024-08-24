@@ -1,12 +1,13 @@
-require('@/bootstrap');
+import '@/bootstrap';
 
 // Import modules...
 import { createApp, h } from 'vue';
-import { App as InertiaApp, plugin as InertiaPlugin } from '@inertiajs/inertia-vue3';
+import { createInertiaApp, Link } from '@inertiajs/vue3';
 import { InertiaProgress } from '@inertiajs/progress';
 import { createStore } from 'vuex'
 import VueSweetalert2 from 'vue-sweetalert2';
-import Link from '@inertiajs/inertia-vue3'
+import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
+import { ZiggyVue } from '../../vendor/tightenco/ziggy/dist/vue.m';
 import moment from 'moment';
 import CardModal from '@/Components/CardModal'
 import Card from '@/Components/Card'
@@ -48,63 +49,62 @@ import 'primeicons/primeicons.css'
 import questionnaire from '@/Store/questionnaire';
 import user from '@/Store/userStore';
 
-const el = document.getElementById('app');
-
 const store = createStore({
     modules: {
         questionnaire,
         user
     }
-  })
-
-const app = createApp({
-    render: () =>
-        h(InertiaApp, {
-            initialPage: JSON.parse(el.dataset.page),
-            resolveComponent: (name) => require(`@/Pages/${name}`).default,
-        }),
 })
-    .mixin({ methods: { route } })
-    .use(InertiaPlugin)
-    .use(store)
-    .use(VueSweetalert2)
-    .use(moment)
-    .use(PrimeVue)
-    .use(AudioVisual)
-    .component('Layout',BreezeAuthenticatedLayout)
-    .component('Link',BreezeNavLink)
-    .component('Container',Container)
-    .component('Chart',Chart)
-    .component("card-modal",CardModal)
-    .component('calendar', Calendar)
-    .component('Checkbox',Checkbox)
-    .component('Column',Column)
-    .component('Accordion',Accordion)
-    .component('AccordionTab',AccordionTab)
-    .component('Editor',Editor)
-    .component('Button', Button)
-    .component('Divider', Divider)
-    .component("card",Card)
-    .component('RadioButton',RadioButton)
-    .component('InputText',InputText)
-    .component('Image',Image)
-    .component('InputNumber',InputNumber)
-    .component('InputSwitch',InputSwitch)
-    .component('Textarea',Textarea)
-    .component('PVtextarea',Textarea)
-    .component('Dialog',Dialog)
-    .component('Dropdown',Dropdown)
-    .component('DataTable',DataTable)
-    .component('Panel',Panel)
-    .component('TabView',TabView)
-    .component('TabPanel',TabPanel)
 
-app.config.globalProperties.$moment = moment;
-app.config.globalProperties.$qs = qs;
-app.config.globalProperties.$route = route;
-app.use(ToastService);
+createInertiaApp({
+    title: (title) => `${title} - ${import.meta.env.VITE_APP_NAME}`,
+    resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
+    setup({ el, App, props, plugin }) {
+        const app = createApp({ render: () => h(App, props) });
 
-app.mount(el)
+        app.use(plugin)
+            .use(ZiggyVue, Ziggy)
+            .use(store)
+            .use(VueSweetalert2)
+            .use(PrimeVue)
+            .use(AudioVisual)
+            .use(ToastService)
+            .component('Layout', BreezeAuthenticatedLayout)
+            .component('Link', Link)
+            .component('Container', Container)
+            .component('Chart', Chart)
+            .component("card-modal", CardModal)
+            .component('calendar', Calendar)
+            .component('Checkbox', Checkbox)
+            .component('Column', Column)
+            .component('Accordion', Accordion)
+            .component('AccordionTab', AccordionTab)
+            .component('Editor', Editor)
+            .component('Button', Button)
+            .component('Divider', Divider)
+            .component("card", Card)
+            .component('RadioButton', RadioButton)
+            .component('InputText', InputText)
+            .component('Image', Image)
+            .component('InputNumber', InputNumber)
+            .component('InputSwitch', InputSwitch)
+            .component('Textarea', Textarea)
+            .component('PVtextarea', Textarea)
+            .component('Dialog', Dialog)
+            .component('Dropdown', Dropdown)
+            .component('DataTable', DataTable)
+            .component('Panel', Panel)
+            .component('TabView', TabView)
+            .component('TabPanel', TabPanel)
+            .component('ProgressSpinner', ProgressSpinner)
+            .mixin({ methods: { route } });
 
+        app.config.globalProperties.$moment = moment;
+        app.config.globalProperties.$qs = qs;
+        app.config.globalProperties.$route = route;
+
+        return app.mount(el);
+    }
+});
 
 InertiaProgress.init({ color: '#4B5563' });

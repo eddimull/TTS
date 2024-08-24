@@ -30,7 +30,7 @@ services:
         ports:
             - 8710:443
     mysql:
-        image: 'mysql:8.0'
+        image: 'mysql:8.1'
         ports:
             - '${FORWARD_DB_PORT:-3306}:3306'
         environment:

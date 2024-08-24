@@ -40,9 +40,9 @@
                 :class="{'bg-gray-100': index % 2 === 0, 'border-b': true, 'hover:bg-gray-50':true }"
               >
                 <td class="w-1/4 text-center py-3 px-4">
-                  <inertia-link :href="`/events/${event.event_key}/advance`">
+                  <Link :href="`/events/${event.event_key}/advance`">
                     {{ event.event_name }} ({{ event.event_type }})
-                  </inertia-link>
+                  </Link>
                 </td>
                 <td class="w-1/4 text-center py-3 px-4">
                   {{ event.venue_name }}
@@ -51,13 +51,13 @@
                   {{ formatDate(event.event_time) }}
                 </td>
                 <td class="w-1/4">
-                  <inertia-link
+                  <Link
                     :dusk="event.event_name.replace(/ /g,'_')"
                     class="border bg-white hover:bg-blue-500 rounded p-1"
                     :href="`/events/${event.event_key}/edit`"
                   >
                     Edit
-                  </inertia-link>
+                  </Link>
                 </td>
               </tr>
             </tbody>  
