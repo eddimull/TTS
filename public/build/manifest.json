@@ -1,0 +1,56 @@
+{
+  "_quill-D4fyFQ60.js": {
+    "file": "assets/quill-D4fyFQ60.js",
+    "name": "quill",
+    "isDynamicEntry": true,
+    "imports": [
+      "resources/js/app.js"
+    ]
+  },
+  "node_modules/chart.js/auto/auto.mjs": {
+    "file": "assets/auto-Yb_dsST9.js",
+    "name": "auto",
+    "src": "node_modules/chart.js/auto/auto.mjs",
+    "isDynamicEntry": true
+  },
+  "node_modules/primeicons/fonts/primeicons.eot": {
+    "file": "assets/primeicons-DQo2VsyX.eot",
+    "src": "node_modules/primeicons/fonts/primeicons.eot"
+  },
+  "node_modules/primeicons/fonts/primeicons.svg": {
+    "file": "assets/primeicons-DYzKiZ_z.svg",
+    "src": "node_modules/primeicons/fonts/primeicons.svg"
+  },
+  "node_modules/primeicons/fonts/primeicons.ttf": {
+    "file": "assets/primeicons-CFXp6JFr.ttf",
+    "src": "node_modules/primeicons/fonts/primeicons.ttf"
+  },
+  "node_modules/primeicons/fonts/primeicons.woff": {
+    "file": "assets/primeicons-yJq1vW0p.woff",
+    "src": "node_modules/primeicons/fonts/primeicons.woff"
+  },
+  "resources/css/app.css": {
+    "file": "assets/app-BReRhiZS.css",
+    "src": "resources/css/app.css",
+    "isEntry": true
+  },
+  "resources/js/app.js": {
+    "file": "assets/app-M13nL8Wn.js",
+    "name": "app",
+    "src": "resources/js/app.js",
+    "isEntry": true,
+    "dynamicImports": [
+      "_quill-D4fyFQ60.js",
+      "node_modules/chart.js/auto/auto.mjs"
+    ],
+    "css": [
+      "assets/app-CMWud-3K.css"
+    ],
+    "assets": [
+      "assets/primeicons-DQo2VsyX.eot",
+      "assets/primeicons-CFXp6JFr.ttf",
+      "assets/primeicons-yJq1vW0p.woff",
+      "assets/primeicons-DYzKiZ_z.svg"
+    ]
+  }
+}
