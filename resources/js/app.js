@@ -1,15 +1,15 @@
-require('./bootstrap');
+require('@/bootstrap');
 
 // Import modules...
-import { createApp, h, Vue } from 'vue';
+import { createApp, h } from 'vue';
 import { App as InertiaApp, plugin as InertiaPlugin } from '@inertiajs/inertia-vue3';
 import { InertiaProgress } from '@inertiajs/progress';
 import { createStore } from 'vuex'
 import VueSweetalert2 from 'vue-sweetalert2';
 import Link from '@inertiajs/inertia-vue3'
 import moment from 'moment';
-import CardModal from './Components/CardModal'
-import Card from './Components/Card'
+import CardModal from '@/Components/CardModal'
+import Card from '@/Components/Card'
 import Accordion from 'primevue/accordion';
 import AccordionTab from 'primevue/accordiontab';
 import Checkbox from 'primevue/checkbox';
@@ -45,8 +45,8 @@ import 'primevue/resources/primevue.min.css'
 // import 'primeflex/primeflex.css';                 
 import 'primeicons/primeicons.css'    
 
-import questionnaire from './Store/questionnaire';
-import user from './Store/userStore';
+import questionnaire from '@/Store/questionnaire';
+import user from '@/Store/userStore';
 
 const el = document.getElementById('app');
 
@@ -61,7 +61,7 @@ const app = createApp({
     render: () =>
         h(InertiaApp, {
             initialPage: JSON.parse(el.dataset.page),
-            resolveComponent: (name) => require(`./Pages/${name}`).default,
+            resolveComponent: (name) => require(`@/Pages/${name}`).default,
         }),
 })
     .mixin({ methods: { route } })

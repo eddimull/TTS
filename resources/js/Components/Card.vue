@@ -31,6 +31,7 @@
 
 <script>
     export default {
+        name: 'Card',
         props: {
             picture: {
                 default: 'https://scontent-dfw5-1.xx.fbcdn.net/v/t1.6435-9/90202670_2981972625166587_3140944514533818368_n.jpg?_nc_cat=111&ccb=1-3&_nc_sid=cdbe9c&_nc_ohc=_rByVu-Lk6MAX8T3vNM&_nc_ht=scontent-dfw5-1.xx&oh=782d09d2a26045a7eb03568bc3c9c264&oe=60AE70A5',
