@@ -1,5 +1,5 @@
 <template>
-    <inertia-link :class="[
+    <Link :class="[
                 {
                     'bg-blue-200':unread,
                     'hover:bg-blue-300':unread,
@@ -21,7 +21,7 @@
                 >
 
         <slot />
-    </inertia-link>
+    </Link>
 </template>
 <script>
     export default {

@@ -45,12 +45,12 @@
                     </td>
                     <td>
                       <div class="flex justify-center items-center">
-                        <inertia-link
+                        <Link
                           class="border bg-white hover:bg-blue-500 rounded p-1 px-4 flex no-grow"
                           :href="`/bands/${band.id}/edit`"
                         >
                           Edit
-                        </inertia-link>
+                        </Link>
                       </div>
                     </td>
                   </tr>

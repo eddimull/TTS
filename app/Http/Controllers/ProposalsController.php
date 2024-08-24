@@ -40,18 +40,11 @@ class ProposalsController extends Controller
                 $proposal->formattedDraftDate = $proposal->formattedDraftDate;
             }
 
-            compact($band->proposals);
-            compact($band->futureEvents);
-            foreach ($band->futureEvents as $event) {
-                // $event->event_date = $event->ISODate;
-                $bookedDates[] = $event;
-            }
-            foreach ($band->proposals as $proposal) {
+            $compactedProposals[$band->id] = $band->proposals->toArray();
+            $compactedFutureEvents[$band->id] = $band->futureEvents->toArray();
 
-
-                // $proposal->date = $proposal->ISODate;
-                $proposedDates[] = $proposal;
-            }
+            $bookedDates = array_merge($bookedDates, $band->futureEvents->all());
+            $proposedDates = array_merge($proposedDates, $band->proposals->all());
         }
 
 
