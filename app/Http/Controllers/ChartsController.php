@@ -21,9 +21,11 @@ class ChartsController extends Controller
      */
     public function index()
     {
-        $charts = Auth::user()->charts();
-        
-        return Inertia::render('Charts/Index',compact('charts'));
+        $charts = Auth::user()->charts;
+
+        return Inertia::render('Charts/Index', [
+            'charts' => $charts
+        ]);
     }
 
 
@@ -37,12 +39,12 @@ class ChartsController extends Controller
     {
         // dd($request);
         $chart = Charts::create([
-            'title'=>$request->name,
-            'composer'=>$request->composer,
-            'price'=>$request->price ? $request->price : 0,
-            'band_id'=>$request->band_id
+            'title' => $request->name,
+            'composer' => $request->composer,
+            'price' => $request->price ? $request->price : 0,
+            'band_id' => $request->band_id
         ]);
-        
+
         return redirect('/charts/' . $chart->id);
     }
 
@@ -57,7 +59,7 @@ class ChartsController extends Controller
         $chartData = $chart;
 
         // dd($chartData);
-        return Inertia::render('Charts/Edit',['chart'=>$chartData]);
+        return Inertia::render('Charts/Edit', ['chart' => $chartData]);
     }
 
     public function uploadChartData(Charts $chart, Request $request)
@@ -65,16 +67,16 @@ class ChartsController extends Controller
         // dd($request->type_id);
 
         $chartService = new ChartsServices();
-        $chartService->uploadData($chart,$request);
+        $chartService->uploadData($chart, $request);
 
         return Redirect::back()->with('successMessage', 'Files Uploaded');
     }
 
-    public function getResource(Charts $chart,ChartUploads $upload)
+    public function getResource(Charts $chart, ChartUploads $upload)
     {
-       $contents = Storage::disk('s3')->get($upload->url);
-       $mimeType = Storage::mimeType($upload->url);
-       return response($contents,200)->header('Content-Type',$mimeType);
+        $contents = Storage::disk('s3')->get($upload->url);
+        $mimeType = Storage::mimeType($upload->url);
+        return response($contents, 200)->header('Content-Type', $mimeType);
     }
 
     public function updateResource(Charts $chart, ChartUploads $upload, Request $request)
@@ -85,10 +87,10 @@ class ChartsController extends Controller
         return Redirect::back()->with('successMessage', $upload->displayName . ' has been updated');
     }
 
-    public function deleteResource(Charts $chart,ChartUploads $upload)
+    public function deleteResource(Charts $chart, ChartUploads $upload)
     {
         $upload->delete();
-        return back()->with('successMessage','Removed ' . $upload->displayName);
+        return back()->with('successMessage', 'Removed ' . $upload->displayName);
     }
 
     /**
@@ -98,7 +100,7 @@ class ChartsController extends Controller
      * @param  \App\Models\Charts  $charts
      * @return \Illuminate\Http\Response
      */
-    public function update(Charts $chart,Request $request)
+    public function update(Charts $chart, Request $request)
     {
         // dd($request->public === true);
         $chart->title = $request->title;
@@ -107,8 +109,7 @@ class ChartsController extends Controller
         $chart->public = $request->public === true;
         $chart->save();
 
-        return back()->with('successMessage','Updated ' . $chart->title);
-
+        return back()->with('successMessage', 'Updated ' . $chart->title);
     }
 
     /**
@@ -120,6 +121,6 @@ class ChartsController extends Controller
     public function destroy(Charts $chart)
     {
         $chart->delete();
-        return redirect('/charts/')->with('successMessage',$chart->title . ' has been deleted');
+        return redirect('/charts/')->with('successMessage', $chart->title . ' has been deleted');
     }
 }

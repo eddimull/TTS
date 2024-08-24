@@ -29,6 +29,7 @@ use Doctrine\DBAL\Schema\View;
 use Illuminate\Support\Facades\Http;
 use App\Http\Requests\EventRequest;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Notification;
 
 class EventsController extends Controller
 {
@@ -69,17 +70,21 @@ class EventsController extends Controller
     public function advance($key)
     {
         $event = BandEvents::where('event_key', $key)->first();
-        $event->band = $event->band;
+
+        if (!$event) {
+            abort(404, 'Event not found');
+        }
+
+        // Load relationships if they're not already loaded
+        $event->load(['band', 'state', 'colorway']);
+
+        // Add event_type_name to the event object
         $event->event_type_name = $event->event_type;
-        compact($event->state);
-        compact($event->colorway);
 
+        // Uncomment the following line if you want to use Inertia instead of the default View
+        // return Inertia::render('Events/Advance', ['event' => $event]);
 
-        // dd($event->event_type_name);
-        // return Inertia::render('Events/Advance',[
-        //     'event'=>$event            
-        // ]);
-        return View('advance.advance', ['event' => $event]);
+        return view('advance.advance', ['event' => $event]);
     }
     public function createPDF($id)
     {
@@ -115,78 +120,54 @@ class EventsController extends Controller
      */
     public function store(EventRequest $request)
     {
+        $eventData = $this->prepareEventData($request);
+        $event = BandEvents::create($eventData);
 
-        // dd($request);
-        $strtotime = strtotime($request->event_time);
-        $formattedTime = date('Y-m-d', $strtotime);
-        // dd($request->end_time);
-        $event = BandEvents::create([
-            'band_id' => $request->band_id,
-            'event_name' => $request->event_name,
-            'venue_name' => $request->venue_name,
-            'first_dance' => $request->first_dance,
-            'father_daughter' => $request->father_daughter,
-            'mother_groom' => $request->mother_groom,
-            'money_dance' => $request->money_dance,
-            'bouquet_garter' => $request->bouquet_garter,
-            'address_street' => $request->address_street,
-            'production_needed' => $request->production_needed,
-            'backline_provided' => $request->backline_provided,
-            'zip' => $request->zip,
-            'notes' => $request->notes,
-            'event_time' => date('Y-m-d H:i:s', strtotime($request->event_time)),
-            'band_loadin_time' =>  date('Y-m-d H:i:s', strtotime($request->band_loadin_time)),
-            'rhythm_loadin_time' => date('Y-m-d H:i:s', strtotime($request->rhythm_loadin_time)),
-            'production_loadin_time' => date('Y-m-d H:i:s', strtotime($request->production_loadin_time)),
-            'pay' => $request->pay,
-            'depositReceived' => $request->depositReceived,
-            'event_key' => $request->event_key,
-            'created_at' => $request->created_at,
-            'updated_at' => $request->updated_at,
-            'public' => $request->public,
-            'event_type_id' => $request->event_type_id,
-            'lodging' => $request->lodging,
-            'state_id' => $request->state_id,
-            'city' => $request->city,
-            'colorway_id' => $request->colorway_id,
-            'colorway_text' => $request->colorway_text,
-            'quiet_time' => date('Y-m-d H:i:s', strtotime($request->quiet_time)),
-            'end_time' => date('Y-m-d H:i:s', strtotime($request->end_time)),
-            'ceremony_time' => date('Y-m-d H:i:s', strtotime($request->ceremony_time)),
-            'outside' => $request->outside,
-            'second_line' => $request->second_line,
-            'onsite' => $request->onsite,
-            'event_key' => Str::uuid()
-        ]);
+        $band = Bands::findOrFail($event->band_id);
+        $this->writeEventToCalendar($band, $event);
+        $this->notifyBandMembers($band, $event);
 
+        return redirect()->route('events')->with('successMessage', 'Event was successfully added');
+    }
 
-        $band = Bands::find($event->band_id);
+    private function prepareEventData(EventRequest $request): array
+    {
+        $dateFields = ['event_time', 'band_loadin_time', 'rhythm_loadin_time', 'production_loadin_time', 'quiet_time', 'end_time', 'ceremony_time'];
+
+        $eventData = $request->except(['created_at', 'updated_at']);
+
+        foreach ($dateFields as $field) {
+            if (isset($eventData[$field])) {
+                $eventData[$field] = date('Y-m-d H:i:s', strtotime($eventData[$field]));
+            }
+        }
+
+        $eventData['event_key'] = Str::uuid();
+
+        return $eventData;
+    }
+
+    private function writeEventToCalendar(Bands $band, BandEvents $event): void
+    {
         $calService = new CalendarService($band);
         $calService->writeEventToCalendar($event);
+    }
 
+    private function notifyBandMembers(Bands $band, BandEvents $event): void
+    {
         $editor = Auth::user();
-        compact($band->owners);
-        foreach ($band->owners as $owner) {
-            $user = User::find($owner->user_id);
-            $user->notify(new TTSNotification([
-                'text' => $editor->name . ' added ' . $event->event_name,
-                'route' => 'events.advance',
-                'routeParams' => $event->event_key,
-                'url' => '/events/' . $event->event_key . '/advance'
-            ]));
-        }
-        compact($band->members);
+        $notificationData = [
+            'text' => $editor->name . ' added ' . $event->event_name,
+            'route' => 'events.advance',
+            'routeParams' => $event->event_key,
+            'url' => '/events/' . $event->event_key . '/advance'
+        ];
 
-        foreach ($band->members as $member) {
-            $user = User::find($member->user_id);
-            $user->notify(new TTSNotification([
-                'text' => $editor->name . ' added ' . $event->event_name,
-                'route' => 'events.advance',
-                'routeParams' => $event->event_key,
-                'url' => '/events/' . $event->event_key . '/advance'
-            ]));
-        }
-        return redirect()->route('events')->with('successMessage', 'Event was successfully added');
+        $band->load('owners.user', 'members.user');
+
+        $usersToNotify = $band->owners->pluck('user')->merge($band->members->pluck('user'));
+
+        Notification::send($usersToNotify, new TTSNotification($notificationData));
     }
 
     /**
@@ -234,86 +215,78 @@ class EventsController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $request->validate([
-            'event_name' => 'required'
-        ]);
-        // dd(date('Y-m-d',strtotime($request->event_time) . ' ' . date('H:i:s',strtotime($request->end_time))));
-        // dd($request->end_time);
-        $strtotime = strtotime($request->event_time);
-        $formattedTime = date('Y-m-d', $strtotime);
-        $event = BandEvents::where('event_key', $request->event_key)->first();
+        $request->validate(['event_name' => 'required']);
 
-        foreach (
-            [
-                'event_time',
-                'band_loadin_time',
-                'end_time',
-                'rhythm_loadin_time',
-                'production_loadin_time',
-                'ceremony_time',
-                'quiet_time'
-            ] as $time
-        ) {
-            $request[$time] = date('Y-m-d H:i:s', strtotime($request->$time));
-        }
+        $event = BandEvents::where('event_key', $request->event_key)->firstOrFail();
 
+        $this->updateEventTimes($request);
         $event->update($request->all());
 
+        $band = Bands::findOrFail($event->band_id);
 
-        $band = Bands::find($event->band_id);
-        if ($band->calendar_id !== '' && $band->calendar_id !== null) {
-
-            Config::set('google-calendar.service_account_credentials_json', storage_path('/app/google-calendar/service-account-credentials.json'));
-            Config::set('google-calendar.calendar_id', $band->calendar_id);
-
-            // dd(Carbon::parse($event->event_time));
-
-            if ($event->google_calendar_event_id !== null) {
-                $calendarEvent = CalendarEvent::find($event->google_calendar_event_id);
-            } else {
-                $calendarEvent = new CalendarEvent;
-            }
-            $calendarEvent->name = $event->event_name;
-
-            $startTime = Carbon::parse($event->event_time);
-            $endDateTimeFixed = date('Y-m-d', strtotime($event->event_time)) . ' ' . date('H:i:s', strtotime($event->end_time));
-            if ($endDateTimeFixed < $startTime) //when events end after midnight
-            {
-                $endDateTimeFixed = date('Y-m-d', strtotime($event->event_time . ' +1 day')) . ' ' . date('H:i:s', strtotime($event->end_time));
-            }
-            $endTime = Carbon::parse($endDateTimeFixed);
-            $calendarEvent->startDateTime = $startTime;
-            $calendarEvent->endDateTime = $endTime;
-            $calendarEvent->description = 'http://tts.band/events/' . $event->event_key . '/advance';
-            $google_id = $calendarEvent->save();
-            $event->google_calendar_event_id = $google_id->id;
-            $event->save();
-        }
-        $editor = Auth::user();
-        compact($band->owners);
-        foreach ($band->owners as $owner) {
-            $user = User::find($owner->user_id);
-            $user->notify(new TTSNotification([
-                'text' => $editor->name . ' updated ' . $event->event_name,
-                'route' => 'events.advance',
-                'routeParams' => $event->event_key,
-                'url' => '/events/' . $event->event_key . '/advance'
-            ]));
+        if ($band->calendar_id) {
+            $this->updateGoogleCalendarEvent($event, $band);
         }
 
-        compact($band->members);
-        foreach ($band->members as $member) {
-            $user = User::find($member->user_id);
-            $user->notify(new TTSNotification([
-                'text' => $editor->name . ' updated ' . $event->event_name,
-                'route' => 'events.advance',
-                'routeParams' => $event->event_key,
-                'url' => '/events/' . $event->event_key . '/advance'
-            ]));
-        }
+        $this->notifyBandMembers($band, $event, 'updated');
 
-        return redirect()->route('events')->with('successMessage', $request->event_name . ' was successfully updated');
+        return redirect()->route('events')->with('successMessage', "{$request->event_name} was successfully updated");
     }
+
+    private function updateEventTimes(Request &$request): void
+    {
+        $timeFields = [
+            'event_time',
+            'band_loadin_time',
+            'end_time',
+            'rhythm_loadin_time',
+            'production_loadin_time',
+            'ceremony_time',
+            'quiet_time'
+        ];
+
+        foreach ($timeFields as $field) {
+            if ($request->has($field)) {
+                $request[$field] = Carbon::parse($request->$field)->format('Y-m-d H:i:s');
+            }
+        }
+    }
+
+    private function updateGoogleCalendarEvent(BandEvents $event, Bands $band): void
+    {
+        Config::set('google-calendar.service_account_credentials_json', storage_path('/app/google-calendar/service-account-credentials.json'));
+        Config::set('google-calendar.calendar_id', $band->calendar_id);
+
+        $calendarEvent = $event->google_calendar_event_id
+            ? CalendarEvent::find($event->google_calendar_event_id)
+            : new CalendarEvent;
+
+        $startTime = Carbon::parse($event->event_time);
+        $endTime = $this->calculateEndTime($event);
+
+        $calendarEvent->name = $event->event_name;
+        $calendarEvent->startDateTime = $startTime;
+        $calendarEvent->endDateTime = $endTime;
+        $calendarEvent->description = "http://tts.band/events/{$event->event_key}/advance";
+
+        $google_id = $calendarEvent->save();
+        $event->google_calendar_event_id = $google_id->id;
+        $event->save();
+    }
+
+    private function calculateEndTime(BandEvents $event): Carbon
+    {
+        $startDate = Carbon::parse($event->event_time)->format('Y-m-d');
+        $endTime = Carbon::parse($event->end_time)->format('H:i:s');
+        $endDateTime = Carbon::parse("$startDate $endTime");
+
+        if ($endDateTime < Carbon::parse($event->event_time)) {
+            $endDateTime->addDay();
+        }
+
+        return $endDateTime;
+    }
+
     public function getGoogleMapsImage(BandEvents $event)
     {
         return Http::get("https://maps.googleapis.com/maps/api/staticmap?api=1&center=" . urlencode($event->venue_name . ' ' . $event->address_street . ' ' . $event->city . ', ' . $event->state->state_name . ' ' . $event->zip) . '&size=400x400&key=' . $_ENV['GOOGLE_STATIC_MAP_KEY']);
@@ -326,33 +299,29 @@ class EventsController extends Controller
      */
     public function destroy($key)
     {
-        //
-        $event = BandEvents::where('event_key', $key)->first();
+        $event = BandEvents::where('event_key', $key)->firstOrFail();
         $band = $event->band;
 
-        if ($band->calendar_id !== '' && $band->calendar_id !== null && $event->google_calendar_event_id !== null) {
+        $this->deleteGoogleCalendarEvent($event, $band);
+        $this->notifyBandMembers($band, $event);
 
+        $eventName = $event->event_name;
+        $event->delete();
+
+        return redirect()->route('events')->with('successMessage', "{$eventName} was successfully deleted");
+    }
+
+    private function deleteGoogleCalendarEvent(BandEvents $event, Bands $band): void
+    {
+        if ($band->calendar_id && $event->google_calendar_event_id) {
             Config::set('google-calendar.service_account_credentials_json', storage_path('/app/google-calendar/service-account-credentials.json'));
             Config::set('google-calendar.calendar_id', $band->calendar_id);
+
             $calendarEvent = CalendarEvent::find($event->google_calendar_event_id);
-            $calendarEvent->delete();
+            if ($calendarEvent) {
+                $calendarEvent->delete();
+            }
         }
-
-        $editor = Auth::user();
-        compact($band->owners);
-        foreach ($band->owners as $owner) {
-            $user = User::find($owner->user_id);
-            $user->notify(new TTSNotification([
-                'text' => $editor->name . ' deleted ' . $event->event_name,
-                'route' => 'events',
-                'routeParams' => null,
-                'emailHeader' => 'An event was deleted',
-                'url' => '/events/'
-            ]));
-        }
-
-        $event->delete();
-        return redirect()->route('events')->with('successMessage', $event->event_name . ' was successfully deleted');
     }
 
 

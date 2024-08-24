@@ -21,20 +21,26 @@ class RegisteredUserController extends Controller
      *
      * @return \Illuminate\View\View
      */
-    public function create()
+    public function create(Request $request)
     {
-        
-        $invitationEmail = '';
+        $invitationEmail = $this->getInvitationEmail($request);
 
-        if(request('key')){
-            $invitation = Invitations::where('key',request('key'))
-            ->where('pending',true)
-            ->firstOrFail();
-            
-            $invitationEmail = $invitation->email;
-            
+        return Inertia::render('Auth/Register', [
+            'invitationEmail' => $invitationEmail
+        ]);
+    }
+
+    private function getInvitationEmail(Request $request): string
+    {
+        if (!$request->has('key')) {
+            return '';
         }
-        return Inertia::render('Auth/Register',compact('invitationEmail'));
+
+        $invitation = Invitations::where('key', $request->key)
+            ->where('pending', true)
+            ->firstOrFail();
+
+        return $invitation->email;
     }
 
     /**
@@ -52,32 +58,29 @@ class RegisteredUserController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|confirmed|min:8',
         ]);
-            
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
-        
 
-        $invitations = Invitations::where('email',$user->email)->where('pending',true)->get();
 
-        foreach($invitations as $invitation)
-        {
-            if($invitation->invite_type_id == 1)
-            {
+        $invitations = Invitations::where('email', $user->email)->where('pending', true)->get();
+
+        foreach ($invitations as $invitation) {
+            if ($invitation->invite_type_id == 1) {
                 BandOwners::create([
-                    'user_id'=>$user->id,
-                    'band_id'=>$invitation->band_id
+                    'user_id' => $user->id,
+                    'band_id' => $invitation->band_id
                 ]);
             }
-            if($invitation->invite_type_id == 2)
-            {
+            if ($invitation->invite_type_id == 2) {
                 BandMembers::create([
-                    'user_id'=>$user->id,
-                    'band_id'=>$invitation->band_id
+                    'user_id' => $user->id,
+                    'band_id' => $invitation->band_id
                 ]);
-            }            
+            }
 
             $invitation->pending = false;
             $invitation->save();
