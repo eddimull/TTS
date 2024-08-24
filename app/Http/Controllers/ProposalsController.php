@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use PDF;
 
@@ -64,24 +66,38 @@ class ProposalsController extends Controller
         ]);
     }
 
+    public function create(Request $request, Bands $band)
+    {
+        $this->validateRequest($request);
+        $proposal = $this->createProposal($request, $band);
+        $this->notifyBandOwners($band, $proposal);
+
+        return redirect()->route('proposals.edit', $proposal->key);
+    }
     /**
      * Show the form for creating a new resource.
      *
      * @return \Illuminate\Http\Response
      */
-    public function create(Request $request, Bands $band)
+    private function validateRequest(Request $request): array
     {
-        $author = Auth::user();
-        $validated = $request->validate([
+        return $request->validate([
             'name' => 'required',
             'price' => 'required',
             'hours' => 'required',
+            'date' => 'required|date',
+            'event_type_id' => 'required|exists:event_types,id',
+            'notes' => 'nullable',
+            'client_notes' => 'nullable',
         ]);
+    }
 
-        $proposal = Proposals::create([
+    private function createProposal(Request $request, Bands $band): Proposals
+    {
+        return Proposals::create([
             'band_id' => $band->id,
             'phase_id' => 1,
-            'date' => date('Y-m-d H:i:s', strtotime($request->date)),
+            'date' => Carbon::parse($request->date),
             'hours' => $request->hours,
             'price' => $request->price,
             'event_type_id' => $request->event_type_id,
@@ -90,34 +106,25 @@ class ProposalsController extends Controller
             'notes' => $request->notes,
             'client_notes' => $request->client_notes,
             'key' => Str::uuid(),
-            'author_id' => $author->id,
+            'author_id' => Auth::id(),
             'name' => $request->name
         ]);
+    }
 
+    private function notifyBandOwners(Bands $band, Proposals $proposal): void
+    {
+        $author = Auth::user();
+        $notificationData = [
+            'text' => "{$author->name} drafted up proposal for {$proposal->name}",
+            'route' => 'proposals.edit',
+            'routeParams' => $proposal->key,
+            'url' => "/proposals/{$proposal->key}/edit"
+        ];
 
-        foreach ($band->owners as $owner) {
-            $user = User::find($owner->user_id);
-            $user->notify(new TTSNotification([
-                'text' => $author->name . ' drafted up proposal for ' . $proposal->name,
-                'route' => 'proposals.edit',
-                'routeParams' => $proposal->key,
-                'url' => '/proposals/' . $proposal->key . '/edit'
-            ]));
-        }
+        $band->load('owners.user');
+        $usersToNotify = $band->owners->pluck('user');
 
-        $bookedDates = BandEvents::where('band_id', '=', $proposal->band_id)->get();
-        $proposedDates = Proposals::where('band_id', '=', $proposal->band_id)->where('id', '!=', $proposal->id)->get();
-
-        compact($proposal->proposal_contacts);
-        $eventTypes = EventTypes::all();
-        return redirect('/proposals/' . $proposal->key . '/edit');
-        // return Inertia::render('Proposals/Edit',[
-        //     'proposal'=>$proposal,
-        //     'eventTypes'=>$eventTypes,
-        //     'bookedDates'=>$bookedDates,
-        //     'proposedDates'=>$proposedDates,
-        //     'recurringDates'=>$proposal->recurring_dates
-        // ]);
+        Notification::send($usersToNotify, new TTSNotification($notificationData));
     }
 
     /**
