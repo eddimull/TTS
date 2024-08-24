@@ -150,7 +150,6 @@
         },
         methods:{
             toggleModal(){
-                console.log('togglin');
                 this.showModal = !this.showModal
             },
             handleImages(files){
@@ -199,7 +198,7 @@
             },
             updatePreview(file)
             {
-                console.log(file)
+                console.info(file)
             },
             setBandID(id)
             {
@@ -207,7 +206,6 @@
             },
             setUpdating(bool)
             {
-                console.log('set updating to:'+bool);
                 this.updatingColor = bool;
             },
             addTag(newTag)
@@ -226,7 +224,6 @@
 
                 if(this.modifying)
                 {
-                    console.log('formatting tags');
                     this.form.color_tags = this.tagsSeparate.join()
                 }
 
@@ -240,8 +237,6 @@
             {
                if(this.updatingColor)
                {
-                   console.log('update')
-
                    this.$inertia.patch('/colors/' + this.form.color_id,{
                         data:{
                             color_title : this.form.color_title,
@@ -251,14 +246,12 @@
                         },
                         
                     },{onFinish:()=>{
-                            console.log('should close modal');
                             this.$refs.modalName.closeModal()
                         }
                     });
                }
                else
                {
-                   console.log('create new')
                 // this.form.post('/colors',this.form,{preserveState:true})
 
                 this.$inertia.post('/colors/',{
@@ -280,7 +273,6 @@
             },
             deleteColor()
             {
-                console.log('delete color');
                 this.$inertia.delete('/colors/' + this.form.color_id,{
                     onSuccess:()=>{
                         this.$refs.modalName.closeModal()

@@ -140,7 +140,6 @@ export default {
       const tempData = {};
       upcomingEvents.forEach(event=>{
         const parsedDate = this.$moment(event.event_time);
-        console.log(parsedDate);
 
         if(tempData[parsedDate.format('MMMM')])
         {

@@ -27,35 +27,35 @@
                 Bands
               </breeze-nav-link>                  
               <breeze-nav-link
-                v-if="$page.props.auth.user.navigation.Events"
+                v-if="navigation && navigation.Events"
                 :href="route('events')"
                 :active="route().current('events')"
               >
                 Events
               </breeze-nav-link> 
               <breeze-nav-link
-                v-if="$page.props.auth.user.navigation.Proposals"
+                v-if="navigation && navigation.Proposals"
                 :href="route('proposals')"
                 :active="route().current('proposals')"
               >
                 Proposals
               </breeze-nav-link>       
               <breeze-nav-link
-                v-if="$page.props.auth.user.navigation.Invoices"
+                v-if="navigation && navigation.Invoices"
                 :href="route('finances')"
                 :active="route().current('finances')"
               >
                 Finances
               </breeze-nav-link>                             
               <breeze-nav-link
-                v-if="$page.props.auth.user.navigation.Colors"
+                v-if="navigation && navigation.Colors"
                 :href="route('colors')"
                 :active="route().current('colors')"
               >
                 Colors
               </breeze-nav-link>        
               <breeze-nav-link
-                v-if="$page.props.auth.user.navigation.Charts"
+                v-if="navigation && navigation.Charts"
                 :href="route('charts')"
                 :active="route().current('charts')"
               >
@@ -300,21 +300,21 @@
             Bands
           </breeze-responsive-nav-link>
           <breeze-responsive-nav-link
-            v-if="$page.props.auth.user.navigation.Events"
+            v-if="navigation && navigation.Events"
             :href="route('events')"
             :active="route().current('events')"
           >
             Events
           </breeze-responsive-nav-link> 
           <breeze-responsive-nav-link
-            v-if="$page.props.auth.user.navigation.Proposals"
+            v-if="navigation && navigation.Proposals"
             :href="route('proposals')"
             :active="route().current('proposals')"
           >
             Proposals
           </breeze-responsive-nav-link> 
           <breeze-responsive-nav-link
-            v-if="$page.props.auth.user.navigation.Proposals"
+            v-if="navigation && navigation.Events"
             class="pl-4"
             :href="route('questionnaire')"
             :active="route().current('questionnaire')"
@@ -322,14 +322,14 @@
             Questionnaires
           </breeze-responsive-nav-link> 
           <breeze-responsive-nav-link
-            v-if="$page.props.auth.user.navigation.Invoices"
+            v-if="navigation && navigation.Invoices"
             :href="route('finances')"
             :active="route().current('finances')"
           >
             Finances
           </breeze-responsive-nav-link> 
           <breeze-responsive-nav-link
-            v-if="$page.props.auth.user.navigation.Colors"
+            v-if="navigation && navigation.Colors"
             :href="route('colors')"
             :active="route().current('colors')"
           >
@@ -337,7 +337,7 @@
           </breeze-responsive-nav-link>   
 
           <breeze-responsive-nav-link
-            v-if="$page.props.auth.user.navigation.Charts"
+            v-if="navigation && navigation.Charts"
             :href="route('charts')"
             :active="route().current('charts')"
           >
@@ -411,6 +411,7 @@
     import BreezeResponsiveNavLink from '@/Components/ResponsiveNavLink'
     import Toast from 'primevue/toast';
     import axios from 'axios';
+    import { mapState, mapActions } from 'vuex'
 
     export default {
         components: {
@@ -424,12 +425,16 @@
         },
 
         data() {
-            return {
-                showingNavigationDropdown: false,
-                unseenNotifications: 0,
-                notifications:[]
-            }
+          return {
+              showingNavigationDropdown: false,
+              }
         },
+        computed: {
+            ...mapState('user', ['navigation', 'notifications']),
+            unseenNotifications() {
+                return !this.notifications ? 0 : this.notifications.filter(notification => notification.seen_at === null).length
+            }
+        },        
         watch: {
           $page: {
             handler:function(val,oldval){
@@ -442,7 +447,7 @@
                   this.$toast.add({severity:'error', summary: 'Error', detail:errors[i], life: 3000});		
                 };			
               }
-              console.log(this.$page.props)
+
               if(this.$page.props.successMessage !== null && Object.keys(this.$page.props.successMessage).length > 0)
               {
                 const successMessage = this.$page.props.successMessage;
@@ -456,34 +461,29 @@
           }
         },
         created:async function(){
-            this.unseenNotifications = this.$page.props.auth.user.notifications.filter(notification=>notification.seen_at === null).length
-            this.getNotifications()
-            
+            // this.unseenNotifications = this.$page.props.auth.user.notifications.filter(notification=>notification.seen_at === null).length
+            // this.getNotifications()
+            this.fetchUserData()
         },
         methods: {
-            getNotifications()
-            {
-                axios.get('/notifications/').then(response=>{
-                    this.notifications = response.data;
-                });
-            },
-            markAllAsRead()
-            {
-                axios.post('/readAllNotifications').then(()=>{
-                    this.getNotifications()
-                })
-            },
-            markAsRead(notification)
-            {
-                notification.read_at = new Date();
-                axios.post('/notification/' + notification.id);
-            },
-            markSeen()
-            {
-                this.unseenNotifications = 0;
-                
-                axios.post('/seentIt');
-            }
+          ...mapActions('user', ['fetchNavigation', 'fetchNotifications', 'markAllNotificationsAsRead', 'markNotificationAsRead', 'markNotificationsAsSeen']),
+
+          fetchUserData() {
+              this.fetchNavigation()
+              this.fetchNotifications()
+          },
+
+          markAllAsRead() {
+              this.markAllNotificationsAsRead()
+          },
+
+          markAsRead(notification) {
+              this.markNotificationAsRead(notification.id)
+          },
+
+          markSeen() {
+              this.markNotificationsAsSeen()
+          }
         }
     }
 </script>

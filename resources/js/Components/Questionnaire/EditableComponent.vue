@@ -58,13 +58,11 @@ export default {
     methods:{
         undoChanges()
         {
-        console.log('undid',this.content);
         this.content = JSON.parse(JSON.stringify(this.originalData));
         this.editing = false;
         },
         editMode()
         {
-        console.log('editing',this.content);
         this.originalData = JSON.parse(JSON.stringify(this.content))
         this.editing = true
         }
