@@ -1,110 +1,104 @@
-require('./bootstrap');
-
-// Import modules...
-import { createApp, h, Vue } from 'vue';
+// Import core modules
+import { createApp, h } from 'vue';
+import { createStore } from 'vuex';
 import { App as InertiaApp, plugin as InertiaPlugin } from '@inertiajs/inertia-vue3';
 import { InertiaProgress } from '@inertiajs/progress';
-import { createStore } from 'vuex'
-import VueSweetalert2 from 'vue-sweetalert2';
-import Link from '@inertiajs/inertia-vue3'
-import moment from 'moment';
-import CardModal from './Components/CardModal'
-import Card from './Components/Card'
-import Accordion from 'primevue/accordion';
-import AccordionTab from 'primevue/accordiontab';
-import Checkbox from 'primevue/checkbox';
-import Column from 'primevue/column';
-import Editor from 'primevue/editor';
-import Panel from 'primevue/panel';
-import PrimeVue from 'primevue/config';
-import Calendar from 'primevue/calendar';
-import Divider from 'primevue/divider';
-import Button from 'primevue/button';
-import RadioButton from 'primevue/radiobutton';
-import InputText from 'primevue/inputtext';
-import DataTable from 'primevue/datatable';
-import InputSwitch from 'primevue/inputswitch';
-import InputNumber from 'primevue/inputnumber'
-import Textarea from 'primevue/textarea';
-import Dialog from 'primevue/dialog';
-import Dropdown from 'primevue/dropdown';
-import Image from 'primevue/image';
-import qs from 'qs';
-import AudioVisual from 'vue-audio-visual'
-import Chart from 'primevue/chart';
-import TabView from 'primevue/tabview';
-import TabPanel from 'primevue/tabpanel';
-import BreezeNavLink from '@/Components/InlineLink';
-import ProgressSpinner from 'primevue/progressspinner';
-import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
-import Container from '@/Components/Container'
-import ToastService from 'primevue/toastservice';
-import 'sweetalert2/dist/sweetalert2.min.css';
-import 'primevue/resources/themes/saga-blue/theme.css'
-import 'primevue/resources/primevue.min.css'
-// import 'primeflex/primeflex.css';                 
-import 'primeicons/primeicons.css'    
 
+// Import third-party libraries
+import VueSweetalert2 from 'vue-sweetalert2';
+import moment from 'moment';
+import qs from 'qs';
+import AudioVisual from 'vue-audio-visual';
+import PrimeVue from 'primevue/config';
+import ToastService from 'primevue/toastservice';
+
+// Import store modules
 import questionnaire from './Store/questionnaire';
 import user from './Store/userStore';
 
-const el = document.getElementById('app');
+// Import custom components
+import BreezeAuthenticatedLayout from '@/Layouts/Authenticated';
+import BreezeNavLink from '@/Components/InlineLink';
+import Container from '@/Components/Container';
+import CardModal from './Components/CardModal';
+import Card from './Components/Card';
 
+// Import PrimeVue components individually
+import Accordion from 'primevue/accordion';
+import AccordionTab from 'primevue/accordiontab';
+import Button from 'primevue/button';
+import Calendar from 'primevue/calendar';
+import Checkbox from 'primevue/checkbox';
+import Column from 'primevue/column';
+import DataTable from 'primevue/datatable';
+import Dialog from 'primevue/dialog';
+import Divider from 'primevue/divider';
+import Dropdown from 'primevue/dropdown';
+import Editor from 'primevue/editor';
+import Image from 'primevue/image';
+import InputNumber from 'primevue/inputnumber';
+import InputSwitch from 'primevue/inputswitch';
+import InputText from 'primevue/inputtext';
+import Panel from 'primevue/panel';
+import ProgressSpinner from 'primevue/progressspinner';
+import RadioButton from 'primevue/radiobutton';
+import TabView from 'primevue/tabview';
+import TabPanel from 'primevue/tabpanel';
+import Textarea from 'primevue/textarea';
+import Toolbar from 'primevue/toolbar';
+
+// Import styles
+import 'sweetalert2/dist/sweetalert2.min.css';
+import 'primevue/resources/themes/saga-blue/theme.css';
+import 'primevue/resources/primevue.min.css';
+import 'primeicons/primeicons.css';
+
+// Create Vuex store
 const store = createStore({
-    modules: {
-        questionnaire,
-        user
-    }
-  })
+  modules: { questionnaire, user }
+});
 
+// Create app
+const el = document.getElementById('app');
 const app = createApp({
-    render: () =>
-        h(InertiaApp, {
-            initialPage: JSON.parse(el.dataset.page),
-            resolveComponent: (name) => require(`./Pages/${name}`).default,
-        }),
-})
-    .mixin({ methods: { route } })
-    .use(InertiaPlugin)
-    .use(store)
-    .use(VueSweetalert2)
-    .use(moment)
-    .use(PrimeVue)
-    .use(AudioVisual)
-    .component('Layout',BreezeAuthenticatedLayout)
-    .component('Link',BreezeNavLink)
-    .component('Container',Container)
-    .component('Chart',Chart)
-    .component("card-modal",CardModal)
-    .component('calendar', Calendar)
-    .component('Checkbox',Checkbox)
-    .component('Column',Column)
-    .component('Accordion',Accordion)
-    .component('AccordionTab',AccordionTab)
-    .component('Editor',Editor)
-    .component('Button', Button)
-    .component('Divider', Divider)
-    .component("card",Card)
-    .component('RadioButton',RadioButton)
-    .component('InputText',InputText)
-    .component('Image',Image)
-    .component('InputNumber',InputNumber)
-    .component('InputSwitch',InputSwitch)
-    .component('Textarea',Textarea)
-    .component('PVtextarea',Textarea)
-    .component('Dialog',Dialog)
-    .component('Dropdown',Dropdown)
-    .component('DataTable',DataTable)
-    .component('Panel',Panel)
-    .component('TabView',TabView)
-    .component('TabPanel',TabPanel)
+  render: () => h(InertiaApp, {
+    initialPage: JSON.parse(el.dataset.page),
+    resolveComponent: (name) => require(`./Pages/${name}`).default,
+  }),
+}).mixin({ methods: { route } });
 
+// Use plugins
+app.use(InertiaPlugin)
+   .use(store)
+   .use(VueSweetalert2)
+   .use(PrimeVue)
+   .use(AudioVisual)
+   .use(ToastService);
+
+// Register global components
+const globalComponents = {
+  Layout: BreezeAuthenticatedLayout,
+  Link: BreezeNavLink,
+  Container,
+  CardModal,
+  Card,
+  // PrimeVue components
+  Accordion, AccordionTab, Button, Calendar, Checkbox, Column, DataTable,
+  Dialog, Divider, Dropdown, Editor, Image, InputNumber, InputSwitch,
+  InputText, Panel, ProgressSpinner, RadioButton, TabView, TabPanel, Textarea, Toolbar
+};
+
+Object.entries(globalComponents).forEach(([name, component]) => {
+  app.component(name, component);
+});
+
+// Set up global properties
 app.config.globalProperties.$moment = moment;
 app.config.globalProperties.$qs = qs;
 app.config.globalProperties.$route = route;
-app.use(ToastService);
 
-app.mount(el)
+// Mount app
+app.mount(el);
 
-
+// Initialize Inertia progress
 InertiaProgress.init({ color: '#4B5563' });
