@@ -653,7 +653,6 @@
                 // const band = this.bands.filter(band=>band.id == this.form.band_id);
                 for(const i in this.bands)
                 {
-                    console.log(this.form.band_id,this.bands[i].id )
                     if(this.bands[i].id === this.form.band_id)
                     {
                         this.colors = this.bands[i].colors;

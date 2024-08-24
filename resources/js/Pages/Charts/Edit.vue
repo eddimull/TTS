@@ -285,14 +285,10 @@
             })
 
             this.chartData.public = this.chartData.public === 1;
-
-
-            console.log(this.recordings);
         },
         methods:{
             selectUpload(upload)
             {
-              console.log(upload);
               this.selectedUpload = upload.data;
               this.showUploadModal = true;
             },

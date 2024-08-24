@@ -148,7 +148,7 @@ export default {
   watch:{
     showDelete: {
         handler: function(newValue) {
-            console.log('show delete',newValue)
+            console.info('show delete',newValue)
         },
         deep: true
     }

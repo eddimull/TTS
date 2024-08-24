@@ -55,32 +55,29 @@ class User extends Authenticatable
 
     public function bandOwner()
     {
-        return $this->belongsToMany(Bands::class,'band_owners','user_id','band_id');
+        return $this->belongsToMany(Bands::class, 'band_owners', 'user_id', 'band_id');
     }
 
     public function bandMember()
     {
-        return $this->belongsToMany(Bands::class,'band_members','user_id','band_id');
+        return $this->belongsToMany(Bands::class, 'band_members', 'user_id', 'band_id');
     }
 
     public function permissionsForBand($id)
     {
-        return userPermissions::firstOrCreate(['user_id'=>$this->id,'band_id'=>$id]);
+        return userPermissions::firstOrCreate(['user_id' => $this->id, 'band_id' => $id]);
     }
 
 
     public function canWriteCharts($bandId)
     {
         // dd($bandId);
-        if($this->ownsBand($bandId))
-        {
+        if ($this->ownsBand($bandId)) {
             return true;
-        }
-        else
-        {
+        } else {
             $permissions = $this->permissionsForBand($bandId);
-            
-        
+
+
             return (bool)$permissions->write_charts;
         }
     }
@@ -93,21 +90,18 @@ class User extends Authenticatable
         $ownedBands = $this->bandOwner;
         $bandMember = $this->bandMember;
 
-        foreach($ownedBands as $band)
-        {
-            array_push($bandIds,$band->id);
+        foreach ($ownedBands as $band) {
+            array_push($bandIds, $band->id);
         }
 
-        foreach($bandMember as $band)
-        {
-            array_push($bandIds,$band->id);
+        foreach ($bandMember as $band) {
+            array_push($bandIds, $band->id);
         }
         $bandIds = array_unique($bandIds);
-        
-        $charts = Charts::whereIn('band_id',$bandIds)->orderBy('title','asc')->get(); //when the charts gets rendered, it will be ordered by title from last to first (proper alphabetical order)
-    
-        return $charts;
 
+        $charts = Charts::whereIn('band_id', $bandIds)->orderBy('title', 'asc')->get(); //when the charts gets rendered, it will be ordered by title from last to first (proper alphabetical order)
+
+        return $charts;
     }
 
     public function questionnaires()
@@ -117,56 +111,50 @@ class User extends Authenticatable
         $ownedBands = $this->bandOwner;
         $bandMember = $this->bandMember;
 
-        foreach($ownedBands as $band)
-        {
-            array_push($bandIds,$band->id);
+        foreach ($ownedBands as $band) {
+            array_push($bandIds, $band->id);
         }
 
-        foreach($bandMember as $band)
-        {
-            array_push($bandIds,$band->id);
+        foreach ($bandMember as $band) {
+            array_push($bandIds, $band->id);
         }
         $bandIds = array_unique($bandIds);
-        
-        $charts = Questionnairres::whereIn('band_id',$bandIds)->orderBy('name')->get();
-    
+
+        $charts = Questionnairres::whereIn('band_id', $bandIds)->orderBy('name')->get();
+
         return $charts;
     }
 
-    public function getNav(){
+    public function getNav()
+    {
         $availableNav = [
-            'Events'=>false,
-            'Proposals'=>false,
-            'Invoices'=>false,
-            'Colors'=>false,
-            'Charts'=>false
+            'Events' => false,
+            'Proposals' => false,
+            'Invoices' => false,
+            'Colors' => false,
+            'Charts' => false
         ];
-        
 
-        if(count($this->bandOwner) > 0) //no need to check anything else. They should have access to all the stuff for their band
+
+        if (count($this->bandOwner) > 0) //no need to check anything else. They should have access to all the stuff for their band
         {
             return [
-                'Events'=>true,
-                'Proposals'=>true,
-                'Invoices'=>true,
-                'Colors'=>true,
-                'Charts'=>true
+                'Events' => true,
+                'Proposals' => true,
+                'Invoices' => true,
+                'Colors' => true,
+                'Charts' => true
             ];
         }
         $bands = $this->bandMember;
 
-        foreach($bands as $band)
-        {
+        foreach ($bands as $band) {
             $permissions = $this->permissionsForBand($band->id);
-            
-            foreach($availableNav as $key=>$navItem)
-            {
-                if(!$navItem)
-                {
-                    if($permissions['read_' . strtolower($key)])
-                    {
+
+            foreach ($availableNav as $key => $navItem) {
+                if (!$navItem) {
+                    if ($permissions['read_' . strtolower($key)]) {
                         $availableNav[$key] = true;
-                        
                     }
                 }
             }
@@ -177,17 +165,16 @@ class User extends Authenticatable
     public function notifications()
     {
         return $this->morphMany(Bandnotification::class, 'notifiable')
-                        ->orderBy('created_at','desc');
+            ->limit(50)
+            ->orderBy('created_at', 'desc');
     }
 
     public function isPartOfBand($id)
     {
         $bandsPartOf = $this->bandMember;
         $partOf = false;
-        foreach($bandsPartOf as $band)
-        {
-            if($id == $band->id)
-            {
+        foreach ($bandsPartOf as $band) {
+            if ($id == $band->id) {
                 $partOf = true;
             }
         }
@@ -199,15 +186,13 @@ class User extends Authenticatable
     {
         return $this->ownsBand($id);
     }
-    
+
     public function ownsBand($id)
     {
         $bandsOwned = $this->bandOwner;
         $owns = false;
-        foreach($bandsOwned as $band)
-        {
-            if($id == $band->id)
-            {
+        foreach ($bandsOwned as $band) {
+            if ($id == $band->id) {
                 $owns = true;
             }
         }
@@ -222,20 +207,32 @@ class User extends Authenticatable
         return $ownerOf->merge($memberOf);
     }
 
-    public function getEventsAttribute()
+
+    public function getEventsAttribute($afterDate = null)
     {
         $bands = $this->bands();
-        $events = collect();
-        foreach($bands as $band)
-        {
-            foreach($band->events as $event)
-            {
+
+        // Eager load events for all bands
+        $bandIds = $bands->pluck('id');
+        $events = BandEvents::whereIn('band_id', $bandIds)
+            ->when($afterDate, function ($query) use ($afterDate) {
+                return $query->where('event_time', '>', $afterDate);
+            })
+            ->orderBy('event_time')
+            ->get();
+
+        // Group events by band_id for easier mapping
+        $eventsByBand = $events->groupBy('band_id');
+
+        // Map events to bands and flatten the result
+        $mappedEvents = $bands->flatMap(function ($band) use ($eventsByBand) {
+            $bandEvents = $eventsByBand->get($band->id, collect());
+            return $bandEvents->map(function ($event) {
                 $event->OldEvent = $event->OldEvent;
-                $events->add($event);
-            }
-        }
+                return $event;
+            });
+        });
 
-        return $events->sortBy('event_time')->values();
+        return $mappedEvents->sortBy('event_time')->values();
     }
-
 }
