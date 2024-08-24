@@ -21,8 +21,8 @@ class ChartsController extends Controller
      */
     public function index()
     {
-        $charts = Auth::user()->charts;
-
+        $user = Auth::user();
+        $charts = $user->charts();
         return Inertia::render('Charts/Index', [
             'charts' => $charts
         ]);
