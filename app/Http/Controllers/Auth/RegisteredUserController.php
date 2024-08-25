@@ -16,6 +16,8 @@ use App\Models\Invitations;
 
 class RegisteredUserController extends Controller
 {
+    const OWNER_INVITE_TYPE = 1;
+    const MEMBER_INVITE_TYPE = 2;
     /**
      * Display the registration view.
      *
@@ -69,13 +71,13 @@ class RegisteredUserController extends Controller
         $invitations = Invitations::where('email', $user->email)->where('pending', true)->get();
 
         foreach ($invitations as $invitation) {
-            if ($invitation->invite_type_id == 1) {
+            if ($invitation->invite_type_id === static::OWNER_INVITE_TYPE) {
                 BandOwners::create([
                     'user_id' => $user->id,
                     'band_id' => $invitation->band_id
                 ]);
             }
-            if ($invitation->invite_type_id == 2) {
+            if ($invitation->invite_type_id === static::MEMBER_INVITE_TYPE) {
                 BandMembers::create([
                     'user_id' => $user->id,
                     'band_id' => $invitation->band_id
