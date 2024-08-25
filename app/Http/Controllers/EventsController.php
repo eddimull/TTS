@@ -2,34 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\EventRequest;
+use App\Models\BandEvents;
+use App\Models\Bands;
+use App\Models\EventContacts;
 use App\Models\EventTypes;
 use App\Models\State;
-use App\Models\Bands;
-use App\Models\BandEvents;
-use App\Models\BandOwners;
-use App\Models\EventContacts;
-use App\Models\Proposals;
-use Carbon\Carbon;
-use PDF;
-use Doctrine\DBAL\Events;
-use Illuminate\Support\Facades\DB;
-use Faker\Provider\Uuid;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Str;
-use Spatie\GoogleCalendar\Event as CalendarEvent;
-use App\Notifications\EventAdded;
-use App\Notifications\EventUpdated;
-use App\Models\User;
 use App\Notifications\TTSNotification;
 use App\Services\CalendarService;
-use Doctrine\DBAL\Schema\View;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
-use App\Http\Requests\EventRequest;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
+use Inertia\Inertia;
+use PDF;
+use Spatie\GoogleCalendar\Event as CalendarEvent;
 
 class EventsController extends Controller
 {
