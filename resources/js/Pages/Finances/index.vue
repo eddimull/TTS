@@ -201,7 +201,7 @@
         </TabPanel>
         <TabPanel header="Payments">
           <div>
-            <Payments/>
+            <Payments />
           </div>
         </TabPanel>
       </TabView>
@@ -351,61 +351,55 @@
                     'global': {value: null, matchMode: FilterMatchMode.CONTAINS}
                 }
             },   
-          parseProposals()
-          {
-            
-            for(const band in this.completedProposals)
+            parseProposals() 
             {
-              const completedProposals = this.completedProposals[band].completed_proposals;
-              const data =  {
-                labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July','August','September','October','December'],
-                datasets: [
+              const parsedData = {};
+
+              for (const band in this.completedProposals) {
+                const completedProposals = this.completedProposals[band].completed_proposals;
+                const data = {
+                  labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
+                  datasets: [
                     {
-                        label: 'Paid',
-                        data: [0,0,0,0,0,0,0,0,0,0,0,0],
-                        fill: false,
-                        borderColor: '#42A5F5',
-                        tension: .4
+                      label: 'Paid',
+                      data: Array(12).fill(0),
+                      fill: false,
+                      borderColor: '#42A5F5',
+                      tension: 0.4
                     },
                     {
-                        label: 'Unpaid',
-                        data: [0,0,0,0,0,0,0,0,0,0,0,0],
-                        fill: false,
-                        borderColor: '#FFA726',
-                        tension: .4
+                      label: 'Unpaid',
+                      data: Array(12).fill(0),
+                      fill: false,
+                      borderColor: '#FFA726',
+                      tension: 0.4
                     }
-                ]
+                  ]
+                };
+
+                completedProposals.forEach(proposal => {
+                  const dateIndex = moment(proposal.date).format('M') - 1;
+                    data.datasets[proposal.paid ? 0 : 1].data[dateIndex] += parseInt(proposal.price);
+                });
+                this.completedProposals[band].data = data;
+
+                this.completedProposals[band].unpaid = completedProposals.filter(proposal=>{
+                  if(!proposal.paid)
+                  {
+                    return proposal
+                  }
+                })
+
+                this.completedProposals[band].paid = completedProposals.filter(proposal=>{
+                  if(proposal.paid || proposal.amountLeft == '0.00')
+                  {
+                    return proposal
+                  }
+                })
               }
 
-              completedProposals.forEach(proposal => {
-                const dateIndex = moment(proposal.date).format('M') - 1;
-                  data.datasets[proposal.paid ? 0 : 1].data[dateIndex] += parseInt(proposal.price);
-              });
-
-              this.completedProposals[band].data = data;
-              this.completedProposals[band].unpaid = completedProposals.filter(proposal=>{
-                if(!proposal.paid)
-                {
-                  return proposal
-                }
-              })
-
-              this.completedProposals[band].paid = completedProposals.filter(proposal=>{
-                if(proposal.paid || proposal.amountLeft == '0.00')
-                {
-                  // console.log('paid',proposal.amountLeft);
-                  return proposal
-                }
-              })
-              
-
-
-              
+              return parsedData;
             }
-            // this.completedProposals.foreach(band=>{
-            //   console.log(band)
-            // })
-          }
         }
     }
 </script>

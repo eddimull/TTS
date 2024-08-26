@@ -11,9 +11,11 @@ class FinanceServices
     function getBandFinances($bands)
     {
 
-        foreach ($bands as $band) {
+        foreach ($bands as $band)
+        {
             $band->completedProposals;
-            foreach ($band->completedProposals as $proposal) {
+            foreach ($band->completedProposals as $proposal)
+            {
                 $proposal->amountPaid = $proposal->amountPaid;
                 $proposal->amountLeft = $proposal->amountLeft;
             }
@@ -24,7 +26,8 @@ class FinanceServices
 
     function getBandPayments($bands)
     {
-        foreach ($bands as $band) {
+        foreach ($bands as $band)
+        {
             $band->payments;
         }
         return $bands;
@@ -32,7 +35,8 @@ class FinanceServices
 
     function makePayment($proposal, $paymentName, $amount, $date)
     {
-        try {
+        try
+        {
 
             $payment = ProposalPayments::create([
                 'proposal_id' => $proposal->id,
@@ -40,28 +44,35 @@ class FinanceServices
                 'amount' => $amount,
                 'paymentDate' => Carbon::parse($date)
             ]);
-            if ($proposal->amountLeft == '0.00') {
+            if ($proposal->amountLeft == '0.00')
+            {
                 $proposal->paid = true;
                 $proposal->save();
             }
             return $payment;
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e)
+        {
             return back()->withError($e->getMessage())->withInput();
         }
     }
 
     function removePayment($proposal, $payment)
     {
-        try {
+        try
+        {
 
             $payment->delete();
 
-            if ($proposal->amountLeft !== '0.00') {
+            if ($proposal->amountLeft !== '0.00')
+            {
                 $proposal->paid = false;
                 $proposal->save();
             }
             return true;
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e)
+        {
             return back()->withError($e->getMessage())->withInput();
         }
     }
