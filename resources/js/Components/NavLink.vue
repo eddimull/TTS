@@ -1,10 +1,10 @@
 <template>
-  <inertia-link
+  <Link
     :href="href"
     :class="classes"
   >
     <slot />
-  </inertia-link>
+  </Link>
 </template>
 
 <script>

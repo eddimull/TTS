@@ -1,4 +1,4 @@
-FROM php:8.0-fpm AS php-build
+FROM php:8.1-fpm AS php-build
 
 RUN apt-get update && apt-get install -y  \
     libzip-dev \
@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y  \
 
 
 # Final stage
-FROM php:8.0-fpm
+FROM php:8.1-fpm
 
 # Copy PHP extensions and configurations from build stage
 COPY --from=php-build /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/

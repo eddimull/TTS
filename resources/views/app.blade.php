@@ -11,15 +11,13 @@
     <!-- Fonts -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap">
 
-    <!-- Styles -->
-    <link rel="stylesheet" href="{{ str_replace('//0.0.0.0:undefined', config('app.mix_url'), mix('css/app.css')) }}">
-
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="icon" type="image/png" href="favicon.png">
 
     <!-- Scripts -->
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+
     @routes
-    <script src="{{ str_replace('//0.0.0.0:undefined', config('app.mix_url'), mix('js/app.js')) }}" defer></script>
 </head>
 
 <body class="font-sans antialiased">

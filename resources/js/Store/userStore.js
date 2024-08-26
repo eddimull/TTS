@@ -1,4 +1,6 @@
-import { usePage } from '@inertiajs/inertia-vue3'
+import { usePage } from '@inertiajs/vue3'
+import { computed } from 'vue'
+
 import axios from 'axios'
 
 export default {
@@ -34,13 +36,28 @@ export default {
   actions: {
     fetchNavigation({ commit }) {
         const page = usePage()
-        const navigation = page.props.value.auth.user.navigation
-        commit('SET_NAVIGATION', navigation)
+        const user = computed(() => page.props.auth.user)
+        if (user.value) {
+          const navigation = user.value.navigation
+          commit('SET_NAVIGATION', navigation)
+        } else {
+          console.warn('Auth user or navigation not available')
+          // Handle the case when auth or navigation is not available
+          // For example, you might want to set an empty navigation array
+          commit('SET_NAVIGATION', [])
+        }
       },
       fetchNotifications({ commit }) {
         const page = usePage()
-        const notifications = page.props.value.auth.user.notifications
-        commit('SET_NOTIFICATIONS', notifications)
+        const user = computed(() => page.props.auth.user)
+        if (user.value && user.value.notifications) {
+          const notifications = user.value.notifications
+          commit('SET_NOTIFICATIONS', notifications)
+        } else {
+          console.warn('Notifications not available')
+          // Handle the case when notifications are not available
+          commit('SET_NOTIFICATIONS', [])
+        }
       },
     
     async markAllNotificationsAsRead({ commit }) {

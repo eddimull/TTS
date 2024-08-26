@@ -10,7 +10,7 @@ use Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
-class ProposalPaidLeft extends TestCase
+class ProposalPaidLeftTest extends TestCase
 {
     // use RefreshDatabase;
     public function testCanGetAmountPaidWithMultiplePayments()

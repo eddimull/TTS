@@ -3,28 +3,18 @@
 use App\Http\Controllers\EventsController;
 use App\Http\Controllers\FinalizedProposalController;
 use App\Http\Controllers\FinancesController;
-use App\Http\Controllers\InvoicesController;
 use App\Http\Controllers\InvitationsController;
+use App\Http\Controllers\InvoicesController;
 use App\Http\Controllers\QuestionnaireController;
-use App\Http\Controllers\StripeWebhookController;
-use App\Mail\Proposal;
-use App\Mail\WeeklyAdvance;
-use App\Models\ProposalContacts;
-use App\Services\AdvanceReminderService;
 use App\Models\Bands;
-use App\Models\BandEvents;
-use App\Models\Proposals;
-use App\Models\User;
-use Illuminate\Http\Request;
+use App\Services\AdvanceReminderService;
 use Illuminate\Foundation\Application;
-use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
-use App\Models\ProposalPayments;
+use Inertia\Inertia;
+
 
 /*
 |--------------------------------------------------------------------------
