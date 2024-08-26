@@ -26,6 +26,10 @@ import { computed } from '@vue/runtime-core'
 export default {
 
   setup(){
+    if(!usePage().props.value?.events)
+    {
+      return {events:[]}
+    }
     const events = computed(()=>usePage().props.value.events);
 
     return {events}

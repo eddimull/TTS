@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use PDF;
 
@@ -35,23 +37,18 @@ class ProposalsController extends Controller
         $bands = $user->bandOwner;
         $bookedDates = [];
         $proposedDates = [];
-        foreach ($bands as $band) {
-            foreach ($band->proposals as $proposal) {
+        foreach ($bands as $band)
+        {
+            foreach ($band->proposals as $proposal)
+            {
                 $proposal->formattedDraftDate = $proposal->formattedDraftDate;
             }
 
-            compact($band->proposals);
-            compact($band->futureEvents);
-            foreach ($band->futureEvents as $event) {
-                // $event->event_date = $event->ISODate;
-                $bookedDates[] = $event;
-            }
-            foreach ($band->proposals as $proposal) {
+            $compactedProposals[$band->id] = $band->proposals->toArray();
+            $compactedFutureEvents[$band->id] = $band->futureEvents->toArray();
 
-
-                // $proposal->date = $proposal->ISODate;
-                $proposedDates[] = $proposal;
-            }
+            $bookedDates = array_merge($bookedDates, $band->futureEvents->all());
+            $proposedDates = array_merge($proposedDates, $band->proposals->all());
         }
 
 
@@ -71,24 +68,38 @@ class ProposalsController extends Controller
         ]);
     }
 
+    public function create(Request $request, Bands $band)
+    {
+        $this->validateRequest($request);
+        $proposal = $this->createProposal($request, $band);
+        $this->notifyBandOwners($band, $proposal);
+
+        return redirect()->route('proposals.edit', $proposal->key);
+    }
     /**
      * Show the form for creating a new resource.
      *
      * @return \Illuminate\Http\Response
      */
-    public function create(Request $request, Bands $band)
+    private function validateRequest(Request $request): array
     {
-        $author = Auth::user();
-        $validated = $request->validate([
+        return $request->validate([
             'name' => 'required',
             'price' => 'required',
             'hours' => 'required',
+            'date' => 'required|date',
+            'event_type_id' => 'required|exists:event_types,id',
+            'notes' => 'nullable',
+            'client_notes' => 'nullable',
         ]);
+    }
 
-        $proposal = Proposals::create([
+    private function createProposal(Request $request, Bands $band): Proposals
+    {
+        return Proposals::create([
             'band_id' => $band->id,
             'phase_id' => 1,
-            'date' => date('Y-m-d H:i:s', strtotime($request->date)),
+            'date' => Carbon::parse($request->date),
             'hours' => $request->hours,
             'price' => $request->price,
             'event_type_id' => $request->event_type_id,
@@ -97,34 +108,25 @@ class ProposalsController extends Controller
             'notes' => $request->notes,
             'client_notes' => $request->client_notes,
             'key' => Str::uuid(),
-            'author_id' => $author->id,
+            'author_id' => Auth::id(),
             'name' => $request->name
         ]);
+    }
 
+    private function notifyBandOwners(Bands $band, Proposals $proposal): void
+    {
+        $author = Auth::user();
+        $notificationData = [
+            'text' => "{$author->name} drafted up proposal for {$proposal->name}",
+            'route' => 'proposals.edit',
+            'routeParams' => $proposal->key,
+            'url' => "/proposals/{$proposal->key}/edit"
+        ];
 
-        foreach ($band->owners as $owner) {
-            $user = User::find($owner->user_id);
-            $user->notify(new TTSNotification([
-                'text' => $author->name . ' drafted up proposal for ' . $proposal->name,
-                'route' => 'proposals.edit',
-                'routeParams' => $proposal->key,
-                'url' => '/proposals/' . $proposal->key . '/edit'
-            ]));
-        }
+        $band->load('owners.user');
+        $usersToNotify = $band->owners->pluck('user');
 
-        $bookedDates = BandEvents::where('band_id', '=', $proposal->band_id)->get();
-        $proposedDates = Proposals::where('band_id', '=', $proposal->band_id)->where('id', '!=', $proposal->id)->get();
-
-        compact($proposal->proposal_contacts);
-        $eventTypes = EventTypes::all();
-        return redirect('/proposals/' . $proposal->key . '/edit');
-        // return Inertia::render('Proposals/Edit',[
-        //     'proposal'=>$proposal,
-        //     'eventTypes'=>$eventTypes,
-        //     'bookedDates'=>$bookedDates,
-        //     'proposedDates'=>$proposedDates,
-        //     'recurringDates'=>$proposal->recurring_dates
-        // ]);
+        Notification::send($usersToNotify, new TTSNotification($notificationData));
     }
 
     /**
@@ -218,7 +220,8 @@ class ProposalsController extends Controller
     public function details(Proposals $proposal)
     {
 
-        if ($proposal->phase_id === 4) {
+        if ($proposal->phase_id === 4)
+        {
             return redirect('/proposals/' . $proposal->key . '/accepted')->withErrors('Proposal has already been accepted');
         }
 
@@ -257,13 +260,17 @@ class ProposalsController extends Controller
 
         $noTouchy = [];
 
-        foreach ($request->recurring_dates as $date) {
-            if (empty($date->propsal_id)) {
+        foreach ($request->recurring_dates as $date)
+        {
+            if (empty($date->propsal_id))
+            {
                 $recurringDate = recurring_proposal_dates::create([
                     'proposal_id' => $proposal->id,
                     'date' => date('Y-m-d H:i:s', strtotime($date['date']))
                 ]);
-            } else {
+            }
+            else
+            {
                 $recurringDate = recurring_proposal_dates::find($date->id);
                 $recurringDate->date = date('Y-m-d H:i:s', strtotime($date['date']));
                 $recurringDate->save();
@@ -271,8 +278,10 @@ class ProposalsController extends Controller
             $noTouchy[] = $recurringDate->id;
         }
 
-        foreach ($proposal->recurring_dates as $date) {
-            if (!in_array($date->id, $noTouchy)) {
+        foreach ($proposal->recurring_dates as $date)
+        {
+            if (!in_array($date->id, $noTouchy))
+            {
                 $date->delete();
             }
         }
@@ -284,7 +293,8 @@ class ProposalsController extends Controller
     public function sendIt(Proposals $proposal, Request $request)
     {
 
-        foreach ($proposal->proposal_contacts as $contact) {
+        foreach ($proposal->proposal_contacts as $contact)
+        {
 
             Mail::to($contact->email)->send(new \App\Mail\Proposal($proposal, $request->message));
         }
@@ -294,7 +304,8 @@ class ProposalsController extends Controller
         $author = Auth::user();
         $band = Bands::find($proposal->band_id);
 
-        foreach ($band->owners as $owner) {
+        foreach ($band->owners as $owner)
+        {
             $user = User::find($owner->user_id);
             $user->notify(new TTSNotification([
                 'text' => $author->name . ' sent out proposal for ' . $proposal->name,
@@ -339,10 +350,12 @@ class ProposalsController extends Controller
     {
         $proposal->phase_id = 4;
         $proposal->save();
+        $proposalService = new ProposalServices($proposal);
 
         $band = Bands::find($proposal->band_id);
 
-        foreach ($band->owners as $owner) {
+        foreach ($band->owners as $owner)
+        {
             $user = User::find($owner->user_id);
             $user->notify(new TTSNotification([
                 'text' => $request->person . ' just accepted proposal for ' . $proposal->name,
@@ -352,7 +365,7 @@ class ProposalsController extends Controller
             ]));
         }
 
-        $this->make_pandadoc_contract($proposal);
+        $proposalService->make_pandadoc_contract($proposal);
         $proposal->phase_id = 5;
         $proposal->save();
         return redirect('/proposals/' . $proposal->key . '/accepted')->with('successMessage', 'Proposal has been accepted. Await a finalized contract');
@@ -360,7 +373,8 @@ class ProposalsController extends Controller
 
     public function sendContract(Request $request, Proposals $proposal)
     {
-        if ($proposal->phase_id != 4) {
+        if ($proposal->phase_id != 4)
+        {
             return redirect()->route('proposals')->withErrors('Proposal has not been approved. Cannot send out.');
         }
 
@@ -368,78 +382,5 @@ class ProposalsController extends Controller
         $proposal->phase_id = 5;
         $proposal->save();
         return redirect()->route('proposals')->with('successMessage', $proposal->name . ' contract manually sent!');
-    }
-    private function make_pandadoc_contract($proposal)
-    {
-        $pdf = PDF::loadView('contract', ['proposal' => $proposal]);
-        $base64PDF = base64_encode($pdf->output());
-        $imagePath = $proposal->band->site_name . '/' . $proposal->name . '_contract_' . time() . '.pdf';
-
-        $path = Storage::disk('s3')->put(
-            $imagePath,
-            base64_decode($base64PDF),
-            ['visibility' => 'public']
-        );
-
-        $body =  [
-            "name" => "Contract for " . $proposal->band->name,
-            "url" => Storage::disk('s3')->url($imagePath),
-            "tags" => [
-                "tag_1"
-            ],
-            "recipients" => [
-                [
-                    "email" => $proposal->proposal_contacts[0]->email,
-                    "first_name" => $proposal->proposal_contacts[0]->name,
-                    "last_name" => ".",
-                    "role" => "user"
-                ]
-            ],
-            "fields" => [
-                "name" => [
-                    "value" => $proposal->proposal_contacts[0]->name,
-                    "role" => "user"
-                ]
-            ],
-            "parse_form_fields" => false
-        ];
-
-
-
-        $response = Http::withHeaders([
-            'Authorization' => 'API-Key ' . env('PANDADOC_KEY')
-        ])
-            ->acceptJson()
-            ->post('https://api.pandadoc.com/public/v1/documents', $body);
-
-
-        sleep(5);
-        $uploadedDocumentId = $response['id'];
-
-        // $sent = Http::withHeaders([
-        //     'Authorization'=>'API-Key ' . env('PANDADOC_KEY')
-        // ])->post('https://api.pandadoc.com/https://dev.tts.band/pandadocWebhook',[
-        //     "messsage"=>'Please sign this contract so we can make this official!',
-        //     "subject"=>'Contract for ' . $proposal->band->name
-        // ]);
-        if ($proposal->proposal_contacts[0]->name === 'TESTING') {
-            $sent = true;
-        } else {
-            $sent = Http::withHeaders([
-                'Authorization' => 'API-Key '  . env('PANDADOC_KEY')
-            ])->post('https://api.pandadoc.com/public/v1/documents/' . $uploadedDocumentId . '/send', [
-                "messsage" => 'Please sign this contract so we can make this official!',
-                "subject" => 'Contract for ' . $proposal->band->name
-            ]);
-        }
-
-        Contracts::create([
-            'proposal_id' => $proposal->id,
-            'envelope_id' => $uploadedDocumentId,
-            'status' => 'sent',
-            'image_url' => Storage::disk('s3')->url($imagePath)
-        ]);
-
-        return $sent;
     }
 }

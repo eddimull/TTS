@@ -3,18 +3,27 @@
 namespace App\Http\Controllers;
 
 use App\Services\FinanceServices;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Auth;
+use Illuminate\Support\Facades\Auth;
 
 class FinancesController extends Controller
 {
     public function index()
     {
-        $bands = Auth::user()->bandOwner;
+        $user = Auth::user();
+        $bands = $user->bandOwner;
 
-        $completedProposals = (new FinanceServices())->getBandFinances($bands);
-        $payments = (new FinanceServices())->getBandPayments($bands);
-        return Inertia::render('Finances/index',compact('completedProposals','payments'));
+        $financeServices = new FinanceServices();
+        $financialData = $this->getFinancialData($bands, $financeServices);
+
+        return Inertia::render('Finances/index', $financialData);
+    }
+
+    private function getFinancialData($bands, FinanceServices $financeServices): array
+    {
+        return [
+            'completedProposals' => $financeServices->getBandFinances($bands),
+            'payments' => $financeServices->getBandPayments($bands)
+        ];
     }
 }
