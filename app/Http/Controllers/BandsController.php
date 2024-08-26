@@ -11,7 +11,6 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Notifications\TTSNotification;
 use App\Services\CalendarService;
-use Illuminate\Support\Facades\Storage;
 
 class BandsController extends Controller
 {
@@ -93,12 +92,14 @@ class BandsController extends Controller
         $band->load('owners.user', 'members.user', 'pendingInvites', 'stripe_accounts');
 
         // Merge additional data into the $band object
-        $band->owners_with_users = $band->owners->map(function ($owner) {
+        $band->owners_with_users = $band->owners->map(function ($owner)
+        {
             $owner->user_data = $owner->user;
             return $owner;
         });
 
-        $band->members_with_users = $band->members->map(function ($member) {
+        $band->members_with_users = $band->members->map(function ($member)
+        {
             $member->user_data = $member->user;
             return $member;
         });
@@ -129,7 +130,8 @@ class BandsController extends Controller
         $validation_rules = [
             'name' => 'required',
         ];
-        if ($band->site_name != $request->site_name) {
+        if ($band->site_name != $request->site_name)
+        {
             $validation_rules['site_name'] = 'required|unique:bands,site_name';
         }
 
@@ -151,10 +153,13 @@ class BandsController extends Controller
 
 
         $owner = BandOwners::where('user_id', '=', $ownerParam)->where('band_id', '=', $band->id)->first();
+        /** @var \App\Models\User $user */
         $author = Auth::user();
-        if ($author->ownsBand($band->id)) {
+        if ($author->ownsBand($band->id))
+        {
 
-            foreach ($band->owners as $bandOwner) {
+            foreach ($band->owners as $bandOwner)
+            {
                 $inviteOwnerUser = User::find($bandOwner->user_id);
                 $inviteOwnerUser->notify(new TTSNotification([
                     'text' => $author->name . ' removed ' . $owner->user->name . ' an owner of ' . $band->name,
@@ -166,7 +171,9 @@ class BandsController extends Controller
 
             $owner->delete();
             return back()->with('successMessage', 'User removed from band owners');
-        } else {
+        }
+        else
+        {
             return back()->withErrors(['You are not authorized to remove the owner of this band.']);
         }
     }
@@ -178,7 +185,8 @@ class BandsController extends Controller
         ]);
         $author = Auth::user();
 
-        if ($author->isOwner($band->id)) {
+        if ($author->isOwner($band->id))
+        {
             $imageName = time() . $band->name . 'logo.' . $request->logo[0]->extension();
 
             $imagePath = $request->logo[0]->storeAs($band->site_name, $imageName, 's3');
@@ -189,7 +197,8 @@ class BandsController extends Controller
             $band->save();
 
 
-            foreach ($band->owners as $owner) {
+            foreach ($band->owners as $owner)
+            {
                 $user = User::find($owner->user_id);
                 $user->notify(new TTSNotification([
                     'text' => $author->name . ' updated the logo for ' . $band->name,
