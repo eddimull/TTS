@@ -24,3 +24,5 @@ cert.pem
 chain.pem
 storage/fonts/*
 public/test/*
+_ide_helper.php
+.phpstorm.meta.php
