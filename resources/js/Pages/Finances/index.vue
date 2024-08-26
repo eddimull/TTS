@@ -212,7 +212,7 @@
 <script>
     import moment from 'moment';
     import Payments from '../../Components/Finances/AllPayments.vue';
-    import {FilterMatchMode,FilterOperator} from 'primevue/api';
+    import {FilterMatchMode} from 'primevue/api';
     export default {
         components: {
           Payments
@@ -262,7 +262,7 @@
               const bandData = {
                 name: this.completedProposals[band].name
               }
-
+              
               const completedProposals = [...this.completedProposals[band].completed_proposals];
                 var years = completedProposals.map(function(d) {
                     const year = moment(d.date).format('YYYY');
@@ -357,6 +357,7 @@
 
               for (const band in this.completedProposals) {
                 const completedProposals = this.completedProposals[band].completed_proposals;
+                const bandName = completedProposals[0].band.name;
                 const data = {
                   labels: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'],
                   datasets: [
@@ -381,24 +382,19 @@
                   const dateIndex = moment(proposal.date).format('M') - 1;
                     data.datasets[proposal.paid ? 0 : 1].data[dateIndex] += parseInt(proposal.price);
                 });
-                this.completedProposals[band].data = data;
+                const newBandData = {
+                  completed_proposals: [...completedProposals], // Create a shallow copy of the original array
+                  data,
+                  name: bandName,
+                  unpaid: completedProposals.filter(proposal => !proposal.paid),
+                  paid: completedProposals.filter(proposal => proposal.paid || proposal.amountLeft === '0.00')
+                };
+                this.completedProposals = {
+                  ...this.completedProposals,  // Spread the existing data
+                  [band]: newBandData  // Update just this band's data
+                };
 
-                this.completedProposals[band].unpaid = completedProposals.filter(proposal=>{
-                  if(!proposal.paid)
-                  {
-                    return proposal
-                  }
-                })
-
-                this.completedProposals[band].paid = completedProposals.filter(proposal=>{
-                  if(proposal.paid || proposal.amountLeft == '0.00')
-                  {
-                    return proposal
-                  }
-                })
               }
-
-              return parsedData;
             }
         }
     }
