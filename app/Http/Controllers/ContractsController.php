@@ -97,7 +97,6 @@ class ContractsController extends Controller
     {
 
         $contract = Contracts::where('envelope_id', $request['envelopeId'])->first();
-        // dd($contract);
         if ($contract)
         {
             $proposal = $contract->proposal;
