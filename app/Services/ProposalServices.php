@@ -11,10 +11,9 @@ use App\Models\BandEvents;
 use App\Models\Bands;
 use Illuminate\Support\Facades\Config;
 use Spatie\GoogleCalendar\Event as CalendarEvent;
-use Illuminate\Support\Facades\Auth;
-use App\Notifications\TTSNotification;
-use App\Models\User;
 use App\Models\EventContacts;
+use App\Models\Contracts;
+use PDF;
 
 
 class ProposalServices
@@ -29,7 +28,8 @@ class ProposalServices
     private function addContactsToEvent($eventId)
     {
         $contacts = $this->proposal->proposal_contacts;
-        foreach ($contacts as $contact) {
+        foreach ($contacts as $contact)
+        {
             EventContacts::create([
                 'event_id' => $eventId,
                 'name' => $contact->name,
@@ -56,7 +56,8 @@ class ProposalServices
             'state' => 'Louisiana',
             'postal_code' => ''
         ];
-        if ($parsedResponse->status !== 'INVALID_REQUEST' && $parsedResponse->status !== 'ZERO_RESULTS') {
+        if ($parsedResponse->status !== 'INVALID_REQUEST' && $parsedResponse->status !== 'ZERO_RESULTS')
+        {
             $usableAddress['venue'] = $parsedResponse->predictions[0]->structured_formatting->main_text;
             $place_id = $parsedResponse->predictions[0]->place_id;
             $detailedResponse = Http::get("https://maps.googleapis.com/maps/api/place/details/json", [
@@ -66,23 +67,30 @@ class ProposalServices
             ]);
             $parsedDetails = json_decode($detailedResponse->body());
 
-            if ($parsedDetails->status !== 'INVALID_REQUEST') {
+            if ($parsedDetails->status !== 'INVALID_REQUEST')
+            {
                 $addressComponents = $parsedDetails->result->address_components;
-                foreach ($addressComponents as $component) {
+                foreach ($addressComponents as $component)
+                {
 
-                    if (array_search('street_number', $component->types) !== false) {
+                    if (array_search('street_number', $component->types) !== false)
+                    {
                         $usableAddress['street_number'] = $component->long_name;
                     }
-                    if (array_search('route', $component->types) !== false) {
+                    if (array_search('route', $component->types) !== false)
+                    {
                         $usableAddress['route'] = $component->long_name;
                     }
-                    if (array_search('locality', $component->types) !== false) {
+                    if (array_search('locality', $component->types) !== false)
+                    {
                         $usableAddress['locality'] = $component->long_name;
                     }
-                    if (array_search('administrative_area_level_1', $component->types) !== false) {
+                    if (array_search('administrative_area_level_1', $component->types) !== false)
+                    {
                         $usableAddress['state'] = $component->long_name;
                     }
-                    if (array_search('postal_code', $component->types) !== false) {
+                    if (array_search('postal_code', $component->types) !== false)
+                    {
                         $usableAddress['postal_code'] = $component->long_name;
                     }
                 }
@@ -132,16 +140,20 @@ class ProposalServices
         $this->proposal->save();
 
         $band = Bands::find($event->band_id);
-        if ($band->calendar_id !== '' && $band->calendar_id !== null) {
+        if ($band->calendar_id !== '' && $band->calendar_id !== null)
+        {
 
             Config::set('google-calendar.service_account_credentials_json', storage_path('/app/google-calendar/service-account-credentials.json'));
             Config::set('google-calendar.calendar_id', $band->calendar_id);
 
             // dd(Carbon::parse($event->event_time));
 
-            if ($event->google_calendar_event_id !== null) {
+            if ($event->google_calendar_event_id !== null)
+            {
                 $calendarEvent = CalendarEvent::find($event->google_calendar_event_id);
-            } else {
+            }
+            else
+            {
                 $calendarEvent = new CalendarEvent;
             }
             $calendarEvent->name = $event->event_name;
@@ -164,5 +176,87 @@ class ProposalServices
         $this->addContactsToEvent($event->id);
 
         return $event;
+    }
+
+
+    public function make_pandadoc_contract()
+    {
+        $pdf = PDF::loadView('contract', ['proposal' => $this->proposal]);
+        $base64PDF = base64_encode($pdf->output());
+        $imagePath = $this->proposal->band->site_name . '/' . $this->proposal->name . '_contract_' . time() . '.pdf';
+
+        $path = Storage::disk('s3')->put(
+            $imagePath,
+            base64_decode($base64PDF),
+            ['visibility' => 'public']
+        );
+
+        $body =  [
+            "name" => "Contract for " . $this->proposal->band->name,
+            "url" => Storage::disk('s3')->url($imagePath),
+            "tags" => [
+                "tag_1"
+            ],
+            "recipients" => [
+                [
+                    "email" => $this->proposal->proposal_contacts[0]->email,
+                    "first_name" => $this->proposal->proposal_contacts[0]->name,
+                    "last_name" => ".",
+                    "role" => "user"
+                ]
+            ],
+            "fields" => [
+                "name" => [
+                    "value" => $this->proposal->proposal_contacts[0]->name,
+                    "role" => "user"
+                ]
+            ],
+            "parse_form_fields" => false
+        ];
+
+        if (app()->environment('testing'))
+        {
+            // In testing environment, we'll skip the actual API call
+            $uploadedDocumentId = 'test_document_id';
+            $sent = true;
+        }
+        else
+        {
+            $uploadedDocumentId = $this->sendToPandaDoc($body);
+            sleep(5);
+            $sent = $this->sendToPandaDoc($body, $uploadedDocumentId);
+        }
+
+        Contracts::create([
+            'proposal_id' => $this->proposal->id,
+            'envelope_id' => $uploadedDocumentId,
+            'status' => 'sent',
+            'image_url' => Storage::disk('s3')->url($imagePath)
+        ]);
+
+        return $sent;
+    }
+
+    private function sendToPandaDoc($body, $uploadedDocumentId = null)
+    {
+        if ($uploadedDocumentId === null)
+        {
+            $response = Http::withHeaders([
+                'Authorization' => 'API-Key ' . env('PANDADOC_KEY')
+            ])
+                ->acceptJson()
+                ->post('https://api.pandadoc.com/public/v1/documents', $body);
+
+            return $response['id'];
+        }
+        else
+        {
+            return Http::withHeaders([
+                'Authorization' => 'API-Key '  . env('PANDADOC_KEY')
+            ])->post('https://api.pandadoc.com/public/v1/documents/' . $uploadedDocumentId . '/send', [
+                "message" => 'Please sign this contract so we can make this official!',
+                "subject" => 'Contract for ' . $body['name']
+            ]);
+        }
     }
 }

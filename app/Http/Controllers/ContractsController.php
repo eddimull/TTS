@@ -93,95 +93,23 @@ class ContractsController extends Controller
         return $sent;
     }
 
-
-    // private function make_envelope_from_docusign(array $args)=> EnvelopeDefinition
-    // {
-    //     $proposal = Proposals::find(1);
-    //     $pdf = PDF::loadView('contract',['proposal'=>$proposal]);
-    //     $base64PDF = base64_encode($pdf->output());
-
-
-    //     $sender = new \DocuSign\eSign\Model\UserInfo([
-    //         'user_name'=>'Doot doot',
-    //         'email'=>$proposal->author->email
-    //     ]);
-    //     # Create the envelope definition
-    //     $envelope_definition = new \DocuSign\eSign\Model\EnvelopeDefinition([
-    //        'email_subject' => 'Contract for ' . $proposal->band->name,
-    //        'email_blurb'=>'Please sign this contract so we can make this official!'
-    //     ]);
-    //     $envelope_definition->setSender($sender);
-    //     // dd($envelope_definition->getSender());
-    //     // $doc1_b64 = base64_encode($this->clientService->createDocumentForEnvelope($args));
-    //     # read files 2 and 3 from a local directory
-    //     # The reads could raise an exception if the file is not available!
-
-
-    //     $document = new \DocuSign\eSign\Model\Document([  # create the DocuSign document object
-    //         'document_base64' => $base64PDF,
-    //         'name' => 'Contract for ' . $proposal->band->name,  # can be different from actual file name
-    //         'file_extension' => 'pdf',  # many different document types are accepted
-    //         'document_id' => '1'  # a label used to reference the doc
-    //     ]);
-    //     # The order in the docs array determines the order in the envelope
-    //     $envelope_definition->setDocuments([$document]);
-
-    //     # Create the signer recipient model
-    //     $signer1 = new \DocuSign\eSign\Model\Signer([
-    //         'email' => $args['signer_email'], 'name' => $args['signer_name'],
-    //         'recipient_id' => "1", 'routing_order' => "1"]);
-    //     # routingOrder (lower means earlier) determines the order of deliveries
-    //     # to the recipients. Parallel routing order is supported by using the
-    //     # same integer as the order for two or more recipients.
-
-    //     # create a cc recipient to receive a copy of the documents
-    //     $cc1 = new \DocuSign\eSign\Model\CarbonCopy([
-    //         'email' => $args['cc_email'], 'name' => $args['cc_name'],
-    //         'recipient_id' => "2", 'routing_order' => "2"]);
-
-    //     # Create signHere fields (also known as tabs) on the documents,
-    //     # We're using anchor (autoPlace) positioning
-    //     #
-    //     # The DocuSign platform searches throughout your envelope's
-    //     # documents for matching anchor strings. So the
-    //     # signHere2 tab will be used in both document 2 and 3 since they
-    //     #  use the same anchor string for their "signer 1" tabs.
-    //     $sign_here1 = new \DocuSign\eSign\Model\SignHere([
-    //         'anchor_string' => 'Signature=>', 'anchor_units' => 'pixels',
-    //         'anchor_y_offset' => '10', 'anchor_x_offset' => '40']);
-
-
-    //     # Add the tabs model (including the sign_here tabs) to the signer
-    //     # The Tabs object wants arrays of the different field/tab types
-    //     $signer1->setTabs(new \DocuSign\eSign\Model\Tabs([
-    //         'sign_here_tabs' => [$sign_here1]]));
-
-    //     # Add the recipients to the envelope object
-    //     $recipients = new \DocuSign\eSign\Model\Recipients([
-    //         'signers' => [$signer1], 'carbon_copies' => [$cc1]]);
-    //     $envelope_definition->setRecipients($recipients);
-    //     dd($envelope_definition);
-    //     # Request that the envelope be sent by setting |status| to "sent".
-    //     # To request that the envelope be created as a draft, set to "created"
-    //     $envelope_definition->setStatus('sent');
-
-    //     return $envelope_definition;
-    // }
-
     public function webhook(Request $request)
     {
 
         $contract = Contracts::where('envelope_id', $request['envelopeId'])->first();
         // dd($contract);
-        if ($contract) {
+        if ($contract)
+        {
             $proposal = $contract->proposal;
             $contract->status = $request['status'];
 
-            if ($contract->status == 'completed') {
+            if ($contract->status == 'completed')
+            {
 
                 $band = Bands::find($proposal->band_id);
 
-                foreach ($band->owners as $owner) {
+                foreach ($band->owners as $owner)
+                {
                     $user = User::find($owner->user_id);
                     $user->notify(new TTSNotification([
                         'text' => 'Contract for ' . $proposal->name . ' signed and completed!',
@@ -195,25 +123,5 @@ class ContractsController extends Controller
         }
 
         return response('success');
-    }
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
-    {
-        //
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(Request $request)
-    {
-        //
     }
 }
