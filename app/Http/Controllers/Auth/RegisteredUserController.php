@@ -18,31 +18,42 @@ class RegisteredUserController extends Controller
 {
     const OWNER_INVITE_TYPE = 1;
     const MEMBER_INVITE_TYPE = 2;
+
     /**
      * Display the registration view.
      *
-     * @return \Illuminate\View\View
+     * @param  Request  $request
+     * @return \Inertia\Response
      */
     public function create(Request $request)
     {
-        $invitationEmail = $this->getInvitationEmail($request);
+        $invitationEmail = null;
+        // If the request has a key, we will use it to get the invitation email
+        // This is used to pre-fill the email field in the registration form
+        // so the registration flow can be reused for both invites and regular registrations
+        if ($request->filled('key'))
+        {
+            $invitationEmail = $this->getInvitationEmail($request->key);
+        }
 
         return Inertia::render('Auth/Register', [
             'invitationEmail' => $invitationEmail
         ]);
     }
 
-    private function getInvitationEmail(Request $request): string
+    /**
+     * Get the invitation email for a given key.
+     *
+     * @param  string  $key
+     * @return string|null
+     */
+    private function getInvitationEmail(string $key): ?string
     {
-        if (!$request->has('key')) {
-            return '';
-        }
-
-        $invitation = Invitations::where('key', $request->key)
+        $invitation = Invitations::where('key', $key)
             ->where('pending', true)
-            ->firstOrFail();
+            ->first();
 
-        return $invitation->email;
+        return $invitation ? $invitation->email : null;
     }
 
     /**
@@ -70,14 +81,17 @@ class RegisteredUserController extends Controller
 
         $invitations = Invitations::where('email', $user->email)->where('pending', true)->get();
 
-        foreach ($invitations as $invitation) {
-            if ($invitation->invite_type_id === static::OWNER_INVITE_TYPE) {
+        foreach ($invitations as $invitation)
+        {
+            if ($invitation->invite_type_id === static::OWNER_INVITE_TYPE)
+            {
                 BandOwners::create([
                     'user_id' => $user->id,
                     'band_id' => $invitation->band_id
                 ]);
             }
-            if ($invitation->invite_type_id === static::MEMBER_INVITE_TYPE) {
+            if ($invitation->invite_type_id == static::MEMBER_INVITE_TYPE)
+            {
                 BandMembers::create([
                     'user_id' => $user->id,
                     'band_id' => $invitation->band_id
