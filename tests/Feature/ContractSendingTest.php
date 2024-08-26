@@ -1,5 +1,7 @@
 <?php
 
+namespace Tests\Feature;
+
 use Tests\TestCase;
 use App\Models\Proposals;
 use App\Models\Bands;
@@ -13,7 +15,7 @@ class ContractSendingTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_contract_can_be_sent()
+    public function test_contractCanBeSent()
     {
         Storage::fake('s3');
 

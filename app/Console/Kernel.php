@@ -17,6 +17,7 @@ use Symfony\Component\ErrorHandler\Debug;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
+use App\Console\Commands\DevHelpers;
 
 class Kernel extends ConsoleKernel
 {
@@ -38,24 +39,25 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         // $schedule->command('inspire')->hourly();
-        $schedule->call(function(){
+        $schedule->call(function ()
+        {
 
-            $contracts = Contracts::where('status','!=','completed')->where('created_at','>',Carbon::now()->subMonths(2))->get();
+            $contracts = Contracts::where('status', '!=', 'completed')->where('created_at', '>', Carbon::now()->subMonths(2))->get();
 
-            foreach($contracts as $contract)
+            foreach ($contracts as $contract)
             {
                 $response = Http::withHeaders([
-                    'Authorization'=>'API-Key ' . env('PANDADOC_KEY')
+                    'Authorization' => 'API-Key ' . env('PANDADOC_KEY')
                 ])
-                ->acceptJson()
-                ->get('https://api.pandadoc.com/public/v1/documents/' . $contract->envelope_id);
+                    ->acceptJson()
+                    ->get('https://api.pandadoc.com/public/v1/documents/' . $contract->envelope_id);
 
-                if(!$response->ok()) //don't try to parse failed requests
+                if (!$response->ok()) //don't try to parse failed requests
                 {
                     continue;
                 }
 
-                if($response['status'] == "document.completed")
+                if ($response['status'] == "document.completed")
                 {
                     $proposal = $contract->proposal;
                     $proposal->phase_id = 6;
@@ -65,31 +67,31 @@ class Kernel extends ConsoleKernel
 
 
                     $opts = array(
-                        'http'=>array(
-                            'method'=>"GET",
-                            'header'=>"Authorization: API-Key " . env('PANDADOC_KEY')
+                        'http' => array(
+                            'method' => "GET",
+                            'header' => "Authorization: API-Key " . env('PANDADOC_KEY')
                         )
-                        );
+                    );
                     $context = stream_context_create($opts);
 
                     $imagePath = $proposal->band->site_name . '/' . $proposal->name . '_signed_contract_' . time() . '.pdf';
 
                     Storage::disk('s3')->put(
                         $imagePath,
-                        file_get_contents('https://api.pandadoc.com/public/v1/documents/' . $contract->envelope_id . '/download',false,$context),
-                        ['visibility'=>'public']
+                        file_get_contents('https://api.pandadoc.com/public/v1/documents/' . $contract->envelope_id . '/download', false, $context),
+                        ['visibility' => 'public']
                     );
                     $contract->image_url = Storage::disk('s3')->url($imagePath);
 
-                    foreach($proposal->band->owners as $owner)
+                    foreach ($proposal->band->owners as $owner)
                     {
                         $user = User::find($owner->user_id);
                         $user->notify(new TTSNotification([
-                            'text'=>'Contract for ' . $proposal->name . ' signed and completed!',
-                            'route'=>'proposals',
-                            'routeParams'=>'',
-                            'url'=>'/proposals/'
-                            ]));
+                            'text' => 'Contract for ' . $proposal->name . ' signed and completed!',
+                            'route' => 'proposals',
+                            'routeParams' => '',
+                            'url' => '/proposals/'
+                        ]));
                     }
 
                     $contract->save();
@@ -101,21 +103,22 @@ class Kernel extends ConsoleKernel
         })->everyMinute()->name('check-signed-contracts')->withoutOverlapping();
 
 
-        $schedule->call(function(){
+        $schedule->call(function ()
+        {
             $BandEvents = BandEvents::whereDate('event_time', Carbon::today())->get();
 
-            foreach($BandEvents as $event)
+            foreach ($BandEvents as $event)
             {
 
                 $band = $event->band;
                 $owners = $band->owners;
                 $members = $band->members;
-                foreach($owners as $person)
+                foreach ($owners as $person)
                 {
                     $member = $person->user;
                     Mail::to($member->email)->send(new EventReminder($event));
                 }
-                foreach($members as $person)
+                foreach ($members as $person)
                 {
                     $member = $person->user;
                     Mail::to($member->email)->send(new EventReminder($event));
@@ -123,10 +126,11 @@ class Kernel extends ConsoleKernel
             }
         })->dailyAt('9:00');
 
-        $schedule->call(function(){
+        $schedule->call(function ()
+        {
             $bands = Bands::all();
 
-            foreach($bands as $band)
+            foreach ($bands as $band)
             {
                 $reminder = new AdvanceReminderService($band);
                 $reminder->searchAndSend();
@@ -141,7 +145,7 @@ class Kernel extends ConsoleKernel
      */
     protected function commands()
     {
-        $this->load(__DIR__.'/Commands');
+        $this->load(__DIR__ . '/Commands');
 
         require base_path('routes/console.php');
     }
