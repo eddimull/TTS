@@ -18,8 +18,12 @@ class QuestionnaireController extends Controller
      */
     public function index()
     {
-        $questionnaires = Auth::user()->questionnaires();
-        return Inertia::render('Questionnaire/Index',compact('questionnaires'));
+        $user = Auth::user();
+        $questionnaires = $user->questionnaires;
+
+        return Inertia::render('Questionnaire/Index', [
+            'questionnaires' => $questionnaires
+        ]);
     }
 
     /**
@@ -41,11 +45,11 @@ class QuestionnaireController extends Controller
     public function store(Request $request)
     {
         $questionnaire = Questionnairres::create([
-            'name'=>$request->name,
-            'description'=>$request->description,
-            'band_id'=>$request->band_id
+            'name' => $request->name,
+            'description' => $request->description,
+            'band_id' => $request->band_id
         ]);
-        
+
         return redirect('/questionnaire/' . $questionnaire->slug);
     }
 
@@ -60,7 +64,7 @@ class QuestionnaireController extends Controller
         //
     }
 
-/**
+    /**
      * Show the form for editing the specified resource.
      *
      * @param  int  $id
@@ -69,7 +73,7 @@ class QuestionnaireController extends Controller
     public function edit(Questionnairres $questionnaire)
     {
         // dd($questionnaire);
-        return Inertia::render('Questionnaire/Edit',['questionnaire'=>$questionnaire,'questionnaireData'=>$questionnaire->components]);
+        return Inertia::render('Questionnaire/Edit', ['questionnaire' => $questionnaire, 'questionnaireData' => $questionnaire->components]);
     }
 
     /**
@@ -79,18 +83,18 @@ class QuestionnaireController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function addQuestion(Questionnairres $questionnaire,Request $request)
+    public function addQuestion(Questionnairres $questionnaire, Request $request)
     {
         $validated = $request->validate([
-            'name'=>'required',
-            'type'=>'required'
+            'name' => 'required',
+            'type' => 'required'
         ]);
 
         $service = new QuestionnaireServices($questionnaire);
 
-        $service->addNewQuestion($request->name,$request->type);
-       
-        return redirect()->back()->with('successMessage','Question Added');
+        $service->addNewQuestion($request->name, $request->type);
+
+        return redirect()->back()->with('successMessage', 'Question Added');
     }
 
     /**

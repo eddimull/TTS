@@ -8,7 +8,7 @@ use App\Models\Bands;
 use Illuminate\Support\Facades\Auth;
 use App\Providers\RouteServiceProvider;
 
-class owner
+class Owner
 {
     /**
      * Handle an incoming request.

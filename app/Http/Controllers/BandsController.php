@@ -11,7 +11,6 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Notifications\TTSNotification;
 use App\Services\CalendarService;
-use Illuminate\Support\Facades\Storage;
 
 class BandsController extends Controller
 {
@@ -25,9 +24,9 @@ class BandsController extends Controller
         // $bands = Bands::select('bands.*')->join('band_owners','bands.id','=','band_owners.band_id')->where('user_id',Auth::id())->get();
         $user = Auth::user();
         // $bandOwner = $user->ban
-        
-        return Inertia::render('Band/Index',[
-            'bands'=>$user->bandOwner
+
+        return Inertia::render('Band/Index', [
+            'bands' => $user->bandOwner
         ]);
     }
 
@@ -52,22 +51,22 @@ class BandsController extends Controller
     {
         //
         $request->validate([
-            'name'=>'required',
-            'site_name'=>'required|unique:bands,site_name'
+            'name' => 'required',
+            'site_name' => 'required|unique:bands,site_name'
         ]);
-        
+
         // dd($request);
         $createdBand = Bands::create([
-            'name'=>$request->name,
-            'site_name'=>$request->site_name
+            'name' => $request->name,
+            'site_name' => $request->site_name
         ]);
 
         BandOwners::create([
-            'band_id'=>$createdBand->id,
-            'user_id'=>Auth::id()
+            'band_id' => $createdBand->id,
+            'user_id' => Auth::id()
         ]);
 
-        return redirect()->route('bands')->with('successMessage','Band was successfully added');
+        return redirect()->route('bands')->with('successMessage', 'Band was successfully added');
     }
 
     /**
@@ -89,20 +88,23 @@ class BandsController extends Controller
      */
     public function edit(Bands $band)
     {
-        // $band = Bands::where('id',$id)->first();
-        compact($band->owners);
-        foreach($band->owners as $owners)
-        {
-           compact($owners->user);
-        }
+        // Load the relationships if they're not already loaded
+        $band->load('owners.user', 'members.user', 'pendingInvites', 'stripe_accounts');
 
-        foreach($band->members as $member)
+        // Merge additional data into the $band object
+        $band->owners_with_users = $band->owners->map(function ($owner)
         {
-           compact($member->user);
-        }
-        compact($band->pendingInvites);
-        compact($band->stripe_accounts);
-        return Inertia::render('Band/Edit',[
+            $owner->user_data = $owner->user;
+            return $owner;
+        });
+
+        $band->members_with_users = $band->members->map(function ($member)
+        {
+            $member->user_data = $member->user;
+            return $member;
+        });
+
+        return Inertia::render('Band/Edit', [
             'band' => $band
         ]);
     }
@@ -112,7 +114,7 @@ class BandsController extends Controller
         $calService = new CalendarService($band);
         $calService->syncEvents();
 
-        return back()->with('successMessage','Events written to your calendar!');
+        return back()->with('successMessage', 'Events written to your calendar!');
     }
 
     /**
@@ -126,20 +128,20 @@ class BandsController extends Controller
     {
         $band = Bands::find($id);
         $validation_rules = [
-            'name'=>'required',
+            'name' => 'required',
         ];
-        if($band->site_name != $request->site_name)
+        if ($band->site_name != $request->site_name)
         {
             $validation_rules['site_name'] = 'required|unique:bands,site_name';
         }
-        
+
         $request->validate($validation_rules);
-        
+
 
         $band->name = $request->name;
         $band->site_name = $request->site_name;
         $band->calendar_id = $request->calendar_id;
-        
+
         $band->save();
 
         return redirect()->route('bands')->with('successMessage', $band->name . ' was successfully updated');
@@ -148,26 +150,27 @@ class BandsController extends Controller
 
     public function deleteOwner(Bands $band, $ownerParam)
     {
-       
 
-        $owner = BandOwners::where('user_id','=',$ownerParam)->where('band_id','=',$band->id)->first();
+
+        $owner = BandOwners::where('user_id', '=', $ownerParam)->where('band_id', '=', $band->id)->first();
+        /** @var \App\Models\User $user */
         $author = Auth::user();
-        if($author->ownsBand($band->id))
+        if ($author->ownsBand($band->id))
         {
 
-            foreach($band->owners as $bandOwner)
+            foreach ($band->owners as $bandOwner)
             {
-               $inviteOwnerUser = User::find($bandOwner->user_id);
-               $inviteOwnerUser->notify(new TTSNotification([
-                'text'=>$author->name . ' removed ' . $owner->user->name . ' an owner of ' . $band->name,
-                'route'=>'bands.edit',
-                'routeParams'=>$band->id,
-                'url'=>'/bands/' . $band->id . '/edit'
+                $inviteOwnerUser = User::find($bandOwner->user_id);
+                $inviteOwnerUser->notify(new TTSNotification([
+                    'text' => $author->name . ' removed ' . $owner->user->name . ' an owner of ' . $band->name,
+                    'route' => 'bands.edit',
+                    'routeParams' => $band->id,
+                    'url' => '/bands/' . $band->id . '/edit'
                 ]));
             }
 
             $owner->delete();
-            return back()->with('successMessage','User removed from band owners');
+            return back()->with('successMessage', 'User removed from band owners');
         }
         else
         {
@@ -178,38 +181,37 @@ class BandsController extends Controller
     public function uploadLogo(Bands $band, Request $request)
     {
         $request->validate([
-            'files.*'=>'required|image'
+            'files.*' => 'required|image'
         ]);
         $author = Auth::user();
-        
-        if($author->isOwner($band->id))
+
+        if ($author->isOwner($band->id))
         {
-            $imageName = time() . $band->name . 'logo.' . $request->logo[0]->extension();  
+            $imageName = time() . $band->name . 'logo.' . $request->logo[0]->extension();
 
             $imagePath = $request->logo[0]->storeAs($band->site_name, $imageName, 's3');
-            
+
             $band->logo = '/images/' . $imagePath;
 
-            
+
             $band->save();
 
 
-            foreach($band->owners as $owner)
+            foreach ($band->owners as $owner)
             {
-               $user = User::find($owner->user_id);
-               $user->notify(new TTSNotification([
-                'text'=>$author->name . ' updated the logo for ' . $band->name,
-                'route'=>'bands',
-                'routeParams'=>null,
-                'url'=>'/bands/' . $band->id . '/edit'
+                $user = User::find($owner->user_id);
+                $user->notify(new TTSNotification([
+                    'text' => $author->name . ' updated the logo for ' . $band->name,
+                    'route' => 'bands',
+                    'routeParams' => null,
+                    'url' => '/bands/' . $band->id . '/edit'
                 ]));
             }
 
-            return redirect()->back()->with('successMessage','Updated Logo! (no need to save)');
+            return redirect()->back()->with('successMessage', 'Updated Logo! (no need to save)');
         }
 
         return back()->withErrors('You do not have privileges to update the logo for this band');
-        
     }
 
     public function setupStripe(Bands $band, Request $request)
@@ -217,20 +219,20 @@ class BandsController extends Controller
         \Stripe\Stripe::setApiKey(env('STRIPE_KEY'));
 
         $account = \Stripe\Account::create([
-        'type' => 'standard',
+            'type' => 'standard',
         ]);
 
         $account_links = \Stripe\AccountLink::create([
             'account' => $account->id,
             'refresh_url' => url('/login'),
-            'return_url' =>url('/bands/' . $band->id . '/edit'),
+            'return_url' => url('/bands/' . $band->id . '/edit'),
             'type' => 'account_onboarding',
-          ]);
-        
+        ]);
+
         stripe_accounts::create([
-            'band_id'=>$band->id,
-            'stripe_account_id'=>$account->id,
-            'status'=>'incomplete'
+            'band_id' => $band->id,
+            'stripe_account_id' => $account->id,
+            'status' => 'incomplete'
         ]);
         return \Redirect::away($account_links->url);
     }

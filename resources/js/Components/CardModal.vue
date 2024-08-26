@@ -107,7 +107,7 @@
 <script>
 
 export default {
-  name: "Modal",
+  name: 'CardModal',
   props:{
     saveText:{
       type:String,
