@@ -10,7 +10,7 @@ use Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 
-class ProposalPaymentDate extends TestCase
+class ProposalPaymentDateTest extends TestCase
 {
     // use RefreshDatabase;
 

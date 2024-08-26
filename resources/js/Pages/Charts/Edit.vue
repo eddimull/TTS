@@ -245,7 +245,7 @@
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
     import FileUpload from 'primevue/fileupload';    
-    import pdf from '@jbtje/vue3pdf'
+    import pdf from '@jbtje/vite-vue3pdf'
 
 
     export default {
