@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Models\Bands;
+use App\Models\userPermissions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -26,7 +27,7 @@ class BookingLinkTest extends TestCase
         {
             $assert->has('auth.user.navigation', function (Assert $assert)
             {
-                $assert->where('Booking', true)
+                $assert->where('Bookings', true)
                     ->etc();
             });
         });
@@ -37,6 +38,12 @@ class BookingLinkTest extends TestCase
         $band = Bands::factory()->hasMembers(1)->create();
         $member = $band->members->first()->user;
 
+        userPermissions::create([
+            'user_id' => $member->id,
+            'band_id' => $band->id,
+            'read_bookings' => true,
+        ]);
+
         $response = $this->actingAs($member)
             ->get('/dashboard');
 
@@ -44,7 +51,7 @@ class BookingLinkTest extends TestCase
         {
             $assert->has('auth.user.navigation', function (Assert $assert)
             {
-                $assert->where('Booking', true)
+                $assert->where('Bookings', true)
                     ->etc();
             });
         });
@@ -61,7 +68,7 @@ class BookingLinkTest extends TestCase
         {
             $assert->has('auth.user.navigation', function (Assert $assert)
             {
-                $assert->where('Booking', false)
+                $assert->where('Bookings', false)
                     ->etc();
             });
         });
