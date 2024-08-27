@@ -1,11 +1,11 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\BookingController;
+use App\Http\Controllers\BookingsController;
 
 Route::middleware(['auth', 'verified'])->group(function ()
 {
-    Route::get('/booking', [BookingController::class, 'index'])->name('booking');
+    Route::get('/booking', [BookingsController::class, 'index'])->name('booking');
 
     // Add other booking-related routes here as needed
     // For example:
