@@ -1,0 +1,1 @@
+import{_ as a,o as e,b as t,t as n,J as c}from"./app-BoR-OAMc.js";const l={props:["value"]},r={class:"block font-medium text-sm text-gray-700"},_={key:0},i={key:1};function d(o,p,s,u,f,m){return e(),t("label",r,[s.value?(e(),t("span",_,n(s.value),1)):(e(),t("span",i,[c(o.$slots,"default")]))])}const b=a(l,[["render",d]]);export{b as L};
