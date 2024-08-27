@@ -140,7 +140,7 @@ class User extends Authenticatable
             'Invoices' => false,
             'Colors' => false,
             'Charts' => false,
-            'Booking' => false
+            'Bookings' => false
         ];
 
 
@@ -152,7 +152,7 @@ class User extends Authenticatable
                 'Invoices' => true,
                 'Colors' => true,
                 'Charts' => true,
-                'Booking' => true
+                'Bookings' => true
             ];
         }
         $bands = $this->bandMember;

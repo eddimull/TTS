@@ -16,10 +16,10 @@ class UserPermissionsController extends Controller
      * @return \Illuminate\Http\Response
      */
     public function index(Bands $band, User $user)
-    {       
-        
-        $permissions = userPermissions::firstOrCreate(['band_id'=>$band->id, 'user_id'=>$user->id]);
-        return Inertia::render('Band/ShowPermissions',['band'=>$band,'user'=>$user,'permissions'=>$permissions]);
+    {
+
+        $permissions = userPermissions::firstOrCreate(['band_id' => $band->id, 'user_id' => $user->id]);
+        return Inertia::render('Band/ShowPermissions', ['band' => $band, 'user' => $user, 'permissions' => $permissions]);
     }
 
     /**
@@ -40,8 +40,8 @@ class UserPermissionsController extends Controller
      */
     public function store(Bands $band, User $user, Request $request)
     {
-        
-        $permissions = userPermissions::firstOrCreate(['band_id'=>$band->id, 'user_id'=>$user->id]);
+
+        $permissions = userPermissions::firstOrCreate(['band_id' => $band->id, 'user_id' => $user->id]);
         $permissions->read_events = !empty($request->permissions['read_events']) ? $request->permissions['read_events'] : false;
         $permissions->write_events = !empty($request->permissions['write_events']) ? $request->permissions['write_events'] : false;
         $permissions->read_proposals = !empty($request->permissions['read_proposals']) ? $request->permissions['read_proposals'] : false;
@@ -52,8 +52,10 @@ class UserPermissionsController extends Controller
         $permissions->write_colors = !empty($request->permissions['write_colors']) ? $request->permissions['write_colors'] : false;
         $permissions->read_charts = !empty($request->permissions['read_charts']) ? $request->permissions['read_charts'] : false;
         $permissions->write_charts = !empty($request->permissions['write_charts']) ? $request->permissions['write_charts'] : false;
+        $permissions->read_bookings = !empty($request->permissions['read_bookings']) ? $request->permissions['read_bookings'] : false;
+        $permissions->write_bookings = !empty($request->permissions['write_bookings']) ? $request->permissions['write_bookings'] : false;
         $permissions->save();
-        return redirect()->back()->with('successMessage','Permissions Updated!');
+        return redirect()->back()->with('successMessage', 'Permissions Updated!');
     }
 
     /**

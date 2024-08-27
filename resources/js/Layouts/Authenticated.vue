@@ -27,7 +27,7 @@
                 Bands
               </breeze-nav-link>
               <breeze-nav-link
-                v-if="navigation && navigation.Booking"
+                v-if="navigation && navigation.Bookings"
                 :href="route('booking')"
                 :active="route().current('booking')"
               >
@@ -321,7 +321,7 @@
             Proposals
           </breeze-responsive-nav-link> 
           <breeze-responsive-nav-link
-            v-if="navigation && navigation.Booking"
+            v-if="navigation && navigation.Bookings"
             :href="route('booking')"
             :active="route().current('booking')"
           >
