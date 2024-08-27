@@ -25,6 +25,13 @@
                 :active="route().current('bands')"
               >
                 Bands
+              </breeze-nav-link>
+              <breeze-nav-link
+                v-if="navigation && navigation.Booking"
+                :href="route('booking')"
+                :active="route().current('booking')"
+              >
+                Booking
               </breeze-nav-link>                  
               <breeze-nav-link
                 v-if="navigation && navigation.Events"
@@ -313,6 +320,13 @@
           >
             Proposals
           </breeze-responsive-nav-link> 
+          <breeze-responsive-nav-link
+            v-if="navigation && navigation.Booking"
+            :href="route('booking')"
+            :active="route().current('booking')"
+          >
+            Booking
+          </breeze-responsive-nav-link>
           <breeze-responsive-nav-link
             v-if="navigation && navigation.Events"
             class="pl-4"

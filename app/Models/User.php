@@ -72,9 +72,12 @@ class User extends Authenticatable
     public function canWriteCharts($bandId)
     {
         // dd($bandId);
-        if ($this->ownsBand($bandId)) {
+        if ($this->ownsBand($bandId))
+        {
             return true;
-        } else {
+        }
+        else
+        {
             $permissions = $this->permissionsForBand($bandId);
 
 
@@ -90,11 +93,13 @@ class User extends Authenticatable
         $ownedBands = $this->bandOwner;
         $bandMember = $this->bandMember;
 
-        foreach ($ownedBands as $band) {
+        foreach ($ownedBands as $band)
+        {
             array_push($bandIds, $band->id);
         }
 
-        foreach ($bandMember as $band) {
+        foreach ($bandMember as $band)
+        {
             array_push($bandIds, $band->id);
         }
         $bandIds = array_unique($bandIds);
@@ -111,11 +116,13 @@ class User extends Authenticatable
         $ownedBands = $this->bandOwner;
         $bandMember = $this->bandMember;
 
-        foreach ($ownedBands as $band) {
+        foreach ($ownedBands as $band)
+        {
             array_push($bandIds, $band->id);
         }
 
-        foreach ($bandMember as $band) {
+        foreach ($bandMember as $band)
+        {
             array_push($bandIds, $band->id);
         }
         $bandIds = array_unique($bandIds);
@@ -132,7 +139,8 @@ class User extends Authenticatable
             'Proposals' => false,
             'Invoices' => false,
             'Colors' => false,
-            'Charts' => false
+            'Charts' => false,
+            'Booking' => false
         ];
 
 
@@ -143,17 +151,22 @@ class User extends Authenticatable
                 'Proposals' => true,
                 'Invoices' => true,
                 'Colors' => true,
-                'Charts' => true
+                'Charts' => true,
+                'Booking' => true
             ];
         }
         $bands = $this->bandMember;
 
-        foreach ($bands as $band) {
+        foreach ($bands as $band)
+        {
             $permissions = $this->permissionsForBand($band->id);
 
-            foreach ($availableNav as $key => $navItem) {
-                if (!$navItem) {
-                    if ($permissions['read_' . strtolower($key)]) {
+            foreach ($availableNav as $key => $navItem)
+            {
+                if (!$navItem)
+                {
+                    if ($permissions['read_' . strtolower($key)])
+                    {
                         $availableNav[$key] = true;
                     }
                 }
@@ -173,8 +186,10 @@ class User extends Authenticatable
     {
         $bandsPartOf = $this->bandMember;
         $partOf = false;
-        foreach ($bandsPartOf as $band) {
-            if ($id == $band->id) {
+        foreach ($bandsPartOf as $band)
+        {
+            if ($id == $band->id)
+            {
                 $partOf = true;
             }
         }
@@ -191,8 +206,10 @@ class User extends Authenticatable
     {
         $bandsOwned = $this->bandOwner;
         $owns = false;
-        foreach ($bandsOwned as $band) {
-            if ($id == $band->id) {
+        foreach ($bandsOwned as $band)
+        {
+            if ($id == $band->id)
+            {
                 $owns = true;
             }
         }
@@ -215,7 +232,8 @@ class User extends Authenticatable
         // Eager load events for all bands
         $bandIds = $bands->pluck('id');
         $events = BandEvents::whereIn('band_id', $bandIds)
-            ->when($afterDate, function ($query) use ($afterDate) {
+            ->when($afterDate, function ($query) use ($afterDate)
+            {
                 return $query->where('event_time', '>', $afterDate);
             })
             ->orderBy('event_time')
@@ -225,9 +243,11 @@ class User extends Authenticatable
         $eventsByBand = $events->groupBy('band_id');
 
         // Map events to bands and flatten the result
-        $mappedEvents = $bands->flatMap(function ($band) use ($eventsByBand) {
+        $mappedEvents = $bands->flatMap(function ($band) use ($eventsByBand)
+        {
             $bandEvents = $eventsByBand->get($band->id, collect());
-            return $bandEvents->map(function ($event) {
+            return $bandEvents->map(function ($event)
+            {
                 $event->OldEvent = $event->OldEvent;
                 return $event;
             });
