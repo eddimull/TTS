@@ -24,7 +24,10 @@ class UpdateBookingsRequest extends FormRequest
     public function rules()
     {
         return [
-            //
+            'user_id' => 'required|exists:users,id',
+            'start_time' => 'required|date',
+            'end_time' => 'required|date|after:start_time',
+            // Add other fields as necessary
         ];
     }
 }

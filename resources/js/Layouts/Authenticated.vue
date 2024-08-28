@@ -28,8 +28,8 @@
               </breeze-nav-link>
               <breeze-nav-link
                 v-if="navigation && navigation.Bookings"
-                :href="route('booking')"
-                :active="route().current('booking')"
+                :href="route('bookings.index')"
+                :active="route().current('bookings.index')"
               >
                 Booking
               </breeze-nav-link>                  
@@ -322,8 +322,8 @@
           </breeze-responsive-nav-link> 
           <breeze-responsive-nav-link
             v-if="navigation && navigation.Bookings"
-            :href="route('booking')"
-            :active="route().current('booking')"
+            :href="route('bookings.index')"
+            :active="route().current('bookings.index')"
           >
             Booking
           </breeze-responsive-nav-link>
@@ -397,6 +397,17 @@
       >
         <div class="max-w-7xl mx-auto py-2 px-4 sm:px-4 lg:px-8">
           <slot name="header" />
+        </div>
+      </header>
+
+      <header
+        v-else
+        class="bg-white shadow"
+      >
+        <div class="max-w-7xl mx-auto py-2 px-4 sm:px-4 lg:px-8">
+          <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            {{ route().current().charAt(0).toUpperCase() + route().current().slice(1).replace('.',' - ') }}
+          </h2>
         </div>
       </header>
 

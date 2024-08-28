@@ -1,215 +1,209 @@
 <template>
-  <Layout>
-    <template #header>
-      <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-        Finances
-      </h2>
-    </template>
-    <Container>
-      <TabView>
-        <TabPanel header="Revenue for year">
-          <div
-            v-for="band in revenue"
-            :key="band.name"
+  <Container>
+    <TabView>
+      <TabPanel header="Revenue for year">
+        <div
+          v-for="band in revenue"
+          :key="band.name"
+        >
+          <h2 class="underline text-2xl">
+            {{ band.name }}
+          </h2>
+          <ul
+            v-for="(money,index) in band.aggregatedRevenue"
+            :key="index"
           >
-            <h2 class="underline text-2xl">
-              {{ band.name }}
-            </h2>
-            <ul
-              v-for="(money,index) in band.aggregatedRevenue"
-              :key="index"
+            <li>{{ index }}: {{ moneyFormat(money) }}</li>
+          </ul>
+        </div>
+      </TabPanel>
+      <TabPanel header="Paid/Unpaid">
+        <div
+          v-for="(band,index) in completedProposals"
+          :key="index"
+          class="card my-4"
+        >
+          <div class="card">
+            <h5>{{ band.name }}</h5>
+            <Chart
+              type="line"
+              :data="band.data"
+              :options="basicOptions"
+            />
+          </div>
+        </div>
+      </TabPanel>
+      <TabPanel header="Unpaid Contracts">
+        <div
+          v-for="(band,index) in completedProposals"
+          :key="index"
+          class="card my-4"
+        >
+          <div class="card">
+            <h5>{{ band.name }}</h5>
+            <DataTable
+              v-model:filters="unpaidProposalFilter"
+              :value="band.unpaid"
+              striped-rows
+              row-hover
+              responsive-layout="scroll"
+              selection-mode="single"
+              @row-click="gotoPayments"
             >
-              <li>{{ index }}: {{ moneyFormat(money) }}</li>
-            </ul>
-          </div>
-        </TabPanel>
-        <TabPanel header="Paid/Unpaid">
-          <div
-            v-for="(band,index) in completedProposals"
-            :key="index"
-            class="card my-4"
-          >
-            <div class="card">
-              <h5>{{ band.name }}</h5>
-              <Chart
-                type="line"
-                :data="band.data"
-                :options="basicOptions"
+              <template #header>
+                <div class="p-d-flex p-jc-between">
+                  <Button
+                    type="button"
+                    icon="pi pi-filter-slash"
+                    label="Clear"
+                    class="p-button-outlined"
+                    @click="initializedunPaidProposalFilter()"
+                  />
+                  <span class="p-input-icon-left">
+                    <i class="pi pi-search" />
+                    <InputText
+                      v-model="unpaidProposalFilter['global'].value"
+                      placeholder="Keyword Search"
+                    />
+                  </span>
+                </div>
+              </template>
+              <Column
+                field="name"
+                header="Name"
+                :sortable="true"
               />
-            </div>
-          </div>
-        </TabPanel>
-        <TabPanel header="Unpaid Contracts">
-          <div
-            v-for="(band,index) in completedProposals"
-            :key="index"
-            class="card my-4"
-          >
-            <div class="card">
-              <h5>{{ band.name }}</h5>
-              <DataTable
-                v-model:filters="unpaidProposalFilter"
-                :value="band.unpaid"
-                striped-rows
-                row-hover
-                responsive-layout="scroll"
-                selection-mode="single"
-                @row-click="gotoPayments"
+              <Column
+                field="price"
+                header="Price"
+                :sortable="true"
               >
-                <template #header>
-                  <div class="p-d-flex p-jc-between">
-                    <Button
-                      type="button"
-                      icon="pi pi-filter-slash"
-                      label="Clear"
-                      class="p-button-outlined"
-                      @click="initializedunPaidProposalFilter()"
+                <template #body="slotProps">
+                  ${{ parseFloat(slotProps.data.price).toFixed(2) }}
+                </template>
+              </Column>
+              <Column
+                field="amountPaid"
+                header="Paid"
+                :sortable="true"
+              >
+                <template #body="slotProps">
+                  <div class="border flex flex-row relative p-2">
+                    <div class="z-50">
+                      {{ slotProps.data.amountPaid.replace(/,/g,'') }} / {{ parseFloat(slotProps.data.price).toFixed(2) }}
+                    </div>
+                    <div
+                      class="z-40 absolute top-0 left-0 h-full"
+                      style="min-width:10px;"
+                      :style="getStats(slotProps.data.amountPaid, slotProps.data.price)"
                     />
-                    <span class="p-input-icon-left">
-                      <i class="pi pi-search" />
-                      <InputText
-                        v-model="unpaidProposalFilter['global'].value"
-                        placeholder="Keyword Search"
-                      />
-                    </span>
                   </div>
                 </template>
-                <Column
-                  field="name"
-                  header="Name"
-                  :sortable="true"
-                />
-                <Column
-                  field="price"
-                  header="Price"
-                  :sortable="true"
-                >
-                  <template #body="slotProps">
-                    ${{ parseFloat(slotProps.data.price).toFixed(2) }}
-                  </template>
-                </Column>
-                <Column
-                  field="amountPaid"
-                  header="Paid"
-                  :sortable="true"
-                >
-                  <template #body="slotProps">
-                    <div class="border flex flex-row relative p-2">
-                      <div class="z-50">
-                        {{ slotProps.data.amountPaid.replace(/,/g,'') }} / {{ parseFloat(slotProps.data.price).toFixed(2) }}
-                      </div>
-                      <div
-                        class="z-40 absolute top-0 left-0 h-full"
-                        style="min-width:10px;"
-                        :style="getStats(slotProps.data.amountPaid, slotProps.data.price)"
-                      />
-                    </div>
-                  </template>
-                </Column>
-                <Column
-                  field="date"
-                  header="Event Date"
-                  :sortable="true"
-                />
-                <template #empty>
-                  No Records found. Click 'new' to create one.
-                </template>
-              </DataTable>
-            </div>
+              </Column>
+              <Column
+                field="date"
+                header="Event Date"
+                :sortable="true"
+              />
+              <template #empty>
+                No Records found. Click 'new' to create one.
+              </template>
+            </DataTable>
           </div>
-        </TabPanel>
-        <TabPanel header="Paid Contracts">
-          <div
-            v-for="(band,index) in completedProposals"
-            :key="index"
-            class="card my-4"
-          >
-            <div class="card">
-              <h5>{{ band.name }}</h5>
-              <DataTable
-                v-model:filters="paidProposalFilter"
-                :value="band.paid"
-                striped-rows
-                row-hover
-                responsive-layout="scroll"
-                selection-mode="single"
-                @row-click="gotoPayments"
-              >
-                <template #header>
-                  <div class="p-d-flex p-jc-between">
-                    <Button
-                      type="button"
-                      icon="pi pi-filter-slash"
-                      label="Clear"
-                      class="p-button-outlined"
-                      @click="initializedPaidProposalFilter()"
+        </div>
+      </TabPanel>
+      <TabPanel header="Paid Contracts">
+        <div
+          v-for="(band,index) in completedProposals"
+          :key="index"
+          class="card my-4"
+        >
+          <div class="card">
+            <h5>{{ band.name }}</h5>
+            <DataTable
+              v-model:filters="paidProposalFilter"
+              :value="band.paid"
+              striped-rows
+              row-hover
+              responsive-layout="scroll"
+              selection-mode="single"
+              @row-click="gotoPayments"
+            >
+              <template #header>
+                <div class="p-d-flex p-jc-between">
+                  <Button
+                    type="button"
+                    icon="pi pi-filter-slash"
+                    label="Clear"
+                    class="p-button-outlined"
+                    @click="initializedPaidProposalFilter()"
+                  />
+                  <span class="p-input-icon-left">
+                    <i class="pi pi-search" />
+                    <InputText
+                      v-model="paidProposalFilter['global'].value"
+                      placeholder="Keyword Search"
                     />
-                    <span class="p-input-icon-left">
-                      <i class="pi pi-search" />
-                      <InputText
-                        v-model="paidProposalFilter['global'].value"
-                        placeholder="Keyword Search"
-                      />
-                    </span>
+                  </span>
+                </div>
+              </template>
+              <Column
+                field="name"
+                header="Name"
+                :sortable="true"
+              />
+              <Column
+                field="price"
+                header="Price"
+                :sortable="true"
+              >
+                <template #body="slotProps">
+                  ${{ parseFloat(slotProps.data.price).toFixed(2) }}
+                </template>
+              </Column>
+              <Column
+                field="date"
+                header="Event Date"
+                :sortable="true"
+              />
+              <Column
+                field="amountLeft"
+                header="Payment Overridden"
+                :sortable="true"
+              >
+                <template #body="slotProps">
+                  <div v-if="slotProps.data.amountLeft !== '0.00' && slotProps.data.paid">
+                    <i class="pi pi-check" />
+                    Still Owed ${{ slotProps.data.amountLeft }}
                   </div>
                 </template>
-                <Column
-                  field="name"
-                  header="Name"
-                  :sortable="true"
-                />
-                <Column
-                  field="price"
-                  header="Price"
-                  :sortable="true"
-                >
-                  <template #body="slotProps">
-                    ${{ parseFloat(slotProps.data.price).toFixed(2) }}
-                  </template>
-                </Column>
-                <Column
-                  field="date"
-                  header="Event Date"
-                  :sortable="true"
-                />
-                <Column
-                  field="amountLeft"
-                  header="Payment Overridden"
-                  :sortable="true"
-                >
-                  <template #body="slotProps">
-                    <div v-if="slotProps.data.amountLeft !== '0.00' && slotProps.data.paid">
-                      <i class="pi pi-check" />
-                      Still Owed ${{ slotProps.data.amountLeft }}
-                    </div>
-                  </template>
-                </Column>
-                <template #empty>
-                  No Records found. Click 'new' to create one.
-                </template>
-              </DataTable>
-            </div>
+              </Column>
+              <template #empty>
+                No Records found. Click 'new' to create one.
+              </template>
+            </DataTable>
           </div>
-        </TabPanel>
-        <TabPanel header="Invoices">
-          <div>
-            <a
-              href="/finances/invoices"
-              class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-            >Invoices</a>
-          </div>
-        </TabPanel>
-        <TabPanel header="Payments">
-          <div>
-            <Payments />
-          </div>
-        </TabPanel>
-      </TabView>
-    </Container>
-  </Layout>
+        </div>
+      </TabPanel>
+      <TabPanel header="Invoices">
+        <div>
+          <a
+            href="/finances/invoices"
+            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+          >Invoices</a>
+        </div>
+      </TabPanel>
+      <TabPanel header="Payments">
+        <div>
+          <Payments />
+        </div>
+      </TabPanel>
+    </TabView>
+  </Container>
 </template>
 
 <script>
+import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue'
     import moment from 'moment';
     import Payments from '../../Components/Finances/AllPayments.vue';
     import {FilterMatchMode} from 'primevue/api';
@@ -217,6 +211,7 @@
         components: {
           Payments
         },
+        layout: BreezeAuthenticatedLayout,
         data(){
           return{
             completedProposals: [],

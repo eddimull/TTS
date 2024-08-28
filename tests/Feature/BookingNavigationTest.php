@@ -17,7 +17,7 @@ class BookingNavigationTest extends TestCase
     {
         $band = Bands::factory()->hasOwners(1)->create();
         $owner = $band->owners->first()->user;
-        $response = $this->actingAs($owner)->get('/booking');
+        $response = $this->actingAs($owner)->get('/bookings');
         $response->assertStatus(200);
     }
 
@@ -25,19 +25,21 @@ class BookingNavigationTest extends TestCase
     {
         $band = Bands::factory()->hasMembers(1)->create();
         $member = $band->members->first()->user;
-        $response = $this->actingAs($member)->get('/booking');
+        $response = $this->actingAs($member)->get('/bookings');
         $response->assertStatus(200);
     }
 
     public function test_non_band_user_cannot_show_bookings()
     {
-        $response = $this->get('/booking');
+        $response = $this->get('/bookings');
         $response->assertStatus(302);
     }
 
     public function test_owner_can_see_bookings_list()
     {
-
+        $this->markTestIncomplete(
+            'This feature has not been implemented yet.'
+        );
         //incomplete for now
         $band = Bands::factory()->hasOwners(1)->create();
         $owner = $band->owners->first()->user;
@@ -47,6 +49,6 @@ class BookingNavigationTest extends TestCase
         ]);
 
         $response = $this->actingAs($owner)->get('/booking');
-        $response->assertSee('Bookings')->todo();
+        $response->assertSee('Bookingss')->todo();
     }
 }

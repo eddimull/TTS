@@ -4,91 +4,40 @@ namespace App\Policies;
 
 use App\Models\Bookings;
 use App\Models\User;
+use App\Models\Bands;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 class BookingsPolicy
 {
     use HandlesAuthorization;
 
-    /**
-     * Determine whether the user can view any models.
-     *
-     * @param  \App\Models\User  $user
-     * @return \Illuminate\Auth\Access\Response|bool
-     */
-    public function viewAny(User $user)
+    public function viewAny(User $user, Bands $band)
     {
-        //
+        return $band->owners->contains('user_id', $user->id) || $band->members->contains('user_id', $user->id);
     }
 
-    /**
-     * Determine whether the user can view the model.
-     *
-     * @param  \App\Models\User  $user
-     * @param  \App\Models\Bookings  $bookings
-     * @return \Illuminate\Auth\Access\Response|bool
-     */
-    public function view(User $user, Bookings $bookings)
+    public function view(User $user, Bookings $booking)
     {
-        //
+        return $this->viewAny($user, $booking->band);
     }
 
-    /**
-     * Determine whether the user can create models.
-     *
-     * @param  \App\Models\User  $user
-     * @return \Illuminate\Auth\Access\Response|bool
-     */
-    public function create(User $user)
+    public function create(User $user, Bands $band)
     {
-        //
+        return $this->viewAny($user, $band);
     }
 
-    /**
-     * Determine whether the user can update the model.
-     *
-     * @param  \App\Models\User  $user
-     * @param  \App\Models\Bookings  $bookings
-     * @return \Illuminate\Auth\Access\Response|bool
-     */
-    public function update(User $user, Bookings $bookings)
+    public function store(User $user, Bands $band)
     {
-        //
+        return $band->owners->contains('user_id', $user->id) || $user->permissionsForBand($band->id)->write_bookings;
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     *
-     * @param  \App\Models\User  $user
-     * @param  \App\Models\Bookings  $bookings
-     * @return \Illuminate\Auth\Access\Response|bool
-     */
-    public function delete(User $user, Bookings $bookings)
+    public function update(User $user, Bookings $booking)
     {
-        //
+        return $this->viewAny($user, $booking->band);
     }
 
-    /**
-     * Determine whether the user can restore the model.
-     *
-     * @param  \App\Models\User  $user
-     * @param  \App\Models\Bookings  $bookings
-     * @return \Illuminate\Auth\Access\Response|bool
-     */
-    public function restore(User $user, Bookings $bookings)
+    public function delete(User $user, Bookings $booking)
     {
-        //
-    }
-
-    /**
-     * Determine whether the user can permanently delete the model.
-     *
-     * @param  \App\Models\User  $user
-     * @param  \App\Models\Bookings  $bookings
-     * @return \Illuminate\Auth\Access\Response|bool
-     */
-    public function forceDelete(User $user, Bookings $bookings)
-    {
-        //
+        return $this->viewAny($user, $booking->band);
     }
 }

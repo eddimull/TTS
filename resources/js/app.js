@@ -62,6 +62,7 @@ createInertiaApp({
     setup({ el, App, props, plugin }) {
         const app = createApp({ render: () => h(App, props) });
 
+        app.component('BreezeAuthenticatedLayout', BreezeAuthenticatedLayout)
         app.use(plugin)
             .use(ZiggyVue, Ziggy)
             .use(store)
@@ -69,35 +70,41 @@ createInertiaApp({
             .use(PrimeVue)
             .use(AudioVisual)
             .use(ToastService)
-            .component('Layout', BreezeAuthenticatedLayout)
-            .component('Link', Link)
-            .component('Container', Container)
-            .component('Chart', Chart)
-            .component("card-modal", CardModal)
-            .component('calendar', Calendar)
-            .component('Checkbox', Checkbox)
-            .component('Column', Column)
-            .component('Accordion', Accordion)
-            .component('AccordionTab', AccordionTab)
-            .component('Editor', Editor)
-            .component('Button', Button)
-            .component('Divider', Divider)
-            .component("card", Card)
-            .component('RadioButton', RadioButton)
-            .component('InputText', InputText)
-            .component('Image', Image)
-            .component('InputNumber', InputNumber)
-            .component('InputSwitch', InputSwitch)
-            .component('Textarea', Textarea)
-            .component('PVtextarea', Textarea)
-            .component('Dialog', Dialog)
-            .component('Dropdown', Dropdown)
-            .component('DataTable', DataTable)
-            .component('Panel', Panel)
-            .component('TabView', TabView)
-            .component('TabPanel', TabPanel)
-            .component('ProgressSpinner', ProgressSpinner)
-            .mixin({ methods: { route } });
+            const components = {
+                Link,
+                Container,
+                Chart,
+                CardModal,
+                Calendar,
+                Checkbox,
+                Column,
+                Accordion,
+                AccordionTab,
+                Editor,
+                Button,
+                Divider,
+                Card,
+                RadioButton,
+                InputText,
+                Image,
+                InputNumber,
+                InputSwitch,
+                Textarea,
+                PVtextarea: Textarea,
+                Dialog,
+                Dropdown,
+                DataTable,
+                Panel,
+                TabView,
+                TabPanel,
+                ProgressSpinner,
+                BreezeNavLink
+            };
+    
+            Object.entries(components).forEach(([name, component]) => {
+                app.component(name, component);
+            });
+        app.mixin({ methods: { route } });
 
         app.config.globalProperties.$moment = moment;
         app.config.globalProperties.$qs = qs;

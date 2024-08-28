@@ -51,12 +51,14 @@ class BookingsFactory extends Factory
 
         return [
             'band_id' => Bands::factory(),
+            'name' => $this->faker->sentence,
+            'event_type_id' => $this->faker->numberBetween(1, 6),
             'event_date' => $startDate->format('Y-m-d'),
-            'start_time' => $startDate->format('H:i:s'),
-            'end_time' => $endDate->format('H:i:s'),
+            'start_time' => $startDate->format('H:i'),
+            'end_time' => $endDate->format('H:i'),
             'venue_name' => $this->faker->company,
             'venue_address' => $this->faker->address,
-            'total_amount' => $this->faker->numberBetween(500, 10000),
+            'price' => $this->faker->numberBetween(500, 10000),
             'status' => $this->faker->randomElement(['pending', 'confirmed', 'cancelled']),
             'contract_option' => $this->faker->randomElement(['default', 'none', 'external']),
             'notes' => $this->faker->optional()->text,
@@ -79,6 +81,19 @@ class BookingsFactory extends Factory
         {
             return [
                 'status' => 'cancelled',
+            ];
+        });
+    }
+
+    public function duration($hours)
+    {
+        return $this->state(function (array $attributes) use ($hours)
+        {
+            $startDate = Carbon::parse($attributes['event_date'] . ' ' . $attributes['start_time']);
+            $endDate = $startDate->copy()->addHours($hours);
+
+            return [
+                'end_time' => $endDate->format('H:i:s'),
             ];
         });
     }
