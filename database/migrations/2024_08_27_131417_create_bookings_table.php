@@ -12,12 +12,14 @@ return new class extends Migration
         {
             $table->id();
             $table->foreignId('band_id')->constrained();
+            $table->text('name');
+            $table->foreignId('event_type_id')->constrained();
             $table->date('event_date');
             $table->time('start_time');
             $table->time('end_time');
-            $table->string('venue_name');
-            $table->text('venue_address');
-            $table->decimal('total_amount', 10, 2);
+            $table->string('venue_name')->default('TBD');
+            $table->text('venue_address')->nullable();
+            $table->decimal('price', 10, 2);
             $table->enum('status', ['pending', 'confirmed', 'cancelled'])->default('pending');
             $table->enum('contract_option', ['default', 'none', 'external'])->default('default');
             $table->text('notes')->nullable();

@@ -11,22 +11,24 @@ class Bookings extends Model
 
     protected $fillable = [
         'band_id',
+        'name',
+        'event_type_id',
         'event_date',
         'start_time',
         'end_time',
         'venue_name',
         'venue_address',
-        'total_amount',
+        'price',
         'status',
         'contract_option',
         'notes',
     ];
 
     protected $casts = [
-        'event_date' => 'date',
+        'event_date' => 'date:Y-m-d',
         'start_time' => 'datetime',
         'end_time' => 'datetime',
-        'total_amount' => 'decimal:2',
+        'price' => 'decimal:2',
     ];
 
     public function band()

@@ -5,10 +5,13 @@ use App\Http\Controllers\BookingsController;
 
 Route::middleware(['auth', 'verified'])->group(function ()
 {
-    Route::get('/booking', [BookingsController::class, 'index'])->name('booking');
+    Route::get('bookings', [BookingsController::class, 'index'])->name('bookings.index');
+    Route::resource('bands.booking', BookingsController::class)
+        ->parameters(['bands' => 'band', 'booking' => 'booking'])
+        ->except(['index', 'edit'])
+        ->middleware('booking.access');
 
-    // Add other booking-related routes here as needed
-    // For example:
-    // Route::post('/booking/create', [BookingController::class, 'create'])->name('booking.create');
-    // Route::get('/booking/{id}', [BookingController::class, 'show'])->name('booking.show');
+    Route::get('bands/{band}/booking/create', [BookingsController::class, 'create'])
+        ->name('bands.booking.create')
+        ->middleware('booking.access');
 });

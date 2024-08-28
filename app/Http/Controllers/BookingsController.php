@@ -6,82 +6,58 @@ use App\Http\Requests\StoreBookingsRequest;
 use App\Http\Requests\UpdateBookingsRequest;
 use App\Models\Bookings;
 use Inertia\Inertia;
+use App\Models\Bands;
+use Illuminate\Support\Facades\Auth;
+use App\Models\EventTypes;
 
 class BookingsController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function index()
+    public function index(Bands $band = null)
     {
-        Inertia::render('Bookings/Index');
+        $user = Auth::user();
+        $userBands = $user->bands();
+        if ($band && !$userBands->contains($band))
+        {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $bookings = $band ? $band->bookings : Bookings::whereIn('band_id', $userBands->pluck('id'))->get();
+
+        return Inertia::render('Bookings/Index', [
+            'bookings' => $bookings,
+            'bands' => $userBands,
+        ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
+    public function create(Bands $band)
     {
-        //
+        $eventTypes = EventTypes::all();
+        return Inertia::render('Bookings/Create', [
+            'band' => $band,
+            'eventTypes' => $eventTypes
+        ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \App\Http\Requests\StoreBookingsRequest  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(StoreBookingsRequest $request)
+    public function store(StoreBookingsRequest $request, Bands $band)
     {
-        //
+        $booking = $band->bookings()->create($request->validated());
+        return redirect()->route('bands.booking.show', [$band, $booking]);
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  \App\Models\Bookings  $bookings
-     * @return \Illuminate\Http\Response
-     */
-    public function show(Bookings $bookings)
+    public function show(Bands $band, Bookings $booking)
     {
-        //
+        return Inertia::render('Bookings/Show', ['booking' => $booking, 'band' => $band]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  \App\Models\Bookings  $bookings
-     * @return \Illuminate\Http\Response
-     */
-    public function edit(Bookings $bookings)
+    public function update(UpdateBookingsRequest $request, Bands $band, Bookings $booking)
     {
-        //
+        $booking->update($request->validated());
+        return redirect()->route('bands.booking.index', $band);
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \App\Http\Requests\UpdateBookingsRequest  $request
-     * @param  \App\Models\Bookings  $bookings
-     * @return \Illuminate\Http\Response
-     */
-    public function update(UpdateBookingsRequest $request, Bookings $bookings)
+    public function destroy(Bands $band, Bookings $booking)
     {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  \App\Models\Bookings  $bookings
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy(Bookings $bookings)
-    {
-        //
+        $booking->delete();
+        return redirect()->route('bands.booking.index', $band);
     }
 }
