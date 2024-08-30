@@ -1,4 +1,4 @@
-name: Laravel Docker Tests
+name: Laravel Tests
 
 on:
   push:
@@ -11,39 +11,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.1"
+
       - uses: actions/checkout@v3
 
       - name: Copy .env
         run: php -r "file_exists('.env') || copy('.env.example', '.env');"
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Build and run Docker containers
-        run: docker compose up -d
-
-      - name: Wait for MySQL to be ready
-        run: |
-          until docker compose exec -T mysql-test mysqladmin ping -h"localhost" --silent; do
-            echo 'Waiting for MySQL...'
-            sleep 2
-          done
-
-      - name: Install dependencies
-        run: docker compose exec -T app composer install
+      - name: Install Dependencies
+        run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
       - name: Generate key
-        run: docker compose exec -T app php artisan key:generate
+        run: php artisan key:generate
 
-      - name: Run database migrations
-        run: docker compose exec -T app php artisan migrate --env=testing
+      - name: Directory Permissions
+        run: chmod -R 777 storage bootstrap/cache
 
-      - name: Run tests
-        run: docker compose exec -T app php artisan test
+      - name: Create Database
+        run: |
+          mkdir -p database
+          touch database/database.sqlite
 
-      - name: Stop Docker containers
-        run: docker compose down
+      - name: Execute tests via Artisan
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: database/database.sqlite
+        run: php artisan test
 
-      - name: Display Laravel logs if tests fail
+      - name: Check test status
         if: failure()
-        run: docker compose exec -T app cat storage/logs/laravel.log
+        run: exit 1
