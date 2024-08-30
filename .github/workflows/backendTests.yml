@@ -20,30 +20,30 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Build and run Docker containers
-        run: docker-compose up -d
+        run: docker compose up -d
 
       - name: Wait for MySQL to be ready
         run: |
-          until docker-compose exec -T mysql-test mysqladmin ping -h"localhost" --silent; do
+          until docker compose exec -T mysql-test mysqladmin ping -h"localhost" --silent; do
             echo 'Waiting for MySQL...'
             sleep 2
           done
 
       - name: Install dependencies
-        run: docker-compose exec -T app composer install
+        run: docker compose exec -T app composer install
 
       - name: Generate key
-        run: docker-compose exec -T app php artisan key:generate
+        run: docker compose exec -T app php artisan key:generate
 
       - name: Run database migrations
-        run: docker-compose exec -T app php artisan migrate --env=testing
+        run: docker compose exec -T app php artisan migrate --env=testing
 
       - name: Run tests
-        run: docker-compose exec -T app php artisan test
+        run: docker compose exec -T app php artisan test
 
       - name: Stop Docker containers
-        run: docker-compose down
+        run: docker compose down
 
       - name: Display Laravel logs if tests fail
         if: failure()
-        run: docker-compose exec -T app cat storage/logs/laravel.log
+        run: docker compose exec -T app cat storage/logs/laravel.log
