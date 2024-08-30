@@ -37,7 +37,7 @@
             <div class="flex flex-col gap-8 mt-8">
               <div class="section">
                 <SectionTitle
-                  :number="1"
+                  :number="1" 
                   :title="'Initial Information'"
                 />
                 <div class="createEventInput">
@@ -783,10 +783,18 @@
         },
         methods:{
             updateEvent(){
-                this.$inertia.patch('/events/'+ this.event.event_key,this.form)
-                    .then(()=>{
-                        // alert('created');
-                    })
+              const formData = { ...this.form };
+    
+              // Format date fields
+              const dateFields = ['event_time', 'quiet_time', 'ceremony_time', 'end_time', 'band_loadin_time', 'rhythm_loadin_time', 'production_loadin_time'];
+              
+              dateFields.forEach(field => {
+                if (formData[field]) {
+                  formData[field] = this.formatDate(formData[field]);
+                }
+              });
+              
+              this.$inertia.patch('/events/'+ this.event.event_key,formData);
             },
             showAlert() {
                 this.$swal.fire({
@@ -910,6 +918,10 @@
             },
             hideContactEdits(){
                 this.form.event_contacts.forEach(tempContact=>tempContact.editing = false)
+            },
+            formatDate(date) {
+              if (!date) return null;
+              return moment(date).format('YYYY-MM-DD HH:mm:ss');
             },            
         }
     }
