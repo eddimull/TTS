@@ -47,7 +47,8 @@ class EventsController extends Controller
         $eventTypes = EventTypes::orderBy('name')->get();
         $states = State::where('country_id', 231)->get();
         $bands = Bands::select('bands.*')->join('band_owners', 'bands.id', '=', 'band_owners.band_id')->where('user_id', Auth::id())->get();
-        foreach ($bands as $band) {
+        foreach ($bands as $band)
+        {
             $colors = $band->colorways;
             $band->colors = $colors;
         }
@@ -61,7 +62,8 @@ class EventsController extends Controller
     {
         $event = BandEvents::where('event_key', $key)->first();
 
-        if (!$event) {
+        if (!$event)
+        {
             abort(404, 'Event not found');
         }
 
@@ -126,8 +128,10 @@ class EventsController extends Controller
 
         $eventData = $request->except(['created_at', 'updated_at']);
 
-        foreach ($dateFields as $field) {
-            if (isset($eventData[$field])) {
+        foreach ($dateFields as $field)
+        {
+            if (isset($eventData[$field]))
+            {
                 $eventData[$field] = date('Y-m-d H:i:s', strtotime($eventData[$field]));
             }
         }
@@ -183,7 +187,8 @@ class EventsController extends Controller
         $event = BandEvents::where('event_key', $key)->first();
         $states = State::where('country_id', 231)->get();
         $bands = Bands::select('bands.*')->join('band_owners', 'bands.id', '=', 'band_owners.band_id')->where('user_id', Auth::id())->get();
-        foreach ($bands as $band) {
+        foreach ($bands as $band)
+        {
             $colors = $band->colorways;
             $band->colors = $colors;
         }
@@ -214,7 +219,8 @@ class EventsController extends Controller
 
         $band = Bands::findOrFail($event->band_id);
 
-        if ($band->calendar_id) {
+        if ($band->calendar_id)
+        {
             $this->updateGoogleCalendarEvent($event, $band);
         }
 
@@ -235,9 +241,11 @@ class EventsController extends Controller
             'quiet_time'
         ];
 
-        foreach ($timeFields as $field) {
-            if ($request->has($field)) {
-                $request[$field] = Carbon::parse($request->$field)->format('Y-m-d H:i:s');
+        foreach ($timeFields as $field)
+        {
+            if ($request->has($field))
+            {
+                $request[$field] = Carbon::parse($request->$field)->format('Y-m-d H:i:00');
             }
         }
     }
@@ -270,7 +278,8 @@ class EventsController extends Controller
         $endTime = Carbon::parse($event->end_time)->format('H:i:s');
         $endDateTime = Carbon::parse("$startDate $endTime");
 
-        if ($endDateTime < Carbon::parse($event->event_time)) {
+        if ($endDateTime < Carbon::parse($event->event_time))
+        {
             $endDateTime->addDay();
         }
 
@@ -303,12 +312,14 @@ class EventsController extends Controller
 
     private function deleteGoogleCalendarEvent(BandEvents $event, Bands $band): void
     {
-        if ($band->calendar_id && $event->google_calendar_event_id) {
+        if ($band->calendar_id && $event->google_calendar_event_id)
+        {
             Config::set('google-calendar.service_account_credentials_json', storage_path('/app/google-calendar/service-account-credentials.json'));
             Config::set('google-calendar.calendar_id', $band->calendar_id);
 
             $calendarEvent = CalendarEvent::find($event->google_calendar_event_id);
-            if ($calendarEvent) {
+            if ($calendarEvent)
+            {
                 $calendarEvent->delete();
             }
         }
