@@ -16,6 +16,8 @@ class FinalizedProposalController extends Controller
     public function paymentIndex(Proposals $proposal)
     {
         $proposal->load('payments');  // Assuming attachPayments() is just loading the payments relationship
+        $proposal->amountLeft = $proposal->getAmountLeftAttribute();
+        $proposal->amountPaid = $proposal->getAmountPaidAttribute();
 
         return Inertia::render('Proposals/ProposalPayments', [
             'proposal' => $proposal
@@ -50,7 +52,8 @@ class FinalizedProposalController extends Controller
         $paymentPDF = $proposal->lastPayment->getPdf();
 
         return Response::streamDownload(
-            function () use ($paymentPDF) {
+            function () use ($paymentPDF)
+            {
                 echo $paymentPDF->pdf();
             },
             Str::slug($proposal->name . ' Receipt', '_') . '.pdf',
