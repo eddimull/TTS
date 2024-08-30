@@ -21,12 +21,12 @@
   
         <div>
           <label
-            for="event_type"
+            for="event_type_id"
             class="block text-sm font-medium text-gray-700"
           >Event Type</label>
           <select
-            id="event_type"
-            v-model="form.event_type"
+            id="event_type_id"
+            v-model="form.event_type_id"
             required
             class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           >
@@ -138,7 +138,7 @@
     setup(props) {
       const form = useForm({
         name: '',
-        event_type: '',
+        event_type_id: '',
         event_date: '',
         start_time: '19:00',
         duration: 4,
