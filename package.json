@@ -3,6 +3,7 @@
     "type": "commonjs",
     "scripts": {
         "dev": "vite",
+        "test": "vitest",
         "build": "vite build"
     },
     "devDependencies": {
@@ -11,16 +12,19 @@
         "@inertiajs/progress": "^0.2.4",
         "@tailwindcss/forms": "^0.5.2",
         "@vue/compiler-sfc": "^3.0.5",
+        "@vue/test-utils": "^2.4.6",
         "alpinejs": "^2.7.3",
         "autoprefixer": "^10.4.8",
         "axios": "^0.21",
         "eslint": "^7.31.0",
         "eslint-plugin-vue": "^7.14.0",
         "eslint-watch": "^7.0.0",
+        "jsdom": "^25.0.0",
         "lodash": "^4.17.19",
         "postcss": "^8.4.16",
         "postcss-import": "^12.0.1",
         "tailwindcss": "^3.1.8",
+        "vitest": "^2.0.5",
         "vue": "^3.0.5"
     },
     "dependencies": {
@@ -41,6 +45,7 @@
         "eslint-plugin-html": "^6.1.2",
         "html2pdf.js": "^0.9.3",
         "laravel-vite-plugin": "^1.0.5",
+        "luxon": "^3.5.0",
         "moment": "^2.29.1",
         "primeflex": "^3.1.0",
         "primeicons": "^4.1.0",

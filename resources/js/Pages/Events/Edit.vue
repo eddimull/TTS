@@ -545,120 +545,54 @@
                   </p>
                 </div>
               </div>
-
-
               <div class="section">
                 <SectionTitle
                   :number="4"
                   :title="'Load in Times'"
                 />
-                <div class="createEventInput">
-                  <p class="text-gray-600">
-                    Show Time
-                  </p>
-                  <p>
-                    <calendar
-                      v-model="form.event_time"
-                      :show-time="true"
-                      :time-only="true"
-                      hour-format="12"
-                    />
-                  </p>
-                </div>
-                <div class="createEventInput">
-                  <p class="text-gray-600">
-                    Quiet Time
-                  </p>
-                  <p>
-                    <calendar
-                      v-model="form.quiet_time"
-                      :step-minute="15"
-                      :show-time="true"
-                      :time-only="true"
-                      hour-format="12"
-                    />
-                  </p>
-                </div>   
-                <div
-                  v-if="form.event_type_id === 1"
-                  class="createEventInput"
+                <TimePicker
+                  v-model="form.event_time"
                 >
-                  <p class="text-gray-600">
-                    Ceremony Time
-                  </p>
-                  <p>
-                    <calendar
-                      v-model="form.ceremony_time"
-                      :step-minute="15"
-                      :show-time="true"
-                      :time-only="true"
-                      hour-format="12"
-                    />
+                  Show Time
+                </TimePicker>    
+                <TimePicker
+                  v-model="form.quiet_time"
+                >
+                  Quiet Time
+                </TimePicker>  
+                <TimePicker
+                  v-if="form.event_type_id === 1"
+                  v-model="form.ceremony_time"
+                >
+                  Ceremony Time
+                  <template #append>
                     On Site: <input
                       v-model="form.onsite"
                       type="checkbox"
                     >
-                  </p>
-                </div>                               
-                <div class="createEventInput">
-                  <p class="text-gray-600">
-                    End Time
-                  </p>
-                  <p>
-                    <calendar
-                      v-model="form.end_time"
-                      :step-minute="15"
-                      :show-time="true"
-                      :time-only="true"
-                      hour-format="12"
-                    />
-                  </p>
-                </div>   
-                <div
-                  v-if="form.production_needed"
-                  class="createEventInput"
+                  </template>
+                </TimePicker>                              
+                <TimePicker
+                  v-model="form.end_time"
                 >
-                  <p class="text-gray-600">
-                    Production Load In Time
-                  </p>
-                  <p>
-                    <calendar
-                      v-model="form.production_loadin_time"
-                      :step-minute="15"
-                      :show-time="true"
-                      :time-only="true"
-                      hour-format="12"
-                    />
-                  </p>
-                </div>  
-                <div class="createEventInput">
-                  <p class="text-gray-600">
-                    Rhythm Load In Time
-                  </p>
-                  <p>
-                    <calendar
-                      v-model="form.rhythm_loadin_time"
-                      :step-minute="15"
-                      :show-time="true"
-                      :time-only="true"
-                      hour-format="12"
-                    />
-                  </p>
-                </div>                                                                 
-                <div class="createEventInput">
-                  <p class="text-gray-600">
-                    Band Load In Time
-                  </p>
-                  <p>
-                    <calendar
-                      v-model="form.band_loadin_time"
-                      :step-minute="15"
-                      :show-time="true"
-                      :time-only="true"
-                      hour-format="12"
-                    />
-                  </p>
-                </div>                
+                  End Time
+                </TimePicker>   
+                <TimePicker
+                  v-if="form.production_needed"
+                  v-model="form.production_loadin_time"
+                >
+                  Production Load In Time
+                </TimePicker> 
+                <TimePicker
+                  v-model="form.rhythm_loadin_time"
+                >
+                  Rhythm Load In Time
+                </TimePicker>    
+                <TimePicker
+                  v-model="form.band_loadin_time"
+                >
+                  Band Load In Time
+                </TimePicker>            
               </div>
             </div>
           </div>
@@ -696,11 +630,14 @@
     import ButtonComponent from '@/Components/Button'
     import moment from 'moment';
     import SectionTitle from './CreateSectionTitle.vue';
-    
-    
+    import TimePicker from '@/Components/TimePicker.vue';
+  
     export default {
         components: {
-            BreezeAuthenticatedLayout,ButtonComponent,SectionTitle
+            BreezeAuthenticatedLayout,
+            ButtonComponent,
+            SectionTitle,
+            TimePicker
         },
         props:['event','eventTypes','bands','states','errors'], 
         data(){
@@ -742,15 +679,15 @@
                     city:this.event.city,
                     colorway_id:this.event.colorway_id,
                     colorway_text:this.event.colorway_text,
-                    ceremony_time:new Date(moment(this.event.ceremony_time)),
-                    quiet_time:new Date(moment(this.event.quiet_time)),
+                    ceremony_time:this.event.ceremony_time,
+                    quiet_time:this.event.quiet_time,
                     onsite:this.event.onsite ? true : false,
                     notes:this.event.notes,
-                    event_time:new Date(moment(this.event.event_time)),
-                    end_time:new Date(moment(this.event.end_time)),
-                    band_loadin_time:new Date(moment(this.event.band_loadin_time)),
-                    rhythm_loadin_time:new Date(moment(this.event.rhythm_loadin_time)),
-                    production_loadin_time:new Date(moment(this.event.production_loadin_time)),
+                    event_time:this.event.event_time,
+                    end_time:this.event.end_time,
+                    band_loadin_time:this.event.band_loadin_time,
+                    rhythm_loadin_time:this.event.rhythm_loadin_time,
+                    production_loadin_time:this.event.production_loadin_time,
                     production_needed:this.event.production_needed,
                     backline_provided:this.event.backline_provided,                   
                     pay:0, 
@@ -786,7 +723,7 @@
               const formData = { ...this.form };
     
               // Format date fields
-              const dateFields = ['event_time', 'quiet_time', 'ceremony_time', 'end_time', 'band_loadin_time', 'rhythm_loadin_time', 'production_loadin_time'];
+              const dateFields = ['event_time'];
               
               dateFields.forEach(field => {
                 if (formData[field]) {
