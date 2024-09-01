@@ -61,20 +61,12 @@
                     </select>
                   </div>
                 </div>
-                <div class="createEventInput">
-                  <p class="text-gray-600">
-                    <label for="name">Name</label>
-                  </p>
-                  <div class="mb-4">
-                    <input
-                      id="name"
-                      v-model="form.event_name"
-                      type="text"
-                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                      placeholder="Event Name"
-                    >
-                  </div>
-                </div>
+                <TextInput
+                  v-model="form.event_name"
+                  label="Name"
+                  name="event_name"
+                  placeholder="Event Name"
+                />
                 <div class="createEventInput">
                   <p class="text-gray-600">
                     Event Date
@@ -126,91 +118,36 @@
                   :number="'1a'"
                   :title="'Wedding Information'"
                 />
-                <div
-                  class="createEventInput"
-                >
-                  <p class="text-gray-600">
-                    <label for="firstDance">First Dance</label>
-                  </p>
-                  <p>
-                    <input
-                      id="firstDance"
-                      v-model="form.first_dance"
-                      type="text"
-                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                      placeholder="First Dance"
-                    >
-                  </p>
-                </div>
-                <div
-                  v-if="form.event_type_id === 1"
-                  class="createEventInput"
-                >
-                  <p class="text-gray-600">
-                    <label for="father_daughter">Father / Daughter Dance:</label>
-                  </p>
-                  <p>
-                    <input
-                      id="secondDance"
-                      v-model="form.father_daughter"
-                      type="text"
-                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                      placeholder="Second Dance"
-                    >
-                  </p>
-                </div>  
-                <div
-                  v-if="form.event_type_id === 1"
-                  class="createEventInput"
-                >
-                  <p class="text-gray-600">
-                    <label for="father_daughter">Mother / Groom Dance:</label>
-                  </p>
-                  <p>
-                    <input
-                      id="secondDance"
-                      v-model="form.mother_groom"
-                      type="text"
-                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                      placeholder="Second Dance"
-                    >
-                  </p>
-                </div>                                  
-                <div
-                  v-if="form.event_type_id === 1"
-                  class="createEventInput"
-                >
-                  <p class="text-gray-600">
-                    <label for="moneyDance">Money Dance</label>
-                  </p>
-                  <p>
-                    <input
-                      id="moneyDance"
-                      v-model="form.money_dance"
-                      type="text"
-                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                      placeholder="Money Dance"
-                    >
-                  </p>
-                </div>      
-                <div
-                  
-                  class="createEventInput"
-                >
-                  <p class="text-gray-600">
-                    <label for="secondDance">Bouquet / Garter</label>
-                  </p>
-                  <p>
-                    <input
-                      id="bouquetDance"
-                      v-model="form.bouquet_garter"
-                      type="text"
-                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                      placeholder="Bouquet Stuff"
-                    >
-                  </p>
-                </div>  
-
+                <TextInput
+                  v-model="form.first_dance"
+                  label="First Dance"
+                  name="firstDance"
+                  placeholder="First Dance"
+                /> 
+                <TextInput
+                  v-model="form.father_daughter"
+                  label="Second Dance (Father / Daughter)"
+                  name="father_daughter"
+                  placeholder="Second Dance"
+                />
+                <TextInput
+                  v-model="form.mother_groom"
+                  label="Third Dance (Mother / Groom)"
+                  name="mother_groom"
+                  placeholder="Third Dance"
+                />
+                <TextInput
+                  v-model="form.money_dance"
+                  label="Money Dance(s)"
+                  name="money_dance"
+                  placeholder="DJ list or band list"
+                />
+                <TextInput
+                  v-model="form.money_dance"
+                  label="Bouquet / Garter"
+                  name="bouquetDance"
+                  placeholder="DJ list or band list"
+                />                                     
                 <div
                   v-if="form.event_type_id === 1"
                   class="createEventInput"
@@ -418,49 +355,24 @@
                     </ul>
                   </p>
                 </div>
-  
-                <div class="createEventInput">
-                  <p class="text-gray-600">
-                    <label for="streetAddress">Street Address</label>
-                  </p>
-                  <p>
-                    <input
-                      id="streetAddress"
-                      v-model="form.address_street"
-                      type="text"
-                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                      placeholder="P. Sherman, 42"
-                    >
-                  </p>
-                </div>       
-                <div class="createEventInput">
-                  <p class="text-gray-600">
-                    <label for="zipCode">Zip Code</label>
-                  </p>
-                  <p>
-                    <input
-                      id="zipCode"
-                      v-model="form.zip"
-                      type="text"
-                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                      placeholder="70506"
-                    >
-                  </p>
-                </div>     
-                <div class="createEventInput">
-                  <p class="text-gray-600">
-                    <label for="zipCode">City</label>
-                  </p>
-                  <p>
-                    <input
-                      id="city"
-                      v-model="form.city"
-                      type="text"
-                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                      placeholder="Townsville"
-                    >
-                  </p>
-                </div>                                 
+                <TextInput
+                  v-model="form.address_street"
+                  label="Street Address"
+                  name="streetAddress"
+                  placeholder="P. Sherman, 42"
+                />
+                <TextInput
+                  v-model="form.zip"
+                  label="Zip Code"
+                  name="zipCode"
+                  placeholder="70506"
+                />
+                <TextInput
+                  v-model="form.city"
+                  label="City"
+                  name="city"
+                  placeholder="Townsville"
+                />                                 
                 <div class="createEventInput">
                   <p class="text-gray-600">
                     <label for="state">State</label>
@@ -518,19 +430,6 @@
                       v-model="form.colorway_text"
                       editor-style="height: 150px"
                     />
-                  <!-- <select
-                    id="colorway"
-                    v-model="form.colorway_id"
-                    class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded"
-                  >
-                    <option
-                      v-for="color in colors"
-                      :key="color.id"
-                      :value="color.id"
-                    >
-                      {{ color.color_title }}
-                    </option>
-                  </select>  -->
                   </p>
                 </div>
                 <div class="createEventInput">
@@ -631,13 +530,15 @@
     import moment from 'moment';
     import SectionTitle from './CreateSectionTitle.vue';
     import TimePicker from '@/Components/TimePicker.vue';
+    import TextInput from '@/Components/TextInput.vue';
   
     export default {
         components: {
             BreezeAuthenticatedLayout,
             ButtonComponent,
             SectionTitle,
-            TimePicker
+            TimePicker,
+            TextInput
         },
         props:['event','eventTypes','bands','states','errors'], 
         data(){
