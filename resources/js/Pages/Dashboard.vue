@@ -65,20 +65,26 @@
         </div>
       </div>
     </div> -->
+    <TimePicker v-model="time" />
+    <div>
+      This is the time: {{ time }}
+    </div>
   </breeze-authenticated-layout>
 </template>
 
 <script>
-
+    import TimePicker from '../Components/TimePicker.vue'
     import Calendar from 'primevue/calendar';
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
     import DefaultComponent from '../Components/DefaultDashboard.vue'
     import EventCard from '../Components/EventCard.vue'
     import SideCalendar from '../Components/Dashboard/SideCalendar.vue'
     import moment from 'moment';
+    import { DateTime } from 'luxon';
     export default {
         components: {
             BreezeAuthenticatedLayout,
+            TimePicker,
             Calendar,
             EventCard,
             DefaultComponent,
@@ -87,8 +93,8 @@
         props:['events','stats'],
         data() {
           return {
-            date: null
-            
+            date: null,
+            time: '12:30'
           }
         },
         methods:{

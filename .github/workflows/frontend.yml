@@ -1,0 +1,115 @@
+name: Laravel Frontend Build and Test
+
+on:
+  push:
+    branches: [master, staging, dev]
+  pull_request:
+    branches: [master, staging, dev]
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.1"
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, dom, filter, gd, json, mbstring, pdo
+
+      - name: Copy .env
+        run: php -r "file_exists('.env') || copy('.env.example', '.env');"  
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "22.7.0"
+
+      - name: Install specific npm version
+        run: npm install -g npm@10.8.2
+
+      - name: Cache node_modules and composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.composer/cache
+            **/vendor
+            ~/.npm
+            **/node_modules
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      - name: Install Composer dependencies
+        run: composer install --no-progress --no-suggest --prefer-dist --optimize-autoloader
+
+      - name: Install NPM dependencies
+        run: npm ci
+
+  build:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "22.7.0"
+
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.composer/cache
+            **/vendor
+            ~/.npm
+            **/node_modules
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}
+
+      - name: Install NPM dependencies
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-assets
+          path: public/build/**
+
+      - name: Output Node.js and npm versions
+        run: |
+          node --version
+          npm --version
+
+      - name: List build output
+        run: ls -R public/build
+
+  test:
+    needs: setup
+    runs-on: ubuntu-latest
+    env:
+      LARAVEL_BYPASS_ENV_CHECK: 1
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "22.7.0"
+
+      - name: Restore npm packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.composer/cache
+            **/vendor
+            ~/.npm
+            **/node_modules
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}
+
+      - name: Run tests
+        run: npm run test:pipeline
