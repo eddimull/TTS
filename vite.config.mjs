@@ -28,5 +28,8 @@ export default defineConfig({
     test:{
         environment: 'jsdom',
         setupFiles: ['./resources/js/tests/setup.js'],        
+    },
+    server: {
+        hmr: !process.env.CI
     }
 });
