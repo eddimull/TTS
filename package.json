@@ -4,6 +4,7 @@
     "scripts": {
         "dev": "vite",
         "test": "vitest",
+        "test:pipeline": "vitest run --mode=pipeline",
         "build": "vite build"
     },
     "devDependencies": {
