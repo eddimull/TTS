@@ -19,11 +19,7 @@ jobs:
           extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, dom, filter, gd, json, mbstring, pdo
 
       - name: Copy .env
-        run: php -r "file_exists('.env') || copy('.env.example', '.env');"
-
-      - name: Get Composer Cache Directory
-        id: composer-cache-dir
-        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT        
+        run: php -r "file_exists('.env') || copy('.env.example', '.env');"  
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -37,14 +33,13 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ steps.composer-cache-dir.outputs.dir }}
+            ~/.composer/cache
             **/vendor
             ~/.npm
             **/node_modules
-          key: ${{ runner.OS }}-deps-${{ hashFiles('**/composer.lock') }}-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}
           restore-keys: |
-            ${{ runner.OS }}-deps-${{ hashFiles('**/composer.lock') }}-
-            ${{ runner.OS }}-deps-
+            ${{ runner.os }}-composer-
 
       - name: Install Composer dependencies
         run: composer install --no-progress --no-suggest --prefer-dist --optimize-autoloader
@@ -67,11 +62,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ steps.composer-cache-dir.outputs.dir }}
+            ~/.composer/cache
             **/vendor
             ~/.npm
             **/node_modules
-          key: ${{ runner.OS }}-deps-${{ hashFiles('**/composer.lock') }}-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}
 
       - name: Install NPM dependencies
         run: npm ci
@@ -108,11 +103,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ${{ steps.composer-cache-dir.outputs.dir }}
+            ~/.composer/cache
             **/vendor
             ~/.npm
             **/node_modules
-          key: ${{ runner.OS }}-deps-${{ hashFiles('**/composer.lock') }}-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}
 
       - name: Install NPM dependencies
         run: npm ci
