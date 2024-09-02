@@ -1,0 +1,21 @@
+name: CI/CD Pipeline
+
+on:
+    push:
+        branches: [master, staging, dev]
+    pull_request:
+        branches: [master, staging, dev]
+jobs:
+    frontend:
+        uses: ./.github/workflows/frontend.yml
+    backend:
+        uses: ./.github/workflows/backendTests.yml
+    deploy:
+        needs: [frontend, backend]
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/staging'
+        uses: ./.github/workflows/forgeDeploy.yml
+        with:
+            environment:  ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+        secrets: inherit
+
+  
