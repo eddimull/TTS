@@ -33,8 +33,19 @@ jobs:
       - name: Copy .env
         run: php -r "file_exists('.env') || copy('.env.example', '.env');"
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "22.7.0"
+
+      - name: Install specific npm version
+        run: npm install -g npm@10.8.2
+
       - name: Install Dependencies
         run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+      
+      - name: Install NPM dependencies
+        run: npm ci
 
       - name: Generate key
         run: php artisan key:generate
