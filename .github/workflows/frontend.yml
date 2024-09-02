@@ -91,6 +91,8 @@ jobs:
   test:
     needs: setup
     runs-on: ubuntu-latest
+    env:
+      LARAVEL_BYPASS_ENV_CHECK: 1
     steps:
       - uses: actions/checkout@v3
 
