@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config'
 import laravel from 'laravel-vite-plugin';
 import vue from '@vitejs/plugin-vue';
 
@@ -25,4 +25,11 @@ export default defineConfig({
         },
         extensions: ['.js', '.vue', '.json'],
     },
+    test:{
+        environment: 'jsdom',
+        setupFiles: ['./resources/js/tests/setup.js'],        
+    },
+    server: {
+        hmr: !process.env.production
+    }
 });
