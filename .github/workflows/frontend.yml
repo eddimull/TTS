@@ -21,8 +21,9 @@ jobs:
       - name: Copy .env
         run: php -r "file_exists('.env') || copy('.env.example', '.env');"
 
-      - name: Install Composer dependencies
-        run: composer install --no-progress --no-suggest --prefer-dist --optimize-autoloader
+      - name: Get Composer Cache Directory
+        id: composer-cache-dir
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT        
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -36,9 +37,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            '**/node_modules'
+            '${{ steps.composer-cache-dir.outputs.dir }}'
             '**/vendor'
+            '~/.npm'
+            '**/node_modules'
           key: ${{ runner.OS }}-node-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Install Composer dependencies
+        run: composer install --no-progress --no-suggest --prefer-dist --optimize-autoloader
 
       - name: Install NPM dependencies
         run: npm ci
@@ -54,12 +60,14 @@ jobs:
         with:
           node-version: "22.7.0"
 
-      - name: Restore npm packages
+      - name: Restore cache
         uses: actions/cache@v4
         with:
           path: |
-            '**/node_modules'
-            '**/vendor'
+            '${{ steps.composer-cache-dir.outputs.dir }}'
+            **/vendor
+            ~/.npm
+            **/node_modules
           key: ${{ runner.OS }}-node-${{ hashFiles('**/package-lock.json') }}
 
       - name: Install NPM dependencies
@@ -97,8 +105,10 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            '**/node_modules'
-            '**/vendor'
+            ${{ steps.composer-cache-dir.outputs.dir }}
+            **/vendor
+            ~/.npm
+            **/node_modules
           key: ${{ runner.OS }}-node-${{ hashFiles('**/package-lock.json') }}
 
       - name: Install NPM dependencies
