@@ -109,8 +109,14 @@ jobs:
             **/node_modules
           key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}
 
-      - name: Install NPM dependencies
-        run: npm ci
+      - name: Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-assets
+          path: public/build
+      
+      - name: Build for production
+        run: npm run build
 
       - name: Run tests
         run: npm run test:pipeline
