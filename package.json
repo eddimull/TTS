@@ -4,7 +4,7 @@
     "scripts": {
         "dev": "vite",
         "test": "vitest",
-        "test:pipeline": "vitest run --mode=pipeline",
+        "test:pipeline": "NODE_ENV=production vitest run --mode=pipeline",
         "build": "vite build"
     },
     "devDependencies": {
