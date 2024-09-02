@@ -30,6 +30,6 @@ export default defineConfig({
         setupFiles: ['./resources/js/tests/setup.js'],        
     },
     server: {
-        hmr: !process.env.CI
+        hmr: !process.env.production
     }
 });
