@@ -110,9 +110,6 @@ jobs:
             ~/.npm
             **/node_modules
           key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}
-      
-      - name: Build for production
-        run: npm run build
 
       - name: Run tests
         run: npm run test:pipeline
