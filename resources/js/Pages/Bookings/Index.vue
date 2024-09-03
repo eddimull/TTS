@@ -23,7 +23,9 @@
               :key="booking.id"
               class="p-4 border-b border-gray-200"
             >
-              {{ booking.start_time }} - {{ booking.end_time }}
+              <Link :href="route('bands.booking.show',{'band':booking.band_id,'booking':booking.id})">
+                {{ booking.name }} - {{ booking.event_date }}
+              </Link>
             </li>
           </ul>
         </div>
