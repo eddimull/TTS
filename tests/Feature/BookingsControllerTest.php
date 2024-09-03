@@ -128,7 +128,7 @@ class BookingsControllerTest extends TestCase
 
         $response = $this->actingAs($this->owner)->put(route('bands.booking.update', [$this->band, $booking]), $updatedData);
 
-        $response->assertRedirect(route('booking.index', $this->band));
+        $response->assertRedirect(route('bookings.index', $this->band));
         $this->assertDatabaseHas('bookings', $updatedData);
     }
 
@@ -138,7 +138,7 @@ class BookingsControllerTest extends TestCase
 
         $response = $this->actingAs($this->owner)->delete(route('bands.booking.destroy', [$this->band, $booking]));
 
-        $response->assertRedirect(route('bands.booking.index', $this->band));
+        $response->assertRedirect(route('bookings.index', $this->band));
         $this->assertDatabaseMissing('bookings', ['id' => $booking->id]);
     }
 }

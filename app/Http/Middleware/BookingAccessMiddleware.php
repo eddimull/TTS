@@ -19,20 +19,15 @@ class BookingAccessMiddleware
     public function handle(Request $request, Closure $next)
     {
         $user = $request->user();
-
         if (!$user)
         {
             return redirect()->route('login');
         }
         $band = $request->route('band');
-        $bookingId = $request->route('booking');
+        $bookingInput = $request->route('booking');
 
 
-        if ($bookingId)
-        {
-            $booking = Bookings::findOrFail($bookingId);
-        }
-
+        $booking = $this->resolveBooking($bookingInput);
 
         if ($band->owners->contains('user_id', $user->id) || $band->members->contains('user_id', $user->id))
         {
@@ -40,5 +35,20 @@ class BookingAccessMiddleware
         }
 
         abort(403, 'Unauthorized action.');
+    }
+
+    private function resolveBooking($input)
+    {
+        if ($input instanceof Bookings)
+        {
+            return $input;
+        }
+
+        if (is_numeric($input))
+        {
+            return Bookings::find($input);
+        }
+
+        return null;
     }
 }
