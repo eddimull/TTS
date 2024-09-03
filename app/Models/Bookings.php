@@ -26,8 +26,8 @@ class Bookings extends Model
 
     protected $casts = [
         'event_date' => 'date:Y-m-d',
-        'start_time' => 'datetime',
-        'end_time' => 'datetime',
+        'start_time' => 'datetime:H:i',
+        'end_time' => 'datetime:H:i',
         'price' => 'decimal:2',
     ];
 

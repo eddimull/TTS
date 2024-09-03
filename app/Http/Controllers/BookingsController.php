@@ -52,12 +52,12 @@ class BookingsController extends Controller
     public function update(UpdateBookingsRequest $request, Bands $band, Bookings $booking)
     {
         $booking->update($request->validated());
-        return redirect()->route('bands.booking.index', $band);
+        return redirect()->route('bookings.index', $band);
     }
 
     public function destroy(Bands $band, Bookings $booking)
     {
         $booking->delete();
-        return redirect()->route('bands.booking.index', $band);
+        return redirect()->route('bookings.index', $band);
     }
 }

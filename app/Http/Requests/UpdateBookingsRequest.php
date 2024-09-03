@@ -3,6 +3,8 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use App\Models\Bookings;
+use App\Models\EventTypes;
 
 class UpdateBookingsRequest extends FormRequest
 {
@@ -13,7 +15,8 @@ class UpdateBookingsRequest extends FormRequest
      */
     public function authorize()
     {
-        return false;
+        $band = $this->route('band');
+        return $this->user()->can('store', [Bookings::class, $band]);
     }
 
     /**
@@ -24,10 +27,26 @@ class UpdateBookingsRequest extends FormRequest
     public function rules()
     {
         return [
-            'user_id' => 'required|exists:users,id',
-            'start_time' => 'required|date',
-            'end_time' => 'required|date|after:start_time',
-            // Add other fields as necessary
+            'name' => 'required|string|max:255',
+            'event_type_id' => 'required|in:' . implode(',', EventTypes::all()->pluck('id')->toArray()),
+            'event_date' => 'required|date',
+            'start_time' => 'required|date_format:H:i',
+            'end_time' => 'required|date_format:H:i',
+            'price' => 'required|numeric|min:0',
+            'venue_name' => 'nullable|string|max:255',
+            'venue_address' => 'nullable|string',
+            'contract_option' => 'required|in:default,none,external',
+            'status' => 'nullable|in:pending,confirmed,cancelled',
+            'notes' => 'nullable|string',
+        ];
+    }
+
+    public function messages()
+    {
+        return [
+            'event_type.in' => 'The selected event type is invalid.',
+            'time.date_format' => 'The time must be in the format HH:MM.',
+            'price.min' => 'The price must be at least $0.',
         ];
     }
 }
