@@ -46,6 +46,7 @@ class BookingsController extends Controller
 
     public function show(Bands $band, Bookings $booking)
     {
+        $booking->load('band');
         return Inertia::render('Bookings/Show', ['booking' => $booking, 'band' => $band]);
     }
 

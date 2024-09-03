@@ -105,7 +105,7 @@
             >
           </div>
         </div>
-  
+        <ContractOptions v-model="form.contract_option" />
         <div>
           <button
             type="submit"
@@ -121,9 +121,13 @@
   
   <script>
   import { ref } from 'vue'
+  import ContractOptions from './ContractOptions.vue'
   import { useForm } from '@inertiajs/vue3'
   
   export default {
+    components: {
+      ContractOptions
+    },
     props: {
       band: {
         type: Object,
@@ -142,7 +146,8 @@
         event_date: '',
         start_time: '19:00',
         duration: 4,
-        price: ''
+        price: '',
+        contract_option: ''
       })
   
       const submitForm = () => {
