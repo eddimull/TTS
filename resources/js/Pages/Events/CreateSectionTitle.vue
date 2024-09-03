@@ -10,8 +10,8 @@
 export default {
     props:{
         number: {
-            type: String,
-            default: "1"
+            type: Number,
+            default: 1
         },
         title: {
             type: String,
