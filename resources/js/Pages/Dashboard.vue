@@ -37,68 +37,24 @@
         </div>
       </div>
     </div>
-    <!-- <div class="flex-1 max-w-5xl p-16">
-      <div class="grid grid cols-2 grid-rows-3 gap-4 grid-flow-row-dense">
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-          <div class="p-6 bg-white border-b border-gray-200">
-            <h4>Upcoming Events</h4>
-            <ul>
-              <li
-                v-for="event in events"
-                :key="event.id"
-              >
-                {{ event.event_name }} - {{ event.venue_name }} - <strong>{{ formatDate(event.event_time) }}</strong>
-              </li>
-            </ul>
-          </div>
-          <div class="p-6 bg-gray overflow-hidden shadow-sm sm:rounded-lg">
-            <h4>Stats</h4>
-            <p>Mileage for the year: {{ stats.miles }}</p>
-          </div>
-        </div>
-
-        <div class="bg-white shadow-sm sm:rounded-lg">
-          <Chart
-            type="bar"
-            :data="basicData"
-          />
-        </div>
-      </div>
-    </div> -->
   </breeze-authenticated-layout>
 </template>
 
 <script>
-
-    import Calendar from 'primevue/calendar';
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
     import DefaultComponent from '../Components/DefaultDashboard.vue'
     import EventCard from '../Components/EventCard.vue'
     import SideCalendar from '../Components/Dashboard/SideCalendar.vue'
-    import moment from 'moment';
     export default {
         components: {
             BreezeAuthenticatedLayout,
-            Calendar,
             EventCard,
             DefaultComponent,
             SideCalendar
         },
         props:['events','stats'],
-        data() {
-          return {
-            date: null
-            
-          }
-        },
         methods:{
-            formatDate:(date)=>{
-
-                return moment(String(date)).format('MM/DD/YYYY')
-            },
             gotoDate(id){
-              // this.$refs
-              // console.log(this.$refs);
               this.$refs[`event_${id}`].scrollIntoView({behavior: "smooth"});
             }
         }
