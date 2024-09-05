@@ -486,12 +486,12 @@
           }
         },
         created:async function(){
-            // this.unseenNotifications = this.$page.props.auth.user.notifications.filter(notification=>notification.seen_at === null).length
-            // this.getNotifications()
             this.fetchUserData()
+            this.fetchEventTypes()
         },
         methods: {
           ...mapActions('user', ['fetchNavigation', 'fetchNotifications', 'markAllNotificationsAsRead', 'markNotificationAsRead', 'markNotificationsAsSeen']),
+          ...mapActions('eventTypes', ['fetchEventTypes']),
 
           fetchUserData() {
               this.fetchNavigation()

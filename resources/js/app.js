@@ -48,11 +48,13 @@ import 'primeicons/primeicons.css'
 
 import questionnaire from '@/Store/questionnaire';
 import user from '@/Store/userStore';
+import eventTypes from '@/Store/eventTypesStore';
 
 const store = createStore({
     modules: {
         questionnaire,
-        user
+        user,
+        eventTypes
     }
 })
 

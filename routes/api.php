@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\StripeWebhookController;
+use App\Http\Controllers\EventTypeController;
 
 /*
 |--------------------------------------------------------------------------
@@ -19,6 +20,6 @@ use App\Http\Controllers\StripeWebhookController;
 //     return $request->user();
 // });
 
-Route::any('/stripe',[StripeWebhookController::class,'index'])->name('webhook.stripe');
+Route::any('/stripe', [StripeWebhookController::class, 'index'])->name('webhook.stripe');
 
-
+Route::get('/getAllEventTypes', [EventTypeController::class, 'getAllEventTypes'])->name('getAllEventTypes');
