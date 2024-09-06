@@ -37,7 +37,7 @@ class StoreBookingsRequest extends FormRequest
             'venue_name' => 'nullable|string|max:255',
             'venue_address' => 'nullable|string',
             'contract_option' => 'required|in:default,none,external',
-            'status' => 'nullable|in:pending,confirmed,cancelled',
+            'status' => 'nullable|in:draft,pending,confirmed,cancelled',
             'notes' => 'nullable|string',
         ];
     }
