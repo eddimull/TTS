@@ -452,7 +452,11 @@
             />
           </div>
           <div v-if="input.type == 'date'">
-            <reserved-calendar v-model="proposalData[input.field]" />
+            <reserved-calendar
+              v-model="proposalData[input.field]"
+              :booked-dates="bookedDates"
+              :proposed-dates="proposedDates"
+            />
           </div>
           <div v-if="input.type == 'eventTypeDropdown'">
             <select v-model="proposalData[input.field]">
@@ -641,7 +645,10 @@ import Label from '../../Components/Label.vue';
                 this.$inertia.get('/proposals/' + this.activeProposal.key + '/edit');
             },
             draftProposal(){
-                this.$inertia.post('/proposals/' + this.activeBandSite + '/create',this.proposalData);
+                const data = {...this.proposalData};
+
+                data.date = moment(data.date).format('YYYY-MM-DD HH:mm:ss');
+                this.$inertia.post('/proposals/' + this.activeBandSite + '/create',data);
             },
              writeToCalendar(){
               this.$inertia.post('/proposals/' + this.activeProposal.key + '/writeToCalendar');

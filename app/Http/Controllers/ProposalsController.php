@@ -138,8 +138,8 @@ class ProposalsController extends Controller
     public function edit(Proposals $proposal)
     {
         $eventTypes = EventTypes::all();
-        $bookedDates = BandEvents::where('band_id', '=', $proposal->band_id)->get();
-        $proposedDates = Proposals::where('band_id', '=', $proposal->band_id)->where('id', '!=', $proposal->id)->get();
+        $bookedDates = BandEvents::where('band_id', '=', $proposal->band_id)->where('event_time', '>=', Carbon::now())->get();
+        $proposedDates = Proposals::where('band_id', '=', $proposal->band_id)->where('date', '>=', Carbon::now())->where('id', '!=', $proposal->id)->get();
         return Inertia::render('Proposals/Edit', [
             'proposal' => $proposal,
             'eventTypes' => $eventTypes,
