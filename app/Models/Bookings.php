@@ -25,6 +25,7 @@ class Bookings extends Model
     ];
 
     protected $casts = [
+        'created_at' => 'datetime:Y-m-d',
         'event_date' => 'date:Y-m-d',
         'start_time' => 'datetime:H:i',
         'end_time' => 'datetime:H:i',

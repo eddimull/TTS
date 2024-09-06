@@ -1,25 +1,23 @@
 <template>
-  <Container>
-    <h1 class="text-2xl font-bold mb-6">
-      Booking Details
-    </h1>
+  <Container class="p-4">
+    <div class="mb-6">
+      <h1 class="text-3xl font-bold text-gray-800">
+        Booking Details
+      </h1>
+      <p class="text-sm text-gray-500 mt-1">
+        Created on {{ booking.created_at }}
+      </p>
+    </div>
     <form
       class="space-y-6"
       @submit.prevent="updateBooking"
     >
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label
-            for="name"
-            class="block text-sm font-medium text-gray-700"
-          >Name</label>
-          <input
-            id="name"
-            v-model="form.name"
-            type="text"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-          >
-        </div>
+        <TextInput
+          v-model="form.name"
+          name="name"
+          label="Name"
+        />
         <div>
           <label
             for="event_type_id"
@@ -77,28 +75,20 @@
           >
         </div>
         <div>
-          <label
-            for="venue_name"
-            class="block text-sm font-medium text-gray-700"
-          >Venue Name</label>
-          <input
-            id="venue_name"
+          <LocationAutocomplete
             v-model="form.venue_name"
-            type="text"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-          >
+            name="venue_name"
+            label="Venue"
+            placeholder="Enter a venue name or address"
+            @location-selected="(locationData) => handleLocationSelected(locationData)"
+          />
         </div>
         <div>
-          <label
-            for="venue_address"
-            class="block text-sm font-medium text-gray-700"
-          >Venue Address</label>
-          <input
-            id="venue_address"
+          <TextInput
             v-model="form.venue_address"
-            type="text"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-          >
+            name="venue_address"
+            label="Venue Address"
+          />
         </div>
         <div>
           <label
@@ -123,6 +113,9 @@
             v-model="form.status"
             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
           >
+            <option value="draft">
+              Draft
+            </option>
             <option value="pending">
               Pending
             </option>
@@ -144,14 +137,14 @@
             v-model="form.contract_option"
             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
           >
+            <option value="default">
+              Default (Automatic)
+            </option>
             <option value="none">
               None
             </option>
-            <option value="signed">
-              Signed
-            </option>
-            <option value="pending">
-              Pending
+            <option value="external">
+              External
             </option>
           </select>
         </div>
@@ -185,7 +178,8 @@
   import { useForm } from '@inertiajs/vue3'
   import Container from '@/Components/Container.vue'
   import { useStore } from 'vuex';
-  
+  import LocationAutocomplete from '@/Components/LocationAutocomplete.vue';
+  import TextInput from '@/Components/TextInput.vue';  
   
   const props = defineProps({
     booking: {
@@ -224,4 +218,9 @@
       preserveState: true,
     })
   }
-  </script>
+
+  const handleLocationSelected = (locationData) => {
+    // Handle full location data here
+    form.venue_address = locationData.result.formatted_address
+  };
+</script>

@@ -1,10 +1,8 @@
 <template>
-  <Container>
-    <BookingForm
-      :booking="booking"
-      :band="band"
-    />
-  </Container>
+  <BookingForm
+    :booking="booking"
+    :band="band"
+  />
 </template>
 
 <script setup>
