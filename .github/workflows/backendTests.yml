@@ -88,14 +88,20 @@ jobs:
         uses: actions/cache@v4
         id: cache-wkhtmltopdf
         with:
-          path: /usr/bin/wkhtmltopdf
+          path: ~/wkhtmltopdf
           key: ${{ runner.os }}-wkhtmltopdf-permanent
-
+      
       - name: Install wkhtmltopdf
-        if: steps.cache-wkhtmltopdf.outputs.cache-hit != 'true'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y wkhtmltopdf
+          if [ -f ~/wkhtmltopdf/wkhtmltopdf ]; then
+            sudo cp ~/wkhtmltopdf/wkhtmltopdf /usr/bin/wkhtmltopdf
+            sudo chmod +x /usr/bin/wkhtmltopdf
+          else
+            sudo apt-get update
+            sudo apt-get install -y wkhtmltopdf
+            mkdir -p ~/wkhtmltopdf
+            cp /usr/bin/wkhtmltopdf ~/wkhtmltopdf/
+          fi
 
       - name: Execute tests via Artisan
         env:
