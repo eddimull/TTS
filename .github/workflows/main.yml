@@ -5,23 +5,19 @@ on:
         branches: [master, staging, dev]
     pull_request:
         branches: [master, staging, dev]
-env:
-    NODE_VERSION: "22.7.0"
-    NPM_VERSION: "10.8.2"
-    PHP_VERSION: "8.1"
 jobs:
     frontend:
         uses: ./.github/workflows/frontend.yml
         with:
-            node-version: $NODE_VERSION
-            npm-version: $NPM_VERSION
-            php-version: $PHP_VERSION
+            node-version: ${{ vars.NODE_VERSION }}
+            npm-version: ${{ vars.NPM_VERSION }}
+            php-version: ${{ vars.PHP_VERSION }}
     backend:
         uses: ./.github/workflows/backendTests.yml
         with:
-            node-version: $NODE_VERSION
-            npm-version: $NPM_VERSION
-            php-version: $PHP_VERSION
+            node-version: ${{ vars.NODE_VERSION }}
+            npm-version: ${{ vars.NPM_VERSION }}
+            php-version: ${{ vars.PHP_VERSION }}
     deploy:
         needs: [frontend, backend]
         if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/staging'
