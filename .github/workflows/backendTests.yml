@@ -42,7 +42,7 @@ jobs:
       - name: Install specific npm version
         run: npm install -g npm@10.8.2
 
-      - name: Restore cache
+      - name: Cache node_modules and composer dependencies
         uses: actions/cache@v4
         with:
           path: |
@@ -51,6 +51,8 @@ jobs:
             ~/.npm
             **/node_modules
           key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
       
       - name: Build assets
         run: npm run build
