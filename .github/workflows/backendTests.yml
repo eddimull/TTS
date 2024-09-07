@@ -44,6 +44,7 @@ jobs:
 
       - name: Cache node_modules and composer dependencies
         uses: actions/cache@v4
+        id: cache-node-and-composer
         with:
           path: |
             ~/.composer/cache
@@ -53,6 +54,14 @@ jobs:
           key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}
           restore-keys: |
             ${{ runner.os }}-composer-
+              
+      - name: Install Composer dependencies
+        if: steps.cache-node-and-composer.outputs.cache-hit != 'true'
+        run: composer install --no-progress --no-suggest --prefer-dist --optimize-autoloader
+
+      - name: Install NPM dependencies
+        if: steps.cache-node-and-composer.outputs.cache-hit != 'true'
+        run: npm ci
       
       - name: Build assets
         run: npm run build
@@ -65,15 +74,13 @@ jobs:
 
       - name: Cache wkhtmltopdf
         uses: actions/cache@v4
-        env:
-          cache-name: cache-wkhtmltopdf
+        id: cache-wkhtmltopdf
         with:
-          path: /var/cache/apt/archives
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('/var/lib/apt/lists/lock') }}
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache-name }}-
+          path: /usr/bin/wkhtmltopdf
+          key: ${{ runner.os }}-wkhtmltopdf-permanent
 
       - name: Install wkhtmltopdf
+        if: steps.cache-wkhtmltopdf.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y wkhtmltopdf
