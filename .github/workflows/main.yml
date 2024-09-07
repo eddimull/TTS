@@ -9,6 +9,7 @@ jobs:
     frontend:
         uses: ./.github/workflows/frontend.yml
     backend:
+        needs: [frontend]
         uses: ./.github/workflows/backendTests.yml
     deploy:
         needs: [frontend, backend]
