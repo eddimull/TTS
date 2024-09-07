@@ -1,0 +1,20 @@
+name: Deploy to Forge
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'The environment to deploy to'
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+    - name: Trigger Forge Deployment
+      env:
+        FORGE_DEPLOYMENT_WEBHOOK: ${{ secrets.FORGE_DEPLOYMENT_WEBHOOK }}
+      run: |
+        curl -X POST ${{ secrets.FORGE_DEPLOYMENT_WEBHOOK }}

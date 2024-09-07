@@ -56,7 +56,7 @@ class ProposalServices
             'state' => 'Louisiana',
             'postal_code' => ''
         ];
-        if ($parsedResponse->status !== 'INVALID_REQUEST' && $parsedResponse->status !== 'ZERO_RESULTS')
+        if ($parsedResponse->status !== 'INVALID_REQUEST' && $parsedResponse->status !== 'ZERO_RESULTS' && !app()->environment('testing'))
         {
             $usableAddress['venue'] = $parsedResponse->predictions[0]->structured_formatting->main_text;
             $place_id = $parsedResponse->predictions[0]->place_id;

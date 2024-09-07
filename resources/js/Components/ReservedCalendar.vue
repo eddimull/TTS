@@ -30,13 +30,11 @@
 import { usePage } from '@inertiajs/inertia-vue3'
 import { computed } from '@vue/runtime-core'
 export default {
-
+  props:['bookedDates','proposedDates'],
   setup(){
-    const bookedDates = computed(()=>usePage().props.value.bookedDates);
-    const proposedDates = computed(()=>usePage().props.value.proposedDates);
 
-    return {bookedDates, proposedDates};
   },
+  
   data(){
     return {
       date:null
