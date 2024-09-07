@@ -42,11 +42,15 @@ jobs:
       - name: Install specific npm version
         run: npm install -g npm@10.8.2
 
-      - name: Install Dependencies
-        run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-      
-      - name: Install NPM dependencies
-        run: npm ci
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.composer/cache
+            **/vendor
+            ~/.npm
+            **/node_modules
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}
       
       - name: Build assets
         run: npm run build
@@ -56,6 +60,16 @@ jobs:
 
       - name: Directory Permissions
         run: chmod -R 777 storage bootstrap/cache
+
+      - name: Cache wkhtmltopdf
+        uses: actions/cache@v4
+        env:
+          cache-name: cache-wkhtmltopdf
+        with:
+          path: /var/cache/apt/archives
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('/var/lib/apt/lists/lock') }}
+          restore-keys: |
+            ${{ runner.os }}-build-${{ env.cache-name }}-
 
       - name: Install wkhtmltopdf
         run: |
