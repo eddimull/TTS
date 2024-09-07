@@ -24,7 +24,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.1"
+          php-version: ${{ inputs.php-version }}
           extensions: mbstring, xml, ctype, iconv, intl, pdo_sqlite, dom, filter, gd, json, mbstring, pdo
 
       - name: Copy .env
@@ -33,10 +33,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ env.node-version }}
+          node-version: ${{ inputs.node-version }}
 
       - name: Install specific npm version
-        run: npm install -g npm@10.8.2
+        run: npm install -g npm@${{ inputs.npm-version }}
 
       - name: Cache node_modules and composer dependencies
         uses: actions/cache@v4
@@ -109,7 +109,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "22.7.0"
+          node-version: ${{ inputs.node-version }}
 
       - name: Restore npm packages
         uses: actions/cache@v4
