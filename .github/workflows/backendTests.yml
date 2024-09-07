@@ -96,10 +96,10 @@ jobs:
         run: |
           mkdir ~/wkhtmltox
           wget -O ~/wkhtmltox/wkhtmltox.deb https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.jammy_amd64.deb
-          wget -O ~/wkhtmltox/xfonts-encodings.deb http://archive.ubuntu.com/ubuntu/pool/main/x/xfonts-encodings/xfonts-encodings_1.0.4-2_all.deb
-          wget -O ~/wkhtmltox/xfonts-utils.deb http://archive.ubuntu.com/ubuntu/pool/main/x/xfonts-utils/xfonts-utils_7.7+6_amd64.deb
+          wget -O ~/wkhtmltox/xfonts-encodings.deb http://archive.ubuntu.com/ubuntu/pool/main/x/xfonts-encodings/xfonts-encodings_1.0.5-0ubuntu2_all.deb
+          wget -O ~/wkhtmltox/xfonts-utils.deb http://archive.ubuntu.com/ubuntu/pool/main/x/xfonts-utils/xfonts-utils_7.7+6build2_amd64.deb
           wget -O ~/wkhtmltox/xfonts-75dpi.deb http://archive.ubuntu.com/ubuntu/pool/universe/x/xfonts-75dpi/xfonts-75dpi_1.0.4+nmu1_all.deb
-          wget -O ~/wkhtmltox/xfonts-base.deb http://archive.ubuntu.com/ubuntu/pool/main/x/xfonts-base/xfonts-base_1.0.4+nmu1_all.deb
+          wget -O ~/wkhtmltox/xfonts-base.deb http://archive.ubuntu.com/ubuntu/pool/main/x/xfonts-base/xfonts-base_1.0.5+nmu1_all.deb
       
       - name: Install wkhtmltopdf
         run: |
