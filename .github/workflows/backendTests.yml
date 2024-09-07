@@ -95,10 +95,8 @@ jobs:
         run: |
           if [ -d ~/wkhtmltopdf-cache ]; then
             echo "Restoring wkhtmltopdf and dependencies from cache"
-            
-            # Copy files individually, creating directories as needed
-            sudo find ~/wkhtmltopdf-cache -type d -exec mkdir -p /{} \;
-            sudo find ~/wkhtmltopdf-cache -type f -exec cp -v {} /{} \;
+            sudo cp ~/wkhtmltopdf-cache/usr/bin/wkhtmltopdf /usr/bin
+            sudo cp -r ~/wkhtmltopdf-cache/lib/* /lib
             
             sudo ldconfig
           else
@@ -111,10 +109,8 @@ jobs:
             cp /usr/bin/wkhtmltopdf ~/wkhtmltopdf-cache/usr/bin/
             
             # Identify and cache dependencies
-            ldd /usr/bin/wkhtmltopdf | grep "=> /" | awk '{print $3}' | while read -r lib; do
-              mkdir -p ~/wkhtmltopdf-cache$(dirname "$lib")
-              cp -v "$lib" ~/wkhtmltopdf-cache"$lib"
-            done
+            mkdir -p ~/wkhtmltopdf-cache/lib ~/wkhtmltopdf-cache/usr/lib
+            ldd /usr/bin/wkhtmltopdf | grep "=> /" | awk '{print $3}' | xargs -I '{}' cp -v '{}' ~/wkhtmltopdf-cache/$(dirname {})
             
             # Cache any additional necessary files (e.g., fonts)
             mkdir -p ~/wkhtmltopdf-cache/usr/share/fonts
