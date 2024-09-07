@@ -84,24 +84,39 @@ jobs:
       - name: Directory Permissions
         run: chmod -R 777 storage bootstrap/cache
 
-      - name: Cache wkhtmltopdf
+      - name: Cache wkhtmltopdf and dependencies
         uses: actions/cache@v4
         id: cache-wkhtmltopdf
         with:
-          path: ~/wkhtmltopdf
-          key: ${{ runner.os }}-wkhtmltopdf-permanent
+          path: ~/wkhtmltopdf-cache
+          key: ${{ runner.os }}-wkhtmltopdf-deps-${{ hashFiles('/usr/bin/wkhtmltopdf') }}
       
-      - name: Install wkhtmltopdf
+      - name: Install or restore wkhtmltopdf and dependencies
         run: |
-          if [ -f ~/wkhtmltopdf/wkhtmltopdf ]; then
-            sudo cp ~/wkhtmltopdf/wkhtmltopdf /usr/bin/wkhtmltopdf
-            sudo chmod +x /usr/bin/wkhtmltopdf
+          if [ -d ~/wkhtmltopdf-cache ]; then
+            echo "Restoring wkhtmltopdf and dependencies from cache"
+            sudo cp -r ~/wkhtmltopdf-cache/* /
+            sudo ldconfig
           else
+            echo "Installing wkhtmltopdf"
             sudo apt-get update
             sudo apt-get install -y wkhtmltopdf
-            mkdir -p ~/wkhtmltopdf
-            cp /usr/bin/wkhtmltopdf ~/wkhtmltopdf/
+            
+            echo "Caching wkhtmltopdf and its dependencies"
+            mkdir -p ~/wkhtmltopdf-cache/usr/bin
+            cp /usr/bin/wkhtmltopdf ~/wkhtmltopdf-cache/usr/bin/
+            
+            # Identify and cache dependencies
+            mkdir -p ~/wkhtmltopdf-cache/lib ~/wkhtmltopdf-cache/usr/lib
+            ldd /usr/bin/wkhtmltopdf | grep "=> /" | awk '{print $3}' | xargs -I '{}' cp -v '{}' ~/wkhtmltopdf-cache/$(dirname {})
+            
+            # Cache any additional necessary files (e.g., fonts)
+            mkdir -p ~/wkhtmltopdf-cache/usr/share/fonts
+            cp -r /usr/share/fonts/truetype ~/wkhtmltopdf-cache/usr/share/fonts/
           fi
+          
+          # Verify installation
+          wkhtmltopdf --version
 
       - name: Execute tests via Artisan
         env:
