@@ -101,7 +101,7 @@ jobs:
           wget -O ~/wkhtmltox/xfonts-75dpi.deb http://archive.ubuntu.com/ubuntu/pool/universe/x/xfonts-75dpi/xfonts-75dpi_1.0.5_all.deb
           wget -O ~/wkhtmltox/xfonts-base.deb http://archive.ubuntu.com/ubuntu/pool/main/x/xfonts-base/xfonts-base_1.0.5+nmu1_all.deb
           wget -O ~/wkhtmltox/libxrender.deb https://pl.archive.ubuntu.com/ubuntu/pool/main/libx/libxrender/libxrender1_0.9.10-1.1build1_amd64.deb
-          wget -O ~/wkhtmltox/libjpeg.deb http://archive.ubuntu.com/ubuntu/pool/main/libj/libjpeg-turbo/libjpeg-turbo8-dev_2.1.5-2ubuntu2_amd64.deb
+          wget -O ~/wkhtmltox/libjpeg.deb http://archive.ubuntu.com/ubuntu/pool/main/libj/libjpeg-turbo/libjpeg-turbo8_2.1.5-2ubuntu2_amd64.deb
       
       - name: Install wkhtmltopdf
         run: |
