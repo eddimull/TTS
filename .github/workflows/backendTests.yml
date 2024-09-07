@@ -84,38 +84,30 @@ jobs:
       - name: Directory Permissions
         run: chmod -R 777 storage bootstrap/cache
 
-      - name: Cache wkhtmltopdf .deb file
+      - name: Cache wkthtmltopdf
         uses: actions/cache@v4
         id: cache-wkhtmltopdf
         with:
-          path: ~/wkhtmltopdf.deb
-          key: ${{ runner.os }}-wkhtmltopdf-0.12.6.1-2
+          path: "~/wkhtmltox/"
+          key: ${{ runner.os }}-wkhtmltopdf-${{ hashFiles('**/*.deb') }}
+    
+      - name: Download wkthtmltopdf & dependencies
+        if: steps.cache-wkhtmltopdf.outputs.cache-hit != 'true'
+        run: |
+          mkdir ~/wkhtmltox
+          wget -O ~/wkhtmltox/wkhtmltox.deb https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6-1/wkhtmltox_0.12.6-1.bionic_amd64.deb
+          wget -O ~/wkhtmltox/xfonts-encodings.deb http://archive.ubuntu.com/ubuntu/pool/main/x/xfonts-encodings/xfonts-encodings_1.0.4-2_all.deb
+          wget -O ~/wkhtmltox/xfonts-utils.deb http://archive.ubuntu.com/ubuntu/pool/main/x/xfonts-utils/xfonts-utils_7.7+6_amd64.deb
+          wget -O ~/wkhtmltox/xfonts-75dpi.deb http://archive.ubuntu.com/ubuntu/pool/universe/x/xfonts-75dpi/xfonts-75dpi_1.0.4+nmu1_all.deb
+          wget -O ~/wkhtmltox/xfonts-base.deb http://archive.ubuntu.com/ubuntu/pool/main/x/xfonts-base/xfonts-base_1.0.4+nmu1_all.deb
       
       - name: Install wkhtmltopdf
         run: |
-          if [ ! -f ~/wkhtmltopdf.deb ]; then
-            echo "Downloading wkhtmltopdf .deb file"
-            wget https://github.com/wkhtmltopdf/packaging/releases/download/0.12.6.1-2/wkhtmltox_0.12.6.1-2.bullseye_amd64.deb -O ~/wkhtmltopdf.deb
-          else
-            echo "Using cached wkhtmltopdf .deb file"
-          fi
-      
-          echo "Adding Debian repository for libjpeg62-turbo"
-          echo "deb http://security.debian.org/debian-security bullseye-security main" | sudo tee /etc/apt/sources.list.d/debian-security.list
-          sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 112695A0E562B32A
-      
-          echo "Updating package lists"
-          sudo apt-get update
-      
-          echo "Installing libjpeg62-turbo"
-          sudo apt-get install -y libjpeg62-turbo
-      
-          echo "Installing wkhtmltopdf"
-          sudo apt-get install -y ~/wkhtmltopdf.deb
-      
-          echo "Verifying installation"
-          wkhtmltopdf --version
-      
+          sudo dpkg -i ~/wkhtmltox/xfonts-encodings.deb
+          sudo dpkg -i ~/wkhtmltox/xfonts-utils.deb
+          sudo dpkg -i ~/wkhtmltox/xfonts-75dpi.deb
+          sudo dpkg -i ~/wkhtmltox/xfonts-base.deb
+          sudo dpkg -i ~/wkhtmltox/wkhtmltox.deb
 
       - name: Execute tests via Artisan
         env:
