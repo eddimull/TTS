@@ -2,7 +2,19 @@ name: Laravel Frontend Build and Test
 
 on:
   workflow_call:
-
+    inputs:
+      node-version:
+        description: 'Node.js version'
+        required: true
+        type: string
+      npm-version:
+        description: 'NPM version'
+        required: true
+        type: string
+      php-version:
+        description: 'PHP version'
+        required: true
+        type: string
 jobs:
   setup:
     runs-on: ubuntu-latest
@@ -21,7 +33,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "22.7.0"
+          node-version: ${{ env.node-version }}
 
       - name: Install specific npm version
         run: npm install -g npm@10.8.2
