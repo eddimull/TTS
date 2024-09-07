@@ -7,36 +7,35 @@
     </template>
 
     <Container>
-      <div class="card">
-        <Toolbar class="p-mb-4">
-          <template #left>
-            <Button
-              label="New"
-              icon="pi pi-plus"
-              class="p-button-success p-mr-2"
-              @click="openNew"
+      <Toolbar class="p-mb-4 border-b-2">
+        <template #start>
+          <Button
+            icon="pi pi-plus"
+            class="mr-2"
+            severity="secondary"
+            text
+            label="New"
+            @click="openNew"
+          />
+        </template>
+
+        <template #end>
+          <IconField>
+            <InputIcon>
+              <i class="pi pi-search" />
+            </InputIcon>
+            <InputText
+              v-model="chartFilter"
+              placeholder="Search"
+              class="ml-2"
+              @input="filterCharts"
             />
-          <!-- <Button
-                label="Delete"
-                icon="pi pi-trash"
-                class="hidden p-button-danger"
-                :disabled="!selectedProducts || !selectedProducts.length"
-                @click="confirmDeleteSelected"
-              /> -->
-          </template>
-
-          <template #right>
-          <!-- <Button
-
-                label="Export"
-                icon="pi pi-upload"
-                class="hidden p-button-help"
-                @click="exportCSV($event)"
-              /> -->
-          </template>
-        </Toolbar>
+          </IconField>
+        </template>
+      </Toolbar>
+      <div class="card mt-2">
         <DataTable
-          :value="chartsData"
+          :value="filteredChartsData"
           striped-rows
           row-hover
           responsive-layout="scroll"
@@ -183,7 +182,7 @@
           charts:{
             type:Array,
             default:()=>{return []}
-          }
+          },
         },
         data(){
             return{
@@ -191,10 +190,12 @@
                     
                 },
               chartsData:this.charts,
+              filteredChartsData: [],
               chart:{},
               saving:false,
               submitted:false,
               chartDialog:false,
+              chartFilter:'',
             }
         },
         computed:{
@@ -230,10 +231,16 @@
           }
         },
         watch:{
-            
+          chartFilter: {
+            handler(newValue) {
+              this.filterCharts();
+            }
+          }
         }, 
         created(){
-          
+
+          this.filteredChartsData = this.chartsData;
+
         },
         methods:{
             selectedChart(data)
@@ -256,6 +263,14 @@
         closeDialog(){
           this.saving = false;
           this.chartDialog = false;
+        },
+
+        filterCharts() {
+          const searchTerm = this.chartFilter.toLowerCase();
+          this.filteredChartsData = this.chartsData.filter(chart => 
+            chart.title.toLowerCase().includes(searchTerm) ||
+            chart.composer.toLowerCase().includes(searchTerm)
+          );
         }
       }     
         
