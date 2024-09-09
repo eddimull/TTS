@@ -7,7 +7,7 @@ import { InertiaProgress } from '@inertiajs/progress';
 import { createStore } from 'vuex'
 import VueSweetalert2 from 'vue-sweetalert2';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
-import { ZiggyVue } from '../../vendor/tightenco/ziggy/dist/vue.m';
+import { ZiggyVue } from 'ziggy-js';
 import moment from 'moment';
 import CardModal from '@/Components/CardModal'
 import Card from '@/Components/Card'
@@ -35,7 +35,6 @@ import AudioVisual from 'vue-audio-visual'
 import Chart from 'primevue/chart';
 import TabView from 'primevue/tabview';
 import TabPanel from 'primevue/tabpanel';
-import BreezeNavLink from '@/Components/InlineLink';
 import ProgressSpinner from 'primevue/progressspinner';
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
 import Container from '@/Components/Container'
@@ -43,8 +42,8 @@ import ToastService from 'primevue/toastservice';
 import 'sweetalert2/dist/sweetalert2.min.css';
 import 'primevue/resources/themes/saga-blue/theme.css'
 import 'primevue/resources/primevue.min.css'
-// import 'primeflex/primeflex.css';                 
-import 'primeicons/primeicons.css'    
+// import 'primeflex/primeflex.css';
+import 'primeicons/primeicons.css'
 
 import questionnaire from '@/Store/questionnaire';
 import user from '@/Store/userStore';
