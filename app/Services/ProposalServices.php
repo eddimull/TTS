@@ -44,7 +44,7 @@ class ProposalServices
         $sessionToken = Str::random();
         $googleResponse = Http::get("https://maps.googleapis.com/maps/api/place/autocomplete/json", [
             'input' => $this->proposal->location,
-            'key' => $_ENV['GOOGLE_MAPS_API_KEY'],
+            'key' => Config::get('googlemaps.key'),
             'sessiontoken' => $sessionToken
         ]);
         $parsedResponse = json_decode($googleResponse->body());
@@ -62,7 +62,7 @@ class ProposalServices
             $place_id = $parsedResponse->predictions[0]->place_id;
             $detailedResponse = Http::get("https://maps.googleapis.com/maps/api/place/details/json", [
                 'place_id' => $place_id,
-                'key' => $_ENV['GOOGLE_MAPS_API_KEY'],
+                'key' => Config::get('googlemaps.key'),
                 'sessiontoken' => $sessionToken
             ]);
             $parsedDetails = json_decode($detailedResponse->body());
@@ -133,7 +133,6 @@ class ProposalServices
             'outside' => false,
             'second_line' => false,
             'onsite' => false,
-            'event_key' => Str::uuid()
         ]);
 
         $this->proposal->event_id = $event->id;

@@ -3,7 +3,6 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Doctrine\DBAL\Types\StringType; use Doctrine\DBAL\Types\Type;
 
 class MakeAddressNullable extends Migration
 {
@@ -15,11 +14,6 @@ class MakeAddressNullable extends Migration
     public function up()
     {
         Schema::table('users', function (Blueprint $table) {
-            if (!Type::hasType('char')) {
-                Type::addType('char', StringType::class);
-            }
-
-            //
             $table->string('Address1')->nullable()->change();
             $table->string('Address2')->nullable()->change();
             $table->string('Address3')->nullable()->change();

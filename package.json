@@ -65,6 +65,7 @@
         "vue3-datepicker": "^0.2.4",
         "vue3-dropzone": "^0.0.7",
         "vue3-timepicker": "*",
-        "vuex": "^4.0.2"
+        "vuex": "^4.0.2",
+        "ziggy-js": "^2.3.0"
     }
 }

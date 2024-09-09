@@ -180,7 +180,11 @@
                   />
                 </div>
                 <div v-if="input.type == 'date'">
-                  <reserved-calendar v-model="proposalData[input.field]" />
+                  <reserved-calendar
+                    v-model="proposalData[input.field]" 
+                    :booked-dates="bookedDates"
+                    :proposed-dates="proposedDates"
+                  />
                   
                   <div
                     v-for="(date,index) in recurringDates"
@@ -286,8 +290,8 @@
     import ReservedCalendar from '../../Components/ReservedCalendar.vue'
 
     import moment from 'moment';
-import axios from 'axios'
-import { forEach } from 'lodash'
+    import axios from 'axios'
+    import { forEach } from 'lodash'
     export default {
         components: {
             BreezeAuthenticatedLayout,Datepicker,VueTimepicker,ButtonComponent,CurrencyInput,ReservedCalendar

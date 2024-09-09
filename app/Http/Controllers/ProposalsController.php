@@ -15,6 +15,7 @@ use App\Notifications\TTSNotification;
 use App\Services\ProposalServices;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -29,7 +30,7 @@ class ProposalsController extends Controller
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
+     * @return \Inertia\Response
      */
     public function index()
     {
@@ -132,14 +133,14 @@ class ProposalsController extends Controller
     /**
      * Show the form for editing the specified resource.
      *
-     * @param  \App\Models\Proposal  $proposal
-     * @return \Illuminate\Http\Response
+     * @param  \App\Models\Proposals  $proposal
+     * @return \Inertia\Response
      */
     public function edit(Proposals $proposal)
     {
         $eventTypes = EventTypes::all();
-        $bookedDates = BandEvents::where('band_id', '=', $proposal->band_id)->get();
-        $proposedDates = Proposals::where('band_id', '=', $proposal->band_id)->where('id', '!=', $proposal->id)->get();
+        $bookedDates = BandEvents::where('band_id', '=', $proposal->band_id)->where('event_time', '>=', Carbon::now())->get();
+        $proposedDates = Proposals::where('band_id', '=', $proposal->band_id)->where('date', '>=', Carbon::now())->where('id', '!=', $proposal->id)->get();
         return Inertia::render('Proposals/Edit', [
             'proposal' => $proposal,
             'eventTypes' => $eventTypes,
@@ -191,18 +192,18 @@ class ProposalsController extends Controller
      * Store a newly created resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @return \Illuminate\Http\Client\Response
      */
     public function searchLocations(Request $request)
     {
-        $googleResponse = Http::get("https://maps.googleapis.com/maps/api/place/autocomplete/json?input=" . $request->searchParams . "&key=" . $_ENV['GOOGLE_MAPS_API_KEY'] . '&sessiontoken=' . $request->sessionToken);
+        $googleResponse = Http::get("https://maps.googleapis.com/maps/api/place/autocomplete/json?input=" . $request->searchParams . "&key=" . Config::get('googlemaps.key') . '&sessiontoken=' . $request->sessionToken);
 
         return $googleResponse;
     }
 
     public function searchDetails(Request $request)
     {
-        $googleResponse = Http::get("https://maps.googleapis.com/maps/api/place/details/json?place_id=" . $request->place_id . "&key=" . $_ENV['GOOGLE_MAPS_API_KEY'] . '&sessiontoken=' . $request->sessionToken);
+        $googleResponse = Http::get("https://maps.googleapis.com/maps/api/place/details/json?place_id=" . $request->place_id . "&key=" . Config::get('googlemaps.key') . '&sessiontoken=' . $request->sessionToken);
 
         return $googleResponse;
     }
@@ -236,8 +237,8 @@ class ProposalsController extends Controller
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\Proposal  $proposal
-     * @return \Illuminate\Http\Response
+     * @param  \App\Models\Proposals  $proposal
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function update(Request $request, Proposals $proposal)
     {
@@ -327,8 +328,8 @@ class ProposalsController extends Controller
     /**
      * Remove the specified resource from storage.
      *
-     * @param  \App\Models\Proposal  $proposal
-     * @return \Illuminate\Http\Response
+     * @param  \App\Models\Proposals  $proposal
+     * @return \Illuminate\Http\RedirectResponse
      */
     public function destroy(Proposals $proposal)
     {
@@ -365,7 +366,7 @@ class ProposalsController extends Controller
             ]));
         }
 
-        $proposalService->make_pandadoc_contract($proposal);
+        $proposalService->make_pandadoc_contract();
         $proposal->phase_id = 5;
         $proposal->save();
         return redirect('/proposals/' . $proposal->key . '/accepted')->with('successMessage', 'Proposal has been accepted. Await a finalized contract');
@@ -378,7 +379,8 @@ class ProposalsController extends Controller
             return redirect()->route('proposals')->withErrors('Proposal has not been approved. Cannot send out.');
         }
 
-        $this->make_pandadoc_contract($proposal);
+        $proposalService = new ProposalServices($proposal);
+        $proposalService->make_pandadoc_contract();
         $proposal->phase_id = 5;
         $proposal->save();
         return redirect()->route('proposals')->with('successMessage', $proposal->name . ' contract manually sent!');
