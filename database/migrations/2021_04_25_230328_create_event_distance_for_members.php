@@ -17,8 +17,8 @@ class CreateEventDistanceForMembers extends Migration
             $table->id();
             $table->unsignedBigInteger('event_id')->default(0);
             $table->unsignedBigInteger('user_id')->default(0);
-            $table->unsignedDecimal('miles',8,2)->default(0);
-            $table->unsignedDecimal('minutes',8,2)->default(0);
+            $table->decimal('miles',8,2)->default(0);
+            $table->decimal('minutes',8,2)->default(0);
             $table->timestamps();
         });
     }

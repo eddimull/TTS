@@ -15,9 +15,9 @@ class MakeTagsNullableOnColorways extends Migration
     {
         Schema::table('colorways', function (Blueprint $table) {
             //
-            $table->text('colorway_description')->nullable()->default('')->change();
-            $table->text('color_tags')->nullable()->default('')->change();
-            $table->text('color_title')->nullable()->default('')->change();
+            $table->text('colorway_description')->nullable()->change();
+            $table->text('color_tags')->nullable()->change();
+            $table->text('color_title')->nullable()->change();
         });
     }
 
