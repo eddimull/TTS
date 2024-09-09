@@ -98,8 +98,7 @@ createInertiaApp({
                 Panel,
                 TabView,
                 TabPanel,
-                ProgressSpinner,
-                BreezeNavLink
+                ProgressSpinner
             };
     
             Object.entries(components).forEach(([name, component]) => {
