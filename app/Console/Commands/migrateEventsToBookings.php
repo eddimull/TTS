@@ -59,7 +59,7 @@ class migrateEventsToBookings extends Command
     {
         // Create or update booking
         $booking = Bookings::updateOrCreate(
-            ['id' => $event->booking_id],
+            ['name' => $event->name],
             [
                 'band_id' => $event->band_id,
                 'name' => $event->event_name,
@@ -72,6 +72,7 @@ class migrateEventsToBookings extends Command
                 'price' => 0,
                 'status' => 'confirmed',
                 'notes' => $event->notes,
+                'contract_option' => 'none',
             ]
         );
 
