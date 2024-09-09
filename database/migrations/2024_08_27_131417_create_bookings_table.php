@@ -22,7 +22,7 @@ return new class extends Migration
             $table->decimal('price', 10, 2);
             $table->enum('status', ['draft', 'pending', 'confirmed', 'cancelled'])->default('draft');
             $table->enum('contract_option', ['default', 'none', 'external'])->default('default');
-            $table->text('notes')->nullable();
+            $table->longText('notes')->nullable();
             $table->timestamps();
         });
     }
