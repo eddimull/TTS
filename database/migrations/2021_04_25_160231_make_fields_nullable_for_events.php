@@ -3,7 +3,6 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Doctrine\DBAL\Types\StringType; use Doctrine\DBAL\Types\Type;
 
 class MakeFieldsNullableForEvents extends Migration
 {
@@ -15,12 +14,6 @@ class MakeFieldsNullableForEvents extends Migration
     public function up()
     {
         Schema::table('band_events', function (Blueprint $table) {
-           
-            if (!Type::hasType('char')) {
-                Type::addType('char', StringType::class);
-            }
-        
-            //
             $table->char('first_dance',150)->nullable()->change();
             $table->char('second_dance',150)->nullable()->change();
             $table->char('money_dance',150)->nullable()->change();

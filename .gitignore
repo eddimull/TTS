@@ -4,6 +4,7 @@ _ide_helper.php
 .idea/
 .phpstorm.meta.php
 .phpunit.result.cache
+.phpunit.cache/
 *.pem
 /node_modules
 /public/hot
@@ -14,8 +15,6 @@ _ide_helper.php
 /storage/*.key
 /vendor
 cert.pem
-cert.pem
-chain.pem
 chain.pem
 docker-compose.override.yml
 fullchain.pem
