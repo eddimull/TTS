@@ -22,9 +22,11 @@ class ChartsController extends Controller
     public function index()
     {
         $user = Auth::user();
+        $user->bands = $user->bands();
         $charts = $user->charts();
         return Inertia::render('Charts/Index', [
-            'charts' => $charts
+            'charts' => $charts,
+            'bands' => $user->bands
         ]);
     }
 

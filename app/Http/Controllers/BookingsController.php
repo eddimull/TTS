@@ -9,11 +9,16 @@ use Inertia\Inertia;
 use App\Models\Bands;
 use Illuminate\Support\Facades\Auth;
 use App\Models\EventTypes;
+use Carbon\Carbon;
 
 class BookingsController extends Controller
 {
     public function index(Bands $band = null)
     {
+        if (app()->environment('local'))
+        {
+            ini_set('memory_limit', '2048M');
+        }
         $user = Auth::user();
         $userBands = $user->bands();
         if ($band && !$userBands->contains($band))
@@ -21,7 +26,9 @@ class BookingsController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        $bookings = $band ? $band->bookings : Bookings::whereIn('band_id', $userBands->pluck('id'))->get();
+        $bookings = $band ? $band->bookings : Bookings::whereIn('band_id', $userBands->pluck('id'))
+            ->where('event_date', '>=', Carbon::now()->subMonths(6))
+            ->get();
 
         return Inertia::render('Bookings/Index', [
             'bookings' => $bookings,
