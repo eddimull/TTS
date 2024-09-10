@@ -11,7 +11,7 @@ use App\Models\User;
 use App\Notifications\TTSNotification;
 use Illuminate\Support\Facades\Http;
 
-class ContractsController extends Controller
+class ProposalContractsController extends Controller
 {
     /**
      * Display a listing of the resource.

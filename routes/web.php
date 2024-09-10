@@ -5,6 +5,7 @@ use App\Http\Controllers\FinalizedProposalController;
 use App\Http\Controllers\FinancesController;
 use App\Http\Controllers\InvitationsController;
 use App\Http\Controllers\InvoicesController;
+use App\Http\Controllers\ProposalContractsController;
 use App\Http\Controllers\QuestionnaireController;
 use App\Models\Bands;
 use App\Services\AdvanceReminderService;
@@ -126,7 +127,7 @@ Route::post('/inviteMember/{band_id}',[InvitationsController::class,'createMembe
 Route::delete('/deleteInvite/{band}/{invitations}','InvitationsController@destroy')->middleware(['auth','verified'])->name('invite.delete');
 
 
-Route::get('/contracts','ContractsController@index')->name('contracts');
+Route::get('/contracts',[ProposalContractsController::class, 'index'])->name('contracts');
 
 Route::get('/notifications',function(){
     return json_encode(Auth::user()->Notifications);
