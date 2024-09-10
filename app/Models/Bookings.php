@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Contracts;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Bookings extends Model
 {
@@ -63,8 +65,13 @@ class Bookings extends Model
         return $this->morphMany(Events::class, 'eventable');
     }
 
-    public function payments()
+    public function payments(): MorphMany
     {
         return $this->morphMany(Payments::class, 'payable');
+    }
+
+    public function contract(): MorphOne
+    {
+        return $this->morphOne(Contracts::class, 'contractable');
     }
 }
