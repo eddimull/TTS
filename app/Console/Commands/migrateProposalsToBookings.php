@@ -73,6 +73,9 @@ class migrateProposalsToBookings extends Command
 
         // Process contacts
         $this->processContacts($proposal, $booking);
+
+        // Process payments
+        // $this->processPayments($proposal, $booking);
     }
 
     private function findMatchingBooking(Proposals $proposal)
@@ -148,6 +151,21 @@ class migrateProposalsToBookings extends Command
                 ]
             );
         }
+    }
+
+    private function processPayments(Proposals $proposal, Bookings $booking)
+    {
+
+        // Process payments
+        // foreach ($proposal->payments as $payment)
+        // {
+        //     $booking->payments()->create([
+        //         'amount' => $payment->amount,
+        //         'date' => $payment->date,
+        //         'method' => $payment->method,
+        //         'notes' => $payment->notes,
+        //     ]);
+        // }
     }
 
     private function mapProposalPhaseToBookingStatus($phaseName)
