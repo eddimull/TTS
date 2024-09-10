@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Bookings extends Model
 {
@@ -54,5 +55,10 @@ class Bookings extends Model
         // Calculate the duration of the booking
         $diff = $this->start_time->diff($this->end_time);
         return $diff->h;
+    }
+
+    public function events(): MorphMany
+    {
+        return $this->morphMany(Events::class, 'eventable');
     }
 }
