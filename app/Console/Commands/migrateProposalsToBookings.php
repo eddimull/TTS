@@ -75,14 +75,14 @@ class migrateProposalsToBookings extends Command
         $this->processContacts($proposal, $booking);
 
         // Process payments
-        // $this->processPayments($proposal, $booking);
+        $this->processPayments($proposal, $booking);
     }
 
     private function findMatchingBooking(Proposals $proposal)
     {
         $ymd = Carbon::parse($proposal->date)->format('Y-m-d');
         return Bookings::where('name', $proposal->name)
-            ->where('event_date', $ymd)
+            ->where('date', $ymd)
             ->first();
     }
 
@@ -156,16 +156,16 @@ class migrateProposalsToBookings extends Command
     private function processPayments(Proposals $proposal, Bookings $booking)
     {
 
-        // Process payments
-        // foreach ($proposal->payments as $payment)
-        // {
-        //     $booking->payments()->create([
-        //         'amount' => $payment->amount,
-        //         'date' => $payment->date,
-        //         'method' => $payment->method,
-        //         'notes' => $payment->notes,
-        //     ]);
-        // }
+
+        foreach ($proposal->payments as $payment)
+        {
+            $booking->payments()->create([
+                'name' => $payment->name,
+                'amount' => $payment->amount,
+                'date' => $payment->paymentDate,
+                'user_id' => 3 //this might look static, but fortunately only 1 user has added payments
+            ]);
+        }
     }
 
     private function mapProposalPhaseToBookingStatus($phaseName)

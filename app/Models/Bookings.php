@@ -62,4 +62,9 @@ class Bookings extends Model
     {
         return $this->morphMany(Events::class, 'eventable');
     }
+
+    public function payments()
+    {
+        return $this->morphMany(Payments::class, 'payable');
+    }
 }
