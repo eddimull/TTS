@@ -30,7 +30,7 @@ class StoreBookingsRequest extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'event_type_id' => 'required|in:' . implode(',', EventTypes::all()->pluck('id')->toArray()),
-            'event_date' => 'required|date',
+            'date' => 'required|date',
             'start_time' => 'required|date_format:H:i',
             'duration' => 'required|integer|min:1',
             'price' => 'required|numeric|min:0',

@@ -11,10 +11,10 @@ return new class extends Migration
         Schema::create('bookings', function (Blueprint $table)
         {
             $table->id();
-            $table->foreignId('band_id')->constrained();
+            $table->foreignId('band_id')->constrained('bands');
             $table->text('name');
-            $table->foreignId('event_type_id')->constrained();
-            $table->date('event_date');
+            $table->foreignId('event_type_id')->constrained('event_types');
+            $table->date('date');
             $table->time('start_time');
             $table->time('end_time');
             $table->string('venue_name')->default('TBD');
@@ -23,6 +23,7 @@ return new class extends Migration
             $table->enum('status', ['draft', 'pending', 'confirmed', 'cancelled'])->default('draft');
             $table->enum('contract_option', ['default', 'none', 'external'])->default('default');
             $table->longText('notes')->nullable();
+            $table->foreignId('author_id')->constrained('users');
             $table->timestamps();
         });
     }

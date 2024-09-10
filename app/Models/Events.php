@@ -11,13 +11,15 @@ class Events extends Model
     use HasFactory;
 
     protected $fillable = [
-        'eventable_id',
-        'event_type_id',
-        'eventable_type',
-        'notes',
-        'color',
-        'key',
         'additional_data',
+        'date',
+        'event_type_id',
+        'eventable_id',
+        'eventable_type',
+        'key',
+        'title',
+        'notes',
+        'time',
     ];
 
     protected $casts = [

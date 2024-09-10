@@ -9,6 +9,7 @@ use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\BookingContacts;
 use App\Models\Events;
+use Carbon\Carbon;
 
 class migrateEventsToBookings extends Command
 {
@@ -57,21 +58,23 @@ class migrateEventsToBookings extends Command
 
     private function processEvent(BandEvents $event)
     {
+        $eventDate = Carbon::parse($event->event_time)->format('Y-m-d');
+        $eventTime = Carbon::parse($event->event_time)->format('H:i:00');
         // Create or update booking
-        $booking = Bookings::updateOrCreate(
-            ['name' => $event->name],
+        $booking = Bookings::create(
             [
                 'band_id' => $event->band_id,
                 'name' => $event->event_name,
                 'event_type_id' => $event->event_type_id,
-                'event_date' => $event->event_time,
-                'start_time' => $event->band_loadin_time,
+                'date' => $eventDate,
+                'start_time' => $eventTime,
                 'end_time' => $event->end_time,
                 'venue_name' => $event->venue_name,
                 'venue_address' => $event->address_street . ', ' . $event->city . ', ' . $event->state->state_name . ' ' . $event->zip,
                 'price' => 0,
                 'status' => 'confirmed',
-                'notes' => $event->notes,
+                'notes' => '',
+                'author_id' => 1,
                 'contract_option' => 'none',
             ]
         );
@@ -124,25 +127,34 @@ class migrateEventsToBookings extends Command
 
     private function processEvents(BandEvents $event, Bookings $booking)
     {
+        $eventDate = Carbon::parse($event->event_time)->format('Y-m-d');
+        $eventTime = Carbon::parse($event->event_time)->format('H:i:00');
         Events::create([
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id' => $event->event_type_id,
+            'date' => $eventDate,
+            'time' => $eventTime,
             'notes' => $event->notes,
-            'color' => $event->colorway_text,
-            'additional_data' => json_encode([
+            'title' => $event->event_name,
+            'key' => $event->event_key,
+            'additional_data' => [
                 'migrated_from_event_id' => $event->id,
+                'public' => $event->public,
+                'outside' => $event->outside,
                 'lodging' => $event->lodging,
-                'first_dance' => $event->first_dance,
-                'father_daughter' => $event->father_daughter,
-                'mother_groom' => $event->mother_groom,
-                'bouquet_garter' => $event->bouquet_garter,
                 'production_needed' => $event->production_needed,
                 'backline_provided' => $event->backline_provided,
-                'money_dance' => $event->money_dance,
                 'onsite' => $event->onsite,
+                'color' => $event->colorway_text,
+                'dances' => [
+                    'bouquet_garter' => $event->bouquet_garter,
+                    'first_dance' => $event->first_dance,
+                    'father_daughter' => $event->father_daughter,
+                    'mother_groom' => $event->mother_groom,
+                    'money_dance' => $event->money_dance,
+                ],
                 'times' => [
-                    'event_time' => $event->event_time,
                     'band_loadin_time' => $event->band_loadin_time,
                     'end_time' => $event->end_time,
                     'rhythm_loadin_time' => $event->rhythm_loadin_time,
@@ -150,7 +162,7 @@ class migrateEventsToBookings extends Command
                     'ceremony_time' => $event->ceremony_time,
                     'quiet_time' => $event->quiet_time,
                 ],
-            ]),
+            ],
 
         ]);
     }
