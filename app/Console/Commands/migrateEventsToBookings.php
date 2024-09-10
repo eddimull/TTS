@@ -8,7 +8,7 @@ use App\Models\BandEvents;
 use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\BookingContacts;
-
+use App\Models\Events;
 
 class migrateEventsToBookings extends Command
 {
@@ -85,6 +85,9 @@ class migrateEventsToBookings extends Command
         // Process contacts
         $this->processContacts($event, $booking);
 
+        // Process events
+        $this->processEvents($event, $booking);
+
         $this->info("Processed event ID {$event->id} - Created/Updated booking ID {$booking->id}");
     }
 
@@ -117,5 +120,38 @@ class migrateEventsToBookings extends Command
                 ]
             );
         }
+    }
+
+    private function processEvents(BandEvents $event, Bookings $booking)
+    {
+        Events::create([
+            'eventable_id' => $booking->id,
+            'eventable_type' => Bookings::class,
+            'event_type_id' => $event->event_type_id,
+            'notes' => $event->notes,
+            'color' => $event->colorway_text,
+            'additional_data' => json_encode([
+                'migrated_from_event_id' => $event->id,
+                'lodging' => $event->lodging,
+                'first_dance' => $event->first_dance,
+                'father_daughter' => $event->father_daughter,
+                'mother_groom' => $event->mother_groom,
+                'bouquet_garter' => $event->bouquet_garter,
+                'production_needed' => $event->production_needed,
+                'backline_provided' => $event->backline_provided,
+                'money_dance' => $event->money_dance,
+                'onsite' => $event->onsite,
+                'times' => [
+                    'event_time' => $event->event_time,
+                    'band_loadin_time' => $event->band_loadin_time,
+                    'end_time' => $event->end_time,
+                    'rhythm_loadin_time' => $event->rhythm_loadin_time,
+                    'production_loadin_time' => $event->production_loadin_time,
+                    'ceremony_time' => $event->ceremony_time,
+                    'quiet_time' => $event->quiet_time,
+                ],
+            ]),
+
+        ]);
     }
 }
