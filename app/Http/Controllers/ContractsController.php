@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Contracts;
+use App\Models\ProposalContracts;
 use Illuminate\Http\Request;
 use PDF;
 use App\Models\Bands;
@@ -96,7 +96,7 @@ class ContractsController extends Controller
     public function webhook(Request $request)
     {
 
-        $contract = Contracts::where('envelope_id', $request['envelopeId'])->first();
+        $contract = ProposalContracts::where('envelope_id', $request['envelopeId'])->first();
         if ($contract)
         {
             $proposal = $contract->proposal;
