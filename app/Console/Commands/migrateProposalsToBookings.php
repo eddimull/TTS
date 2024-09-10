@@ -99,6 +99,7 @@ class migrateProposalsToBookings extends Command
             'price' => $proposal->price ?? $booking->price,
             'status' => $this->mapProposalPhaseToBookingStatus($proposal->phase_id),
             'notes' => $proposal->notes . "\n\nClient Notes: " . $proposal->client_notes . "\n\nMerged from proposal ID: " . $proposal->id,
+            'author_id' => $proposal->author_id,
             'contract_option' => 'default',
         ]);
 
@@ -121,6 +122,7 @@ class migrateProposalsToBookings extends Command
             'venue_name' => $proposal->location ?? 'TBD',
             'venue_address' => $proposal->location,
             'price' => $proposal->price,
+            'author_id' => $proposal->author_id,
             'status' => $this->mapProposalPhaseToBookingStatus($proposal->phase_id),
             'notes' => $proposal->notes . "\n\nClient Notes: " . $proposal->client_notes . "\n\nCreated from proposal ID: " . $proposal->id,
             'contract_option' => 'default',
