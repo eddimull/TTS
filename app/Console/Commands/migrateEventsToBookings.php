@@ -79,12 +79,6 @@ class migrateEventsToBookings extends Command
             ]
         );
 
-        // Update event with booking_id if not already set
-        if (!$event->booking_id)
-        {
-            $event->update(['booking_id' => $booking->id]);
-        }
-
         // Process contacts
         $this->processContacts($event, $booking);
 
