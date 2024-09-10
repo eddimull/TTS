@@ -74,6 +74,9 @@ class migrateProposalsToBookings extends Command
         // Process contacts
         $this->processContacts($proposal, $booking);
 
+        //process contracts
+        $this->handleContracts($proposal, $booking);
+
         // Process payments
         $this->processPayments($proposal, $booking);
     }
@@ -152,6 +155,19 @@ class migrateProposalsToBookings extends Command
                     'notes' => "Migrated from proposal ID: {$proposal->id}",
                 ]
             );
+        }
+    }
+
+    private function handleContracts(Proposals $proposal, Bookings $booking)
+    {
+        if ($proposal->contract)
+        {
+            $booking->contract()->create([
+                'envelope_id' => $proposal->contract->envelope_id,
+                'status' => $proposal->contract->status,
+                'asset_url' => $proposal->contract->image_url,
+                'author_id' => $proposal->author_id,
+            ]);
         }
     }
 
