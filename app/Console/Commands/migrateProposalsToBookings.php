@@ -112,7 +112,7 @@ class migrateProposalsToBookings extends Command
             'band_id' => $proposal->band_id,
             'name' => $proposal->name,
             'event_type_id' => $proposal->event_type_id,
-            'event_date' => $proposal->date,
+            'date' => $proposal->date,
             'start_time' => $startTime->format('H:i:s'),
             'end_time' => $endTime->format('H:i:s'),
             'venue_name' => $proposal->location ?? 'TBD',

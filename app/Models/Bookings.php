@@ -14,7 +14,7 @@ class Bookings extends Model
         'band_id',
         'name',
         'event_type_id',
-        'event_date',
+        'date',
         'start_time',
         'end_time',
         'venue_name',
@@ -22,12 +22,13 @@ class Bookings extends Model
         'price',
         'status',
         'contract_option',
+        'author_id',
         'notes',
     ];
 
     protected $casts = [
         'created_at' => 'datetime:Y-m-d',
-        'event_date' => 'date:Y-m-d',
+        'date' => 'date:Y-m-d',
         'start_time' => 'datetime:H:i',
         'end_time' => 'datetime:H:i',
         'price' => 'decimal:2',

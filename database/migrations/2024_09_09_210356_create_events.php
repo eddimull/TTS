@@ -13,13 +13,16 @@ return new class extends Migration
     {
         Schema::create('events', function (Blueprint $table)
         {
-            $table->id();
+            $table->date('date');
             $table->foreignId('event_type_id')->constrained('event_types');
-            $table->longText('notes')->nullable();
-            $table->string('color')->nullable();
+            $table->id();
             $table->json('additional_data')->nullable();
+            $table->longText('notes')->nullable();
             $table->morphs('eventable');
+            $table->text('title');
+            $table->time('time')->nullable();
             $table->timestamps();
+            $table->uuid('key')->unique();
         });
     }
 
