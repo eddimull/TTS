@@ -127,6 +127,7 @@ class migrateEventsToBookings extends Command
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id' => $event->event_type_id,
+            'band_id' => $event->band_id,
             'date' => $eventDate,
             'time' => $eventTime,
             'notes' => $event->notes,

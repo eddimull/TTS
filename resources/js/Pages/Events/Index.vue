@@ -32,7 +32,7 @@
                   Edit
                 </th>
               </tr>
-            </thead>  
+            </thead>
             <tbody class="text-gray-700">
               <tr
                 v-for="(event,index) in events"
@@ -40,19 +40,19 @@
                 :class="{'bg-gray-100': index % 2 === 0, 'border-b': true, 'hover:bg-gray-50':true }"
               >
                 <td class="w-1/4 text-center py-3 px-4">
-                  <Link :href="`/events/${event.event_key}/advance`">
-                    {{ event.event_name }} ({{ event.event_type }})
+                  <Link :href="`/events/${event.key}/advance`">
+                    {{ event.title }} ({{ event.eventType.name }})
                   </Link>
                 </td>
                 <td class="w-1/4 text-center py-3 px-4">
-                  {{ event.venue_name }}
+                  {{ event.title }}
                 </td>
                 <td class="w-1/4 text-center py-3 px-4">
-                  {{ formatDate(event.event_time) }}
+                  {{ formatDate(event.date) }}
                 </td>
                 <td class="w-1/4">
                   <Link
-                    :dusk="event.event_name.replace(/ /g,'_')"
+                    :dusk="event.title.replace(/ /g,'_')"
                     class="border bg-white hover:bg-blue-500 rounded p-1"
                     :href="`/events/${event.event_key}/edit`"
                   >
@@ -60,7 +60,7 @@
                   </Link>
                 </td>
               </tr>
-            </tbody>  
+            </tbody>
           </table>
         </div>
       </div>

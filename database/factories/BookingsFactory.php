@@ -5,6 +5,7 @@ namespace Database\Factories;
 use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\Contacts;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Carbon\Carbon;
 
@@ -53,11 +54,12 @@ class BookingsFactory extends Factory
             'band_id' => Bands::factory(),
             'name' => $this->faker->sentence,
             'event_type_id' => $this->faker->numberBetween(1, 6),
-            'event_date' => $startDate->format('Y-m-d'),
+            'date' => $startDate->format('Y-m-d'),
             'start_time' => $startDate->format('H:i'),
             'end_time' => $endDate->format('H:i'),
             'venue_name' => $this->faker->company,
             'venue_address' => $this->faker->address,
+            'author_id' => User::factory(),
             'price' => $this->faker->numberBetween(500, 10000),
             'status' => $this->faker->randomElement(['pending', 'confirmed', 'cancelled']),
             'contract_option' => $this->faker->randomElement(['default', 'none', 'external']),
