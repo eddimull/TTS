@@ -1,25 +1,34 @@
 <template>
   <div class="bg-white border block p-2 my-2 shadow-lg">
     <event-header
-      :eventkey="event.event_key"
-      :name="event.event_name"
-      :type="event.event_type.name"
-      :date="event.event_time"
+      :eventkey="event.key"
+      :name="event.title"
+      :type="eventType"
+      :date="event.date"
     />
     <event-body :event="event" />
     <event-footer :event="event" />
   </div>
 </template>
-<script>
+<script setup>
+import { computed } from 'vue'
 import eventHeader from './Event/Card/Header.vue'
 import eventBody from './Event/Card/Body.vue'
 import eventFooter from './Event/Card/Footer.vue'
-export default {
-    components:{
-        eventHeader,
-        eventBody,
-        eventFooter
-    },
-    props:['event']
-}
+import { useStore } from 'vuex';
+
+const props = defineProps({
+  event: {
+    type: Object,
+    required: true
+  }
+});
+
+const store = useStore();
+const eventType = computed(() => {
+    const eventTypes = store.getters['eventTypes/getAllEventTypes']
+    const foundEvent = eventTypes.find(eventType => eventType.id === props.event.event_type_id)
+    return foundEvent ? foundEvent.name : 'Unknown'
+})
+
 </script>

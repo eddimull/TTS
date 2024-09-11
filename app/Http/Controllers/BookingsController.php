@@ -27,7 +27,7 @@ class BookingsController extends Controller
         }
 
         $bookings = $band ? $band->bookings : Bookings::whereIn('band_id', $userBands->pluck('id'))
-            ->where('event_date', '>=', Carbon::now()->subMonths(6))
+            ->where('date', '>=', Carbon::now()->subMonths(6))
             ->get();
 
         return Inertia::render('Bookings/Index', [

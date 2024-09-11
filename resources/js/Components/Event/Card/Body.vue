@@ -5,26 +5,14 @@
         Venue: <strong>{{ event.venue_name }}</strong>
       </li>
       <li class="p-2">
-        Location: <strong v-if="event.city">{{ event.city }}, </strong> <strong>{{ event.state.state_name }}</strong>
-      </li>
-      <li class="p-2">
-        Load In times:
-
-        <ul
-          style="background-color: rgb(244 244 245);"
-          class="list-outside indent-1 ml-3 p-3 shadow-lg rounded"
+        Location: <strong v-if="event.venue_address">{{ event.venue_address }} </strong><strong
+          v-else
+          class="text-red-500"
         >
-          <li class="mt-2 pl-3">
-            Production: <strong>{{ productionTime(event) }}</strong>
-          </li>
-          <li class="mt-2 pl-3">
-            Rhythm: <strong>{{ toTime(event.rhythm_loadin_time) }}</strong>
-          </li>
-          <li class="mt-2 pl-3">
-            Band: <strong>{{ toTime(event.band_loadin_time) }}</strong>
-          </li>
-        </ul>
+          No address provided
+        </strong>
       </li>
+      <Times :times="event.additional_data?.times" />
       <li
         v-if="event.notes !== null"
         class="p-2"
@@ -36,7 +24,7 @@
         />
       </li>
       <li
-        v-if="event.event_type.name === 'Wedding'"
+        v-if="event.event_type?.name === 'Wedding'"
         class="p-2"
       >
         Wedding songs:
@@ -68,59 +56,17 @@
           v-html="event.colorway_text"
         />
       </li>
-      <li
-        v-if="event.event_contacts.length > 0"
-        class="mt-2"
-      >
-        <Accordion>
-          <AccordionTab header="Contacts">
-            <ul 
-              v-for="contact in event.event_contacts"
-              :key="contact.id"
-              class="hover:bg-gray-100"
-            >
-              <li>
-                <div>
-                  <ul class="p-3">
-                    <li>
-                      Name: {{ contact.name }}
-                    </li>
-                    <li>
-                      Phone: {{ contact.phonenumber }}
-                    </li>
-                    <li>
-                      Email: {{ contact.email }}
-                    </li>
-                  </ul>
-                </div>
-              </li>
-            </ul>
-          </AccordionTab>
-        </Accordion>
-      </li>
+      <Contacts
+        :contacts="event.contacts"
+      />
     </ul>
-    <!-- {{ event }} -->
   </div>
 </template>
 
-<script>
-import moment from 'moment'
-export default {
-    props:['event', 'type'],
-    methods:{
-      productionTime(event)
-      {
-        let timeOrNot = this.toTime(event.production_loadin_time);
-        if(!event.production_needed)
-        {
-          timeOrNot = "N/A"
-        }
+<script setup>
+import Times from './Components/Times.vue'
+import Contacts from './Components/Contacts.vue';
 
-        return timeOrNot;
-      },
-      toTime(time){
-        return moment(time).format('h:mm A')
-      }
-    }
-}
+const props = defineProps(['event', 'type']);
+
 </script>

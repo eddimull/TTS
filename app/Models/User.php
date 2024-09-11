@@ -229,30 +229,28 @@ class User extends Authenticatable
     {
         $bands = $this->bands();
 
-        // Eager load events for all bands
-        $bandIds = $bands->pluck('id');
-        $events = BandEvents::whereIn('band_id', $bandIds)
-            ->when($afterDate, function ($query) use ($afterDate)
-            {
-                return $query->where('event_time', '>', $afterDate);
-            })
-            ->orderBy('event_time')
-            ->get();
-
-        // Group events by band_id for easier mapping
-        $eventsByBand = $events->groupBy('band_id');
-
-        // Map events to bands and flatten the result
-        $mappedEvents = $bands->flatMap(function ($band) use ($eventsByBand)
+        $bands->load(['bookings.events' => function ($query) use ($afterDate)
         {
-            $bandEvents = $eventsByBand->get($band->id, collect());
-            return $bandEvents->map(function ($event)
+            if ($afterDate)
             {
-                $event->OldEvent = $event->OldEvent;
-                return $event;
+                $query->where('date', '>', $afterDate);
+            }
+            $query->orderBy('date');
+        }]);
+
+        $events = $bands->flatMap(function ($band)
+        {
+            return $band->bookings->flatMap(function ($booking)
+            {
+                return $booking->events->map(function ($event) use ($booking)
+                {
+                    $event->contacts = $booking->contacts;
+                    $event->venue_name = $booking->venue_name;
+                    $event->venue_address = $booking->venue_address;
+                    return $event;
+                });
             });
         });
-
-        return $mappedEvents->sortBy('event_time')->values();
+        return $events->sortBy('date')->values();
     }
 }

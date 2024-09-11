@@ -40,12 +40,12 @@
         </div>
         <div>
           <label
-            for="event_date"
+            for="date"
             class="block text-sm font-medium text-gray-700"
           >Event Date</label>
           <input
-            id="event_date"
-            v-model="form.event_date"
+            id="date"
+            v-model="form.date"
             type="date"
             class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
           >
@@ -201,7 +201,7 @@
   const form = useForm({
     name: props.booking.name,
     event_type_id: props.booking.event_type_id,
-    event_date: props.booking.event_date,
+    date: props.booking.date,
     start_time: props.booking.start_time,
     end_time: props.booking.end_time,
     venue_name: props.booking.venue_name,

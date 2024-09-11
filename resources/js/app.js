@@ -110,7 +110,13 @@ createInertiaApp({
         app.config.globalProperties.$qs = qs;
         app.config.globalProperties.$route = route;
 
-        return app.mount(el);
+        return (() => {
+            return store.dispatch('eventTypes/fetchEventTypes')
+        })().then(()=>{
+            return app.mount(el);
+        })
+    
+
     }
 });
 
