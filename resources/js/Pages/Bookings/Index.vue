@@ -24,7 +24,7 @@
               class="p-4 border-b border-gray-200"
             >
               <Link :href="route('bands.booking.show',{'band':booking.band_id,'booking':booking.id})">
-                {{ booking.name }} - {{ booking.event_date }}
+                {{ booking.name }} - {{ booking.date }}
               </Link>
             </li>
           </ul>

@@ -1,6 +1,6 @@
 <template>
   <div class="mt-4 pt-3 grid place-items-center text-black border-t border-gray-200">
-    <a :href="route('events.advance',{'key':event.event_key})">
+    <a :href="route('events.advance',{'key':event.key})">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         class="h-6 w-6 inline-block"
