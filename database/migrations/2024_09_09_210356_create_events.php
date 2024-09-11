@@ -15,10 +15,11 @@ return new class extends Migration
         {
             $table->date('date');
             $table->foreignId('event_type_id')->constrained('event_types');
+            $table->foreignId('band_id')->constrained('bands');
             $table->id();
             $table->json('additional_data')->nullable();
             $table->longText('notes')->nullable();
-            $table->morphs('eventable');
+            $table->nullableMorphs('eventable');
             $table->text('title');
             $table->time('time')->nullable();
             $table->timestamps();

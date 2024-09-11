@@ -5,7 +5,8 @@
         "dev": "vite",
         "test": "vitest",
         "test:pipeline": "NODE_ENV=production vitest run --mode=pipeline",
-        "build": "vite build"
+        "build": "vite build",
+        "build-watch": "vite build --watch --mode=development"
     },
     "devDependencies": {
         "@inertiajs/inertia": "^0.8.4",

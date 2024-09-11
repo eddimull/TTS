@@ -231,12 +231,12 @@ class User extends Authenticatable
 
         // Eager load events for all bands
         $bandIds = $bands->pluck('id');
-        $events = BandEvents::whereIn('band_id', $bandIds)
+        $events = Events::whereIn('band_id', $bandIds)
             ->when($afterDate, function ($query) use ($afterDate)
             {
-                return $query->where('event_time', '>', $afterDate);
+                return $query->where('date', '>', $afterDate);
             })
-            ->orderBy('event_time')
+            ->orderBy('date')
             ->get();
 
         // Group events by band_id for easier mapping
@@ -253,6 +253,6 @@ class User extends Authenticatable
             });
         });
 
-        return $mappedEvents->sortBy('event_time')->values();
+        return $mappedEvents->sortBy('date')->values();
     }
 }
