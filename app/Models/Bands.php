@@ -67,6 +67,11 @@ class Bands extends Model
         return $this->hasMany(Proposals::class, 'band_id')->where('phase_id', '=', '6')->with(['invoices', 'payments'])->orderBy('name', 'asc');
     }
 
+    public function completedBookings()
+    {
+        return $this->hasMany(Bookings::class, 'band_id')->where('status', '=', 'confirmed')->with(['payments'])->orderBy('name', 'asc');
+    }
+
     public function events()
     {
         return $this->hasMany(BandEvents::class, 'band_id');
@@ -85,7 +90,7 @@ class Bands extends Model
 
     public function payments()
     {
-        return $this->hasManyThrough(ProposalPayments::class, Proposals::class, 'band_id', 'proposal_id')->orderBy('paymentDate', 'desc');
+        return $this->hasMany(Payments::class, 'band_id')->orderBy('date', 'desc');
     }
 
     public function bookings()

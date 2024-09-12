@@ -18,7 +18,8 @@ class migrateEventsToBookings extends Command
      *
      * @var string
      */
-    protected $signature = 'etl:migrate-events-to-bookings';
+    protected $signature = 'etl:migrate-events-to-bookings
+                            {--run-proposals : Run etl:migrate-proposals-to-bookings after completion}';
 
     /**
      * The console command description.
@@ -48,12 +49,29 @@ class migrateEventsToBookings extends Command
 
             DB::commit();
             $this->info('Migration completed successfully!');
+
+            $runProposals = $this->option('run-proposals');
+
+            if ($runProposals)
+            {
+                $this->runProposalsMigration();
+            }
+            elseif ($this->confirm('Do you want to run etl:migrate-proposals-to-bookings now?'))
+            {
+                $this->runProposalsMigration();
+            }
         }
         catch (\Exception $e)
         {
             DB::rollBack();
             $this->error('An error occurred during migration: ' . $e->getMessage());
         }
+    }
+
+    private function runProposalsMigration()
+    {
+        $this->info('Running etl:proposals-to-bookings...');
+        $this->call('etl:proposals-to-bookings');
     }
 
     private function processEvent(BandEvents $event)

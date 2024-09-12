@@ -14,7 +14,7 @@ class Payments extends Model
 
     protected $table = 'payments';
 
-    protected $fillable = ['name', 'amount', 'date', 'user_id'];
+    protected $fillable = ['name', 'amount', 'date', 'band_id', 'user_id'];
 
     protected $casts = [
         'amount' => 'integer',
