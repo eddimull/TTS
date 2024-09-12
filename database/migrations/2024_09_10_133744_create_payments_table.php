@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Bands;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -20,6 +21,7 @@ return new class extends Migration
             $table->string('name');
             $table->integer('amount');
             $table->dateTime('date');
+            $table->foreignIdFor(Bands::class, 'band_id')->constrained();
             $table->foreignIdFor(User::class)->nullable();
             $table->timestamps();
         });

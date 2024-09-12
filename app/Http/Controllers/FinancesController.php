@@ -16,13 +16,68 @@ class FinancesController extends Controller
         $financeServices = new FinanceServices();
         $financialData = $this->getFinancialData($bands, $financeServices);
 
-        return Inertia::render('Finances/index', $financialData);
+        return Inertia::render('Finances/Index', $financialData);
+    }
+
+    public function paidUnpaid()
+    {
+        $user = Auth::user();
+        $bands = $user->bandOwner;
+
+        $financeServices = new FinanceServices();
+        $financialData = $this->getFinancialData($bands, $financeServices);
+
+        return Inertia::render('Finances/PaidUnpaid', $financialData);
+    }
+
+    public function revenue()
+    {
+        $user = Auth::user();
+        $bands = $user->bandOwner;
+
+        $financeServices = new FinanceServices();
+        $financialData = $this->getFinancialData($bands, $financeServices);
+
+        return Inertia::render('Finances/Revenue', $financialData);
+    }
+
+    public function unpaidContracts()
+    {
+        $user = Auth::user();
+        $bands = $user->bandOwner;
+
+        $financeServices = new FinanceServices();
+        $financialData = $this->getFinancialData($bands, $financeServices);
+
+        return Inertia::render('Finances/UnpaidContracts', $financialData);
+    }
+
+    public function paidContracts()
+    {
+        $user = Auth::user();
+        $bands = $user->bandOwner;
+
+        $financeServices = new FinanceServices();
+        $financialData = $this->getFinancialData($bands, $financeServices);
+
+        return Inertia::render('Finances/PaidContracts', $financialData);
+    }
+
+    public function payments()
+    {
+        $user = Auth::user();
+        $bands = $user->bandOwner;
+
+        $financeServices = new FinanceServices();
+        $financialData = $this->getFinancialData($bands, $financeServices);
+
+        return Inertia::render('Finances/Payments', $financialData);
     }
 
     private function getFinancialData($bands, FinanceServices $financeServices): array
     {
         return [
-            'completedProposals' => $financeServices->getBandFinances($bands),
+            'completedBookings' => $financeServices->getBandFinances($bands),
             'payments' => $financeServices->getBandPayments($bands)
         ];
     }

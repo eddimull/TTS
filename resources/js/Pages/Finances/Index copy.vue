@@ -1,6 +1,6 @@
 <template>
   <Container>
-    <TabView>
+    <TabMenu>
       <TabPanel header="Revenue for year">
         <div
           v-for="band in revenue"
@@ -186,19 +186,28 @@
         </div>
       </TabPanel>
       <TabPanel header="Invoices">
-        <div>
-          <a
-            href="/finances/invoices"
-            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-          >Invoices</a>
-        </div>
+        <template #default>
+          <Link
+            v-slot="{ href, navigate }"
+            :href="route('invoices.index')"
+            custom
+          >
+            <a
+              :href="href"
+              class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+              @click="navigate"
+            >
+              Invoices
+            </a>
+          </Link>
+        </template>
       </TabPanel>
       <TabPanel header="Payments">
         <div>
           <Payments />
         </div>
       </TabPanel>
-    </TabView>
+    </TabMenu>
   </Container>
 </template>
 
@@ -207,9 +216,12 @@ import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue'
     import moment from 'moment';
     import Payments from '../../Components/Finances/AllPayments.vue';
     import {FilterMatchMode} from 'primevue/api';
+    import TabMenu from 'primevue/tabmenu';
+import { Link } from '@inertiajs/vue3';
     export default {
         components: {
-          Payments
+          Payments,
+          TabMenu
         },
         layout: BreezeAuthenticatedLayout,
         data(){
