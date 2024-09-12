@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Bands extends Model
 {
@@ -90,7 +91,15 @@ class Bands extends Model
 
     public function payments()
     {
-        return $this->hasMany(Payments::class, 'band_id')->orderBy('date', 'desc');
+        return $this->hasMany(Payments::class, 'band_id');
+    }
+
+    public function paymentsByYear()
+    {
+        return $this->payments()
+            ->selectRaw('YEAR(date) as year, SUM(amount) as total')
+            ->groupBy(DB::raw('YEAR(date)'))
+            ->orderBy('year', 'desc');
     }
 
     public function bookings()
