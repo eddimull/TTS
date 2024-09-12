@@ -36,9 +36,9 @@ class FinancesController extends Controller
         $bands = $user->bandOwner;
 
         $financeServices = new FinanceServices();
-        $financialData = $this->getFinancialData($bands, $financeServices);
+        $financialData = $financeServices->getBandRevenueByYear($bands);
 
-        return Inertia::render('Finances/Revenue', $financialData);
+        return Inertia::render('Finances/Revenue', ['revenue' => $financialData]);
     }
 
     public function unpaidContracts()
@@ -69,9 +69,9 @@ class FinancesController extends Controller
         $bands = $user->bandOwner;
 
         $financeServices = new FinanceServices();
-        $financialData = $this->getFinancialData($bands, $financeServices);
+        $payments = $financeServices->getBandPayments($bands);
 
-        return Inertia::render('Finances/Payments', $financialData);
+        return Inertia::render('Finances/Payments', ['payments' => $payments]);
     }
 
     private function getFinancialData($bands, FinanceServices $financeServices): array

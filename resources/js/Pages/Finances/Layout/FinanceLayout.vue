@@ -2,6 +2,7 @@
   <BreezeAuthenticatedLayout>
     <container>
       <FinanceMenu :routes="filteredRoutes" />
+      <slot />
     </container>
   </BreezeAuthenticatedLayout>
 </template>
