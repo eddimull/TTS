@@ -25,9 +25,9 @@ class FinancesController extends Controller
         $bands = $user->bandOwner;
 
         $financeServices = new FinanceServices();
-        $financialData = $this->getFinancialData($bands, $financeServices);
+        $paidUnpaid = $financeServices->getPaidUnpaid($bands);
 
-        return Inertia::render('Finances/PaidUnpaid', $financialData);
+        return Inertia::render('Finances/PaidUnpaid', ['paidUnpaid' => $paidUnpaid]);
     }
 
     public function revenue()

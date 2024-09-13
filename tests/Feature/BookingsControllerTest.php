@@ -71,7 +71,6 @@ class BookingsControllerTest extends TestCase
         $bookingData['start_time'] = Carbon::parse($bookingData['start_time'])->format('H:i');
         unset($bookingData['end_time']);
 
-        // dd($bookingData);
         $response = $this->actingAs($this->owner)->post(route('bands.booking.store', $this->band), $bookingData);
 
         unset($bookingData['duration']);

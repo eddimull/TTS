@@ -35,6 +35,17 @@ class FinanceServices
         return $bands;
     }
 
+    function getPaidUnpaid($bands)
+    {
+        foreach ($bands as $band)
+        {
+            $band->paidBookings = $band->getPaidBookings();
+            $band->unpaidBookings = $band->getUnpaidBookings();
+        }
+
+        return $bands;
+    }
+
     function getBandRevenueByYear($bands)
     {
         return $bands->load(['payments' => function ($query)

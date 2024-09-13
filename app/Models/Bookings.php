@@ -111,6 +111,9 @@ class Bookings extends Model
 
     public function scopePaid($query)
     {
-        return $query->whereRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id) >= bookings.price', [Bookings::class])->get();
+        return $query->select('bookings.*')
+            ->selectRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id) as amount_paid', [Bookings::class])
+            ->whereRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id) >= bookings.price', [Bookings::class])
+            ->withCasts(['amount_paid' => Price::class, 'price' => Price::class])->get();
     }
 }
