@@ -28,8 +28,8 @@
               </breeze-nav-link>
               <breeze-nav-link
                 v-if="navigation && navigation.Bookings"
-                :href="route('bookings.index')"
-                :active="route().current('bookings.index')"
+                :href="route('Bookings Home')"
+                :active="route().current('Bookings Home')"
               >
                 Booking
               </breeze-nav-link>                  
@@ -322,8 +322,8 @@
           </breeze-responsive-nav-link> 
           <breeze-responsive-nav-link
             v-if="navigation && navigation.Bookings"
-            :href="route('bookings.index')"
-            :active="route().current('bookings.index')"
+            :href="route('Bookings Home')"
+            :active="route().current('Bookings Home')"
           >
             Booking
           </breeze-responsive-nav-link>

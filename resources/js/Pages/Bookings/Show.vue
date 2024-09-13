@@ -6,11 +6,11 @@
 </template>
 
 <script setup>
-import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue'
+import BookingLayout from './Layout/BookingLayout.vue'
 import BookingForm from './Components/BookingForm.vue'
 
 defineOptions({
-  layout: BreezeAuthenticatedLayout,
+  layout: BookingLayout,
 })
 
 const props = defineProps({

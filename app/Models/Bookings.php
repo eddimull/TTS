@@ -47,7 +47,7 @@ class Bookings extends Model
     public function contacts()
     {
         return $this->belongsToMany(Contacts::class, 'booking_contacts', 'booking_id', 'contact_id')
-            ->withPivot(['role', 'is_primary', 'notes', 'additional_info'])
+            ->withPivot(['id', 'role', 'is_primary', 'notes', 'additional_info'])
             ->withTimestamps();
     }
 

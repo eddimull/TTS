@@ -5,13 +5,36 @@ use App\Http\Controllers\BookingsController;
 
 Route::middleware(['auth', 'verified'])->group(function ()
 {
-    Route::get('bookings', [BookingsController::class, 'index'])->name('bookings.index');
+    Route::get('bookings', [BookingsController::class, 'index'])->name('Bookings Home');
     Route::resource('bands.booking', BookingsController::class)
         ->parameters(['bands' => 'band', 'booking' => 'booking'])
         ->except(['index', 'edit'])
+        ->middleware('booking.access')
+        ->names([
+            'show' => 'Booking Details',
+        ]);
+
+    Route::get('bands/{band}/booking/{booking}/contacts', [BookingsController::class, 'contacts'])
+        ->name('Booking Contacts')
+        ->middleware('booking.access');
+
+    Route::post('bands/{band}/booking/{booking}/contacts', [BookingsController::class, 'storeContact'])
+        ->name('Store Booking Contact')
+        ->middleware('booking.access');
+
+    Route::put('bands/{band}/booking/{booking}/contacts/{contact}', [BookingsController::class, 'updateContact'])
+        ->name('Update Booking Contact')
+        ->middleware('booking.access');
+
+    Route::delete('bands/{band}/booking/{booking}/{contact}', [BookingsController::class, 'destroyContact'])
+        ->name('Delete Booking Contact')
+        ->middleware('booking.access');
+
+    Route::get('bands/{band}/booking/{booking}/finances', [BookingsController::class, 'finances'])
+        ->name('Finances')
         ->middleware('booking.access');
 
     Route::get('bands/{band}/booking/create', [BookingsController::class, 'create'])
-        ->name('bands.booking.create')
+        ->name('Create Booking')
         ->middleware('booking.access');
 });

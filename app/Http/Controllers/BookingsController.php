@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\StoreBookingsRequest;
-use App\Http\Requests\UpdateBookingsRequest;
-use App\Models\Bookings;
+use Carbon\Carbon;
 use Inertia\Inertia;
 use App\Models\Bands;
-use Illuminate\Support\Facades\Auth;
+use App\Models\Bookings;
 use App\Models\EventTypes;
-use Carbon\Carbon;
+use App\Models\BookingContacts;
+use Illuminate\Support\Facades\Auth;
+use App\Http\Requests\BookingContact as BookingContactRequest;
+use App\Http\Requests\StoreBookingsRequest;
+use App\Http\Requests\UpdateBookingsRequest;
 
 class BookingsController extends Controller
 {
@@ -61,6 +63,38 @@ class BookingsController extends Controller
     {
         $booking->update($request->validated());
         return redirect()->back()->with('successMessage', "$booking->name has been updated.");
+    }
+
+    public function contacts(Bands $band, Bookings $booking)
+    {
+        $booking->load('contacts');
+        return Inertia::render('Bookings/Contacts', ['booking' => $booking, 'band' => $band]);
+    }
+
+    public function storeContact(BookingContactRequest $request, Bands $band, Bookings $booking)
+    {
+        $booking->contacts()->create($request->validated());
+        return redirect()->back()->with('successMessage', "{$request->name} has been added.");
+    }
+
+    public function updateContact(BookingContactRequest $request, Bands $band, Bookings $booking, BookingContacts $contact)
+    {
+        $contact->update($request->validated());
+        return redirect()->back()->with('successMessage', "{$request->name} has been updated.");
+    }
+
+    public function destroyContact(Bands $band, Bookings $booking, BookingContacts $contact)
+    {
+        $contact->delete($contact);
+        return redirect()->back()->with('successMessage', "{$contact->name} has been removed.");
+    }
+
+
+
+    public function finances(Bands $band, Bookings $booking)
+    {
+        $booking->load('contacts');
+        return Inertia::render('Bookings/Contacts', ['booking' => $booking, 'band' => $band]);
     }
 
     public function destroy(Bands $band, Bookings $booking)
