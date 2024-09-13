@@ -29,6 +29,7 @@ class StoreBookingsRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
+            'author_id' => 'required|exists:users,id',
             'event_type_id' => 'required|in:' . implode(',', EventTypes::all()->pluck('id')->toArray()),
             'date' => 'required|date',
             'start_time' => 'required|date_format:H:i',
@@ -44,7 +45,12 @@ class StoreBookingsRequest extends FormRequest
 
     protected function prepareForValidation()
     {
-        $this->mergeIfMissing(['end_time' => '00:00']);
+        $this->mergeIfMissing([
+            'end_time' => '00:00'
+        ]);
+        $this->merge([
+            'author_id' => $this->user()->id
+        ]);
     }
 
     public function messages()
@@ -63,7 +69,7 @@ class StoreBookingsRequest extends FormRequest
 
         if (is_null($key) && is_null($default))
         {
-            $startTime = Carbon::parse($validated['event_date'] . ' ' . $validated['start_time']);
+            $startTime = Carbon::parse($validated['date'] . ' ' . $validated['start_time']);
             $endTime = $startTime->copy()->addHours($validated['duration']);
 
             $validated['end_time'] = $endTime->format('H:i');

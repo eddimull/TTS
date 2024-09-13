@@ -99,7 +99,7 @@ class migrateProposalsToBookings extends Command
             'event_type_id' => $proposal->event_type_id,
             'start_time' => $startTime->format('H:i:s'),
             'end_time' => $endTime->format('H:i:s'),
-            'price' => $proposal->price ?? $booking->price,
+            'price' => $proposal->price ?? $booking->price * 100,
             'status' => $this->mapProposalPhaseToBookingStatus($proposal->phase_id),
             'notes' => $proposal->notes . "\n\nClient Notes: " . $proposal->client_notes . "\n\nMerged from proposal ID: " . $proposal->id,
             'author_id' => $proposal->author_id,

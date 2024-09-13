@@ -19,7 +19,7 @@ return new class extends Migration
             $table->time('end_time');
             $table->string('venue_name')->default('TBD');
             $table->text('venue_address')->nullable();
-            $table->decimal('price', 10, 2);
+            $table->integer('price')->default(0);
             $table->enum('status', ['draft', 'pending', 'confirmed', 'cancelled'])->default('draft');
             $table->enum('contract_option', ['default', 'none', 'external'])->default('default');
             $table->longText('notes')->nullable();
