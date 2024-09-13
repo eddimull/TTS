@@ -117,7 +117,7 @@
           <Dropdown
             id="bandSelection"
             v-model="chart.band"
-            :options="availableBands"
+            :options="bands"
             option-label="name"
             placeholder="Select a Band"
           >
@@ -183,6 +183,10 @@
             type:Array,
             default:()=>{return []}
           },
+          bands:{
+            type:Array,
+            default:()=>{return []}
+          }
         },
         data(){
             return{
@@ -199,36 +203,8 @@
             }
         },
         computed:{
-          availableBands(){
-            const bands = [];
-            if(this.$page.props.auth.user.band_owner)
-            {
-              this.$page.props.auth.user.band_owner.forEach(band=>{
-                bands.push({id:band.id,name:band.name})
-              })
-            }
-            if(this.$page.props.auth.user.band_member)
-            {
-              this.$page.props.auth.user.band_member.forEach(band=>{
-                
-                bands.push({id:band.id,name:band.name})
-              })
-            }
 
-            function sortNames(a,b)
-            {
-              if(a.name < b.name)
-              {
-                return -1;
-              }
-              if(a.name > b.name)
-              {
-                return 1;
-              }
-              return 0;
-            }
-           return bands.filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i).sort(sortNames)
-          }
+
         },
         watch:{
           chartFilter: {
