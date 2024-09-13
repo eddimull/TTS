@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white shadow-md rounded-lg p-6 max-w-4xl mx-auto">
+  <div class="bg-white shadow-md rounded-lg p-6 mx-auto">
     <h2 class="text-2xl font-bold mb-6 text-gray-800">
       Paid vs Unpaid Amounts and Booking Count by Month
     </h2>
