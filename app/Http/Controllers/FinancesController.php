@@ -52,15 +52,15 @@ class FinancesController extends Controller
         return Inertia::render('Finances/Unpaid', ['unpaid' => $unpaid]);
     }
 
-    public function paidContracts()
+    public function paidServices()
     {
         $user = Auth::user();
         $bands = $user->bandOwner;
 
         $financeServices = new FinanceServices();
-        $financialData = $this->getFinancialData($bands, $financeServices);
+        $paid = $financeServices->getPaid($bands);
 
-        return Inertia::render('Finances/PaidContracts', $financialData);
+        return Inertia::render('Finances/Paid', ['paid' => $paid]);
     }
 
     public function payments()
