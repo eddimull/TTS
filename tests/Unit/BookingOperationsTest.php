@@ -3,13 +3,14 @@
 namespace Tests\Unit;
 
 use Tests\TestCase;
-use App\Models\Bookings;
 use App\Models\Bands;
+use App\Models\Bookings;
 use App\Models\Contacts;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Models\Payments;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
-class BookingsTest extends TestCase
+class BookingOperationsTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -27,8 +28,8 @@ class BookingsTest extends TestCase
             $this->fail("Database is not empty. Bookings: $bookingsCount, Contacts: $contactsCount");
         }
     }
-    /** @test */
-    public function it_can_create_a_booking()
+
+    public function test_can_create_a_booking()
     {
         $booking = Bookings::factory()->create();
 
@@ -36,16 +37,16 @@ class BookingsTest extends TestCase
         $this->assertDatabaseHas('bookings', ['id' => $booking->id]);
     }
 
-    /** @test */
-    public function it_belongs_to_a_band()
+
+    public function test_belongs_to_a_band()
     {
         $booking = Bookings::factory()->create();
 
         $this->assertInstanceOf(Bands::class, $booking->band);
     }
 
-    /** @test */
-    public function it_can_have_multiple_contacts()
+
+    public function test_can_have_multiple_contacts()
     {
         $booking = Bookings::factory()->create();
 
@@ -58,8 +59,8 @@ class BookingsTest extends TestCase
         $this->assertCount(3, $booking->fresh()->contacts, 'Booking should have exactly 3 contacts after attaching');
     }
 
-    /** @test */
-    public function it_can_have_a_primary_contact()
+
+    public function test_can_have_a_primary_contact()
     {
         $booking = Bookings::factory()->create();
         $primaryContact = Contacts::factory()->create();
@@ -74,8 +75,8 @@ class BookingsTest extends TestCase
         $this->assertEquals($primaryContact->id, $booking->primaryContact->first()->id);
     }
 
-    /** @test */
-    public function it_creates_booking_with_contacts_using_factory()
+
+    public function test_creates_booking_with_contacts_using_factory()
     {
         $booking = Bookings::factory()->withContacts()->create();
 
@@ -83,8 +84,8 @@ class BookingsTest extends TestCase
         $this->assertCount(1, $booking->contacts->where('pivot.is_primary', true));
     }
 
-    /** @test */
-    public function it_can_scope_to_confirmed_bookings()
+
+    public function test_can_scope_to_confirmed_bookings()
     {
         Bookings::factory()->count(2)->confirmed()->create();
 
@@ -93,8 +94,8 @@ class BookingsTest extends TestCase
         $this->assertCount(2, $confirmedBookings);
     }
 
-    /** @test */
-    public function it_can_calculate_duration()
+
+    public function test_can_calculate_duration()
     {
         $booking = Bookings::factory()->create([
             'start_time' => '19:00:00',
@@ -102,5 +103,55 @@ class BookingsTest extends TestCase
         ]);
 
         $this->assertEquals(4, $booking->duration);
+    }
+
+    public function test_can_determine_if_booking_is_paid()
+    {
+        // Create a booking with a price of 1000
+        $booking = Bookings::factory()->create([
+            'price' => 1000
+        ]);
+
+        // Initially, the booking should not be paid
+        $this->assertFalse($booking->is_paid);
+
+        // Add a payment of 500
+        Payments::factory()->create([
+            'payable_id' => $booking->id,
+            'payable_type' => Bookings::class,
+            'amount' => 500
+        ]);
+
+        // Refresh the booking model to recalculate the is_paid attribute
+        $booking->refresh();
+
+        // The booking should still not be fully paid
+        $this->assertFalse($booking->is_paid);
+
+        // Add another payment of 500
+        Payments::factory()->create([
+            'payable_id' => $booking->id,
+            'payable_type' => Bookings::class,
+            'amount' => 500
+        ]);
+
+        // Refresh the booking model again
+        $booking->refresh();
+
+        // Now the booking should be fully paid
+        $this->assertTrue($booking->is_paid);
+
+        // Add an extra payment of 100
+        Payments::factory()->create([
+            'payable_id' => $booking->id,
+            'payable_type' => Bookings::class,
+            'amount' => 100
+        ]);
+
+        // Refresh the booking model once more
+        $booking->refresh();
+
+        // The booking should still be considered paid
+        $this->assertTrue($booking->is_paid);
     }
 }

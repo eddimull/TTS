@@ -106,4 +106,14 @@ class Bands extends Model
     {
         return $this->hasMany(Bookings::class, 'band_id');
     }
+
+    public function getUnpaidBookings()
+    {
+        return $this->bookings()->unpaid();
+    }
+
+    public function getPaidBookings()
+    {
+        return $this->bookings()->paid();
+    }
 }

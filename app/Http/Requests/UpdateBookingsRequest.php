@@ -28,11 +28,17 @@ class UpdateBookingsRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
+            'author_id' => 'exclude',
             'event_type_id' => 'required|in:' . implode(',', EventTypes::all()->pluck('id')->toArray()),
             'date' => 'required|date',
             'start_time' => 'required|date_format:H:i',
             'end_time' => 'required|date_format:H:i',
-            'price' => 'required|numeric|min:0',
+            'price' => [
+                'required',
+                'regex:/^\d+(\.\d{1,2})?$/',
+                'min:0',
+                'decimal:0,2'
+            ],
             'venue_name' => 'nullable|string|max:255',
             'venue_address' => 'nullable|string',
             'contract_option' => 'required|in:default,none,external',

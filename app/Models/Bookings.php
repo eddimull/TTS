@@ -2,8 +2,11 @@
 
 namespace App\Models;
 
+use App\Casts\Price;
 use App\Models\Contracts;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -33,7 +36,7 @@ class Bookings extends Model
         'date' => 'date:Y-m-d',
         'start_time' => 'datetime:H:i',
         'end_time' => 'datetime:H:i',
-        'price' => 'decimal:2',
+        'price' => Price::class,
     ];
 
     public function band()
@@ -73,5 +76,41 @@ class Bookings extends Model
     public function contract(): MorphOne
     {
         return $this->morphOne(Contracts::class, 'contractable');
+    }
+
+    public function getIsPaidAttribute()
+    {
+        $totalPayments = $this->payments()->sum('amount');
+        return $totalPayments >= $this->price;
+    }
+
+    public function scopeUnpaid($query)
+    {
+        return $query->leftJoinSub(
+            function ($query)
+            {
+                $query->from('payments')
+                    ->selectRaw('payable_id, SUM(amount) as total_paid')
+                    ->where('payable_type', Bookings::class)
+                    ->groupBy('payable_id');
+            },
+            'payments_sum',
+            'bookings.id',
+            '=',
+            'payments_sum.payable_id'
+        )
+            ->addSelect([
+                'amount_paid' => Payments::selectRaw('COALESCE(SUM(amount),0)')
+                    ->whereColumn('payable_id', 'bookings.id')
+                    ->where('payable_type', Bookings::class)
+
+            ])
+            ->whereRaw('COALESCE(payments_sum.total_paid, 0) < bookings.price')
+            ->withCasts(['amount_paid' => Price::class, 'price' => Price::class])->get();
+    }
+
+    public function scopePaid($query)
+    {
+        return $query->whereRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id) >= bookings.price', [Bookings::class])->get();
     }
 }

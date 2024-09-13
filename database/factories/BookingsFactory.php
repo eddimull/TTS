@@ -49,11 +49,14 @@ class BookingsFactory extends Factory
         $startDate = $this->faker->dateTimeBetween('now', '+1 year');
         $endDate = (clone $startDate)->modify('+' . $this->faker->numberBetween(1, 6) . ' hours');
 
+        $band = Bands::factory()->withOwners()->create();
+
         return [
-            'band_id' => Bands::factory(),
+            'band_id' => $band->id,
+            'author_id' => $band->owners->first()->user_id,
             'name' => $this->faker->sentence,
             'event_type_id' => $this->faker->numberBetween(1, 6),
-            'event_date' => $startDate->format('Y-m-d'),
+            'date' => $startDate->format('Y-m-d'),
             'start_time' => $startDate->format('H:i'),
             'end_time' => $endDate->format('H:i'),
             'venue_name' => $this->faker->company,
@@ -89,7 +92,7 @@ class BookingsFactory extends Factory
     {
         return $this->state(function (array $attributes) use ($hours)
         {
-            $startDate = Carbon::parse($attributes['event_date'] . ' ' . $attributes['start_time']);
+            $startDate = Carbon::parse($attributes['date'] . ' ' . $attributes['start_time']);
             $endDate = $startDate->copy()->addHours($hours);
 
             return [

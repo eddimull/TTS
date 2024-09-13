@@ -70,10 +70,13 @@ class BookingsControllerTest extends TestCase
         $bookingData['duration'] = $duration;
         $bookingData['start_time'] = Carbon::parse($bookingData['start_time'])->format('H:i');
         unset($bookingData['end_time']);
+
         // dd($bookingData);
         $response = $this->actingAs($this->owner)->post(route('bands.booking.store', $this->band), $bookingData);
 
         unset($bookingData['duration']);
+        $bookingData['author_id'] = $this->owner->id;
+        $bookingData['price'] = $bookingData['price'] * 100;
         // $response->assertRedirect(route('bands.booking.show', [$this->band, $bookingData]));
         $response->assertRedirect();
         $this->assertDatabaseHas('bookings', $bookingData);
@@ -102,6 +105,8 @@ class BookingsControllerTest extends TestCase
         $response->assertStatus(302); // Assert that a redirect occurred
 
         unset($bookingData['duration']);
+        $bookingData['author_id'] = $this->member->id;
+        $bookingData['price'] = $bookingData['price'] * 100;
         $this->assertDatabaseHas('bookings', $bookingData);
 
         $booking = Bookings::where('band_id', $this->band->id)->latest()->first();
@@ -125,10 +130,15 @@ class BookingsControllerTest extends TestCase
     {
         $booking = Bookings::factory()->create(['band_id' => $this->band->id]);
         $updatedData = Bookings::factory()->make(['band_id' => $this->band->id])->toArray();
+        $updatedName = $updatedData['name'];
 
         $response = $this->actingAs($this->owner)->put(route('bands.booking.update', [$this->band, $booking]), $updatedData);
 
-        $response->assertRedirect(route('bookings.index', $this->band));
+        //this is two fold. The request excludes the author_id, so this checks that the author_id is not updated and the result exists
+        unset($updatedData['author_id']);
+        $updatedData['price'] = $updatedData['price'] * 100;
+
+        $response->assertSessionHas('successMessage', "$updatedName has been updated.");
         $this->assertDatabaseHas('bookings', $updatedData);
     }
 

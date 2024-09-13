@@ -42,6 +42,11 @@
           :sortable="true"
         />
         <Column
+          field="payable_date"
+          header="Booking Date"
+          :sortable="true"
+        />
+        <Column
           field="name"
           header="Payment Name"
           :sortable="true"

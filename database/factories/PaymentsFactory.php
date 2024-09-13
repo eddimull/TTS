@@ -17,7 +17,11 @@ class PaymentsFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'name' => $this->faker->name(),
+            'amount' => $this->faker->numberBetween(100, 10000),
+            'date' => $this->faker->dateTimeThisYear(),
+            'band_id' => \App\Models\Bands::factory(),
+            'user_id' => \App\Models\User::factory(),
         ];
     }
 }

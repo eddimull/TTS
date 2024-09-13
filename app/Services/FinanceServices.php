@@ -25,6 +25,16 @@ class FinanceServices
         return $bands;
     }
 
+    function getUnpaid($bands)
+    {
+        foreach ($bands as $band)
+        {
+            $band->unpaidBookings = $band->getUnpaidBookings();
+        }
+
+        return $bands;
+    }
+
     function getBandRevenueByYear($bands)
     {
         return $bands->load(['payments' => function ($query)
@@ -40,7 +50,7 @@ class FinanceServices
         foreach ($bands as $band)
         {
             $band->payments = $band->payments()
-                ->orderBy('date')
+                ->orderBy('date', 'desc')
                 ->get()
                 ->map(function ($payment)
                 {
@@ -49,6 +59,7 @@ class FinanceServices
                         'name' => $payment->name,
                         'payable_type' => $payment->payable_type,
                         'payable_name' => $payment->payable->name,
+                        'payable_date' => $payment->payable->date->format('Y-m-d'),
                         'payable_id' => $payment->payable_id,
                         'formattedPaymentDate' => $payment->date->format('Y-m-d'), // Adjust format as needed
                         'formattedPaymentAmount' => number_format($payment->amount / 100, 2)
