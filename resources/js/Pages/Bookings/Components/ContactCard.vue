@@ -1,6 +1,23 @@
 <template>
   <div class="bg-white shadow-md rounded-lg p-4 mb-4">
-    <div v-if="!isEditing">
+    <div
+      v-if="!isEditing"
+      class="relative"
+    >
+      <Menu
+        ref="menu"
+        :model="menuItems"
+        :popup="true"
+      />
+      <Button
+        icon="pi pi-ellipsis-v"
+        aria-haspopup="true"
+        aria-controls="overlay_menu"
+        class="absolute top-2 right-2 p-button-text p-button-plain"
+        @click="toggleMenu"
+      />
+
+
       <p><strong>Name:</strong> {{ contact.name }}</p>
       <p><strong>Email:</strong> {{ contact.email }}</p>
       <p v-if="contact.phone">
@@ -11,7 +28,10 @@
       <p v-if="contact.pivot.notes">
         <strong>Notes:</strong> {{ contact.pivot.notes }}
       </p>
-      <div class="mt-4 space-x-2">
+      <div
+        v-if="false"
+        class="mt-4 space-x-2"
+      >
         <button
           class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           @click="startEditing"
@@ -130,6 +150,8 @@
   import { ref } from 'vue';
   import { router, useForm } from '@inertiajs/vue3';
   import Swal from 'sweetalert2';
+  import Menu from 'primevue/menu';
+  import Button from 'primevue/button';
   
   const props = defineProps({
     contact: {
@@ -147,6 +169,25 @@
   });
   
   const isEditing = ref(false);
+
+  const menu = ref();
+
+  const menuItems = [
+    {
+      label: 'Edit',
+      icon: 'pi pi-pencil',
+      command: () => startEditing()
+    },
+    {
+      label: 'Delete',
+      icon: 'pi pi-trash',
+      command: () => deleteContact()
+    }
+  ];
+
+  const toggleMenu = (event) => {
+    menu.value.toggle(event);
+  };
   
   const form = useForm({
     name: props.contact.name,
