@@ -132,7 +132,7 @@
   }
   
   const gotoPayment = (data,band) => {
-      const url = route('bands.booking.show', {band: band.id, booking:data.id});
+      const url = route('Booking Finances', {band: band.id, booking:data.id});
       router.get(url);
   }
   </script>
