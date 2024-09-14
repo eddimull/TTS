@@ -10,6 +10,7 @@ class Contacts extends Model
     use HasFactory;
 
     protected $fillable = [
+        'band_id',
         'name',
         'email',
         'phone'
@@ -17,7 +18,7 @@ class Contacts extends Model
 
     public function bookingContacts()
     {
-        return $this->hasMany(BookingContacts::class);
+        return $this->hasMany(BookingContacts::class, 'contact_id');
     }
 
     public function bookings()

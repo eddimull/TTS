@@ -134,10 +134,10 @@ class migrateProposalsToBookings extends Command
 
     private function processContacts(Proposals $proposal, Bookings $booking)
     {
-        foreach ($proposal->proposal_contacts as $proposalContact)
+        foreach ($proposal->proposal_contacts as $index => $proposalContact)
         {
             $contact = Contacts::firstOrCreate(
-                ['email' => $proposalContact->email],
+                ['email' => $proposalContact->email, 'band_id' => $proposal->band_id],
                 [
                     'name' => $proposalContact->name,
                     'phone' => $proposalContact->phonenumber,
@@ -150,9 +150,12 @@ class migrateProposalsToBookings extends Command
                     'contact_id' => $contact->id,
                 ],
                 [
-                    'role' => 'primary', // You might want to adjust this based on your needs
-                    'is_primary' => true,
-                    'notes' => "Migrated from proposal ID: {$proposal->id}",
+                    'role' => '',
+                    'is_primary' => $index === 0,
+                    'notes' => '',
+                    'additional_info' => json_encode([
+                        'migrated_from_proposal_id' => $proposal->id,
+                    ])
                 ]
             );
         }
