@@ -37,7 +37,7 @@ class BookingsControllerTest extends TestCase
     {
         $bookings = Bookings::factory()->count(3)->create(['band_id' => $this->band->id]);
 
-        $response = $this->actingAs($this->owner)->get(route('bookings.index', $this->band));
+        $response = $this->actingAs($this->owner)->get(route('Bookings Home', $this->band));
 
 
         $response->assertStatus(200);
@@ -53,7 +53,7 @@ class BookingsControllerTest extends TestCase
     {
         $bookings = Bookings::factory()->count(3)->create(['band_id' => $this->band->id]);
 
-        $response = $this->actingAs($this->member)->get(route('bookings.index', $this->band));
+        $response = $this->actingAs($this->member)->get(route('Bookings Home', $this->band));
 
         $response->assertStatus(200);
         $response->assertInertia(
@@ -76,9 +76,10 @@ class BookingsControllerTest extends TestCase
         unset($bookingData['duration']);
         $bookingData['author_id'] = $this->owner->id;
         $bookingData['price'] = $bookingData['price'] * 100;
-        // $response->assertRedirect(route('bands.booking.show', [$this->band, $bookingData]));
-        $response->assertRedirect();
         $this->assertDatabaseHas('bookings', $bookingData);
+        $createdBooking = Bookings::where('band_id', $this->band->id)->latest()->first();
+
+        $response->assertRedirect(route('Booking Details', ['band' => $this->band, 'booking' => $createdBooking]));
     }
 
     public function test_member_can_create_booking()
@@ -112,7 +113,7 @@ class BookingsControllerTest extends TestCase
 
         $this->assertNotNull($booking, 'Booking was not created');
 
-        $response->assertRedirect(route('bands.booking.show', ['band' => $this->band, 'booking' => $booking]));
+        $response->assertRedirect(route('Booking Details', ['band' => $this->band, 'booking' => $booking]));
     }
 
     public function test_non_member_cannot_create_booking()
@@ -147,7 +148,7 @@ class BookingsControllerTest extends TestCase
 
         $response = $this->actingAs($this->owner)->delete(route('bands.booking.destroy', [$this->band, $booking]));
 
-        $response->assertRedirect(route('bookings.index', $this->band));
+        $response->assertRedirect(route('Bookings Home'));
         $this->assertDatabaseMissing('bookings', ['id' => $booking->id]);
     }
 }

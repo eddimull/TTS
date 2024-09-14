@@ -50,7 +50,7 @@ class BookingsController extends Controller
     public function store(StoreBookingsRequest $request, Bands $band)
     {
         $booking = $band->bookings()->create($request->validated());
-        return redirect()->route('bands.booking.show', [$band, $booking]);
+        return redirect()->route('Booking Details', [$band, $booking]);
     }
 
     public function show(Bands $band, Bookings $booking)
@@ -100,6 +100,6 @@ class BookingsController extends Controller
     public function destroy(Bands $band, Bookings $booking)
     {
         $booking->delete();
-        return redirect()->route('bookings.index', $band);
+        return redirect()->route('Bookings Home');
     }
 }

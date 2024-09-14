@@ -17,6 +17,7 @@ class ContactsFactory extends Factory
     public function definition()
     {
         return [
+            'band_id' => \App\Models\Bands::factory(),
             'name' => $this->faker->name(),
             'email' => $this->faker->safeEmail(),
             'phone' => $this->faker->boolean(50) ? $this->faker->phoneNumber() : null,
