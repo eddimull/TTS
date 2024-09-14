@@ -25,6 +25,11 @@
           />
         </div>
       </div>
+      <div v-else>
+        <p class="text-center m-8">
+          No contacts found for this booking.
+        </p>
+      </div>
       
       <!-- New contact form -->
       <h3 class="text-xl font-semibold mb-2">
