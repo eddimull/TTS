@@ -37,6 +37,9 @@ class Bookings extends Model
         'start_time' => 'datetime:H:i',
         'end_time' => 'datetime:H:i',
         'price' => Price::class,
+        'amountDue' => Price::class,
+        'amountLeft' => Price::class,
+        'amountPaid' => Price::class,
     ];
 
     public function band()
@@ -82,6 +85,21 @@ class Bookings extends Model
     {
         $totalPayments = $this->payments()->sum('amount');
         return $totalPayments >= $this->price;
+    }
+
+    public function getAmountPaidAttribute()
+    {
+        return $this->payments()->sum('amount') / 100;
+    }
+
+    public function getAmountDueAttribute()
+    {
+        return $this->price - $this->amount_paid;
+    }
+
+    public function getAmountLeftAttribute()
+    {
+        return $this->getAmountDueAttribute();
     }
 
     public function scopeUnpaid($query)

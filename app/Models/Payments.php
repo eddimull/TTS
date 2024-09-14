@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\Price;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -17,7 +18,7 @@ class Payments extends Model
     protected $fillable = ['name', 'amount', 'date', 'band_id', 'user_id'];
 
     protected $casts = [
-        'amount' => 'integer',
+        'amount' => Price::class,
         'date' => 'datetime',
     ];
 

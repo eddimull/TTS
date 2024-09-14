@@ -14,6 +14,10 @@ Route::middleware(['auth', 'verified'])->group(function ()
             'show' => 'Booking Details',
         ]);
 
+    Route::get('bands/{band}/booking/create', [BookingsController::class, 'create'])
+        ->name('Create Booking')
+        ->middleware('booking.access');
+
     Route::get('bands/{band}/booking/{booking}/contacts', [BookingsController::class, 'contacts'])
         ->name('Booking Contacts')
         ->middleware('booking.access');
@@ -31,10 +35,6 @@ Route::middleware(['auth', 'verified'])->group(function ()
         ->middleware('booking.access');
 
     Route::get('bands/{band}/booking/{booking}/finances', [BookingsController::class, 'finances'])
-        ->name('Finances')
-        ->middleware('booking.access');
-
-    Route::get('bands/{band}/booking/create', [BookingsController::class, 'create'])
-        ->name('Create Booking')
+        ->name('Booking Finances')
         ->middleware('booking.access');
 });

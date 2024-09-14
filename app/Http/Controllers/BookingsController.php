@@ -93,8 +93,14 @@ class BookingsController extends Controller
 
     public function finances(Bands $band, Bookings $booking)
     {
-        $booking->load('contacts');
-        return Inertia::render('Bookings/Contacts', ['booking' => $booking, 'band' => $band]);
+        $booking->amountPaid = $booking->amountPaid;
+        $booking->amountLeft = $booking->amountLeft;
+
+        return Inertia::render('Bookings/Finances', [
+            'booking' => $booking,
+            'band' => $band,
+            'payments' => $booking->payments
+        ]);
     }
 
     public function destroy(Bands $band, Bookings $booking)

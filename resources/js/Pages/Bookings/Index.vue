@@ -8,7 +8,7 @@
             <Link
               v-for="band in bands"
               :key="band.id"
-              :href="route('bands.booking.create', { band: band.id })"
+              :href="route('Create Booking', { band: band.id })"
               class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
             >
               Create Booking for {{ band.name }}
@@ -23,7 +23,7 @@
               :key="booking.id"
               class="p-4 border-b border-gray-200"
             >
-              <Link :href="route('bands.booking.show',{'band':booking.band_id,'booking':booking.id})">
+              <Link :href="route('Booking Details',{'band':booking.band_id,'booking':booking.id})">
                 {{ booking.name }} - {{ booking.date }}
               </Link>
             </li>

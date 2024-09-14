@@ -406,7 +406,7 @@
       >
         <div class="max-w-7xl mx-auto py-2 px-4 sm:px-4 lg:px-8">
           <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ route().current().charAt(0).toUpperCase() + route().current().slice(1).replace('.',' - ') }}
+            {{ route().current().charAt(0).toUpperCase() + route().current().slice(1).replace('.',' - ') }} {{ navSuffix ?? `- ${navSuffix}` }}
           </h2>
         </div>
       </header>
@@ -420,7 +420,6 @@
       </main>
     </div>
   </div>
-  <!-- {{ $page.props.auth.user }} -->
 </template>
 
 <script>
@@ -444,7 +443,13 @@
             NotificationLink,
             Toast
         },
-
+        props: {
+          navSuffix: {
+            type: String,
+            default: '',
+            required: false
+          }
+        },
         data() {
           return {
               showingNavigationDropdown: false,
