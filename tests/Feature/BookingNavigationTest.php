@@ -34,21 +34,4 @@ class BookingNavigationTest extends TestCase
         $response = $this->get('/bookings');
         $response->assertStatus(302);
     }
-
-    public function test_owner_can_see_bookings_list()
-    {
-        $this->markTestIncomplete(
-            'This feature has not been implemented yet.'
-        );
-        //incomplete for now
-        $band = Bands::factory()->hasOwners(1)->create();
-        $owner = $band->owners->first()->user;
-
-        Bookings::factory()->create([
-            'band_id' => $band->id,
-        ]);
-
-        $response = $this->actingAs($owner)->get('/booking');
-        $response->assertSee('Bookingss')->todo();
-    }
 }
