@@ -109,10 +109,10 @@ class migrateEventsToBookings extends Command
     private function processContacts(BandEvents $event, Bookings $booking)
     {
         // Assuming event_contacts relationship still exists on BandEvents
-        foreach ($event->event_contacts as $eventContact)
+        foreach ($event->event_contacts as $index => $eventContact)
         {
             $contact = Contacts::firstOrCreate(
-                ['email' => $eventContact->email],
+                ['email' => $eventContact->email, 'band_id' => $event->band_id],
                 [
                     'name' => $eventContact->name,
                     'phone' => $eventContact->phonenumber,
@@ -125,8 +125,8 @@ class migrateEventsToBookings extends Command
                     'contact_id' => $contact->id,
                 ],
                 [
-                    'role' => 'primary', // You might want to adjust this based on your needs
-                    'is_primary' => true,
+                    'role' => '',
+                    'is_primary' => $index === 0,
                     'notes' => '',
                     'additional_info' => json_encode([
                         'migrated_from_event_id' => $event->id,
