@@ -1,10 +1,11 @@
 <template>
   <Dialog
-    v-model:visible="paymentDialog"
+    :visible="model"
     :style="{width: '450px'}"
     header="Make a payment"
     :modal="true"
     class="p-fluid"
+    @update:visible="closeDialog"
   >
     <div class="p-field">
       <label for="name">Name</label>
@@ -20,6 +21,7 @@
         class="p-error"
       >Name is required.</small>
     </div>
+
     <div class="p-field">
       <label for="amount">Amount</label>
       <InputNumber
@@ -28,7 +30,6 @@
         mode="currency"
         currency="USD"
         locale="en-US"
-        :max="parseInt(proposal.amountLeft.replace(/,/g,''))"
       />
       <small
         v-if="submitted && !newPayment.amount"
@@ -36,18 +37,19 @@
       >Amount is required.</small>
     </div>  
     <div class="p-field">
-      <label for="paymentDate">Payment Date</label>
+      <label for="date">Payment Date</label>
       <calendar
-        id="paymentDate"
-        v-model="newPayment.paymentDate"
+        id="date"
+        v-model="newPayment.date"
         :show-icon="true"
+        date-format="mm/dd/yy"
       />
       <small
-        v-if="submitted && !newPayment.paymentDate"
+        v-if="submitted && !newPayment.date"
         class="p-error"
       >Date is required.</small>
-    </div>  
-  
+    </div> 
+
     <template #footer>
       <Button
         label="Cancel"
@@ -63,50 +65,49 @@
         :loading="saving"
         @click="submitPayment"
       />
-    </template>      
+    </template>   
   </Dialog>
 </template>
 <script setup>
 import { ref, reactive } from 'vue'
-    defineEmits(['closeDialog', 'submitPayment']);
+import { useForm } from '@inertiajs/inertia-vue3';
+defineEmits('submitPayment');
+const props = defineProps({
+    booking: {
+        type: Object,
+        required: true
+    },
+});
+const model = defineModel()
 
-    const paymentDialog = ref(false)
 
-
-    const closeDialog = () => {
-  paymentDialog.value = false
+const closeDialog = () => {
+  model.value = false
 }
 
-const openDialog = () => {
-  paymentDialog.value = true
-}
 
 const saving = ref(false)
 const submitted = ref(false)
-const newPayment = reactive({
+const newPayment = useForm({
   name: '',
-  amount: '',
-  paymentDate: null
+  amount: 0,
+  date: null
 })
 
 const submitPayment = () => {
-//   saving.value = true
-//   inertia.post(`/proposals/${props.proposal.key}/payment`, {
-//     name: newPayment.name,
-//     amount: newPayment.amount * 100,
-//     paymentDate: newPayment.paymentDate
-//   }, {
-//     preserveScroll: true,
-//     onSuccess: () => {
-//       newPayment.name = ''
-//       newPayment.amount = ''
-//       newPayment.paymentDate = null
-//       closeDialog()
-//     },
-//     onFinish: () => {
-//       saving.value = false
-//     }
-//   })
+  saving.value = true
+  newPayment.post(route('Store Booking Payment',{'band':props.booking.band_id,'booking':props.booking.id}), {
+    preserveScroll: true,
+    onSuccess: () => {
+      newPayment.name = ''
+      newPayment.amount = ''
+      newPayment.date = null
+      closeDialog()
+    },
+    onFinish: () => {
+      saving.value = false
+    }
+  })
 }
 
 </script>

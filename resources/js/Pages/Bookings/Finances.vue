@@ -1,6 +1,9 @@
 <template>
   <Container>
-    <PaymentDialog />
+    <PaymentDialog
+      v-model="showDialog"
+      :booking="booking"
+    />
     <section class="py-20 bg-gray-100">
       <div class="container mx-auto px-4">
         <div class="p-8 lg:p-20 bg-white">
@@ -30,7 +33,10 @@
                 </div>
               </div>
               <PaymentList :payments="payments" />
-              <PaymentActions :booking="booking" />
+              <PaymentActions
+                :booking="booking"
+                @openDialog="setDialog(true)"
+              />
             </div>
             <PaymentSummary :booking="booking" />
           </div>
@@ -62,10 +68,13 @@ const props = defineProps({
   },
 })
 
+//watch for changes in the action
 
+let showDialog = ref(false)
 
-
-
+const setDialog = (value) => {
+  showDialog.value = value
+}
 
 
 const downloadReceipt = () => {

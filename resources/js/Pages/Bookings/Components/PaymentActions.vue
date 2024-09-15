@@ -8,13 +8,13 @@
         icon="pi pi-dollar"
         label="Make Payment"
         class="p-button-success"
-        @click="openDialog"
+        @click="$emit('openDialog')"
       />
       <Button
         icon="pi pi-download"
         label="Download Receipt"
         class="p-button-default"
-        @click="downloadReceipt"
+        @click="$emit('downloadReceipt')"
       />
     </div>
   </div>
@@ -25,6 +25,7 @@
         booking: {
             type: Object,
             required: true
-        }
+        },
     });
+
 </script>

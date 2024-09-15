@@ -37,4 +37,8 @@ Route::middleware(['auth', 'verified'])->group(function ()
     Route::get('bands/{band}/booking/{booking}/finances', [BookingsController::class, 'finances'])
         ->name('Booking Finances')
         ->middleware('booking.access');
+
+    Route::post('bands/{band}/booking/{booking}/finances', [BookingsController::class, 'storePayment'])
+        ->name('Store Booking Payment')
+        ->middleware('booking.access');
 });
