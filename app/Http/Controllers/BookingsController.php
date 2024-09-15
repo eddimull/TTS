@@ -10,6 +10,7 @@ use App\Models\EventTypes;
 use App\Models\BookingContacts;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Requests\BookingContact as BookingContactRequest;
+use App\Http\Requests\StoreBookingPaymentRequest;
 use App\Http\Requests\StoreBookingsRequest;
 use App\Http\Requests\UpdateBookingsRequest;
 
@@ -101,6 +102,12 @@ class BookingsController extends Controller
             'band' => $band,
             'payments' => $booking->payments
         ]);
+    }
+
+    public function storePayment(StoreBookingPaymentRequest $request, Bands $band, Bookings $booking)
+    {
+        $booking->payments()->create($request->validated());
+        return redirect()->back()->with('successMessage', 'Payment has been added.');
     }
 
     public function destroy(Bands $band, Bookings $booking)
