@@ -18,6 +18,10 @@ Route::middleware(['auth', 'verified'])->group(function ()
         ->name('Create Booking')
         ->middleware('booking.access');
 
+    Route::get('bands/{band}/booking/{booking}/downloadReceipt', [BookingsController::class, 'receipt'])
+        ->name('Booking Receipt')
+        ->middleware('booking.access');
+
     Route::get('bands/{band}/booking/{booking}/contacts', [BookingsController::class, 'contacts'])
         ->name('Booking Contacts')
         ->middleware('booking.access');
@@ -42,3 +46,4 @@ Route::middleware(['auth', 'verified'])->group(function ()
         ->name('Store Booking Payment')
         ->middleware('booking.access');
 });
+Route::get('{booking}/downloadReceiptPDF', [BookingsController::class, 'paymentPDF'])->name('bookingpaymentpdf');

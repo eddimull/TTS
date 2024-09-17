@@ -37,6 +37,16 @@ COPY --from=node:20-slim /usr/local/bin /usr/local/bin
 # Get npm
 COPY --from=node:20-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
 
+# Install Puppeteer globally
+RUN apt-get update && apt-get install -y \
+    wget \
+    gnupg \
+    ca-certificates \
+    apt-transport-https
+RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add -
+RUN echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list
+RUN apt-get update && apt-get install -y google-chrome-stable
+
 WORKDIR /var/www
 
 RUN php -v && composer --version && node -v && npm -v

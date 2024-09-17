@@ -3,10 +3,9 @@
 namespace App\Models;
 
 use App\Casts\Price;
+use App\Http\Traits\BookingTraits;
 use App\Models\Contracts;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,6 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Bookings extends Model
 {
     use HasFactory;
+    use BookingTraits;
 
     protected $fillable = [
         'band_id',
@@ -79,6 +79,11 @@ class Bookings extends Model
     public function contract(): MorphOne
     {
         return $this->morphOne(Contracts::class, 'contractable');
+    }
+
+    public function author()
+    {
+        return $this->belongsTo(User::class, 'author_id');
     }
 
     public function getIsPaidAttribute()

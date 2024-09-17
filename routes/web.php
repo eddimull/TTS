@@ -1,20 +1,21 @@
 <?php
 
-use App\Http\Controllers\EventsController;
-use App\Http\Controllers\FinalizedProposalController;
-use App\Http\Controllers\FinancesController;
-use App\Http\Controllers\InvitationsController;
-use App\Http\Controllers\InvoicesController;
-use App\Http\Controllers\ProposalContractsController;
-use App\Http\Controllers\QuestionnaireController;
+use Inertia\Inertia;
 use App\Models\Bands;
-use App\Services\AdvanceReminderService;
-use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\URL;
+use Spatie\Browsershot\Browsershot;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
-use Inertia\Inertia;
+use App\Services\AdvanceReminderService;
+use App\Http\Controllers\EventsController;
+use App\Http\Controllers\FinancesController;
+use App\Http\Controllers\InvoicesController;
+use App\Http\Controllers\InvitationsController;
+use App\Http\Controllers\QuestionnaireController;
+use App\Http\Controllers\FinalizedProposalController;
+use App\Http\Controllers\ProposalContractsController;
 
 
 /*
@@ -227,6 +228,45 @@ Route::group(['prefix' => 'mail', 'middleware' => ['dev']], function ()
 
         Storage::put('receipt.pdf', $pdf->pdf());
         return Storage::download('receipt.pdf');
+    });
+
+    Route::get('bookingTest', function ()
+    {
+        // Browsershot::chrome('/usr/bin/google-chrome');
+        // Browsershot::url('https://example.com')
+        //     ->setOption('args', ['--no-sandbox', '--disable-setuid-sandbox'])
+        //     ->pdf('example.pdf');
+        // $paidBooking = Bands::first()->getPaidBookings()->last();
+        // $signedURL = URL::temporarySignedRoute('paymentpdf', now()->addMinutes(60), ['payment' => $paidBooking]);
+        // return redirect($signedURL);
+        $pdf = Browsershot::url('https://example.com')
+            ->setNodeBinary('/usr/local/bin/node')
+            ->setNpmBinary('/usr/local/bin/npm')
+            ->setOption('args', ['--no-sandbox', '--disable-setuid-sandbox'])
+            ->setOption('executablePath', '/usr/bin/google-chrome')
+            ->noSandbox()
+            ->setScreenshotType('jpeg', 100)
+            ->windowSize(1920, 1080)
+            ->timeout(60000)
+            ->setEnvironmentOptions([
+                'CHROME_CONFIG_HOME' => '/tmp/.config'
+            ])
+            ->setTemporaryHtmlDirectory('/tmp/browsershot')
+            ->save('/tmp/asdfasdf.pdf');
+
+        // $filename = 'receipt_' . $payment->id  . '.pdf';
+        // $pdfContent = $pdf->pdf();
+
+        return response()->download('/tmp/asdfasdf.pdf');
+        // if (Storage::disk('public')->put($filename, $pdfContent))
+        //     // {
+        //     return Storage::disk('public')->download($filename, 'Receipt.pdf', ['Content-Type' => 'application/pdf']);
+        // }
+        // else
+        // {
+        //     throw new \Exception('Failed to save PDF to storage');
+        // }
+
     });
 });
 
