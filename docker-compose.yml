@@ -5,6 +5,9 @@ services:
         build:
             context: .
             dockerfile: ./docker/app.dockerfile
+        environment:
+            PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: true
+            PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
         working_dir: /var/www
         volumes:
             - ./:/var/www
@@ -28,6 +31,7 @@ services:
         depends_on:
             - app
         ports:
+            - 8080:80
             - 8710:443
     mysql:
         image: 'mysql:8.1'

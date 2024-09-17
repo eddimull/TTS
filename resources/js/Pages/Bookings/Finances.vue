@@ -35,6 +35,7 @@
               <PaymentList :payments="payments" />
               <PaymentActions
                 :booking="booking"
+                @downloadReceipt="downloadReceipt"
                 @openDialog="setDialog(true)"
               />
             </div>
@@ -78,7 +79,7 @@ const setDialog = (value) => {
 
 
 const downloadReceipt = () => {
-//   window.open(`/proposals/${props.proposal.key}/downloadReceipt`, '_blank')
+  window.open(`./downloadReceipt`, '_blank')
 }
 
 const deletePayment = (payment) => {
