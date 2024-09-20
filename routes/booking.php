@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BookingsController;
+use App\Http\Controllers\ContractsController;
 
 Route::middleware(['auth', 'verified'])->group(function ()
 {
@@ -40,6 +41,14 @@ Route::middleware(['auth', 'verified'])->group(function ()
 
     Route::get('bands/{band}/booking/{booking}/finances', [BookingsController::class, 'finances'])
         ->name('Booking Finances')
+        ->middleware('booking.access');
+
+    Route::get('bands/{band}/booking/{booking}/contract', [BookingsController::class, 'contract'])
+        ->name('Booking Contract')
+        ->middleware('booking.access');
+
+    Route::post('bands/{band}/booking/{booking}/contract/save', [ContractsController::class, 'update'])
+        ->name('Update Booking Contract')
         ->middleware('booking.access');
 
     Route::post('bands/{band}/booking/{booking}/finances', [BookingsController::class, 'storePayment'])

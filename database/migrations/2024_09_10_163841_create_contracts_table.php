@@ -19,6 +19,7 @@ return new class extends Migration
             $table->foreignId('author_id')->constrained('users')->nullable();
             $table->enum('status', ['pending', 'sent', 'completed']);
             $table->string('asset_url')->nullable();
+            $table->json('custom_terms')->nullable();
             $table->timestamps();
         });
     }

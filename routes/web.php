@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ContractsController;
 use Inertia\Inertia;
 use App\Models\Bands;
 use Illuminate\Support\Facades\URL;
@@ -137,6 +138,7 @@ Route::delete('/deleteInvite/{band}/{invitations}', 'InvitationsController@destr
 
 
 Route::get('/contracts', [ProposalContractsController::class, 'index'])->name('contracts');
+Route::get('/contracts/{contract}', [ContractsController::class, 'show'])->name('contracts.show');
 
 Route::get('/notifications', function ()
 {
