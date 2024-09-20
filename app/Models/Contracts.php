@@ -12,9 +12,14 @@ class Contracts extends Model
     protected $fillable = [
         'envelope_id',
         'author_id',
-        'envelope_id',
         'status',
-        'asset_url'
+        'asset_url',
+        'custom_terms',
+    ];
+
+    protected $casts = [
+        'custom_terms' => 'array',
+        'updated_at' => 'date:Y-m-d h:i a',
     ];
 
     public function contractable(): MorphTo

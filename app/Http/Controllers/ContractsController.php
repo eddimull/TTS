@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Bands;
+use App\Models\Bookings;
+use App\Models\Contracts;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 use App\Http\Requests\StoreContractsRequest;
 use App\Http\Requests\UpdateContractsRequest;
-use App\Models\Contracts;
 
 class ContractsController extends Controller
 {
@@ -35,9 +39,31 @@ class ContractsController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Contracts $contracts)
+    public function show(Contracts $contract)
     {
-        //
+        $filePath = \urldecode($contract->asset_url); // Adjust this based on your actual model structure
+        $filePath = Str::replace('https://bandapp.s3.us-east-2.amazonaws.com/', '', $filePath);
+        // dd($filePath);
+        // Check if the file exists
+        if (!Storage::disk('s3')->exists($filePath))
+        {
+            abort(404);
+        }
+
+        // Stream the file from S3
+        $stream = Storage::disk('s3')->readStream($filePath);
+
+        return response()->stream(
+            function () use ($stream)
+            {
+                fpassthru($stream);
+            },
+            200,
+            [
+                'Content-Type' => Storage::disk('s3')->mimeType($filePath),
+                'Content-Disposition' => 'inline; filename="' . basename($filePath) . '"',
+            ]
+        );
     }
 
     /**
@@ -51,9 +77,13 @@ class ContractsController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateContractsRequest $request, Contracts $contracts)
+    public function update(UpdateContractsRequest $request, Bands $band, Bookings $booking)
     {
-        //
+        $contract = $booking->contract;
+
+        $contract->update($request->validated());
+
+        return redirect()->back()->with('successMessage', 'Contract Saved.');
     }
 
     /**

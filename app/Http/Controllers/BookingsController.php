@@ -150,4 +150,16 @@ class BookingsController extends Controller
         $booking->delete();
         return redirect()->route('Bookings Home');
     }
+
+    public function contract(Bands $band, Bookings $booking)
+    {
+        $booking->contract = $booking->contract;
+        $booking->contacts = $booking->contacts()->get();
+        $booking->duration = $booking->duration;
+
+        return Inertia::render('Bookings/Contract', [
+            'booking' => $booking,
+            'band' => $band,
+        ]);
+    }
 }
