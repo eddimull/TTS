@@ -10,9 +10,13 @@ class Price implements CastsAttributes
     /**
      * Cast the given value.
      *
-     * @param  array<string, mixed>  $attributes
+     * @param  Model  $model
+     * @param  string  $key
+     * @param  mixed  $value
+     * @param  array  $attributes
+     * @return mixed
      */
-    public function get(Model $model, string $key, mixed $value, array $attributes): mixed
+    public function get($model, string $key, $value, array $attributes): mixed
     {
         return number_format($value / 100, 2, '.', '');
     }
@@ -20,9 +24,13 @@ class Price implements CastsAttributes
     /**
      * Prepare the given value for storage.
      *
-     * @param  array<string, mixed>  $attributes
+     * @param  Model  $model
+     * @param  string  $key
+     * @param  mixed  $value
+     * @param  array  $attributes
+     * @return mixed
      */
-    public function set(Model $model, string $key, mixed $value, array $attributes): mixed
+    public function set($model, string $key, $value, array $attributes): mixed
     {
         return $value * 100;
     }
