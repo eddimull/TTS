@@ -31,7 +31,6 @@ import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import Image from 'primevue/image';
 import qs from 'qs';
-import AudioVisual from 'vue-audio-visual'
 import Chart from 'primevue/chart';
 import TabView from 'primevue/tabview';
 import TabPanel from 'primevue/tabpanel';
@@ -69,7 +68,6 @@ createInertiaApp({
             .use(store)
             .use(VueSweetalert2)
             .use(PrimeVue)
-            .use(AudioVisual)
             .use(ToastService)
             const components = {
                 Link,
@@ -100,7 +98,7 @@ createInertiaApp({
                 TabPanel,
                 ProgressSpinner
             };
-    
+
             Object.entries(components).forEach(([name, component]) => {
                 app.component(name, component);
             });
@@ -115,7 +113,7 @@ createInertiaApp({
         })().then(()=>{
             return app.mount(el);
         })
-    
+
 
     }
 });
