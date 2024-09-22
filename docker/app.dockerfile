@@ -1,13 +1,22 @@
-FROM php:8.1-fpm AS php-build
+FROM php:8.3-fpm AS php-build
 
 RUN apt-get update && apt-get install -y  \
-    libzip-dev \
+    libzip-dev git libmagickwand-dev libzip-dev \
     --no-install-recommends \
-    && docker-php-ext-install pdo_mysql zip exif
+    && docker-php-ext-install pdo_mysql zip exif && \
+    git clone https://github.com/Imagick/imagick.git --depth 1 /tmp/imagick && \
+    cd /tmp/imagick && \
+    git fetch origin master && \
+    git switch master && \
+    cd /tmp/imagick && \
+    phpize && \
+    ./configure && \
+    make && \
+    make install
 
 
 # Final stage
-FROM php:8.1-fpm
+FROM php:8.3-fpm
 
 # Copy PHP extensions and configurations from build stage
 COPY --from=php-build /usr/local/lib/php/extensions/ /usr/local/lib/php/extensions/
@@ -19,7 +28,6 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     wkhtmltopdf \
     --no-install-recommends \
-    && pecl install imagick \
     && docker-php-ext-enable imagick \
     && rm -rf /var/lib/apt/lists/*
 
