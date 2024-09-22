@@ -143,7 +143,7 @@
                   placeholder="DJ list or band list"
                 />
                 <TextInput
-                  v-model="form.money_dance"
+                  v-model="form.bouquet_garter"
                   label="Bouquet / Garter"
                   name="bouquetDance"
                   placeholder="DJ list or band list"
