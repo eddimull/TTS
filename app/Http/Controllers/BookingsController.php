@@ -15,6 +15,7 @@ use App\Http\Requests\StoreBookingsRequest;
 use App\Http\Requests\UpdateBookingsRequest;
 use App\Http\Requests\StoreBookingPaymentRequest;
 use App\Http\Requests\BookingContact as BookingContactRequest;
+use App\Models\Contracts;
 
 class BookingsController extends Controller
 {
@@ -55,6 +56,11 @@ class BookingsController extends Controller
     public function store(StoreBookingsRequest $request, Bands $band)
     {
         $booking = $band->bookings()->create($request->validated());
+        Contracts::create([
+            'booking_id' => $booking->id,
+            'author_id' => Auth::id(),
+        ]);
+
         return redirect()->route('Booking Details', [$band, $booking]);
     }
 
@@ -153,8 +159,12 @@ class BookingsController extends Controller
 
     public function contract(Bands $band, Bookings $booking)
     {
-        $booking->contract = $booking->contract;
         $booking->contacts = $booking->contacts()->get();
+        if (count($booking->contacts) === 0)
+        {
+            return redirect()->route('Booking Contacts', [$band, $booking])->with('warningMessage', 'Please add a contact before generating a contract.');
+        }
+        $booking->contract = $booking->contract;
         $booking->duration = $booking->duration;
 
         return Inertia::render('Bookings/Contract', [
