@@ -7,41 +7,32 @@ import Link from '@/Components/NavLink.vue';
 //find the current route params
 const routeParameters = route().params;
 const props = defineProps({
-  routes: {
-    type: Object,
-    required: true
-  }
+    routes: {
+        type: Object,
+        required: true
+    }
 });
 
 const items = computed(() => {
-  return Object.entries(props.routes).map(([name, route]) => ({
-    label: name,
-    route: route.uri
-  }));
+    return Object.entries(props.routes).map(([name, route]) => ({
+        label: name,
+        route: route.uri
+    }));
 });
 
 </script>
 
 <template>
-  <div>
-    <TabMenu
-      :model="items"
-      class="py-2"
-    >
-      <template #item="{item}">
-        <Link
-          :href="route(item.label, routeParameters)"
-          :active="route().current() === item.label"
-          custom
-        >
-          <a
-            role="menuitem"
-            class="p-menuitem-link"
-          >
-            <span class="p-menuitem-text">{{ item.label }}</span>
-          </a>
-        </Link>
-      </template>
-    </TabMenu>
-  </div>
+    <div>
+        <TabMenu :model="items" class="py-2">
+            <template #item="{ item }">
+                <Link :href="route(item.label, routeParameters)" :active="route().current() === item.label" custom
+                    preserve-scroll preserve-state>
+                <a role="menuitem" class="p-menuitem-link">
+                    <span class="p-menuitem-text">{{ item.label }}</span>
+                </a>
+                </Link>
+            </template>
+        </TabMenu>
+    </div>
 </template>

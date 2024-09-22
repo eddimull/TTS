@@ -3,16 +3,16 @@
     <div class="sticky top-[4rem] z-10 bg-white shadow">
       <Toolbar>
         <template #start>
-          <Button 
-            icon="pi pi-eye" 
-            :label="editMode ? 'Preview' : 'Edit'" 
-            :class="{ 'p-button-secondary': !editMode }" 
+          <Button
+            icon="pi pi-eye"
+            :label="editMode ? 'Preview' : 'Edit'"
+            :class="{ 'p-button-secondary': !editMode }"
             @click="toggleEditMode"
           />
-          <Button 
-            icon="pi pi-save" 
-            :label="'Save'" 
-            class="ml-4" 
+          <Button
+            icon="pi pi-save"
+            :label="'Save'"
+            class="ml-4"
             @click="$emit('save')"
           />
         </template>
@@ -25,10 +25,10 @@
         </template>
       </Toolbar>
       <div class="text-gray-400 text-sm font-bold">
-        Last update: {{ booking.contract.updated_at }}
+        Last update: {{ booking.contract?.updated_at || 'Never' }}
       </div>
     </div>
-  
+
     <div class="contract-content mt-4 max-w-4xl mx-auto p-5 border border-gray-300 rounded-lg font-sans">
       <div class="text-center mb-4">
         <img
@@ -98,8 +98,8 @@
           of the Performance, limited to one additional hour, payable immediately following the Performance.
         </p>
       </div>
-      <draggable 
-        v-model="termsLocal" 
+      <draggable
+        v-model="termsLocal"
         item-key="id"
         handle=".drag-handle"
         :disabled="!editMode"
@@ -115,15 +115,15 @@
                 v-if="editMode"
                 class="drag-handle cursor-move mr-2 opacity-0 group-hover:opacity-100 transition-opacity"
               >☰</span>
-              <h3 
-                v-if="!editMode" 
+              <h3
+                v-if="!editMode"
                 class="text-xl font-bold mb-2 uppercase underline"
               >
                 {{ element.title }}
               </h3>
-              <InputText 
+              <InputText
                 v-else
-                v-model="element.title" 
+                v-model="element.title"
                 class="text-xl font-bold mb-2 w-full"
                 placeholder="Section Title"
                 @input="emitUpdate"
@@ -138,9 +138,9 @@
             <p v-if="!editMode">
               {{ element.content }}
             </p>
-            <Textarea 
+            <Textarea
               v-else
-              v-model="element.content" 
+              v-model="element.content"
               class="w-full"
               :auto-resize="true"
               placeholder="Terms and conditions..."
@@ -171,7 +171,7 @@
     </div>
   </div>
 </template>
-  
+
   <script setup>
 import { ref, onMounted, watch } from 'vue';
 import draggable from 'vuedraggable';
@@ -180,7 +180,7 @@ import Toolbar from 'primevue/toolbar';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
 import { DateTime } from 'luxon';
-  
+
   const props = defineProps({
     initialTerms: {
       type: Array,
@@ -195,12 +195,12 @@ import { DateTime } from 'luxon';
       required: true
     }
   });
-  
+
   const emit = defineEmits(['update:terms', 'save', 'generate-pdf']);
-  
+
   const termsLocal = ref([]);
   const editMode = ref(false);
-  
+
   onMounted(() => {
     termsLocal.value = props.initialTerms.map((term, index) => ({
       id: index,
@@ -208,29 +208,29 @@ import { DateTime } from 'luxon';
       content: term.content
     }));
   });
-  
+
   const emitUpdate = () => {
     emit('update:terms', termsLocal.value);
   };
-  
+
   const addSection = () => {
-    termsLocal.value.push({ 
+    termsLocal.value.push({
       id: Date.now(),
-      title: '', 
-      content: '' 
+      title: '',
+      content: ''
     });
     emitUpdate();
   };
-  
+
   const removeSection = (id) => {
     termsLocal.value = termsLocal.value.filter(term => term.id !== id);
     emitUpdate();
   };
-  
+
   const toggleEditMode = () => {
     editMode.value = !editMode.value;
   };
-  
+
   watch(() => props.initialTerms, (newTerms) => {
     termsLocal.value = newTerms.map((term, index) => ({
       id: index,
@@ -239,4 +239,3 @@ import { DateTime } from 'luxon';
     }));
   }, { deep: true });
   </script>
-  
