@@ -10,7 +10,7 @@
     />
   </div>
 </template>
-  
+
 <script setup>
 import { router } from '@inertiajs/vue3'
 import { ref, onMounted } from 'vue'
@@ -38,7 +38,7 @@ const updateTerms = (newTerms) => {
 }
 
 const saveContract = async () => {
-  router.post(route('Update Booking Contract', { band: props.band.id, booking: props.booking.id }), 
+  router.post(route('Update Booking Contract', { band: props.band.id, booking: props.booking.id }),
   { custom_terms: terms.value },
   {
     preserveState: true,
@@ -50,11 +50,12 @@ const saveContract = async () => {
 }
 
 const generatePDF = async () => {
+await saveContract();
   Inertia.get(route('Download Booking Contract', { band: props.band.id, booking: props.booking.id }));
 }
 // Navigation guard
 router.on('before', (event) => {
-  
+
   if (event.detail.visit.method === 'get' && unsavedChanges.value && !window.confirm('You have unsaved changes. Do you really want to leave?')) {
     event.preventDefault()
   }
