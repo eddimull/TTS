@@ -11,8 +11,27 @@
     <!-- Fonts -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap">
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-
+    <!-- @vite(['resources/css/app.css', 'resources/js/app.js']) -->
+    <script>
+        {!! file_get_contents(resource_path('tailwind/tailwind.min.js')) !!}
+    </script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Nunito'],
+                    },
+                    colors: {
+                        blue: {
+                            200: '#bee3f8',
+                            800: '#2c5282',
+                        }
+                    },
+                },
+            },
+        }
+    </script>
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="icon" type="image/png" href="favicon.png">
 </head>

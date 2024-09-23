@@ -16,13 +16,10 @@
         <span class="text-xl font-bold font-heading text-white">${{ booking.amountPaid }}</span>
       </div>
       <div class="flex mb-10 justify-between items-center">
-        <span class="text-xl font-bold font-heading text-white">Payments Left</span>
+        <span class="text-xl font-bold font-heading text-white">Payment Left</span>
         <span class="text-xl font-bold font-heading text-white">${{ booking.amountLeft }}</span>
       </div>
-      <div
-        v-if="booking.amountLeft === '0.00'"
-        class="text-2xl font-bold font-heading text-white text-center"
-      >
+      <div v-if="booking.amountLeft === '0.00'" class="text-2xl font-bold font-heading text-white text-center">
         <span class="underline">PAID</span> <i class="pi pi-check" />
       </div>
     </div>

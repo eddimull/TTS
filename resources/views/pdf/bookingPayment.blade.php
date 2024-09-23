@@ -12,7 +12,7 @@
     </x-pdf.header>
     <x-pdf.section>
         <x-pdf.sectionheader>
-            Contract Information - {{ $booking->name}}
+            Contract Information - {{$booking->name}}
         </x-pdf.sectionheader>
         <div class="px-12 mt-4">
             <div class="flex flex-row justify-evenly">
@@ -33,7 +33,7 @@
                         <x-slot name="title">
                             Venue
                         </x-slot>
-                        {{$booking->venue}}
+                        {{$booking->venue_name}}
                     </x-pdf.sectionitem>
                     <x-pdf.sectionitem>
                         <x-slot name="title">
