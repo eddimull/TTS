@@ -1,7 +1,12 @@
 <template>
-    <Link :href="href" :class="classes" preserve-scroll preserve-state>
+  <Link
+    :href="href"
+    :class="classes"
+    preserve-scroll
+    preserve-state
+  >
     <slot />
-    </Link>
+  </Link>
 </template>
 
 <script setup>
@@ -25,6 +30,5 @@ const page = usePage()
 
 router.on('navigate', (event) => {
     page.props.url = event.detail?.page?.url
-
 })
 </script>
