@@ -183,7 +183,7 @@ class migrateProposalsToBookings extends Command
             $booking->payments()->create([
                 'name' => $payment->name,
                 'band_id' => $proposal->band_id,
-                'amount' => $payment->amount,
+                'amount' => $payment->amount / 100,
                 'date' => $payment->paymentDate,
                 'user_id' => 3 //this might look static, but fortunately only 1 user has added payments
             ]);
