@@ -10,13 +10,14 @@ class FinancesController extends Controller
 {
     public function index()
     {
-        $user = Auth::user();
-        $bands = $user->bandOwner;
+        return \redirect()->route('Revenue');
+        // $user = Auth::user();
+        // $bands = $user->bandOwner;
 
-        $financeServices = new FinanceServices();
-        $financialData = $this->getFinancialData($bands, $financeServices);
+        // $financeServices = new FinanceServices();
+        // $financialData = $this->getFinancialData($bands, $financeServices);
 
-        return Inertia::render('Finances/Index', $financialData);
+        // return Inertia::render('Finances/Index', $financialData);
     }
 
     public function paidUnpaid()

@@ -29,7 +29,7 @@
               <breeze-nav-link
                 v-if="navigation && navigation.Bookings"
                 :href="route('Bookings Home')"
-                :active="route().current('Bookings Home')"
+                :active="route().current().indexOf('Booking') > -1"
               >
                 Booking
               </breeze-nav-link>
@@ -50,7 +50,7 @@
               <breeze-nav-link
                 v-if="navigation && navigation.Invoices"
                 :href="route('finances')"
-                :active="route().current('finances')"
+                :active="route().current('finances') || $page.props?.url?.includes('/finances')"
               >
                 Finances
               </breeze-nav-link>
