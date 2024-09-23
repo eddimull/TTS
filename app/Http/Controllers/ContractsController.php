@@ -6,6 +6,7 @@ use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\Contracts;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Requests\StoreContractsRequest;
 use App\Http\Requests\UpdateContractsRequest;
@@ -79,7 +80,7 @@ class ContractsController extends Controller
      */
     public function update(UpdateContractsRequest $request, Bands $band, Bookings $booking)
     {
-        $contract = $booking->contract;
+        $contract = $booking->contract()->firstOrCreate([], ['author_id' => Auth::id()]);
 
         $contract->update($request->validated());
 
