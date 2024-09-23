@@ -150,6 +150,28 @@ class BookingsController extends Controller
         return view('pdf.bookingPayment', ['booking' => $booking]);
     }
 
+    public function downloadContract(Bands $band, Bookings $booking)
+    {
+        $contractPDF = $booking->getContractPdf();
+        return $contractPDF;
+        if ($contractPDF === null)
+        {
+            // Handle the error, e.g., return an error response
+            return response('Failed to generate PDF', 500);
+        }
+
+        return Response::streamDownload(
+            function () use ($contractPDF)
+            {
+                echo $contractPDF;
+            },
+            Str::slug($booking->name . '_Contract', '_') . '.pdf',
+            [
+                'Content-type' => 'application/pdf'
+            ]
+        );
+    }
+
     public function destroy(Bands $band, Bookings $booking)
     {
         $booking->delete();
