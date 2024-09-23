@@ -47,7 +47,7 @@ Route::middleware(['auth', 'verified'])->group(function ()
         ->name('Booking Contract')
         ->middleware('booking.access');
 
-    Route::get('bands/{band}/booking/{booking}/contract/download', [ContractsController::class, 'downloadBookingContract'])
+    Route::get('bands/{band}/booking/{booking}/contract/download', [BookingsController::class, 'downloadContract'])
         ->name('Download Booking Contract')
         ->middleware('booking.access');
 
