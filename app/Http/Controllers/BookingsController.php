@@ -124,22 +124,21 @@ class BookingsController extends Controller
     {
         // $booking->payments = $booking->payments;
 
-        $paymentPDF = $booking->getPdf();
-
+        $paymentPDF = $booking->getPaymentPdf();
         if ($paymentPDF === null)
         {
             // Handle the error, e.g., return an error response
             return response('Failed to generate PDF', 500);
         }
 
-        return response()->download('/tmp/test.pdf', 'test.pdf');
+        // return response()->download('/tmp/test.pdf', 'test.pdf');
 
         return Response::streamDownload(
             function () use ($paymentPDF)
             {
                 echo $paymentPDF;
             },
-            Str::slug($booking->name . ' Receipt', '_') . '.pdf',
+            Str::slug($booking->name . '_Receipt', '_') . '.pdf',
             [
                 'Content-type' => 'application/pdf'
             ]

@@ -86,6 +86,13 @@ class ContractsController extends Controller
         return redirect()->back()->with('successMessage', 'Contract Saved.');
     }
 
+    public function downloadBookingContract(Bands $band, Bookings $booking)
+    {
+        // return 'test';
+        $contract = $booking->contract;
+        dd($contract);
+    }
+
     /**
      * Remove the specified resource from storage.
      */
