@@ -1,10 +1,10 @@
-@extends('layouts.PDF', ['style' => 'size: legal; width: 1280px;'])
+@extends('layouts.PDF', ['bodyStyle' => 'size: legal; width: 1200px;', 'contentClasses' => ''])
 @section('content')
 <x-pdf.contractHeader>
     <img
         src="{{ $booking->band->logo }}"
         alt="Band Logo"
-        class="max-w-[200px] max-h-[100px] mx-auto">
+        class="max-w-[200px] max-h-[100px] mx-auto" />
 </x-pdf.contractHeader>
 <x-pdf.section>
     <strong>{{ $booking->band->name }}</strong> (hereinafter referred to as "Artist"), enter into this Agreement
@@ -83,7 +83,7 @@
             <strong class="underline">{{ $booking->contacts[0]->name }}</strong> - <strong>{{ date('m/d/Y') }}</strong>
         </div>
         <div class="mt-4">
-            Signature: ___________________________
+            Signature: {signature:user___________________________}
         </div>
     </div>
 </x-pdf.section>
