@@ -36,16 +36,15 @@ trait BookingTraits
 
     public function getContractPdf()
     {
-        return view('pdf.bookingContract', ['booking' => $this]);
-        $renderedView = view('pdf.bookingPayment', ['booking' => $this])->render();
+        $renderedView = view('pdf.bookingContract', ['booking' => $this])->render();
         $tempPath = storage_path('app/temp_pdf_' . uniqid() . '.pdf');
         Browsershot::html($renderedView)
             ->setNodeBinary(config('browsershot.node_binary'))
             ->setNpmBinary(config('browsershot.npm_binary'))
             ->setOption('args', ['--no-sandbox', '--disable-setuid-sandbox'])
             ->setOption('executablePath', config('browsershot.executablePath'))
-            ->format('Legal')
             ->showBackground()
+            ->taggedPdf()
             ->savePdf($tempPath);
 
         return file_get_contents($tempPath);

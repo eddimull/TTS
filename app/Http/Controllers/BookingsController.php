@@ -153,7 +153,6 @@ class BookingsController extends Controller
     public function downloadContract(Bands $band, Bookings $booking)
     {
         $contractPDF = $booking->getContractPdf();
-        return $contractPDF;
         if ($contractPDF === null)
         {
             // Handle the error, e.g., return an error response

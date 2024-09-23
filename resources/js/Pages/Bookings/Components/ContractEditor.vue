@@ -22,6 +22,7 @@ import 'svg2pdf.js';
 import html2pdf from 'html2pdf.js';
 import EditableContractWYSIWYG from './EditableContractWYSIWYG.vue'
 import InitialTerms from './InitialTerms.json'
+import { Inertia } from '@inertiajs/inertia';
 
 const props = defineProps({
   booking: Object,
@@ -49,51 +50,8 @@ const saveContract = async () => {
 }
 
 const generatePDF = async () => {
-      const element = document.querySelector('.contract-content')
-
-      try {
-        await document.fonts.ready
-
-        const scale = 2 // Increase for higher quality, decrease for smaller file size
-        const canvas = await html2canvas(element, {
-          scale: scale,
-          useCORS: true,
-          logging: false,
-          allowTaint: true
-        })
-
-        const imgData = canvas.toDataURL('image/jpeg', 0.75) // Use JPEG with 75% quality
-        
-        const pdfWidth = 210 // A4 width in mm
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width
-
-        const pdf = new jsPDF({
-          orientation: 'p',
-          unit: 'mm',
-          format: [pdfWidth, pdfHeight],
-          compress: true
-        })
-
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, '', 'FAST')
-
-        pdf.save('performance_agreement.pdf')
-      } catch (error) {
-        console.error('Error generating PDF:', error)
-        throw error
-      }
-    }
-
-
-function checkFontsLoaded() {
-  return document.fonts.ready.then(() => {
-    const nunitoLoaded = document.fonts.check('1em Nunito');
-    if (!nunitoLoaded) {
-      console.warn('Nunito font not loaded');
-    }
-    return nunitoLoaded;
-  });
+  Inertia.get(route('Download Booking Contract', { band: props.band.id, booking: props.booking.id }));
 }
-
 // Navigation guard
 router.on('before', (event) => {
   
