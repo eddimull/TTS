@@ -84,7 +84,7 @@ class BookingsController extends Controller
 
     public function storeContact(BookingContactRequest $request, Bands $band, Bookings $booking)
     {
-        $booking->contacts()->create($request->validated());
+        $booking->contacts()->create($request->validated() + ['band_id' => $band->id]);
         return redirect()->back()->with('successMessage', "{$request->name} has been added.");
     }
 
