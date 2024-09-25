@@ -119,6 +119,12 @@ class BookingsController extends Controller
         return redirect()->back()->with('successMessage', 'Payment has been added.');
     }
 
+    public function destroyPayment(Bands $band, Bookings $booking, $payment)
+    {
+        $booking->payments()->find($payment)->delete();
+        return redirect()->back()->with('successMessage', 'Payment has been removed.');
+    }
+
     public function receipt(Bands $band, Bookings $booking)
     {
         // $booking->payments = $booking->payments;
@@ -173,7 +179,7 @@ class BookingsController extends Controller
     public function destroy(Bands $band, Bookings $booking)
     {
         $booking->delete();
-        return redirect()->route('Bookings Home');
+        return redirect()->route('Bookings Home')->with('successMessage', "{$booking->name} has been deleted.");
     }
 
     public function contract(Bands $band, Bookings $booking)
