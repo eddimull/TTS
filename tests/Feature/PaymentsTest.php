@@ -12,7 +12,9 @@ use App\Models\Proposals;
 use App\Models\BandOwners;
 use App\Models\Bookings;
 use App\Models\ProposalPayments;
+use App\Policies\BookingsPolicy;
 use Carbon\Carbon;
+use Database\Factories\BookingsFactory;
 use Illuminate\Support\Facades\Mail;
 
 class PaymentsTest extends TestCase
@@ -57,20 +59,26 @@ class PaymentsTest extends TestCase
     public function test_deletePayment()
     {
 
-        $paymentName = 'Should Be Deleted ' . Carbon::now()->timestamp;
-        $payment = ProposalPayments::factory()->create([
-            'name' => $paymentName,
+        $booking = Bookings::factory()->create([
+            'price' => 100000
         ]);
-        $proposal = $payment->proposal;
-        $user = $payment->proposal->author;
 
-        $response = $this->actingAs($user)->delete('/proposals/' . $proposal->key . '/deletePayment/' . $payment->id);
+        $owner = $booking->band->owner[0]->user;
 
+        $paymentName = 'Should Be Deleted ' . Carbon::now()->timestamp;
+        $payment = $booking->payments()->create([
+            'name' => $paymentName,
+            'date' => now(),
+            'band_id' => $booking->band_id,
+            'amount' => 500
+        ]);
+
+        $response = $this->actingAs($owner)->delete("/bands/{$booking->band->id}/booking/{$booking->id}/finances/" . $payment->id);
         $response->assertSessionHas(['successMessage']);
 
         $this->assertDatabaseMissing('payments', [
             'name' => $paymentName,
-            'proposal_id' => $proposal->id
+            'payable_id' => $booking->id
         ]);
     }
 

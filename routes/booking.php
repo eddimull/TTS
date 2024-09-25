@@ -58,5 +58,9 @@ Route::middleware(['auth', 'verified'])->group(function ()
     Route::post('bands/{band}/booking/{booking}/finances', [BookingsController::class, 'storePayment'])
         ->name('Store Booking Payment')
         ->middleware('booking.access');
+
+    Route::delete('bands/{band}/booking/{booking}/finances/{payment}', [BookingsController::class, 'destroyPayment'])
+        ->name('Delete Booking Payment')
+        ->middleware('booking.access');
 });
 Route::get('{booking}/downloadReceiptPDF', [BookingsController::class, 'paymentPDF'])->name('bookingpaymentpdf');
