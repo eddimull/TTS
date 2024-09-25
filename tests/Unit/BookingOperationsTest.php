@@ -109,16 +109,17 @@ class BookingOperationsTest extends TestCase
     {
         // Create a booking with a price of 1000
         $booking = Bookings::factory()->create([
-            'price' => 1000
+            'price' => 100000
         ]);
 
         // Initially, the booking should not be paid
         $this->assertFalse($booking->is_paid);
 
         // Add a payment of 500
-        Payments::factory()->create([
-            'payable_id' => $booking->id,
-            'payable_type' => Bookings::class,
+        $booking->payments()->create([
+            'name' => 'Test Payment',
+            'date' => now(),
+            'band_id' => $booking->band_id,
             'amount' => 500
         ]);
 
@@ -129,9 +130,10 @@ class BookingOperationsTest extends TestCase
         $this->assertFalse($booking->is_paid);
 
         // Add another payment of 500
-        Payments::factory()->create([
-            'payable_id' => $booking->id,
-            'payable_type' => Bookings::class,
+        $booking->payments()->create([
+            'name' => 'Test Payment',
+            'date' => now(),
+            'band_id' => $booking->band_id,
             'amount' => 500
         ]);
 
@@ -142,9 +144,10 @@ class BookingOperationsTest extends TestCase
         $this->assertTrue($booking->is_paid);
 
         // Add an extra payment of 100
-        Payments::factory()->create([
-            'payable_id' => $booking->id,
-            'payable_type' => Bookings::class,
+        $booking->payments()->create([
+            'name' => 'Test Payment',
+            'date' => now(),
+            'band_id' => $booking->band_id,
             'amount' => 100
         ]);
 
