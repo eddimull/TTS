@@ -56,8 +56,7 @@ class BookingsController extends Controller
     public function store(StoreBookingsRequest $request, Bands $band)
     {
         $booking = $band->bookings()->create($request->validated());
-        Contracts::create([
-            'booking_id' => $booking->id,
+        $booking->contract()->create([
             'author_id' => Auth::id(),
         ]);
 
