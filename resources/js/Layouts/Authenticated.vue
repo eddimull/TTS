@@ -509,7 +509,7 @@ export default {
             if (this.$page.props.errors !== null && Object.keys(this.$page.props.errors).length > 0) {
                 const errors = this.$page.props.errors;
                 for (const i in errors) {
-                    this.$toast.add({ severity: 'error', summary: 'Error', detail: errors[i], life: 3000 });
+                    this.$toast.add({ severity: 'error', summary: 'Error', detail: errors[i], life: 30000 });
                 };
             }
 

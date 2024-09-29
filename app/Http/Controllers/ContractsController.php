@@ -94,6 +94,28 @@ class ContractsController extends Controller
         dd($contract);
     }
 
+    public function sendBookingContract(Bands $band, Bookings $booking)
+    {
+        $booking->storeContractPdf();
+        $contract = $booking->contract;
+
+
+        if (!$contract)
+        {
+            return redirect()->back()->withErrors(['Contract not found' => 'No contract found for this booking.']);
+        }
+
+        try
+        {
+            $result = $contract->sendToPandaDoc();
+            return redirect()->back()->with('successMessage', 'Contract sent successfully to PandaDoc.');
+        }
+        catch (\Exception $e)
+        {
+            return redirect()->back()->withErrors(['Failed to send contract:' => $e->getMessage()]);
+        }
+    }
+
     /**
      * Remove the specified resource from storage.
      */

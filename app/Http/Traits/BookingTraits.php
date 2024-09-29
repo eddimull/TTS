@@ -6,6 +6,7 @@ use App\Mail\PaymentMade;
 use Illuminate\Support\Facades\URL;
 use Spatie\Browsershot\Browsershot;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 trait BookingTraits
 {
@@ -48,5 +49,20 @@ trait BookingTraits
             ->savePdf($tempPath);
 
         return file_get_contents($tempPath);
+    }
+
+    public function storeContractPdf()
+    {
+        $contractPdf = $this->getContractPdf();
+        $contractPath = $this->band->site_name . '/contracts/' . $this->name . '_contract_' . time() . '.pdf';
+
+        Storage::disk('s3')->put(
+            $contractPath,
+            $contractPdf,
+            ['visibility' => 'public']
+        );
+
+        $this->contract->asset_url = Storage::disk('s3')->url($contractPath);
+        $this->contract->save();
     }
 }

@@ -6,16 +6,17 @@ use Carbon\Carbon;
 use Inertia\Inertia;
 use App\Models\Bands;
 use App\Models\Bookings;
+use App\Models\Contacts;
+use App\Models\Contracts;
 use App\Models\EventTypes;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Response;
 use App\Models\BookingContacts;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Response;
 use App\Http\Requests\StoreBookingsRequest;
 use App\Http\Requests\UpdateBookingsRequest;
 use App\Http\Requests\StoreBookingPaymentRequest;
 use App\Http\Requests\BookingContact as BookingContactRequest;
-use App\Models\Contracts;
 
 class BookingsController extends Controller
 {
@@ -83,7 +84,14 @@ class BookingsController extends Controller
 
     public function storeContact(BookingContactRequest $request, Bands $band, Bookings $booking)
     {
-        $booking->contacts()->create($request->validated() + ['band_id' => $band->id]);
+        $contact = Contacts::firstOrCreate(
+            ['email' => $request->email],
+            $request->only(['name', 'phone']) + ['band_id' => $band->id]
+        );
+
+        $booking->contacts()->syncWithoutDetaching([
+            $contact->id => $request->only(['role', 'is_primary', 'notes', 'additional_info'])
+        ]);
         return redirect()->back()->with('successMessage', "{$request->name} has been added.");
     }
 

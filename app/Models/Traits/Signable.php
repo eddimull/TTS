@@ -14,14 +14,19 @@ trait Signable
 
         try
         {
+
             $response = Http::withHeaders([
                 'Authorization' => 'API-Key ' . $apiKey,
                 'Content-Type' => 'application/json',
             ])->post($apiUrl, [
                 'name' => $this->getContractName(),
+                'tags' => [
+                    $this->contractable->band->name
+                ],
                 'url' => $this->getPdfUrl(),
                 'recipients' => $this->getContractRecipients(),
                 'fields' => $this->getSignatureFields(),
+                'parse_form_fields' => false,
             ]);
 
             if ($response->successful())
@@ -30,6 +35,8 @@ trait Signable
                     'envelope_id' => $response->json('id'),
                     'status' => 'sent'
                 ]);
+
+                $this->pollDocumentAndSendToRecipients($response->json('id'));
                 return $response->json();
             }
 
@@ -41,6 +48,21 @@ trait Signable
             Log::error('Exception while sending document to PandaDoc: ' . $e->getMessage());
             throw $e;
         }
+    }
+
+    private function pollDocumentAndSendToRecipients($uploadedDocumentId)
+    {
+        //this can be improved by waiting for a webhook from pandadoc
+        //instead of, ya know. sleeping.
+        sleep(8);
+        $apiKey = config('services.pandadoc.api_key');
+
+        Http::withHeaders([
+            'Authorization' => 'API-Key '  . $apiKey
+        ])->post('https://api.pandadoc.com/public/v1/documents/' . $uploadedDocumentId . '/send', [
+            "message" => 'Please sign this contract so we can make this official!',
+            "subject" => 'Contract for ' . $this->contractable->name
+        ]);
     }
 
     abstract public function getPdfUrl(): string;
