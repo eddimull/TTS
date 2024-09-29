@@ -5,12 +5,13 @@ namespace App\Models;
 use App\Casts\Price;
 use App\Http\Traits\BookingTraits;
 use App\Models\Contracts;
+use App\Models\Interfaces\Contractable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class Bookings extends Model
+class Bookings extends Model implements Contractable
 {
     use HasFactory;
     use BookingTraits;
@@ -138,5 +139,15 @@ class Bookings extends Model
             ->selectRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id) as amount_paid', [Bookings::class])
             ->whereRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id) >= bookings.price', [Bookings::class])
             ->withCasts(['amount_paid' => Price::class, 'price' => Price::class])->get();
+    }
+
+    public function getContractRecipients(): array
+    {
+        return $this->contacts->toArray();
+    }
+
+    public function getContractName(): string
+    {
+        return $this->name;
     }
 }
