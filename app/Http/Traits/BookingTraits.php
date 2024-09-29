@@ -49,5 +49,4 @@ trait BookingTraits
 
         return file_get_contents($tempPath);
     }
-    
 }
