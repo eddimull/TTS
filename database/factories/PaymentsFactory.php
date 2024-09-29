@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Bookings;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -18,6 +19,8 @@ class PaymentsFactory extends Factory
     {
         return [
             'name' => $this->faker->name(),
+            'payable_type' => Bookings::class,
+            'payable_id' => Bookings::factory(),
             'amount' => $this->faker->numberBetween(100, 10000),
             'date' => $this->faker->dateTimeThisYear(),
             'band_id' => \App\Models\Bands::factory(),
