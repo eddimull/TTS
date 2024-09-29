@@ -143,11 +143,19 @@ class Bookings extends Model implements Contractable
 
     public function getContractRecipients(): array
     {
-        return $this->contacts->toArray();
+        return $this->contacts->map(function ($contact)
+        {
+            return [
+                'email' => $contact->email,
+                'first_name' => explode(' ', $contact->name)[0],
+                'last_name' => explode(' ', $contact->name)[1] ?? '',
+                'role' => 'signer',
+            ];
+        })->toArray();
     }
 
     public function getContractName(): string
     {
-        return $this->name;
+        return "Contract for {$this->name} - {$this->band->name}";
     }
 }

@@ -2,22 +2,24 @@
 
 namespace Database\Factories;
 
+use App\Models\Contracts;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Contracts>
- */
 class ContractsFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
-    public function definition(): array
+    protected $model = Contracts::class;
+
+    public function definition()
     {
         return [
-            //
+            'envelope_id' => $this->faker->uuid,
+            'author_id' => \App\Models\User::factory(),
+            'status' => 'pending',
+            'asset_url' => $this->faker->url,
+            'custom_terms' => [
+                ['title' => 'Term 1', 'content' => 'Content 1'],
+                ['title' => 'Term 2', 'content' => 'Content 2'],
+            ],
         ];
     }
 }

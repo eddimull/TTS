@@ -12,7 +12,9 @@ RUN apt-get update && apt-get install -y  \
     phpize && \
     ./configure && \
     make && \
-    make install
+    make install && \
+    pecl install pcov && \
+    docker-php-ext-enable pcov
 
 
 # Final stage
@@ -28,7 +30,7 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     wkhtmltopdf \
     --no-install-recommends \
-    && docker-php-ext-enable imagick \
+    && docker-php-ext-enable imagick pcov \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
