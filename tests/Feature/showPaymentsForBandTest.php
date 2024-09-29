@@ -15,6 +15,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class showPaymentsForBandTest extends TestCase
 {
+    use RefreshDatabase;
     /**
      * gets a list of payments for a band
      *
