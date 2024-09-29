@@ -17,7 +17,7 @@ class TimeCast implements CastsAttributes
      */
     public function get($model, string $key, $value, array $attributes)
     {
-        return $value->toTimeString();
+        return gettype($value) === 'string' ? $value : $value->toTimeString();
     }
 
     /**
