@@ -55,6 +55,10 @@ Route::middleware(['auth', 'verified'])->group(function ()
         ->name('Update Booking Contract')
         ->middleware('booking.access');
 
+    Route::post('bands/{band}/booking/{booking}/contract/send', [ContractsController::class, 'sendBookingContract'])
+        ->name('Send Booking Contract')
+        ->middleware('booking.access');
+
     Route::post('bands/{band}/booking/{booking}/finances', [BookingsController::class, 'storePayment'])
         ->name('Store Booking Payment')
         ->middleware('booking.access');

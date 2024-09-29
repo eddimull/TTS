@@ -37,7 +37,12 @@ class Contracts extends Model
 
     public function getSignatureFields(): array
     {
-        return $this->custom_terms ?? [];
+        return [
+            "name" => [
+                "value" => "{$this->contractable->getContractRecipients()[0]['first_name']} {$this->contractable->getContractRecipients()[0]['last_name']}",
+                "role" => "user"
+            ]
+        ];
     }
 
     public function getContractRecipients(): array

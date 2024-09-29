@@ -9,6 +9,8 @@ services:
             PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: true
             PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
             CHROME_CONFIG_HOME: '/tmp/.config'
+            XDG_CONFIG_HOME: "$WORKSPACE@tmp/.chromium"
+            XDG_CACHE_HOME: "$WORKSPACE@tmp/.chromium"
         working_dir: /var/www
         volumes:
             - ./:/var/www

@@ -15,6 +15,12 @@
             class="ml-4"
             @click="$emit('save')"
           />
+          <Button
+            icon="pi pi-send"
+            label="Send Contract"
+            class="ml-4"
+            @click="$emit('send-contract')"
+          />
         </template>
         <template #end>
           <Button
@@ -196,7 +202,7 @@ import { DateTime } from 'luxon';
     }
   });
 
-  const emit = defineEmits(['update:terms', 'save', 'generate-pdf']);
+  const emit = defineEmits(['update:terms', 'save', 'generate-pdf', 'send-contract']);
 
   const termsLocal = ref([]);
   const editMode = ref(false);

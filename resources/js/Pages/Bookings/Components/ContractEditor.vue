@@ -7,6 +7,7 @@
       @update:terms="updateTerms"
       @generate-pdf="generatePDF"
       @save="saveContract"
+      @send-contract="sendContract"
     />
   </div>
 </template>
@@ -60,6 +61,11 @@ router.on('before', (event) => {
     event.preventDefault()
   }
 })
+
+const sendContract = async () => {  
+  await saveContract();
+  Inertia.post(route('Send Booking Contract', { band: props.band.id, booking: props.booking.id }));
+}
 
 
 </script>
