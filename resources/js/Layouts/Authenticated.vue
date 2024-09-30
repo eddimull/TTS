@@ -41,25 +41,11 @@
                 Events
               </breeze-nav-link>
               <breeze-nav-link
-                v-if="navigation && navigation.Proposals"
-                :href="route('proposals')"
-                :active="route().current('proposals')"
-              >
-                Proposals
-              </breeze-nav-link>
-              <breeze-nav-link
                 v-if="navigation && navigation.Invoices"
                 :href="route('finances')"
                 :active="route().current('finances') || $page.props?.url?.includes('/finances')"
               >
                 Finances
-              </breeze-nav-link>
-              <breeze-nav-link
-                v-if="navigation && navigation.Colors"
-                :href="route('colors')"
-                :active="route().current('colors')"
-              >
-                Colors
               </breeze-nav-link>
               <breeze-nav-link
                 v-if="navigation && navigation.Charts"
@@ -316,13 +302,6 @@
             Events
           </breeze-responsive-nav-link>
           <breeze-responsive-nav-link
-            v-if="navigation && navigation.Proposals"
-            :href="route('proposals')"
-            :active="route().current('proposals')"
-          >
-            Proposals
-          </breeze-responsive-nav-link>
-          <breeze-responsive-nav-link
             v-if="navigation && navigation.Bookings"
             :href="route('Bookings Home')"
             :active="route().current('Bookings Home')"
@@ -330,26 +309,11 @@
             Booking
           </breeze-responsive-nav-link>
           <breeze-responsive-nav-link
-            v-if="navigation && navigation.Events"
-            class="pl-4"
-            :href="route('questionnaire')"
-            :active="route().current('questionnaire')"
-          >
-            Questionnaires
-          </breeze-responsive-nav-link>
-          <breeze-responsive-nav-link
             v-if="navigation && navigation.Invoices"
             :href="route('finances')"
             :active="route().current('finances')"
           >
             Finances
-          </breeze-responsive-nav-link>
-          <breeze-responsive-nav-link
-            v-if="navigation && navigation.Colors"
-            :href="route('colors')"
-            :active="route().current('colors')"
-          >
-            Colors
           </breeze-responsive-nav-link>
 
           <breeze-responsive-nav-link
