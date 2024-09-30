@@ -82,9 +82,13 @@
         <div>
             <strong class="underline">{{ $booking->contacts[0]->name }}</strong> - <strong>{{ date('m/d/Y') }}</strong>
         </div>
-        <div class="mt-4">
-            Signature: {signature:user___________________________}
+        <br />
+        <br />
+        <div>
+            <span>Signature:</span>
+            <div> {signature:user___________________________}</div>
         </div>
+
     </div>
 </x-pdf.section>
 @endsection
