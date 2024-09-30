@@ -17,6 +17,7 @@ use App\Http\Requests\StoreBookingsRequest;
 use App\Http\Requests\UpdateBookingsRequest;
 use App\Http\Requests\StoreBookingPaymentRequest;
 use App\Http\Requests\BookingContact as BookingContactRequest;
+use App\Http\Requests\UploadBookingContractRequest;
 
 class BookingsController extends Controller
 {
@@ -204,5 +205,11 @@ class BookingsController extends Controller
             'booking' => $booking,
             'band' => $band,
         ]);
+    }
+
+    public function uploadContract(UploadBookingContractRequest $request, Bands $band, Bookings $booking)
+    {
+        $booking->storeContractPdf($request->file('pdf')->get());
+        return redirect()->back()->with('successMessage', 'Contract has been uploaded.');
     }
 }

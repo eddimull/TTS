@@ -1,13 +1,5 @@
 <template>
   <Container class="p-4">
-    <div class="mb-6">
-      <h1 class="text-3xl font-bold text-gray-800">
-        Booking Details
-      </h1>
-      <p class="text-sm text-gray-500 mt-1">
-        Created on {{ booking.created_at }}
-      </p>
-    </div>
     <form
       class="space-y-6"
       @submit.prevent="updateBooking"

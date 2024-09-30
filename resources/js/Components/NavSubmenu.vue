@@ -1,34 +1,15 @@
-<script setup>
-import { computed } from 'vue';
-import TabMenu from 'primevue/tabmenu';
-import Link from '@/Components/NavLink.vue';
-import { usePage } from '@inertiajs/inertia-vue3';
-
-
-// Find the current route params
-const routeParameters = route().params;
-const props = defineProps({
-    routes: {
-        type: Object,
-        required: true
-    }
-});
-
-const items = computed(() => {
-    return Object.entries(props.routes).map(([name, routeInfo]) => ({
-        label: name,
-        route: routeInfo.uri,
-        href: route(name, routeParameters,false)
-    }));
-});
-
-</script>
-
 <template>
-  <div>
+  <div class="booking-layout">
+    <div class="booking-header p-4 border-b grid">
+      <h1 class="text-xl font-semibold text-gray-700">
+        <span class="text-blue-600">{{ booking.name }}</span>
+      </h1>
+      <span class="mt-0 text-xs text-gray-500">{{ booking.date }}</span>
+      <span class="mt-0 text-xs text-gray-500">Status: {{ booking.status }}</span>
+    </div>
     <TabMenu
       :model="items"
-      class="py-2"
+      class="pb-2 border-b"
     >
       <template #item="{ item }">
         <Link
@@ -49,3 +30,47 @@ const items = computed(() => {
     </TabMenu>
   </div>
 </template>
+
+<script setup>
+import { computed } from 'vue';
+import TabMenu from 'primevue/tabmenu';
+import Link from '@/Components/NavLink.vue';
+import { usePage } from '@inertiajs/inertia-vue3';
+
+
+// Find the current route params
+const routeParameters = route().params;
+const props = defineProps({
+    routes: {
+        type: Object,
+        required: true
+    },
+    booking: {
+        type: Object,
+        required: true
+    }
+});
+
+const items = computed(() => {
+    return Object.entries(props.routes).map(([name, routeInfo]) => ({
+        label: name,
+        route: routeInfo.uri,
+        href: route(name, routeParameters,false)
+    }));
+});
+
+</script>
+
+<style scoped>
+.booking-layout {
+    display: flex;
+    flex-direction: column;
+    /* min-height: 100vh; */
+}
+
+.booking-header {
+    background-color: #f8fafc; /* Very light gray background */
+    margin-left: -1rem;
+    margin-right: -1rem;
+}
+</style>

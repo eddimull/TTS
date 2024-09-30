@@ -28,6 +28,25 @@
       <p v-if="contact.pivot.notes">
         <strong>Notes:</strong> {{ contact.pivot.notes }}
       </p>
+      <p
+        v-if="contact.booking_history"
+        class="pt-4 border-t mt-4"
+      >
+        <strong>Booking History:</strong>
+        <ul class="indent-2 list-inside">
+          <li
+            v-for="history in contact.booking_history"
+            :key="history.booking_id"
+          >
+            <NavLink
+              
+              :href="route('Booking Details',[contact.band_id,history.booking_id])"
+            >
+              <strong>{{ history.booking_name }}</strong> - {{ history.date }}
+            </NavLink>
+          </li>
+        </ul>
+      </p>
       <div
         v-if="false"
         class="mt-4 space-x-2"
@@ -102,7 +121,7 @@
           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
         >
       </div>
-      <div class="flex items-center">
+      <div class="flex my-2 items-center">
         <input
           id="is_primary"
           v-model="form.is_primary"
@@ -152,6 +171,7 @@
   import Swal from 'sweetalert2';
   import Menu from 'primevue/menu';
   import Button from 'primevue/button';
+  import NavLink from '@/Components/NavLink.vue';
   
   const props = defineProps({
     contact: {
@@ -194,7 +214,7 @@
     email: props.contact.email,
     phone: props.contact.phone || '',
     role: props.contact.pivot.role,
-    is_primary: props.contact.pivot.is_primary,
+    is_primary: Boolean(props.contact.pivot.is_primary),
     notes: props.contact.pivot.notes || ''
   });
   
@@ -210,7 +230,7 @@
   const updateContact = () => {
     form.put(route('Update Booking Contact', [props.bandId, props.bookingId, props.contact.pivot.id]), {
       preserveScroll: true,
-      preserveState: true,
+      preserveState: false,
       onSuccess: () => {
         isEditing.value = false;
       },

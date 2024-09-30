@@ -27,3 +27,4 @@ storage/fonts/*
 wkhtmltox-0.12.6-1.amazonlinux2.x86_64.rpm
 yarn-error.log
 .local/share/applications/mimeapps.list
+@tmp/*
