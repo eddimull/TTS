@@ -96,7 +96,8 @@ class ContractsController extends Controller
 
     public function sendBookingContract(Bands $band, Bookings $booking)
     {
-        $booking->storeContractPdf();
+        $contractPdf = $booking->getContractPdf();
+        $booking->storeContractPdf($contractPdf);
         $contract = $booking->contract;
 
 

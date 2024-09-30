@@ -54,4 +54,10 @@ class Contracts extends Model
     {
         return $this->contractable->getContractName();
     }
+
+    public function uploadContract($pdf): void
+    {
+        $this->asset_url = $pdf->store('contracts', 'public');
+        $this->save();
+    }
 }

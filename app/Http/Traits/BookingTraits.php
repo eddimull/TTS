@@ -35,7 +35,7 @@ trait BookingTraits
         return file_get_contents($tempPath);
     }
 
-    public function getContractPdf()
+    public function getContractPdf(): string
     {
         $renderedView = view('pdf.bookingContract', ['booking' => $this])->render();
         $tempPath = storage_path('app/temp_pdf_' . uniqid() . '.pdf');
@@ -51,9 +51,8 @@ trait BookingTraits
         return file_get_contents($tempPath);
     }
 
-    public function storeContractPdf()
+    public function storeContractPdf(string $contractPdf)
     {
-        $contractPdf = $this->getContractPdf();
         $contractPath = $this->band->site_name . '/contracts/' . $this->name . '_contract_' . time() . '.pdf';
 
         Storage::disk('s3')->put(

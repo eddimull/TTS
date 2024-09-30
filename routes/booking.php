@@ -51,6 +51,10 @@ Route::middleware(['auth', 'verified'])->group(function ()
         ->name('Download Booking Contract')
         ->middleware('booking.access');
 
+    Route::post('bands/{band}/booking/{booking}/contract/upload', [BookingsController::class, 'uploadContract'])
+        ->name('Upload Booking Contract')
+        ->middleware('booking.access');
+
     Route::post('bands/{band}/booking/{booking}/contract/save', [ContractsController::class, 'update'])
         ->name('Update Booking Contract')
         ->middleware('booking.access');

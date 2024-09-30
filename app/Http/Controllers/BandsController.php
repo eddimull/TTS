@@ -236,4 +236,10 @@ class BandsController extends Controller
         ]);
         return \Redirect::away($account_links->url);
     }
+
+    public function contacts(Bands $band)
+    {
+        $band->load('contacts');
+        return $band->contacts;
+    }
 }

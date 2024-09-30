@@ -1,18 +1,23 @@
 <template>
-  <!-- <ContractForm
+  <ContractNone
+    v-if="booking.contract_option === 'none'"
+  />
+  <ContractExternal
+    v-if="booking.contract_option === 'external'"
     :booking="booking"
-    :band="band"
-  /> -->
+  />
   <ContractEditor
+    v-if="booking.contract_option === 'default'"
     :booking="booking"
     :band="band"
   />
 </template>
   
   <script setup>
-  import BookingLayout from './Layout/BookingLayout.vue'
-  import ContractForm from './Components/ContractForm.vue'
+  import BookingLayout from './Layout/BookingLayout.vue'  
   import ContractEditor from './Components/ContractEditor.vue'
+  import ContractNone from './Components/ContractNone.vue';
+  import ContractExternal from './Components/ContractExternal.vue';
 
   
   defineOptions({

@@ -116,4 +116,9 @@ class Bands extends Model
     {
         return $this->bookings()->paid();
     }
+
+    public function contacts()
+    {
+        return $this->hasMany(Contacts::class, 'band_id')->orderBy('name', 'asc');
+    }
 }
