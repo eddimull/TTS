@@ -149,7 +149,7 @@ class Bookings extends Model implements Contractable
                 'email' => $contact->email,
                 'first_name' => explode(' ', $contact->name)[0],
                 'last_name' => explode(' ', $contact->name)[1] ?? '',
-                'role' => 'signer',
+                'role' => 'user',
             ];
         })->toArray();
     }
