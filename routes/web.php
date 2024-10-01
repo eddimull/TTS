@@ -73,7 +73,7 @@ Route::patch('/events/{key}', [EventsController::class, 'update'])->middleware([
 Route::delete('/events/{key}', [EventsController::class, 'destroy'])->middleware(['auth', 'verified'])->name('events.destroy');
 Route::get('/events/createAdvance/{id}', [EventsController::class, 'createPDF'])->middleware(['auth', 'verified']);
 Route::get('/events/downloadPDF/{id}', [EventsController::class, 'downloadPDF'])->middleware(['auth', 'verified']);
-Route::get('/events/{event:event_key}/locationImage', [EventsController::class, 'getGoogleMapsImage'])->name('events.locationImage');
+Route::get('/events/{event:key}/locationImage', [EventsController::class, 'getGoogleMapsImage'])->name('events.locationImage');
 Route::post('/events/createContact/{event:event_key}', [EventsController::class, 'createContact'])->middleware(['auth', 'verified'])->name('events.createContact');
 Route::post('/events/editContact/{contact}', [EventsController::class, 'editContact'])->middleware(['auth', 'verified'])->name('events.editContact');
 Route::delete('/events/deleteContact/{contact}', [EventsController::class, 'deleteContact'])->middleware(['auth', 'verified'])->name('events.deleteContact');
