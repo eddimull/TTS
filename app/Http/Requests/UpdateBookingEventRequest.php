@@ -40,7 +40,7 @@ class UpdateBookingEventRequest extends FormRequest
             'additional_data.production_needed' => 'required|boolean',
             'notes' => 'nullable|string',
             'title' => 'required|string',
-            'time' => 'required|date_format:H:i:s',
+            'time' => 'required',
         ];
     }
 

@@ -224,9 +224,31 @@ class BookingsController extends Controller
         ]);
     }
 
-    public function updateEvent(UpdateBookingEventRequest $request, Bands $band, Bookings $booking, Events $event)
+    public function updateOrCreateEvent(UpdateBookingEventRequest $request, Bands $band, Bookings $booking, Events $event = null)
     {
-        $event->update($request->validated());
-        return redirect()->back()->with('successMessage', 'Event Updated');
+        $validatedData = $request->validated();
+
+        // If $event is null, it means we're creating a new event
+        if (!$event)
+        {
+            $event = $booking->events()->make([
+                'event_type_id' => $booking->event_type_id,
+                'key' => Str::uuid(),
+            ]);
+        }
+
+        // Update or create the event
+        $event->fill($validatedData);
+        $event->save();
+
+        $message = $event->wasRecentlyCreated ? 'Event Created' : 'Event Updated';
+
+        return redirect()->back()->with('successMessage', $message);
+    }
+
+    public function deleteEvent(Bands $band, Bookings $booking, Events $event)
+    {
+        $event->delete();
+        return redirect()->back()->with('successMessage', 'Event Deleted');
     }
 }
