@@ -292,7 +292,16 @@ class EventsController extends Controller
     {
         $venue_name = $event->eventable->venue_name;
         $venue_address = $event->eventable->venue_address;
-        return Http::get("https://maps.googleapis.com/maps/api/staticmap?api=1&center=" . urlencode($venue_name . ' ' . $venue_address) . '&size=400x400&key=' . config('googlemaps.key'));
+        $location = urlencode($venue_name . ' ' . $venue_address);
+
+        $url = "https://maps.googleapis.com/maps/api/staticmap?"
+            . "center={$location}"
+            . "&zoom=17"
+            . "&size=400x400"
+            . "&markers=color:red%7C{$location}"
+            . "&key=" . config('googlemaps.key');
+
+        return Http::get($url);
     }
     /**
      * Remove the specified resource from storage.
