@@ -23,6 +23,10 @@ Route::middleware(['auth', 'verified'])->group(function ()
         ->name('Booking Receipt')
         ->middleware('booking.access');
 
+    Route::get('bands/{band}/booking/{booking}/events', [BookingsController::class, 'events'])
+        ->name('Booking Events')
+        ->middleware('booking.access');
+
     Route::get('bands/{band}/booking/{booking}/contacts', [BookingsController::class, 'contacts'])
         ->name('Booking Contacts')
         ->middleware('booking.access');
@@ -69,6 +73,10 @@ Route::middleware(['auth', 'verified'])->group(function ()
 
     Route::delete('bands/{band}/booking/{booking}/finances/{payment}', [BookingsController::class, 'destroyPayment'])
         ->name('Delete Booking Payment')
+        ->middleware('booking.access');
+
+    Route::post('bands/{band}/booking/{booking}/events/{event}', [BookingsController::class, 'updateEvent'])
+        ->name('Update Booking Event')
         ->middleware('booking.access');
 });
 Route::get('{booking}/downloadReceiptPDF', [BookingsController::class, 'paymentPDF'])->name('bookingpaymentpdf');
