@@ -76,28 +76,20 @@ $street = implode(', ', $parts);
                 $additionalData = $event->additional_data;
 
                 // Extract times from additional_data
-                $additionalTimes = (array) ($additionalData->times ?? new stdClass());
+                $additionalTimes = (array) ($additionalData->times ?? []);
 
-                $times = array_merge([
-                'production_loadin_time' => $event->production_loadin_time ?? $additionalTimes['production_loadin_time'] ?? null,
-                'rhythm_loadin_time' => $event->rhythm_loadin_time ?? $additionalTimes['rhythm_loadin_time'] ?? null,
-                'band_loadin_time' => $event->band_loadin_time ?? $additionalTimes['band_loadin_time'] ?? null,
-                'quiet_time' => $event->quiet_time ?? $additionalTimes['quiet_time'] ?? null,
-                'event_time' => $event->event_time ?? null,
-                'end_time' => $event->end_time ?? $additionalTimes['end_time'] ?? null,
-                ], $additionalTimes);
+                // Start with show_time as the only fixed time
+                $times = [
+                'show_time' => $event->time ?? null,
+                ];
 
-                $loadInTimes = array_filter($times, function($key) {
-                return strpos($key, 'loadin') !== false;
-                }, ARRAY_FILTER_USE_KEY);
-
-                $otherTimes = array_filter($times, function($key) {
-                return strpos($key, 'loadin') === false;
-                }, ARRAY_FILTER_USE_KEY);
-
-                if (($event->type->name ?? '') === 'Wedding') {
-                $otherTimes['ceremony_time'] = $additionalTimes['ceremony_time'] ?? $event->ceremony_time ?? null;
+                // Add all additional times
+                foreach ($additionalTimes as $key => $value) {
+                $times[$key] = $value;
                 }
+
+                // Remove null values
+                $times = array_filter($times);
 
                 function formatTime($time) {
                 if (is_string($time)) {
@@ -110,41 +102,43 @@ $street = implode(', ', $parts);
                 return 'N/A';
                 }
                 }
+
+                // Convert all times to timestamps for sorting
+                $sortableTimes = array_map(function($time) {
+                if (is_string($time)) {
+                return strtotime($time);
+                } elseif ($time instanceof DateTime) {
+                return $time->getTimestamp();
+                } elseif (is_object($time) && isset($time->date)) {
+                return strtotime($time->date);
+                } else {
+                return PHP_INT_MAX; // Put invalid times at the end
+                }
+                }, $times);
+
+                // Sort times
+                asort($sortableTimes);
+
+                // Prepare sorted times for display
+                $sortedTimes = [];
+                foreach ($sortableTimes as $key => $timestamp) {
+                if ($timestamp !== PHP_INT_MAX) {
+                $sortedTimes[$key] = $times[$key];
+                }
+                }
                 @endphp
 
-                @foreach ($loadInTimes as $key => $time)
-                @if ($time)
+                @foreach ($sortedTimes as $key => $time)
                 <div class="border text-center">{{ formatTime($time) }}</div>
-                <div class="border px-2">{{ ucwords(str_replace('_', ' ', $key)) }}</div>
-                @endif
-                @endforeach
-
-                @foreach ($otherTimes as $key => $time)
-                @if ($time)
-                <div class="border text-center">{{ formatTime($time) }}</div>
-                @if ($key === 'ceremony_time')
-                <div class="border px-2">{{ $additionalData->onsite ? 'Onsite ceremony' : 'Ceremony Offsite' }}</div>
-                @else
-                <div class="border px-2 uppercase">{{ str_replace('_', ' ', $key) }}</div>
-                @endif
-                @endif
+                <div class="border px-2 {{ $key === 'show_time' ? 'font-bold' : '' }}">
+                    @if ($key === 'ceremony_time')
+                    {{ $additionalData->onsite ?? false ? 'Onsite ceremony' : 'Ceremony Offsite' }}
+                    @else
+                    {{ ucwords(str_replace('_', ' ', $key)) }}
+                    @endif
+                </div>
                 @endforeach
             </div>
-
-            @if (isset($additionalData->color))
-            <div class="-ml-2 font-bold mt-4">Attire:</div>
-            <div class="border p-2">{!! $additionalData->color !!}</div>
-            @endif
-
-            @if (isset($additionalData->dances) && $event->type->name === 'Wedding')
-            <div class="-ml-2 font-bold mt-4">Dances:</div>
-            <div class="grid grid-cols-2 border">
-                @foreach ((array)$additionalData->dances as $dance => $details)
-                <div class="border px-2 font-semibold">{{ ucwords(str_replace('_', ' ', $dance)) }}</div>
-                <div class="border px-2">{{ $details }}</div>
-                @endforeach
-            </div>
-            @endif
         </div>
         <div class="px-6 mb-4">
             <div class="-ml-2 font-bold">Details:</div>
