@@ -22,7 +22,7 @@
         >
       </div>
       <div>
-        <label class="block mb-2">Time</label>
+        <label class="block mb-2">Time (start time)</label>
         <input
           v-model="event.time"
           type="time"
