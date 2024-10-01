@@ -2,23 +2,25 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\EventRequest;
-use App\Models\BandEvents;
-use App\Models\Bands;
-use App\Models\EventContacts;
-use App\Models\EventTypes;
-use App\Models\State;
-use App\Notifications\TTSNotification;
-use App\Services\CalendarService;
-use Carbon\Carbon;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Config;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Str;
-use Inertia\Inertia;
 use PDF;
+use Carbon\Carbon;
+use Inertia\Inertia;
+use App\Models\Bands;
+use App\Models\State;
+use App\Models\Events;
+use App\Models\BandEvents;
+use App\Models\EventTypes;
+use Illuminate\Support\Str;
+use Illuminate\Http\Request;
+use App\Models\EventContacts;
+use App\Services\CalendarService;
+use App\Http\Requests\EventRequest;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use App\Notifications\TTSNotification;
+use Event;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Notification;
 use Spatie\GoogleCalendar\Event as CalendarEvent;
 
 class EventsController extends Controller
@@ -60,18 +62,18 @@ class EventsController extends Controller
     }
     public function advance($key)
     {
-        $event = BandEvents::where('event_key', $key)->first();
+        $event = Events::where('key', $key)->first();
 
         if (!$event)
         {
             abort(404, 'Event not found');
         }
 
-        // Load relationships if they're not already loaded
-        $event->load(['band', 'state', 'colorway']);
+        $event->band = $event->eventable->band;
 
+        $event->type = $event->type;
         // Add event_type_name to the event object
-        $event->event_type_name = $event->event_type;
+        $event->event_type_name = $event->eventType;
 
         // Uncomment the following line if you want to use Inertia instead of the default View
         // return Inertia::render('Events/Advance', ['event' => $event]);
@@ -286,9 +288,11 @@ class EventsController extends Controller
         return $endDateTime;
     }
 
-    public function getGoogleMapsImage(BandEvents $event)
+    public function getGoogleMapsImage(Events $event)
     {
-        return Http::get("https://maps.googleapis.com/maps/api/staticmap?api=1&center=" . urlencode($event->venue_name . ' ' . $event->address_street . ' ' . $event->city . ', ' . $event->state->state_name . ' ' . $event->zip) . '&size=400x400&key=' . $_ENV['GOOGLE_STATIC_MAP_KEY']);
+        $venue_name = $event->eventable->venue_name;
+        $venue_address = $event->eventable->venue_address;
+        return Http::get("https://maps.googleapis.com/maps/api/staticmap?api=1&center=" . urlencode($venue_name . ' ' . $venue_address) . '&size=400x400&key=' . config('googlemaps.key'));
     }
     /**
      * Remove the specified resource from storage.

@@ -9,7 +9,7 @@
     <event-body :event="event" />
     <event-footer :event="event" />
   </div>
-</template>
+</template> 
 <script setup>
 import { computed } from 'vue'
 import eventHeader from './Event/Card/Header.vue'

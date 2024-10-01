@@ -36,6 +36,11 @@ class Events extends Model
         return $this->morphTo();
     }
 
+    public function type()
+    {
+        return $this->hasOne(EventTypes::class, 'id', 'event_type_id');
+    }
+
     public function getOldEventAttribute()
     {
         //return dates that are older than today plus a day
