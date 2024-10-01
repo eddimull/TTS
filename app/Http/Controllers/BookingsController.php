@@ -17,7 +17,10 @@ use App\Http\Requests\StoreBookingsRequest;
 use App\Http\Requests\UpdateBookingsRequest;
 use App\Http\Requests\StoreBookingPaymentRequest;
 use App\Http\Requests\BookingContact as BookingContactRequest;
+use App\Http\Requests\UpdateBookingEventRequest;
 use App\Http\Requests\UploadBookingContractRequest;
+use App\Models\Events;
+use Event;
 
 class BookingsController extends Controller
 {
@@ -211,5 +214,19 @@ class BookingsController extends Controller
     {
         $booking->storeContractPdf($request->file('pdf')->get());
         return redirect()->back()->with('successMessage', 'Contract has been uploaded.');
+    }
+
+    public function events(Bands $band, Bookings $booking)
+    {
+        return Inertia::render('Bookings/Events', [
+            'booking' => $booking,
+            'events' => $booking->events
+        ]);
+    }
+
+    public function updateEvent(UpdateBookingEventRequest $request, Bands $band, Bookings $booking, Events $event)
+    {
+        $event->update($request->validated());
+        return redirect()->back()->with('successMessage', 'Event Updated');
     }
 }
