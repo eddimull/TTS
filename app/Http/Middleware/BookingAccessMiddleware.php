@@ -23,11 +23,11 @@ class BookingAccessMiddleware
         {
             return redirect()->route('login');
         }
-        $band = $request->route('band');
         $bookingInput = $request->route('booking');
 
 
         $booking = $this->resolveBooking($bookingInput);
+        $band = $booking->band;
 
         if ($band->owners->contains('user_id', $user->id) || $band->members->contains('user_id', $user->id))
         {

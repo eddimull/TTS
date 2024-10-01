@@ -75,8 +75,12 @@ Route::middleware(['auth', 'verified'])->group(function ()
         ->name('Delete Booking Payment')
         ->middleware('booking.access');
 
-    Route::post('bands/{band}/booking/{booking}/events/{event}', [BookingsController::class, 'updateEvent'])
+    Route::match(['post', 'put'], 'bands/{band}/booking/{booking}/events/{event?}', [BookingsController::class, 'updateOrCreateEvent'])
         ->name('Update Booking Event')
+        ->middleware('booking.access');
+
+    Route::delete('bands/{band}/booking/{booking}/events/{event}', [BookingsController::class, 'deleteEvent'])
+        ->name('Delete Booking Event')
         ->middleware('booking.access');
 });
 Route::get('{booking}/downloadReceiptPDF', [BookingsController::class, 'paymentPDF'])->name('bookingpaymentpdf');
