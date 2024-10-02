@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\ContractsController;
 use Inertia\Inertia;
 use App\Models\Bands;
 use Illuminate\Support\Facades\URL;
@@ -13,6 +12,8 @@ use App\Services\AdvanceReminderService;
 use App\Http\Controllers\EventsController;
 use App\Http\Controllers\FinancesController;
 use App\Http\Controllers\InvoicesController;
+use App\Http\Controllers\PandaDocController;
+use App\Http\Controllers\ContractsController;
 use App\Http\Controllers\InvitationsController;
 use App\Http\Controllers\QuestionnaireController;
 use App\Http\Controllers\FinalizedProposalController;
@@ -198,6 +199,8 @@ Route::group(['prefix' => 'questionnaire', 'middleware' => ['auth', 'verified']]
     Route::post('/{questionnaire:slug}/add', [QuestionnaireController::class, 'addQuestion'])->name('questionnaire.addQuestion');
 });
 
+Route::get('/auth/pandadoc', [PandaDocController::class, 'initiateAuth']);
+Route::get('/auth/pandadoc/callback', [PandaDocController::class, 'handleCallback']);
 
 Route::group(['prefix' => 'mail', 'middleware' => ['dev']], function ()
 {

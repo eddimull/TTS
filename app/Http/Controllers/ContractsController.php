@@ -126,4 +126,9 @@ class ContractsController extends Controller
     {
         //
     }
+
+    public function getHistory(Contracts $contract)
+    {
+        return response()->json(['history' => $contract->auditTrail()]);
+    }
 }
