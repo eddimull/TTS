@@ -194,6 +194,13 @@ class BookingsController extends Controller
         return redirect()->route('Bookings Home')->with('successMessage', "{$booking->name} has been deleted.");
     }
 
+    public function cancel(Bands $band, Bookings $booking)
+    {
+        $booking->status = 'cancelled';
+        $booking->save();
+        return redirect()->back()->with('successMessage', 'Booking has been cancelled.');
+    }
+
     public function contract(Bands $band, Bookings $booking)
     {
         $booking->contacts = $booking->contacts()->get();
@@ -213,6 +220,8 @@ class BookingsController extends Controller
     public function uploadContract(UploadBookingContractRequest $request, Bands $band, Bookings $booking)
     {
         $booking->storeContractPdf($request->file('pdf')->get());
+        $booking->status = 'confirmed';
+        $booking->save();
         return redirect()->back()->with('successMessage', 'Contract has been uploaded.');
     }
 

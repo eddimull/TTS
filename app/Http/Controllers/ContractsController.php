@@ -109,6 +109,8 @@ class ContractsController extends Controller
         try
         {
             $result = $contract->sendToPandaDoc();
+            $booking->status = 'pending';
+            $booking->save();
             return redirect()->back()->with('successMessage', 'Contract sent successfully to PandaDoc.');
         }
         catch (\Exception $e)
