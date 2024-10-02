@@ -112,6 +112,44 @@ trait Signable
         }
     }
 
+    public function auditTrail()
+    {
+        $accessToken = config('services.pandadoc.access_token');
+
+        $documentId = $this->envelope_id;
+        $auditUrl = "https://api.pandadoc.com/documents/{$documentId}/audit_trail";
+        $response = Http::withHeaders([
+            'Authorization' => 'Bearer ' . $accessToken,
+            'Content-Type' => 'application/json',
+        ])->get($auditUrl);
+
+        if ($response->successful())
+        {
+            return $response->json();
+        }
+
+        Log::error('Failed to get audit trail: ' . $response->body());
+        throw new \Exception('Failed to get audit trail: ' . $response->body());
+    }
+
+    public function documentStatus()
+    {
+        $apiKey = config('services.pandadoc.api_key');
+        $documentId = $this->envelope_id;
+
+        $response = Http::withHeaders([
+            'Authorization' => 'API-Key ' . $apiKey,
+        ])->get("https://api.pandadoc.com/public/v1/documents/{$documentId}");
+
+        if ($response->successful())
+        {
+            return $response->json();
+        }
+
+        Log::error('Failed to get document status: ' . $response->body());
+        throw new \Exception('Failed to get document status: ' . $response->body());
+    }
+
     abstract public function getPdfUrl(): string;
     abstract public function getSignatureFields(): array;
     abstract public function getContractRecipients(): array;
