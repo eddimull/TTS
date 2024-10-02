@@ -263,7 +263,10 @@ const save = () => {
   event.value.additional_data.times = Object.fromEntries(
     timeEntries.value
       .filter(entry => entry.title && entry.value)
-      .map(entry => [entry.key, entry.value])
+      .map(entry => {
+        const key = `${entry.title.toLowerCase().replace(/ /g, '_')}${entry.isLoadIn ? '_loadin' : ''}_time`;
+        return [key, entry.value];
+      })
   );
   emit('save', event.value);
 };

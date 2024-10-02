@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Carbon\Carbon;
 use App\Models\Bookings;
+use App\Rules\UniqueArrayKeys;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateBookingEventRequest extends FormRequest
@@ -28,7 +29,7 @@ class UpdateBookingEventRequest extends FormRequest
             'date' => 'required|date',
             'additional_data' => 'required|array',
             'additional_data.color' => 'nullable|string',
-            'additional_data.times' => 'nullable|array',
+            'additional_data.times' => ['nullable', 'array', new UniqueArrayKeys],
             'additional_data.times.*' => 'nullable|date_format:Y-m-d H:i:s',
             'additional_data.dances' => 'nullable|array',
             'additional_data.dances.*' => 'nullable|string',
