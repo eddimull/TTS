@@ -32,10 +32,10 @@
     </div>
     <div class="mt-4">
       <label class="block mb-2">Notes</label>
-      <textarea
+      <Editor
         v-model="event.notes"
         class="w-full p-2 border rounded"
-        rows="3"
+        editor-style="height: 320px"
       />
     </div>
 
@@ -53,21 +53,10 @@
           v-model.trim="entry.title"
           type="text"
           placeholder="Time title"
-          class="w-1/4 p-2 border rounded mr-2"
+          class="w-1/3 p-2 border rounded mr-2"
         >
-        <select
-          v-model="entry.isLoadIn"
-          class="w-1/4 p-2 border rounded mr-2"
-        >
-          <option :value="false">
-            Regular Time
-          </option>
-          <option :value="true">
-            Load-in Time
-          </option>
-        </select>
         <input
-          v-model="entry.value"
+          v-model="entry.time"
           type="datetime-local"
           class="w-1/3 p-2 border rounded mr-2"
         >
@@ -80,30 +69,32 @@
       </div>
       <div class="mt-2">
         <button
-          class="mr-2 px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
-          @click="addTimeEntry(false)"
+          class="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+          @click="addTimeEntry"
         >
-          Add Regular Time
-        </button>
-        <button
-          class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-          @click="addTimeEntry(true)"
-        >
-          Add Load-in Time
+          Add Time Entry
         </button>
       </div>
     </div>
-
+    <div class="mt-4">
+      <div>
+          <h4 class="text-xl font-semibold mb-2">
+                Attire
+          </h4>
+          <Editor v-model="event.additional_data.attire" class="w-full p-2 border rounded" editor-style="height: 320px" />
+        </div>
+    </div>
     <div class="mt-4">
       <h3 class="text-xl font-semibold mb-2">
         Additional Data
       </h3>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
         <template
           v-for="(value, key) in event.additional_data"
           :key="key"
         >
-          <template v-if="key !== 'dances' && key !== 'onsite' && key !== 'times'">
+          <template v-if="!exclusions.includes(key)">
             <div v-if="typeof value === 'object' && value !== null">
               <h4 class="font-semibold mb-2">
                 {{ formatLabel(key) }}
@@ -166,13 +157,13 @@
             Dances
           </h4>
           <div
-            v-for="(value, key) in event.additional_data.dances"
-            :key="key"
+            v-for="dance in event.additional_data.wedding.dances"
+            :key="dance.title"
             class="mb-2"
           >
-            <label class="block mb-1">{{ formatLabel(key) }}</label>
+            <label class="block mb-1">{{ dance.title }}</label>
             <input
-              v-model="event.additional_data.dances[key]"
+              v-model="dance.data"
               type="text"
               class="w-full p-2 border rounded"
             >
@@ -181,7 +172,7 @@
         <div>
           <label class="block mb-2">Onsite</label>
           <input
-            v-model="event.additional_data.onsite"
+            v-model="event.additional_data.wedding.onsite"
             type="checkbox"
             class="form-checkbox h-5 w-5 text-blue-600"
           >
@@ -227,30 +218,22 @@ const formatLabel = (key) => {
 };
 
 const getInputType = (key, value) => {
-  const booleanFields = ['public', 'lodging', 'outside', 'backline_provided', 'production_needed', 'onsite'];
+  const booleanFields = ['public', 'lodging', 'outside', 'onsite', 'backline_provided', 'production_needed'];
   if (booleanFields.includes(key)) return 'checkbox';
   if (key === 'migrated_from_event_id') return 'readonly';
   if (typeof value === 'number') return 'number';
   return 'text';
 };
 
-const timeEntries = ref(Object.entries(event.value.additional_data.times || {}).map(([key, value]) => {
-  const isLoadIn = key.includes('loadin');
-  const title = key.replace('_loadin_time', '').replace('_time', '');
-  return {
-    title,
-    isLoadIn,
-    value,
-    get key() { return `${this.title}${this.isLoadIn ? '_loadin' : ''}_time`; }
-  };
-}));
+const exclusions = ['times', 'attire', 'wedding', 'onsite'];
 
-const addTimeEntry = (isLoadIn = false) => {
+const timeEntries = ref(event.value.additional_data.times || []);
+
+const addTimeEntry = () => {
   const defaultDateTime = `${event.value.date}T${event.value.time}`;
   timeEntries.value.push({
-    title: isLoadIn ? 'New Load-in Time' : 'New Time',
-    isLoadIn,
-    value: defaultDateTime
+    title: 'New Time Entry',
+    time: defaultDateTime
   });
 };
 
@@ -260,14 +243,7 @@ const removeTimeEntry = (index) => {
 
 const save = () => {
   // Update the times in the event object
-  event.value.additional_data.times = Object.fromEntries(
-    timeEntries.value
-      .filter(entry => entry.title && entry.value)
-      .map(entry => {
-        const key = `${entry.title.toLowerCase().replace(/ /g, '_')}${entry.isLoadIn ? '_loadin' : ''}_time`;
-        return [key, entry.value];
-      })
-  );
+  event.value.additional_data.times = timeEntries.value.filter(entry => entry.title && entry.time);
   emit('save', event.value);
 };
 
