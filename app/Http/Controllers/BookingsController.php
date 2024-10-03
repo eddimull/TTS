@@ -64,6 +64,46 @@ class BookingsController extends Controller
         $booking->contract()->create([
             'author_id' => Auth::id(),
         ]);
+        $event = [
+            'event_type_id' => $booking->event_type_id,
+            'key' => Str::uuid(),
+            'title' => $booking->name,
+            'date' => $booking->date,
+            'time' => $booking->time,
+            'additional_data' => [
+                'times' => [
+                    'end_time' => $booking->end_time,
+                    'band_loadin_time' => Carbon::parse($booking->time)->subHours(1),
+                ],
+                'backline_provided' => false,
+                'production_needed' => true,
+                'color' => 'TBD',
+                'lodging' => [
+                    'provided' => false,
+                    'location' => 'TBD',
+                    'check_in' => 'TBD',
+                    'check_out' => 'TBD',
+                ],
+                'public' => true,
+                'outside' => false,
+            ]
+        ];
+
+        if ($booking->event_type_id === 1)
+        {
+            $event['additional_data']['dances'] = [
+                'first_dance' => 'TBD',
+                'father_daughter' => 'TBD',
+                'mother_son' => 'TBD',
+                'money_dance' => 'TBD',
+                'bouquet_garter' => 'TBD'
+            ];
+            $event['additional_data']['times']['ceremony'] = $booking->time;
+            $event['additional_data']['onsite'] = true;
+            $event['additional_data']['public'] = false;
+        }
+
+        $booking->events()->create($event);
 
         return redirect()->route('Booking Details', [$band, $booking]);
     }

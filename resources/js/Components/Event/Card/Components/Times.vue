@@ -1,72 +1,37 @@
 <template>
-  <div>
-    <li class="p-2">
-      Load In times:
-      <ul
-        style="background-color: rgb(244 244 245);"
-        class="list-outside indent-1 ml-3 p-3 shadow-lg rounded"
-      >
-        <li
-          v-for="(time, key) in loadInTimes"
-          :key="key"
-          class="mt-2 pl-3"
-        >
-          {{ formatLabel(key) }}: <strong>{{ formatTime(time) }}</strong>
-        </li>
-      </ul>
-    </li>
-    <li
-      v-if="Object.keys(otherTimes).length > 0"
-      class="p-2"
-    >
-      Other times:
-      <ul
-        style="background-color: rgb(244 244 245);"
-        class="list-outside indent-1 ml-3 p-3 shadow-lg rounded"
-      >
-        <li
-          v-for="(time, key) in otherTimes"
-          :key="key"
-          class="mt-2 pl-3"
-        >
-          {{ formatLabel(key) }}: <strong>{{ formatTime(time) }}</strong>
-        </li>
-      </ul>
-    </li>
+  <div class="max-w-md mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
+    <ul class="divide-y divide-gray-200">
+      <li v-for="(time, index) in sortedTimes" :key="time.title" class="relative">
+        <div class="flex items-center p-4">
+          <div class="flex-shrink-0 w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+            <span class="text-white font-semibold text-lg">{{ index + 1 }}</span>
+          </div>
+          <div class="ml-4 flex-grow">
+            <p class="text-sm font-medium text-gray-900">{{ time.title }}</p>
+            <p class="text-sm text-gray-500">{{ formatTime(time.time) }}</p>
+          </div>
+        </div>
+      </li>
+    </ul>
   </div>
 </template>
-  
-  <script setup>
-  import { computed } from 'vue';
-  
-  const props = defineProps({
-    times: {
-      type: Object,
-      required: true
-    }
-  });
-  
-  const loadInTimes = computed(() => 
-    Object.entries(props.times)
-      .filter(([key]) => key.includes('loadin'))
-      .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {})
-  );
-  
-  const otherTimes = computed(() => 
-    Object.entries(props.times)
-      .filter(([key]) => !key.includes('loadin'))
-      .reduce((acc, [key, value]) => ({ ...acc, [key]: value }), {})
-  );
-  
-  const formatTime = (timeString) => {
-    const date = new Date(timeString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-  
-  const formatLabel = (key) => {
-    return key
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
-  </script>
+
+<script setup>
+import { computed } from 'vue';
+
+const props = defineProps({
+  times: {
+    type: Array,
+    required: true
+  }
+});
+
+const sortedTimes = computed(() => {
+  return [...props.times].sort((a, b) => new Date(a.time) - new Date(b.time));
+});
+
+const formatTime = (timeString) => {
+  const date = new Date(timeString);
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
+</script>

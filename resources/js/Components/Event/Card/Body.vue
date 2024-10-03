@@ -12,7 +12,13 @@
           No address provided
         </strong>
       </li>
-      <Times :times="event.additional_data?.times" />
+      <li class="p-2">
+        Public: <strong>{{ event.additional_data?.public ? 'Yes' : 'No' }}</strong>
+      </li>
+      <li class="p-2">
+        Timeline: 
+        <Times :times="event.additional_data?.times" />
+      </li>
       <li
         v-if="event.notes !== null"
         class="p-2"
@@ -23,37 +29,39 @@
           v-html="event.notes"
         />
       </li>
-      <li
-        v-if="event.event_type?.name === 'Wedding'"
-        class="p-2"
-      >
-        Wedding songs:
-        <ul
+      <li class="p-2">
+        Extra Details:
+        <div
           style="background-color: rgb(244 244 245);"
-          class="list-outside indent-1 ml-3 p-3 shadow-lg rounded"
-        >
-          <li class="mt-2 pl-3">
-            First Dance: <strong>{{ event.first_dance }}</strong>
+          class="ml-3 p-3 shadow-lg rounded break-normal">
+          <ul>
+          <li>
+            Outside Event: <strong>{{ event.additional_data?.outside ? 'Yes' : 'No' }}</strong>
           </li>
-          <li class="mt-2 pl-3">
-            Father Daughter: <strong>{{ event.father_daughter }}</strong>
+          <li>
+            Lodging Provided: <strong>{{ event.additional_data?.lodging ? 'Yes' : 'No' }}</strong>
           </li>
-          <li class="mt-2 pl-3">
-            Mother Son: <strong>{{ event.mother_groom }}</strong>
+          <li>
+            Backline Provided: <strong>{{ event.additional_data?.backline_provided ? 'Yes' : 'No' }}</strong>
           </li>
-          <li class="mt-2 pl-3">
-            Money Dance: <strong>{{ event.money_dance }}</strong>
-          </li>
-          <li class="mt-2 pl-3">
-            Bouquet/Garter: <strong>{{ event.bouquet_garter }}</strong>
+          <li>
+            Production Needed: <strong>{{ event.additional_data?.production_needed ? 'Yes' : 'No' }}</strong>
           </li>
         </ul>
+        </div>
       </li>
-      <li v-if="event.colorway_text">
+      <li
+        v-if="event.event_type_id === 1"
+        class="p-2"
+      >
+        Wedding Info:
+        <Wedding :wedding="event.additional_data?.wedding" :on-site="event.onSite" />
+      </li>
+      <li v-if="event.additional_data?.attire">
         Attire: <div
           style="background-color: rgb(244 244 245);"
           class="ml-3 p-3 shadow-lg rounded break-normal"
-          v-html="event.colorway_text"
+          v-html="event.additional_data?.attire"
         />
       </li>
       <Contacts
@@ -65,6 +73,7 @@
 
 <script setup>
 import Times from './Components/Times.vue'
+import Wedding from './Components/Wedding.vue';
 import Contacts from './Components/Contacts.vue';
 
 const props = defineProps(['event', 'type']);

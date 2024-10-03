@@ -27,7 +27,7 @@ class BookingAccessMiddleware
 
 
         $booking = $this->resolveBooking($bookingInput);
-        $band = $booking->band;
+        $band = $booking ? $booking->band : $request->route('band');
 
         if ($band->owners->contains('user_id', $user->id) || $band->members->contains('user_id', $user->id))
         {

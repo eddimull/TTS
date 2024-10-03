@@ -4,8 +4,8 @@ namespace App\Http\Requests;
 
 use Carbon\Carbon;
 use App\Models\Bookings;
-use App\Rules\UniqueArrayKeys;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateBookingEventRequest extends FormRequest
 {
@@ -27,21 +27,25 @@ class UpdateBookingEventRequest extends FormRequest
     {
         return [
             'date' => 'required|date',
-            'additional_data' => 'required|array',
-            'additional_data.color' => 'nullable|string',
-            'additional_data.times' => ['nullable', 'array', new UniqueArrayKeys],
-            'additional_data.times.*' => 'nullable|date_format:Y-m-d H:i:s',
-            'additional_data.dances' => 'nullable|array',
-            'additional_data.dances.*' => 'nullable|string',
-            'additional_data.onsite' => 'required|boolean',
-            'additional_data.public' => 'required|boolean',
-            'additional_data.lodging' => 'required|boolean',
-            'additional_data.outside' => 'required|boolean',
-            'additional_data.backline_provided' => 'required|boolean',
-            'additional_data.production_needed' => 'required|boolean',
-            'notes' => 'nullable|string',
-            'title' => 'required|string',
             'time' => 'required',
+            'title' => 'required|string',
+            'notes' => 'nullable|string',
+            'additional_data' => 'required|array',
+            'additional_data.migrated_from_event_id' => 'nullable|integer',
+            'additional_data.public' => 'required|boolean',
+            'additional_data.outside' => 'required|boolean',
+            'additional_data.lodging' => 'required|boolean',
+            'additional_data.production_needed' => 'required|boolean',
+            'additional_data.backline_provided' => 'required|boolean',
+            'additional_data.attire' => 'nullable|string',
+            'additional_data.times' => 'nullable|array',
+            'additional_data.times.*.title' => 'required|string',
+            'additional_data.times.*.time' => 'required|date_format:Y-m-d H:i',
+            'additional_data.wedding' => 'nullable|array',
+            'additional_data.wedding.onsite' => 'required_with:additional_data.wedding|boolean',
+            'additional_data.wedding.dances' => 'nullable|array',
+            'additional_data.wedding.dances.*.title' => 'required|string',
+            'additional_data.wedding.dances.*.data' => 'nullable|string',
         ];
     }
 
@@ -64,9 +68,13 @@ class UpdateBookingEventRequest extends FormRequest
     {
         if ($this->has('additional_data.times'))
         {
-            $formattedTimes = collect($this->input('additional_data.times'))->map(function ($time)
+            $formattedTimes = collect($this->input('additional_data.times'))->map(function ($timeEntry)
             {
-                return $this->formatDateTime($time);
+                if (isset($timeEntry['time']))
+                {
+                    $timeEntry['time'] = $this->formatDateTime($timeEntry['time']);
+                }
+                return $timeEntry;
             })->filter()->all();
 
             $this->merge([
@@ -87,7 +95,7 @@ class UpdateBookingEventRequest extends FormRequest
 
         try
         {
-            return Carbon::parse($dateTime)->format('Y-m-d H:i:s');
+            return Carbon::parse($dateTime)->format('Y-m-d H:i');
         }
         catch (\Exception $e)
         {

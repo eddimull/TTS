@@ -157,25 +157,26 @@ class migrateEventsToBookings extends Command
                 'lodging' => $event->lodging,
                 'production_needed' => $event->production_needed,
                 'backline_provided' => $event->backline_provided,
-                'onsite' => $event->onsite,
-                'color' => $event->colorway_text,
-                'dances' => [
-                    'bouquet_garter' => $event->bouquet_garter,
-                    'first_dance' => $event->first_dance,
-                    'father_daughter' => $event->father_daughter,
-                    'mother_groom' => $event->mother_groom,
-                    'money_dance' => $event->money_dance,
-                ],
-                'times' => [
-                    'band_loadin_time' => $event->band_loadin_time,
-                    'end_time' => $event->end_time,
-                    'rhythm_loadin_time' => $event->rhythm_loadin_time,
-                    'production_loadin_time' => $event->production_loadin_time,
-                    'ceremony_time' => $event->ceremony_time,
-                    'quiet_time' => $event->quiet_time,
-                ],
+                'attire' => $event->colorway_text,
+                'times' => array_filter([
+                    ['title' => 'Band Load-In', 'time' => $event->band_loadin_time],
+                    ['title' => 'Rhythm Load-In', 'time' => $event->rhythm_loadin_time],
+                    ['title' => 'Production Load-In', 'time' => $event->production_loadin_time],
+                    ['title' => 'End Time', 'time' => $event->end_time],
+                    ['title' => 'Quiet Time', 'time' => $event->quiet_time],
+                    $event->event_type_id === 1 ? ['title' => 'Ceremony', 'time' => $event->ceremony_time] : null,
+                ]),
+                $event->event_type_id === 1 ? 'wedding' : null => $event->event_type_id === 1 ? [
+                    'onsite' => $event->onsite,
+                    'dances' => [
+                        ['title' => 'First Dance', 'data' => $event->first_dance],
+                        ['title' => 'Father Daughter', 'data' => $event->father_daughter],
+                        ['title' => 'Mother Son', 'data' => $event->mother_groom],
+                        ['title' => 'Money Dance', 'data' => $event->money_dance],
+                        ['title' => 'Bouquet/Garter', 'data' => $event->bouquet_garter],
+                    ],
+                ] : null,
             ],
-
         ]);
     }
 }

@@ -27,6 +27,41 @@ $city = array_pop($parts);
 
 // The rest is the street address
 $street = implode(', ', $parts);
+
+// Time handling
+$additionalData = $event->additional_data;
+
+// Start with show_time as the only fixed time
+$times = [
+['title' => 'Show Time', 'time' => $event->time ?? null],
+];
+
+// Extract times from additional_data
+if (isset($additionalData->times)) {
+foreach ($additionalData->times as $title => $time) {
+$times[] = ['title' => $time->title, 'time' => $time->time];
+}
+}
+
+
+$formatTime = function($time) {
+if (is_string($time)) {
+return date('g:i A', strtotime($time));
+} elseif ($time instanceof DateTime) {
+return $time->format('g:i A');
+} elseif (is_object($time) && isset($time->date)) {
+return date('g:i A', strtotime($time->date));
+} else {
+return 'N/A';
+}
+};
+
+// Sort times
+usort($times, function($a, $b) {
+$timeA = strtotime($a['time']);
+$timeB = strtotime($b['time']);
+return $timeA - $timeB;
+});
 @endphp
 
 <div class="max-w-lg mx-auto drop-shadow-md rounded-lg lg:px-8">
@@ -72,74 +107,15 @@ $street = implode(', ', $parts);
         <div class="px-6 mb-4">
             <div class="-ml-2 font-bold">Schedule:</div>
             <div class="grid grid-cols-2 border">
-                @php
-                $additionalData = $event->additional_data;
-
-                // Extract times from additional_data
-                $additionalTimes = (array) ($additionalData->times ?? []);
-
-                // Start with show_time as the only fixed time
-                $times = [
-                'show_time' => $event->time ?? null,
-                ];
-
-                // Add all additional times
-                foreach ($additionalTimes as $key => $value) {
-                $times[$key] = $value;
-                }
-
-                // Remove null values
-                $times = array_filter($times);
-
-                function formatTime($time) {
-                if (is_string($time)) {
-                return date('g:i A', strtotime($time));
-                } elseif ($time instanceof DateTime) {
-                return $time->format('g:i A');
-                } elseif (is_object($time) && isset($time->date)) {
-                return date('g:i A', strtotime($time->date));
-                } else {
-                return 'N/A';
-                }
-                }
-
-                // Convert all times to timestamps for sorting
-                $sortableTimes = array_map(function($time) {
-                if (is_string($time)) {
-                return strtotime($time);
-                } elseif ($time instanceof DateTime) {
-                return $time->getTimestamp();
-                } elseif (is_object($time) && isset($time->date)) {
-                return strtotime($time->date);
-                } else {
-                return PHP_INT_MAX; // Put invalid times at the end
-                }
-                }, $times);
-
-                // Sort times
-                asort($sortableTimes);
-
-                // Prepare sorted times for display
-                $sortedTimes = [];
-                foreach ($sortableTimes as $key => $timestamp) {
-                if ($timestamp !== PHP_INT_MAX) {
-                $sortedTimes[$key] = $times[$key];
-                }
-                }
-                @endphp
-
-                @foreach ($sortedTimes as $key => $time)
-                <div class="border text-center">{{ formatTime($time) }}</div>
-                <div class="border px-2 {{ $key === 'show_time' ? 'font-bold' : '' }}">
-                    @if ($key === 'ceremony_time')
-                    {{ $additionalData->onsite ?? false ? 'Onsite ceremony' : 'Ceremony Offsite' }}
-                    @else
-                    {{ ucwords(str_replace('_', ' ', $key)) }}
-                    @endif
+                @foreach ($times as $timeData)
+                <div class="border text-center">{{ $formatTime($timeData['time']) }}</div>
+                <div class="border px-2 {{ $timeData['title'] === 'Show Time' ? 'font-bold' : '' }}">
+                    {{ $timeData['title'] }}
                 </div>
                 @endforeach
             </div>
         </div>
+
         <div class="px-6 mb-4">
             <div class="-ml-2 font-bold">Details:</div>
             <div class="grid grid-cols-2 border">

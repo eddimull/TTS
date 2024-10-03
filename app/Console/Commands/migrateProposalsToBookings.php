@@ -24,7 +24,7 @@ class migrateProposalsToBookings extends Command
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'Second part of the ETL process';
 
     /**
      * Execute the console command.
