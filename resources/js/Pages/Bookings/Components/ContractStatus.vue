@@ -1,6 +1,5 @@
 <template>
     <div class="contract-history">
-      <h2 class="title">Contract History</h2>
       <div v-if="loading" class="loading">Loading...</div>
       <div v-else-if="error" class="error">Error: {{ error }}</div>
       <div v-else>

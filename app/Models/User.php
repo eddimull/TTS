@@ -244,6 +244,9 @@ class User extends Authenticatable
             {
                 return $booking->events->map(function ($event) use ($booking)
                 {
+                    $event->band_id = $booking->band_id;
+                    $event->booking_name = $booking->name;
+                    $event->booking_id = $booking->id;
                     $event->contacts = $booking->contacts;
                     $event->venue_name = $booking->venue_name;
                     $event->venue_address = $booking->venue_address;

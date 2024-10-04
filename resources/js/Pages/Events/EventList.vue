@@ -19,18 +19,18 @@
           </div>
         </div>
         <DataTable
-          v-model:filters="filters1"
-          :value="events"
+          v-model:filters="filters"
+          :value="filteredEvents"
           responsive-layout="scroll"
           selection-mode="single" 
           :paginator="true"
           :rows="10"
           :rows-per-page-options="[10,20,50]"
-          :global-filter-fields="['event_name','event_date','venue_name','event_type']"
+          :global-filter-fields="['title','date','venue_name','event_type_id']"
           filter-display="menu"
-          sort-field="event_date"
-          :sort-order="true"
-          @rowSelect="gotoEvent"
+          sort-field="date"
+          :sort-order="1"
+          @row-select="gotoEvent"
         >
           <template #header>
             <div class="flex flex-row">
@@ -40,13 +40,13 @@
                   type="button"
                   icon="pi pi-filter-slash"
                   label="Clear"
-                  @click="clearFilter1()"
+                  @click="clearFilters"
                 />
               </div>
               <span class="p-input-icon-left">
                 <i class="pi pi-search" />
                 <InputText
-                  v-model="filters1['global'].value"
+                  v-model="filters['global'].value"
                   placeholder="Keyword Search"
                 />
               </span>
@@ -58,10 +58,8 @@
                   >Previous Events</label>
                   <InputSwitch
                     id="switch"
-                    v-model="filters1['OldEvent'].value"
+                    v-model="showPreviousEvents"
                     class="float-right"
-                    :true-value="true"
-                    :false-value="false"
                   />
                 </div>
               </div>
@@ -71,9 +69,15 @@
             No Events.
           </template>
           <Column
-            field="event_name"
-            filter-field="event_name"
+            field="title"
+            filter-field="title"
             header="Name"
+            :sortable="true"
+          />
+          <Column
+            field="booking_name"
+            filter-field="booking_name"
+            header="Booking"
             :sortable="true"
           />
           <Column
@@ -83,28 +87,15 @@
             :sortable="true"
           />
           <Column
-            field="event_time"
-            filter-field="event_time"
+            field="date"
+            filter-field="date"
             header="Performance Date"
             :sortable="true"
           >
             <template #body="slotProps">
-              {{ formatTime(slotProps) }}
+              {{ formatTime(slotProps.data) }}
             </template>
           </Column>
-          <!--
-          <Column
-            field="formattedDraftDate"
-            header="Draft Date"
-            sortable
-          />
-          
-          <Column
-            field="phase.name"
-            filter-field="phase.name"
-            header="Phase"
-            :sortable="true"
-          /> -->
         </DataTable>
       </div>
     </div>
@@ -112,80 +103,84 @@
 </template>
 
 <script>
-import {FilterMatchMode,FilterOperator} from 'primevue/api';
-import moment from 'moment';
+import { FilterMatchMode, FilterOperator } from 'primevue/api';
+import { DateTime, Interval } from 'luxon';
+
 export default {
   name: 'EventList',
-  props:['events'],
-  data(){
-    return{
-      searchParams : {},
-      dontShowCompleted:false,
-      filters1: null,
-      band:{}
+  props: ['events'],
+  data() {
+    return {
+      searchParams: {},
+      filters: null,
+      showPreviousEvents: false,
+      band: {}
     }
   },
-  computed:{
-    gigs(){
-      let upcomingEvents = this.events.filter(o => this.$moment(o.event_time, 'YYYY-MM-DD').isBetween(this.$moment().subtract(6, 'months'), this.$moment(), undefined, '[]'));
+  computed: {
+    gigs() {
+      const now = DateTime.now();
+      let upcomingEvents = this.events.filter(o => {
+        const eventDate = DateTime.fromISO(o.date);
+        return Interval.fromDateTimes(now.minus({ months: 6 }), now).contains(eventDate);
+      });
       
       const chartData = {
-        labels:[],
-        datasets:[{
+        labels: [],
+        datasets: [{
           label: 'Events For the Month',
-                        backgroundColor: '#42A5F5',
-                        data:[]
+          backgroundColor: '#42A5F5',
+          data: []
         }]
       }
       const tempData = {};
-      upcomingEvents.forEach(event=>{
-        const parsedDate = this.$moment(event.event_time);
-
-        if(tempData[parsedDate.format('MMMM')])
-        {
-          tempData[parsedDate.format('MMMM')] += 1
-        }
-        else
-        {
-          tempData[parsedDate.format('MMMM')] = 1
-        }
-
+      upcomingEvents.forEach(event => {
+        const parsedDate = DateTime.fromISO(event.date);
+        const month = parsedDate.toFormat('MMMM');
+        tempData[month] = (tempData[month] || 0) + 1;
       })
 
-      for(let i in tempData)
-      {
-        chartData.labels.push(i)
-        chartData.datasets[0].data.push(tempData[i])
+      for (let month in tempData) {
+        chartData.labels.push(month);
+        chartData.datasets[0].data.push(tempData[month]);
       }
-      
-      return chartData
+      return chartData;
+    },
+    filteredEvents() {
+      const currentDate = DateTime.now();
+      return this.events.filter(event => {
+        const eventDate = DateTime.fromISO(event.date);
+        if (this.showPreviousEvents) {
+          return eventDate <= currentDate;
+        } else {
+          return eventDate > currentDate;
+        }
+      });
     }
   },
-    created(){
-      this.initFilters1();
-      this.searchParams = this.$qs.parse(location.search.slice(1));
-      
+  created() {
+    this.initFilters();
+    this.searchParams = this.$qs.parse(location.search.slice(1));
   },
-  methods:{
-    formatTime(row){
-      return moment(row.data.event_time).format('YYYY-MM-DD H:mm A');
+  methods: {
+    formatTime(event) {
+      return DateTime.fromISO(event.date + 'T' + event.time).toFormat('yyyy-MM-dd hh:mm a');
     },
-    gotoEvent(row){
-      this.$inertia.visit(this.$route("events.edit",row.data.event_key));
+    gotoEvent(event) {
+      this.$inertia.visit(route('Booking Events', {band: event.data.band_id, booking: event.data.booking_id}));
     },
-    clearFilter1() {
-      this.initFilters1();
+    clearFilters() {
+      this.initFilters();
+      this.showPreviousEvents = false;
     },
-    initFilters1() {
-      this.filters1 = {
-            'global': {value: null, matchMode: FilterMatchMode.CONTAINS},
-            'OldEvent': {value: false, matchMode: FilterMatchMode.EQUALS}
-        }
+    initFilters() {
+      this.filters = {
+        'global': {value: null, matchMode: FilterMatchMode.CONTAINS},
+      }
     }          
   }
 }
 </script>
 
 <style>
-
 </style>
