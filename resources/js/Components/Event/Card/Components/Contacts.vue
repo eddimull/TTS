@@ -3,7 +3,7 @@
     class="mt-2"
   >
     <Accordion>
-      <AccordionTab header="Contacts">
+      <AccordionTab :header="contacts.length > 1 ? `Contacts (${contacts.length})` : `Contact`" :disabled="contacts.length === 0">
         <ul 
           v-for="contact in contacts"
           :key="contact.id"
