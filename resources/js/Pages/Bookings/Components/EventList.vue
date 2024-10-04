@@ -100,17 +100,27 @@ const addNewEvent = () => {
   editingEvent.value = {
     title: props.booking.name + ' Event',
     date: props.booking.date,
+    event_type_id: props.booking.event_type_id,
     additional_data: {
-      times: {
-        end_time: `${props.booking.date}T${props.booking.end_time}`,
-        band_loadin_time: `${props.booking.date}T${props.booking.start_time}`,
-      },
+      times: [
+        { 'title': 'End', 'time': `${props.booking.date}T${props.booking.end_time}` },
+        { 'title': 'Band Load-In', 'time': `${props.booking.date}T${props.booking.start_time}`},
+      ],
       'public': false,
       'lodging': false,
       'outside': false,
       'backline_provided': false,
       'production_needed': false,
-      'onsite': false
+      wedding: {
+        'onsite': false, 
+        dances: [
+          { 'title': 'First Dance', 'data': 'TBD' },
+          { 'title': 'Father/Daughter Dance', 'data': 'TBD' },
+          { 'title': 'Mother/Son Dance', 'data': 'TBD' },
+          { 'title': 'Bouquet/Garter', 'data': 'TBD' },
+          { 'title': 'Money', 'data': 'TBD' },
+        ],
+      },
     },
     time: props.booking.start_time,
   };
