@@ -242,11 +242,11 @@ class BookingsController extends Controller
         return redirect()->route('Bookings Home')->with('successMessage', "{$booking->name} has been deleted.");
     }
 
-    public function cancel(Bands $band, Bookings $booking)
+    public function cancelBooking(Bands $band, Bookings $booking)
     {
         $booking->status = 'cancelled';
         $booking->save();
-        return redirect()->back()->with('successMessage', 'Booking has been cancelled.');
+        return redirect()->route('Bookings Home')->with('successMessage', "{$booking->name} has been cancelled.");
     }
 
     public function contract(Bands $band, Bookings $booking)
