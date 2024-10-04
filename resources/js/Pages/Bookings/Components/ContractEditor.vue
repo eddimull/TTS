@@ -51,7 +51,10 @@ const saveContract = async () => {
 }
 
 const generatePDF = async () => {
-await saveContract();
+  if(unsavedChanges.value)
+  {
+    await saveContract();
+  }
   Inertia.get(route('Download Booking Contract', { band: props.band.id, booking: props.booking.id }));
 }
 // Navigation guard

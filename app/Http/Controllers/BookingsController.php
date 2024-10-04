@@ -209,6 +209,7 @@ class BookingsController extends Controller
 
     public function downloadContract(Bands $band, Bookings $booking)
     {
+        // return view('pdf.bookingContract', ['booking' => $booking]);
         $contractPDF = $booking->getContractPdf();
         if ($contractPDF === null)
         {

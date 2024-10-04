@@ -2,7 +2,7 @@
 @section('content')
 <x-pdf.contractHeader>
     <img
-        src="{{ $booking->band->logo }}"
+        src="{{ $logoDataUri }}"
         alt="Band Logo"
         class="max-w-[200px] max-h-[100px] mx-auto" />
 </x-pdf.contractHeader>
@@ -72,7 +72,27 @@
     </div>
 </x-pdf.section>
 @endforeach
-
+@if ($booking->event_type_id === 1)
+<x-pdf.section>
+    <div class="my-3">
+        <p class="text-lg font-bold my-2 uppercase">SPECIAL INSTRUCTIONS</p>
+        <p class="mb-3"><span class="underline">Song/Artist Request</span>: TBD Buyer must provide song suggestions and/or specic requests via questionnaire sent prior to the event. Suggested song lists shall be provided no later than 30 days
+            prior to the Performance. Specific Artist Request lists shall be provided no later than 60 days prior to
+            Performance.
+        </p>
+        <p class="mb-3"><span class="underline">Break Music</span>: Artist provides break music</p>
+        <p class="mb-3"><span class="underline">Attire</span>: Artist shall dress in SEMI-FORMAL. Please ask if there are any questions.</p>
+        <p class="mb-3"><span class="underline">Stage, Performance Area, and Size of Event:</span> <br />Artist shall NOT be required to provide a stage on which to perform, unless otherwise agreed to in writing by
+            Artist and Buyer. Additional fees may be incurred if Artist provides a stage.</p>
+        <p class="mb-3"><span class="underline">Hospitality</span>:Vendor meals will be provided for Artist at discretion of buyer. TBD Guest(s) of Artist(s) are
+            permitted.
+        </p>
+        <p class="mb-3"><span class="underline">Dances</span>: <span class="font-bold underline"> Exact versions must be provided by buyer no later than 30 days prior to the performance.
+            </span> FIRST DANCE, FATHER BRIDE, MOTHER GROOM, MONEY DANCE, GARTER</p>
+        <p class="mb-3 underline font-bold">-All special dances will be determined by Buyer no later than 30 days prior to performance.</p>
+    </div>
+</x-pdf.section>
+@endif
 <x-pdf.section>
     <div class="mt-8">
         <p class="font-bold">

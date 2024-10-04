@@ -27,6 +27,11 @@ const props = defineProps({
 });
 
 const sortedTimes = computed(() => {
+
+  if (!props.times || !Array.isArray(props.times)) {
+    return [];
+  }
+
   return [...props.times].sort((a, b) => new Date(a.time) - new Date(b.time));
 });
 

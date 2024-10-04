@@ -5,6 +5,7 @@ namespace App\Http\Traits;
 use App\Mail\PaymentMade;
 use Illuminate\Support\Facades\URL;
 use Spatie\Browsershot\Browsershot;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
@@ -37,7 +38,20 @@ trait BookingTraits
 
     public function getContractPdf(): string
     {
-        $renderedView = view('pdf.bookingContract', ['booking' => $this])->render();
+        $logoPath = url($this->band->logo);
+        //there has to be a better way of doing this.
+        //this is a hack to get the logo to show up in the pdf when running locally
+        //Localhost will point back to itself (php-fpm), so we need to change it to the web container
+        if (app()->environment('local'))
+        {
+            $logoPath = \str_replace('https://localhost:8710', 'http://web', $logoPath);
+        }
+
+        $imageContents = \file_get_contents($logoPath);
+        $base64Image = base64_encode($imageContents);
+        $mimeType = Storage::disk('s3')->mimeType($logoPath);
+        $dataUri = "data:{$mimeType};base64,{$base64Image}";
+        $renderedView = view('pdf.bookingContract', ['booking' => $this, 'logoDataUri' => $dataUri])->render();
         $tempPath = storage_path('app/temp_pdf_' . uniqid() . '.pdf');
         Browsershot::html($renderedView)
             ->setNodeBinary(config('browsershot.node_binary'))
