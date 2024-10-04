@@ -61,6 +61,13 @@ class BookingsController extends Controller
     public function store(StoreBookingsRequest $request, Bands $band)
     {
         $booking = $band->bookings()->create($request->validated());
+
+        if ($booking->contract_option === 'none')
+        {
+            $booking->status = 'confirmed';
+            $booking->save();
+        }
+
         $booking->contract()->create([
             'author_id' => Auth::id(),
         ]);
@@ -245,7 +252,7 @@ class BookingsController extends Controller
     public function contract(Bands $band, Bookings $booking)
     {
         $booking->contacts = $booking->contacts()->get();
-        if (count($booking->contacts) === 0)
+        if (count($booking->contacts) === 0 && $booking->contract_option !== 'none')
         {
             return redirect()->route('Booking Contacts', [$band, $booking])->with('warningMessage', 'Please add a contact before generating a contract.');
         }

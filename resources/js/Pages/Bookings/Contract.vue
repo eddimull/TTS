@@ -17,7 +17,7 @@
       class="mb-8"
     />
 
-    <div v-if="booking.status === 'confirmed' || booking.status === 'pending' && booking.contract_option === 'default'" class="space-y-6">
+    <div v-if="(booking.status === 'confirmed' || booking.status === 'pending') && booking.contract_option === 'default'" class="space-y-6">
       <p v-if="booking.status === 'confirmed'" class="text-xl text-center text-gray-700 font-semibold bg-yellow-100 py-3 px-4 rounded-lg shadow-sm">
         This contract is confirmed. The contract is no longer editable.
       </p>
