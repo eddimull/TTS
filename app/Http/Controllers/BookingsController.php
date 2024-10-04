@@ -40,6 +40,7 @@ class BookingsController extends Controller
         $bookings = $band ? $band->bookings() : Bookings::whereIn('band_id', $userBands->pluck('id'));
 
         $bookings = $bookings->where('date', '>=', Carbon::now()->subMonths(6))
+            ->with('contract') // Eager load the contract relationship
             ->with('contacts') // Eager load the contacts relationship
             ->get();
 
