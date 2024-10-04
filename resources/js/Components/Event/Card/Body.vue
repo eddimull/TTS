@@ -63,7 +63,7 @@
           class="ml-3 p-3 shadow-lg rounded break-normal"
           v-html="event.additional_data?.attire"
         />
-      </li>
+      </li>      
       <Contacts
         :contacts="event.contacts"
       />
