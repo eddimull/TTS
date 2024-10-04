@@ -185,6 +185,10 @@ class EventsController extends Controller
      */
     public function edit($key)
     {
+        $event = Events::where('key', $key)->first();
+
+        return redirect()->route('Booking Events', ['band' => $event->eventable->band->id, 'booking' => $event->eventable->id]);
+
         $eventTypes = EventTypes::orderBy('name')->get();
         $event = BandEvents::where('event_key', $key)->first();
         $states = State::where('country_id', 231)->get();
