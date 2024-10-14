@@ -38,13 +38,14 @@ trait BookingTraits
 
     public function getContractPdf(): string
     {
-        $logoPath = url($this->band->logo);
+        $logoPath = url(\str_replace(" ", "%20", $this->band->logo));
         //there has to be a better way of doing this.
         //this is a hack to get the logo to show up in the pdf when running locally
         //Localhost will point back to itself (php-fpm), so we need to change it to the web container
+
         if (app()->environment('local'))
         {
-            $logoPath = \str_replace('https://localhost:8710', 'http://web', $logoPath);
+            $logoPath = \str_replace(url('/'), 'http://web', $logoPath);
         }
 
         $imageContents = \file_get_contents($logoPath);
