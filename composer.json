@@ -23,6 +23,7 @@
         "sentry/sentry-laravel": "^4.8",
         "spatie/browsershot": "^4.3",
         "spatie/laravel-google-calendar": "^3.8",
+        "spatie/laravel-webhook-client": "^3.4",
         "stripe/stripe-php": "^15.8",
         "symfony/http-client": "^7.1",
         "symfony/mailgun-mailer": "^7.1",
