@@ -1,6 +1,6 @@
 <template>
   <div>
-    <nav class="fixed z-50 w-full bg-white border-b border-gray-100">
+    <nav class="fixed z-50 w-full bg-white dark:bg-slate-700 border-b border-gray-100">
       <!-- Primary Navigation Menu -->
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
@@ -13,7 +13,7 @@
             </div>
 
             <!-- Navigation Links -->
-            <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
+            <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex ">
               <breeze-nav-link
                 :href="route('dashboard')"
                 :active="route().current('dashboard')"
@@ -67,7 +67,7 @@
                   <span class="inline-flex rounded-md">
                     <button
                       type="button"
-                      class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
+                      class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-50 bg-white dark:bg-slate-700 hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
                       @click="markSeen"
                     >
                       <span
@@ -127,7 +127,7 @@
                   <span class="inline-flex rounded-md">
                     <button
                       type="button"
-                      class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
+                      class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-50 bg-white dark:bg-slate-700 hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
                     >
                       {{ $page.props.auth.user.name }}
 
@@ -177,7 +177,7 @@
                 <span class="inline-flex rounded-md">
                   <button
                     type="button"
-                    class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
+                    class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-50 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
                     @click="markSeen"
                   >
                     <span
@@ -230,7 +230,7 @@
           <!-- Hamburger -->
           <div class="-mr-2 flex items-center sm:hidden">
             <button
-              class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out"
+              class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 dark:text-gray-50 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out"
               @click="showingNavigationDropdown = !showingNavigationDropdown"
             >
               <svg
@@ -331,7 +331,7 @@
             <div class="font-medium text-base text-gray-800">
               {{ $page.props.auth.user.name }}
             </div>
-            <div class="px-2 font-medium text-sm text-gray-500">
+            <div class="px-2 font-medium text-sm text-gray-500 dark:text-gray-50">
               {{ $page.props.auth.user.email }}
             </div>
           </div>
@@ -355,23 +355,23 @@
         </div>
       </div>
     </nav>
-    <div class="pt-16 min-h-screen bg-gradient-to-r from-blue-800 to-blue-200">
+    <div class="pt-16 min-h-screen bg-gradient-to-r from-blue-800 to-blue-200 dark:from-blue-950 dark:to-gray-600 dark:text-white">
       <!-- Page Heading -->
       <header
         v-if="$slots.header"
-        class="bg-white shadow"
+        class="bg-white dark:bg-slate-700 shadow"
       >
-        <div class="max-w-7xl mx-auto py-2 px-4 sm:px-4 lg:px-8">
+        <div class="max-w-7xl mx-auto py-2 px-4 sm:px-4 lg:px-8 ">
           <slot name="header" />
         </div>
       </header>
 
       <header
         v-else
-        class="bg-white shadow"
+        class="bg-white dark:bg-slate-700 shadow"
       >
         <div class="max-w-7xl mx-auto py-2 px-4 sm:px-4 lg:px-8">
-          <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+          <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-50 leading-tight">
             {{ route().current().charAt(0).toUpperCase() + route().current().slice(1).replace('.', ' - ') }}
             {{
               navSuffix ?? `- ${navSuffix}` }}

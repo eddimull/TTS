@@ -2,7 +2,7 @@
   <div>
     <label
       for="contractOptions"
-      class="block text-sm font-medium text-gray-700"
+      class="block text-sm font-medium text-gray-700 dark:text-gray-50"
     >Contract Options</label>
     <SelectButton
       id="contractOptions"

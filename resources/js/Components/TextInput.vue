@@ -1,6 +1,6 @@
 <template>
   <div class="createEventInput">
-    <p class="text-gray-600">
+    <p class="text-gray-600 dark:text-gray-50">
       <label :for="props.name">{{ label }}</label>
     </p>
     <div class="mb-4">

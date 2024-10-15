@@ -35,7 +35,7 @@
                 :title="'Initial Information'"
               />
               <div class="createEventInput">
-                <p class="text-gray-600">
+                <p class="text-gray-600 dark:text-gray-50">
                   <label for="name">Band</label>
                 </p>
                 <div>
@@ -56,7 +56,7 @@
                 </div>
               </div>
               <div class="createEventInput">
-                <p class="text-gray-600">
+                <p class="text-gray-600 dark:text-gray-50">
                   <label for="name">Name</label>
                 </p>
                 <div class="mb-4">
@@ -71,7 +71,7 @@
                 </div>
               </div>
               <div class="createEventInput">
-                <p class="text-gray-600">
+                <p class="text-gray-600 dark:text-gray-50">
                   Event Date
                 </p>
                 <p>
@@ -83,7 +83,7 @@
                 </p>
               </div>
               <div class="createEventInput">
-                <p class="text-gray-600">
+                <p class="text-gray-600 dark:text-gray-50">
                   <label for="eventType">Event Type</label>
                 </p>
                 <div>
@@ -104,7 +104,7 @@
                 </div>
               </div>
               <div class="createEventInput">
-                <p class="text-gray-600">
+                <p class="text-gray-600 dark:text-gray-50">
                   Public
                 </p>
                 <p>
@@ -127,7 +127,7 @@
               <div
                 class="createEventInput"
               >
-                <p class="text-gray-600">
+                <p class="text-gray-600 dark:text-gray-50">
                   <label for="firstDance">First Dance</label>
                 </p>
                 <p>
@@ -143,7 +143,7 @@
               <div
                 class="createEventInput"
               >
-                <p class="text-gray-600">
+                <p class="text-gray-600 dark:text-gray-50">
                   <label for="father_daughter">Father / Daughter Dance:</label>
                 </p>
                 <p>
@@ -159,7 +159,7 @@
               <div
                 class="createEventInput"
               >
-                <p class="text-gray-600">
+                <p class="text-gray-600 dark:text-gray-50">
                   <label for="father_daughter">Mother / Groom Dance:</label>
                 </p>
                 <p>
@@ -175,7 +175,7 @@
               <div
                 class="createEventInput"
               >
-                <p class="text-gray-600">
+                <p class="text-gray-600 dark:text-gray-50">
                   <label for="moneyDance">Money Dance</label>
                 </p>
                 <p>
@@ -191,7 +191,7 @@
               <div
                 class="createEventInput"
               >
-                <p class="text-gray-600">
+                <p class="text-gray-600 dark:text-gray-50">
                   <label for="secondDance">Bouquet / Garter</label>
                 </p>
                 <p>
@@ -207,7 +207,7 @@
               <div
                 class="createEventInput"
               >
-                <p class="text-gray-600">
+                <p class="text-gray-600 dark:text-gray-50">
                   Second Line
                 </p>
                 <p>
@@ -226,7 +226,7 @@
               />
               <div>
                 <div class="createEventInput">
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     <label for="eventType">Production</label>
                   </p>
                   <div>
@@ -249,7 +249,7 @@
                   v-if="form.event_type_id == 3 || form.event_type_id === 6"
                   class="createEventInput"
                 >
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     Backline Provided
                   </p>
                   <p>
@@ -260,7 +260,7 @@
                   </p>
                 </div>                          
                 <div class="createEventInput">
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     Venue Name
                   </p>
                   <p>
@@ -287,7 +287,7 @@
                 </div>
  
                 <div class="createEventInput">
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     <label for="streetAddress">Street Address</label>
                   </p>
                   <p>
@@ -301,7 +301,7 @@
                   </p>
                 </div>          
                 <div class="createEventInput">
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     <label for="zipCode">City</label>
                   </p>
                   <p>
@@ -315,7 +315,7 @@
                   </p>
                 </div>                                 
                 <div class="createEventInput">
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     <label for="state">State</label>
                   </p>
                   <p>
@@ -335,7 +335,7 @@
                   </p>
                 </div>   
                 <div class="createEventInput">
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     <label for="zipCode">Zip Code</label>
                   </p>
                   <p>
@@ -350,7 +350,7 @@
                 </div> 
                 
                 <div class="createEventInput">
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     Outdoors
                   </p>
                   <p>
@@ -371,7 +371,7 @@
                 :title="'Band Notes'"
               />                          
               <div class="createEventInput">
-                <p class="text-gray-600">
+                <p class="text-gray-600 dark:text-gray-50">
                   Notes
                 </p>
                 <p>
@@ -382,7 +382,7 @@
                 </p>
               </div>                                                                                                                                                                                                                                                                                                                                    
               <div class="createEventInput">
-                <p class="text-gray-600">
+                <p class="text-gray-600 dark:text-gray-50">
                   Color
                 </p>
                 <p>
@@ -393,7 +393,7 @@
                 </p>
               </div>
               <div class="createEventInput">
-                <p class="text-gray-600">
+                <p class="text-gray-600 dark:text-gray-50">
                   Lodging Provided
                 </p>
                 <p>
@@ -423,7 +423,7 @@
                     v-if="form.event_time !== ''"
                     class="createEventInput"
                   >
-                    <p class="text-gray-600">
+                    <p class="text-gray-600 dark:text-gray-50">
                       Show Time
                     </p>
                     <p>
@@ -440,7 +440,7 @@
                     v-if="form.event_time !== ''"
                     class="createEventInput"
                   >
-                    <p class="text-gray-600">
+                    <p class="text-gray-600 dark:text-gray-50">
                       End Time
                     </p>
                     <p>
@@ -458,7 +458,7 @@
                     v-if="form.event_type_id === 1 && form.event_time !== ''"
                     class="createEventInput"
                   >
-                    <p class="text-gray-600">
+                    <p class="text-gray-600 dark:text-gray-50">
                       Ceremony Time
                     </p>
                     <p>
@@ -480,7 +480,7 @@
                     v-if="form.event_time !== ''"
                     class="createEventInput"
                   >
-                    <p class="text-gray-600">
+                    <p class="text-gray-600 dark:text-gray-50">
                       Quiet Time                                        
                     </p>
                     <p>
@@ -521,7 +521,7 @@
                     v-if="form.event_time !== '' && form.production_needed"
                     class="createEventInput"
                   >
-                    <p class="text-gray-600">
+                    <p class="text-gray-600 dark:text-gray-50">
                       Production Load In Time
                     </p>
                     <p>
@@ -539,7 +539,7 @@
                     v-if="form.event_time !== ''"
                     class="createEventInput"
                   >
-                    <p class="text-gray-600">
+                    <p class="text-gray-600 dark:text-gray-50">
                       Rhythm Load In Time
                     </p>
                     <p>
@@ -557,7 +557,7 @@
                     v-if="form.event_time !== ''"
                     class="createEventInput"
                   >
-                    <p class="text-gray-600">
+                    <p class="text-gray-600 dark:text-gray-50">
                       Band Load In Time
                     </p>
                     <p>

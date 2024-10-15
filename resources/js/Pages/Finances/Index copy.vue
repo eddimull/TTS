@@ -215,7 +215,7 @@
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue'
     import moment from 'moment';
     import Payments from '../../Components/Finances/AllPayments.vue';
-    import {FilterMatchMode} from 'primevue/api';
+    
     import TabMenu from 'primevue/tabmenu';
 import { Link } from '@inertiajs/vue3';
     export default {
@@ -350,12 +350,12 @@ import { Link } from '@inertiajs/vue3';
           },
           initializedPaidProposalFilter() {
                 this.paidProposalFilter = {
-                    'global': {value: null, matchMode: FilterMatchMode.CONTAINS}
+                    'global': {value: null}
                 }
             },     
           initializedunPaidProposalFilter() {
                 this.unpaidProposalFilter = {
-                    'global': {value: null, matchMode: FilterMatchMode.CONTAINS}
+                    'global': {value: null}
                 }
             },   
             parseProposals() 

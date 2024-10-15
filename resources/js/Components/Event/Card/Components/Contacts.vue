@@ -2,8 +2,8 @@
   <li
     class="mt-2"
   >
-    <Accordion>
-      <AccordionTab :header="contacts.length > 1 ? `Contacts (${contacts.length})` : `Contact`" :disabled="contacts.length === 0">
+    <Accordion class="bg-gray-100 dark:bg-slate-700">
+      <AccordionTab :header="contacts.length > 1 ? `Contacts (${contacts.length})` : `Contact`" :disabled="contacts.length === 0" class="bg-gray-100 dark:bg-slate-700">
         <ul 
           v-for="contact in contacts"
           :key="contact.id"

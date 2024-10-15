@@ -1,11 +1,11 @@
 <template>
   <div class="booking-layout">
-    <div class="booking-header p-4 border-b grid">
+    <div class="booking-header dark:bg-slate-700 p-4 border-b grid">
       <h1 class="text-xl font-semibold text-gray-700">
         <span class="text-blue-600">{{ booking.name }}</span>
       </h1>
-      <span class="mt-0 text-xs text-gray-500">{{ booking.date }}</span>
-      <span class="mt-0 text-xs text-gray-500">Status: {{ booking.status }}</span>
+      <span class="mt-0 text-xs text-gray-500 dark:text-gray-50">{{ booking.date }}</span>
+      <span class="mt-0 text-xs text-gray-500 dark:text-gray-50">Status: {{ booking.status }}</span>
     </div>
     <TabMenu
       :model="items"
@@ -69,7 +69,6 @@ const items = computed(() => {
 }
 
 .booking-header {
-    background-color: #f8fafc; /* Very light gray background */
     margin-left: -1rem;
     margin-right: -1rem;
 }

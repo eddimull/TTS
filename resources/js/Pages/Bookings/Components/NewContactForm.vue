@@ -6,7 +6,7 @@
     <div>
       <label
         for="name"
-        class="block text-sm font-medium text-gray-700"
+        class="block text-sm font-medium text-gray-700 dark:text-gray-50"
       >Name *</label>
       <input
         id="name"
@@ -20,7 +20,7 @@
     <div>
       <label
         for="email"
-        class="block text-sm font-medium text-gray-700"
+        class="block text-sm font-medium text-gray-700 dark:text-gray-50"
       >Email *</label>
       <input
         id="email"
@@ -34,7 +34,7 @@
     <div>
       <label
         for="phone"
-        class="block text-sm font-medium text-gray-700"
+        class="block text-sm font-medium text-gray-700 dark:text-gray-50"
       >Phone Number</label>
       <input
         id="phone"
@@ -47,7 +47,7 @@
     <div>
       <label
         for="role"
-        class="block text-sm font-medium text-gray-700"
+        class="block text-sm font-medium text-gray-700 dark:text-gray-50"
       >Role</label>
       <input
         id="role"
@@ -60,7 +60,7 @@
     <div>
       <label
         for="notes"
-        class="block text-sm font-medium text-gray-700"
+        class="block text-sm font-medium text-gray-700 dark:text-gray-50"
       >Notes</label>
       <textarea
         id="notes"

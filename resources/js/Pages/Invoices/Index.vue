@@ -8,7 +8,7 @@
 
     <div class="md:container md:mx-auto">
       <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
+        <div class="bg-white dark:bg-slate-700 overflow-hidden shadow-sm sm:rounded-lg pt-4">
           <DataTable
             v-model:filters="filters1"
             :value="proposals"
@@ -99,7 +99,7 @@
             :key="index"
             class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
           >
-            <p class="text-gray-600">
+            <p class="text-gray-600 dark:text-gray-50">
               <label for="name">{{ field.name }}</label>
             </p>
             <div
@@ -158,7 +158,7 @@
             </div>
           </div>
           <div :class="['md:grid', 'md:grid-cols-2', 'hover:bg-gray-50', 'md:space-y-0', 'space-y-1', 'p-4']">
-            <p class="text-gray-600">
+            <p class="text-gray-600 dark:text-gray-50">
               <label for="name">Contacts</label>
             </p>
             <div>
@@ -220,7 +220,7 @@
           :key="input"
           class="md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b"
         >
-          <p class="text-gray-600">
+          <p class="text-gray-600 dark:text-gray-50">
             <label :for="input.name">{{ input.name }}</label>
           </p>
 
@@ -299,7 +299,6 @@
     import InputSwitch from 'primevue/inputswitch';
     import Button from 'primevue/button';
     import axios from 'axios';
-    import FilterMatchMode from 'primevue/api/FilterMatchMode';
     import CurrencyInput from '@/Components/CurrencyInput'
 
 
@@ -447,7 +446,7 @@
             },
             initFilters1() {
                 this.filters1 = {
-                    'global': {value: null, matchMode: FilterMatchMode.CONTAINS}
+                    'global': {value: null}
                 }
             }            
         }

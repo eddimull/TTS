@@ -1,9 +1,9 @@
 <template>
-  <Container class="md:container md:mx-auto">
+  <Container class="dark:bg-slate-600 md:container md:mx-auto">
     <div class="py-12">
       <div class="max-w-8xl mx-auto sm:px-6 lg:px-8">
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-          <div class="p-6 bg-white border-b border-gray-200">
+        <div class="bg-white dark:bg-slate-700 overflow-hidden shadow-sm sm:rounded-lg">
+          <div class="p-6 bg-white dark:bg-slate-700 border-b border-gray-200">
             <div class="flex justify-between items-center mb-4">
               <span class="text-xl font-bold">Booking Kanban Board</span>
               <div class="flex items-center">
