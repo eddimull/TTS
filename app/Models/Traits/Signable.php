@@ -2,15 +2,26 @@
 
 namespace App\Models\Traits;
 
+use App\Models\Contacts;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 
 trait Signable
 {
-    public function sendToPandaDoc()
+    public function sendToPandaDoc(Contacts $contact = null)
     {
         $apiKey = config('services.pandadoc.api_key');
         $apiUrl = 'https://api.pandadoc.com/public/v1/documents';
+
+        $recipients = $this->getContractRecipients();
+
+        if ($contact)
+        {
+            $recipients = array_values(array_filter($recipients, function ($recipient) use ($contact)
+            {
+                return $recipient['email'] === $contact->email;
+            }));
+        }
 
         try
         {
@@ -23,7 +34,7 @@ trait Signable
                     $this->contractable->band->name
                 ],
                 'url' => $this->getPdfUrl(),
-                'recipients' => $this->getContractRecipients(),
+                'recipients' => $recipients,
                 'fields' => $this->getSignatureFields(),
                 'parse_form_fields' => false,
             ]);

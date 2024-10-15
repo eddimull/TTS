@@ -18,6 +18,7 @@ import Column from 'primevue/column';
 import Editor from 'primevue/editor';
 import Panel from 'primevue/panel';
 import PrimeVue from 'primevue/config';
+import Aura from '@primevue/themes/aura';
 import Calendar from 'primevue/calendar';
 import Divider from 'primevue/divider';
 import Button from 'primevue/button';
@@ -39,8 +40,8 @@ import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
 import Container from '@/Components/Container'
 import ToastService from 'primevue/toastservice';
 import 'sweetalert2/dist/sweetalert2.min.css';
-import 'primevue/resources/themes/saga-blue/theme.css'
-import 'primevue/resources/primevue.min.css'
+// import 'primevue/resources/themes/saga-blue/theme.css'
+// import 'primevue/resources/primevue.min.css'
 // import 'primeflex/primeflex.css';
 import 'primeicons/primeicons.css'
 
@@ -67,41 +68,41 @@ createInertiaApp({
             .use(ZiggyVue, Ziggy)
             .use(store)
             .use(VueSweetalert2)
-            .use(PrimeVue)
+            .use(PrimeVue, { ripple: true, theme: { preset: Aura } })
             .use(ToastService)
-            const components = {
-                Link,
-                Container,
-                Chart,
-                CardModal,
-                Calendar,
-                Checkbox,
-                Column,
-                Accordion,
-                AccordionTab,
-                Editor,
-                Button,
-                Divider,
-                Card,
-                RadioButton,
-                InputText,
-                Image,
-                InputNumber,
-                InputSwitch,
-                Textarea,
-                PVtextarea: Textarea,
-                Dialog,
-                Dropdown,
-                DataTable,
-                Panel,
-                TabView,
-                TabPanel,
-                ProgressSpinner
-            };
+        const components = {
+            Link,
+            Container,
+            Chart,
+            CardModal,
+            Calendar,
+            Checkbox,
+            Column,
+            Accordion,
+            AccordionTab,
+            Editor,
+            Button,
+            Divider,
+            Card,
+            RadioButton,
+            InputText,
+            Image,
+            InputNumber,
+            InputSwitch,
+            Textarea,
+            PVtextarea: Textarea,
+            Dialog,
+            Dropdown,
+            DataTable,
+            Panel,
+            TabView,
+            TabPanel,
+            ProgressSpinner
+        };
 
-            Object.entries(components).forEach(([name, component]) => {
-                app.component(name, component);
-            });
+        Object.entries(components).forEach(([name, component]) => {
+            app.component(name, component);
+        });
         app.mixin({ methods: { route } });
 
         app.config.globalProperties.$moment = moment;
@@ -110,7 +111,7 @@ createInertiaApp({
 
         return (() => {
             return store.dispatch('eventTypes/fetchEventTypes')
-        })().then(()=>{
+        })().then(() => {
             return app.mount(el);
         })
 

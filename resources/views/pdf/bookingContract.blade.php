@@ -100,7 +100,7 @@
         </p>
         <p>I Agree to the terms and conditions of this contract</p>
         <div>
-            <strong class="underline">{{ $booking->contacts[0]->name }}</strong> - <strong>{{ date('m/d/Y') }}</strong>
+            <strong class="underline">{{ $contact->name }}</strong> - <strong>{{ date('m/d/Y') }}</strong>
         </div>
         <br />
         <br />

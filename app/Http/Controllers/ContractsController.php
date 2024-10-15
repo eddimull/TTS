@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Requests\StoreContractsRequest;
 use App\Http\Requests\UpdateContractsRequest;
+use Illuminate\Http\Request;
 
 class ContractsController extends Controller
 {
@@ -94,9 +95,20 @@ class ContractsController extends Controller
         dd($contract);
     }
 
-    public function sendBookingContract(Bands $band, Bookings $booking)
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  Bands  $band
+     * @param  Bookings  $booking
+     * @return \Illuminate\Http\Response
+     */
+    public function sendBookingContract(Request $request, Bands $band, Bookings $booking,)
     {
-        $contractPdf = $booking->getContractPdf();
+        //get the contact from the request input 'contact'
+        $contact = $booking->contacts()->find($request->input('contact'));
+        $contractPdf = $booking->getContractPdf($contact);
         $booking->storeContractPdf($contractPdf);
         $contract = $booking->contract;
 
@@ -108,7 +120,7 @@ class ContractsController extends Controller
 
         try
         {
-            $result = $contract->sendToPandaDoc();
+            $contract->sendToPandaDoc($contact);
             $booking->status = 'pending';
             $booking->save();
             return redirect()->back()->with('successMessage', 'Contract sent successfully to PandaDoc.');
