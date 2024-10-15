@@ -1,6 +1,6 @@
 <template>
   <div class="editable-contract-wysiwyg">
-    <div class="sticky top-[4rem] z-10 bg-white shadow">
+    <div class="sticky top-[4rem] z-10">
       <Toolbar>
         <template #start>
           <Button
@@ -31,7 +31,7 @@
           />
         </template>
       </Toolbar>
-      <div class="text-gray-400 text-sm font-bold">
+      <div class="text-gray-400 text-sm font-bold mt-2">
         Last update: {{ booking.contract?.updated_at || 'Never' }}
       </div>
     </div>

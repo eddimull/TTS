@@ -2,11 +2,13 @@
 
 namespace App\Http\Traits;
 
+use App\Models\Contacts;
 use App\Mail\PaymentMade;
 use Illuminate\Support\Facades\URL;
 use Spatie\Browsershot\Browsershot;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use App\Http\Requests\BookingContact;
 use Illuminate\Support\Facades\Storage;
 
 trait BookingTraits
@@ -36,7 +38,7 @@ trait BookingTraits
         return file_get_contents($tempPath);
     }
 
-    public function getContractPdf(): string
+    public function getContractPdf(Contacts $contact = null): string
     {
         $logoPath = url(\str_replace(" ", "%20", $this->band->logo));
         //there has to be a better way of doing this.
@@ -48,11 +50,16 @@ trait BookingTraits
             $logoPath = \str_replace(url('/'), 'http://web', $logoPath);
         }
 
+        if (is_null($contact))
+        {
+            $contact = $this->contacts->first();
+        }
+
         $imageContents = \file_get_contents($logoPath);
         $base64Image = base64_encode($imageContents);
         $mimeType = Storage::disk('s3')->mimeType($logoPath);
         $dataUri = "data:{$mimeType};base64,{$base64Image}";
-        $renderedView = view('pdf.bookingContract', ['booking' => $this, 'logoDataUri' => $dataUri])->render();
+        $renderedView = view('pdf.bookingContract', ['booking' => $this, 'logoDataUri' => $dataUri, 'contact' => $contact])->render();
         $tempPath = storage_path('app/temp_pdf_' . uniqid() . '.pdf');
         Browsershot::html($renderedView)
             ->setNodeBinary(config('browsershot.node_binary'))

@@ -299,8 +299,9 @@
     import InputSwitch from 'primevue/inputswitch';
     import Button from 'primevue/button';
     import axios from 'axios';
-    import {FilterMatchMode,FilterOperator} from 'primevue/api';
+    import FilterMatchMode from 'primevue/api/FilterMatchMode';
     import CurrencyInput from '@/Components/CurrencyInput'
+
 
     export default {
         components: {
