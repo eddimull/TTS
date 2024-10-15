@@ -29,19 +29,19 @@
           Year Totals
         </h3>
         <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-          <dt class="font-medium text-gray-600">
+          <dt class="font-medium text-gray-600 dark:text-gray-50">
             Total paid:
           </dt>
           <dd class="text-gray-800">
             {{ moneyFormat(yearTotals.paid) }}
           </dd>
-          <dt class="font-medium text-gray-600">
+          <dt class="font-medium text-gray-600 dark:text-gray-50">
             Total unpaid:
           </dt>
           <dd class="text-gray-800">
             {{ moneyFormat(yearTotals.unpaid) }}
           </dd>
-          <dt class="font-medium text-gray-600">
+          <dt class="font-medium text-gray-600 dark:text-gray-50">
             Total bookings:
           </dt>
           <dd class="text-gray-800">

@@ -13,7 +13,7 @@
         <div>
           <label
             for="event_type_id"
-            class="block text-sm font-medium text-gray-700"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-50"
           >Event Type</label>
           <select
             id="event_type_id"
@@ -33,7 +33,7 @@
         <div>
           <label
             for="date"
-            class="block text-sm font-medium text-gray-700"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-50"
           >Event Date</label>
           <input
             id="date"
@@ -45,7 +45,7 @@
         <div>
           <label
             for="start_time"
-            class="block text-sm font-medium text-gray-700"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-50"
           >Start Time</label>
           <input
             id="start_time"
@@ -57,7 +57,7 @@
         <div>
           <label
             for="end_time"
-            class="block text-sm font-medium text-gray-700"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-50"
           >End Time</label>
           <input
             id="end_time"
@@ -85,7 +85,7 @@
         <div>
           <label
             for="price"
-            class="block text-sm font-medium text-gray-700"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-50"
           >Price</label>
           <input
             id="price"
@@ -98,7 +98,7 @@
         <div>
           <label
             for="status"
-            class="block text-sm font-medium text-gray-700"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-50"
           >Status</label>
           <select
             id="status"
@@ -122,7 +122,7 @@
         <div>
           <label
             for="contract_option"
-            class="block text-sm font-medium text-gray-700"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-50"
           >Contract Option</label>
           <select
             id="contract_option"
@@ -144,7 +144,7 @@
       <div>
         <label
           for="notes"
-          class="block text-sm font-medium text-gray-700"
+          class="block text-sm font-medium text-gray-700 dark:text-gray-50"
         >Notes</label>
         <textarea
           id="notes"

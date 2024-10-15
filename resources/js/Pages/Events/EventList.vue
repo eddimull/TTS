@@ -1,7 +1,7 @@
 <template>
   <Container class="md:container md:mx-auto">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-      <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
+      <div class="bg-white dark:bg-slate-700 overflow-hidden shadow-sm sm:rounded-lg pt-4">
         <div class="flex justify-center items-center my-4">
           <button
             type="button"
@@ -103,7 +103,7 @@
 </template>
 
 <script>
-import { FilterMatchMode, FilterOperator } from 'primevue/api';
+
 import { DateTime, Interval } from 'luxon';
 
 export default {
@@ -175,7 +175,7 @@ export default {
     },
     initFilters() {
       this.filters = {
-        'global': {value: null, matchMode: FilterMatchMode.CONTAINS},
+        'global': {value: null},
       }
     }          
   }

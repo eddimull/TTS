@@ -484,7 +484,7 @@
     import Button from 'primevue/button';
     import axios from 'axios';
     import CurrencyInput from '@/Components/CurrencyInput';
-    import {FilterMatchMode,FilterOperator} from 'primevue/api';
+    
     import ReservedCalendar from '../../Components/ReservedCalendar.vue'
 import Label from '../../Components/Label.vue';
 
@@ -704,8 +704,8 @@ import Label from '../../Components/Label.vue';
             },
             initFilters1() {
                 this.filters1 = {
-                    'global': {value: null, matchMode: FilterMatchMode.CONTAINS},
-                    'phase_id': {value: null, matchMode: FilterMatchMode.CONTAINS}
+                    'global': {value: null, },
+                    'phase_id': {value: null, }
                 }
             }            
         }

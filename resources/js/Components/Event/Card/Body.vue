@@ -24,16 +24,14 @@
         class="p-2"
       >
         Notes: <div
-          style="background-color: rgb(244 244 245);"
-          class="ml-3 p-3 shadow-lg rounded break-normal content-container"
+          class="ml-3 p-3 shadow-lg rounded break-normal content-container bg-gray-100 dark:bg-slate-700"
           v-html="event.notes"
         />
       </li>
       <li class="p-2">
         Extra Details:
         <div
-          style="background-color: rgb(244 244 245);"
-          class="ml-3 p-3 shadow-lg rounded break-normal">
+          class="ml-3 p-3 shadow-lg rounded break-normal bg-gray-100 dark:bg-slate-700">
           <ul>
           <li>
             Outside Event: <strong>{{ event.additional_data?.outside ? 'Yes' : 'No' }}</strong>
@@ -59,8 +57,7 @@
       </li>
       <li v-if="event.additional_data?.attire">
         Attire: <div
-          style="background-color: rgb(244 244 245);"
-          class="ml-3 p-3 shadow-lg rounded break-normal"
+          class="ml-3 p-3 shadow-lg rounded break-normal bg-gray-100 dark:bg-slate-700"
           v-html="event.additional_data?.attire"
         />
       </li>      

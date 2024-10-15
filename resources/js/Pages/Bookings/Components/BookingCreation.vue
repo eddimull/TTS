@@ -8,7 +8,7 @@
         <div>
           <label
             for="name"
-            class="block text-sm font-medium text-gray-700"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-50"
           >Booking Name</label>
           <input
             id="name"
@@ -22,7 +22,7 @@
         <div>
           <label
             for="event_type_id"
-            class="block text-sm font-medium text-gray-700"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-50"
           >Event Type</label>
           <select
             id="event_type_id"
@@ -46,7 +46,7 @@
         <div>
           <label
             for="date"
-            class="block text-sm font-medium text-gray-700"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-50"
           >Date</label>
           <input
             id="date"
@@ -60,7 +60,7 @@
         <div>
           <label
             for="start_time"
-            class="block text-sm font-medium text-gray-700"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-50"
           >Start Time</label>
           <input
             id="start_time"
@@ -74,7 +74,7 @@
         <div>
           <label
             for="duration"
-            class="block text-sm font-medium text-gray-700"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-50"
           >Duration (hours)</label>
           <input
             id="duration"
@@ -88,7 +88,7 @@
         <div>
           <label
             for="price"
-            class="block text-sm font-medium text-gray-700"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-50"
           >Price</label>
           <div class="mt-1 relative rounded-md shadow-sm">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
