@@ -167,6 +167,8 @@
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
     import InputSwitch from 'primevue/inputswitch';
+    import IconField from 'primevue/iconfield';
+    import InputIcon from 'primevue/inputicon';
     import Toolbar from 'primevue/toolbar'
     import DataTable from 'primevue/datatable';
     import Column from 'primevue/column';
@@ -176,7 +178,9 @@
             BreezeAuthenticatedLayout,
             Toolbar,
             DataTable,
-            Column
+            Column, 
+            IconField,
+            InputIcon,
         },
         props:{
           charts:{
