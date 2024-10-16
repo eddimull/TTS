@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white shadow-md rounded-lg p-4 mb-4">
+  <div class="bg-white dark:bg-slate-600 shadow-md rounded-lg p-4 mb-4">
     <div
       v-if="!isEditing"
       class="relative"
@@ -9,13 +9,15 @@
         :model="menuItems"
         :popup="true"
       />
-      <Button
-        icon="pi pi-ellipsis-v"
-        aria-haspopup="true"
-        aria-controls="overlay_menu"
-        class="absolute top-2 right-2 p-button-text p-button-plain"
-        @click="toggleMenu"
-      />
+      <div class="absolute top-2 right-2">
+        <Button
+          icon="pi pi-ellipsis-v"
+          aria-haspopup="true"
+          aria-controls="overlay_menu"
+          class="p-button-text p-button-plain"
+          @click="toggleMenu"
+        />
+      </div>
 
 
       <p><strong>Name:</strong> {{ contact.name }}</p>
