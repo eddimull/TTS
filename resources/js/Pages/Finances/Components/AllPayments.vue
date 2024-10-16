@@ -104,7 +104,7 @@ const filterPayments = () => {
 const filteredPayments = computed(() => filterPayments());
 
 const gotoPayment = (data,band) => {
-    const url = route('bands.booking.show', {band: band.id, booking:data.payable_id});
+    const url = route('Booking Finances', {band: band.id, booking:data.payable_id});
     router.get(url);
 }
 </script>

@@ -7,9 +7,11 @@
       <span class="mt-0 text-xs text-gray-500 dark:text-gray-50">{{ booking.date }}</span>
       <span class="mt-0 text-xs text-gray-500 dark:text-gray-50">Status: {{ booking.status }}</span>
     </div>
+    
     <TabMenu
       :model="items"
       class="pb-2 border-b"
+      :activeIndex="items.findIndex(item => item.href === $page.url) || 0"
     >
       <template #item="{ item }">
         <Link
@@ -32,7 +34,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import TabMenu from 'primevue/tabmenu';
 import Link from '@/Components/NavLink.vue';
 import { usePage } from '@inertiajs/inertia-vue3';
@@ -51,13 +53,20 @@ const props = defineProps({
     }
 });
 
+
 const items = computed(() => {
+    
     return Object.entries(props.routes).map(([name, routeInfo]) => ({
         label: name,
         route: routeInfo.uri,
         href: route(name, routeParameters,false)
     }));
 });
+
+let activeItemIndex = ref(0);
+
+
+
 
 </script>
 

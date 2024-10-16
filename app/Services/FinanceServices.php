@@ -83,7 +83,7 @@ class FinanceServices
                         'payable_date' => $payment->payable->date->format('Y-m-d'),
                         'payable_id' => $payment->payable_id,
                         'formattedPaymentDate' => $payment->date->format('Y-m-d'), // Adjust format as needed
-                        'formattedPaymentAmount' => number_format($payment->amount / 100, 2)
+                        'formattedPaymentAmount' => number_format($payment->amount, 2)
                     ];
                 });
         }
