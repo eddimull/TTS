@@ -49,11 +49,11 @@
         </div>
       </li>
       <li
-        v-if="event.event_type_id === 1"
+        v-if="event.event_type_id === 1 && event.additional_data?.wedding"
         class="p-2"
       >
         Wedding Info:
-        <Wedding :wedding="event.additional_data?.wedding" :on-site="event.onSite" />
+        <Wedding :wedding="event.additional_data?.wedding" />
       </li>
       <li v-if="event.additional_data?.attire">
         Attire: <div

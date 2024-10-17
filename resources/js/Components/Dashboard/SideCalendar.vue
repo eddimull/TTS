@@ -1,10 +1,10 @@
 <template>
-  <calendar
+  <DatePicker
     :dates="dates"
     :show-time="false"
     :step-minute="15"
     hour-format="12"
-    :inline="true"
+    inline
   >
     <template #date="{ date }">
       <strong
@@ -19,11 +19,12 @@
         {{ date.day }}
       </template>
     </template>
-  </calendar>
+  </DatePicker>
 </template>
 
 <script setup>
 import { DateTime } from 'luxon';
+import DatePicker from 'primevue/datepicker';
 
 const props = defineProps({
   events: {

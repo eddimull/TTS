@@ -48,13 +48,7 @@
             for="date"
             class="block text-sm font-medium text-gray-700 dark:text-gray-50"
           >Date</label>
-          <input
-            id="date"
-            v-model="form.date"
-            type="date"
-            required
-            class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-          >
+          <DatePicker id="date" class="w-full" v-model="form.date" show-icon="true"/>
         </div>
   
         <div>
@@ -94,15 +88,15 @@
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <span class="text-gray-500 sm:text-sm">$</span>
             </div>
-            <input
+
+            <InputNumber
               id="price"
               v-model="form.price"
-              type="number"
-              required
-              min="0"
-              step="0.01"
-              class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 pl-7 pr-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            >
+              mode="currency"
+              currency="USD"
+              locale="en-US"
+              class="w-full rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+            />
           </div>
         </div>
         <ContractOptions v-model="form.contract_option" />
@@ -123,10 +117,12 @@
   import { ref } from 'vue'
   import ContractOptions from './ContractOptions.vue'
   import { useForm } from '@inertiajs/vue3'
+  import DatePicker from 'primevue/datepicker'
   
   export default {
     components: {
-      ContractOptions
+      ContractOptions,
+      DatePicker
     },
     props: {
       band: {

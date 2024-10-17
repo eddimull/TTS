@@ -21,7 +21,7 @@ import { computed } from 'vue';
 
 const props = defineProps({
   times: {
-    type: Array,
+    type: Object,
     required: true
   }
 });

@@ -49,7 +49,6 @@ const formatDate = (date) => {
 };
 
 const showFuelGauge = computed(() => {
-  console.log(props.booking.contract_option, props.booking.status);
   return props.booking.contract_option === 'default' && props.booking.status === 'pending' && props.booking.contract;
 });
 
