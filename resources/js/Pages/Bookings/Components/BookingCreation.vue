@@ -18,7 +18,7 @@
             class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           >
         </div>
-  
+
         <div>
           <label
             for="event_type_id"
@@ -42,15 +42,20 @@
             </option>
           </select>
         </div>
-  
+
         <div>
           <label
             for="date"
             class="block text-sm font-medium text-gray-700 dark:text-gray-50"
           >Date</label>
-          <DatePicker id="date" class="w-full" v-model="form.date" show-icon="true"/>
+          <DatePicker
+            id="date"
+            v-model="bookingDate"
+            class="w-full"
+            :show-icon="true"
+          />
         </div>
-  
+
         <div>
           <label
             for="start_time"
@@ -78,7 +83,7 @@
             class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           >
         </div>
-  
+
         <div>
           <label
             for="price"
@@ -112,13 +117,15 @@
     </form>
   </div>
 </template>
-  
+
   <script>
   import { ref } from 'vue'
   import ContractOptions from './ContractOptions.vue'
   import { useForm } from '@inertiajs/vue3'
   import DatePicker from 'primevue/datepicker'
-  
+  import { DateTime } from 'luxon';
+
+
   export default {
     components: {
       ContractOptions,
@@ -133,7 +140,6 @@
         type: Array,
         required: true
       }
-
     },
     setup(props) {
       const form = useForm({
@@ -142,20 +148,36 @@
         date: '',
         start_time: '19:00',
         duration: 4,
-        price: '',
+        price: null,
         contract_option: ''
       })
-  
+
+      //primevue datepicker uses a model of type Date
+      //so when submitting, we need to convert the date to an ISODate
+      const bookingDate = ref(new Date())
+
+
+
       const submitForm = () => {
+
         form.post(route('bands.booking.store', props.band.id), {
           preserveScroll: true,
           preserveState: true
         })
       }
-  
+
       return {
         form,
+        bookingDate,
         submitForm
+      }
+    },
+    watch: {
+      bookingDate: {
+        immediate: true,
+        handler(newDate) {
+          this.form.date = DateTime.fromJSDate(newDate).toISODate()
+        }
       }
     }
   }

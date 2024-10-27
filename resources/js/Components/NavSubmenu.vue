@@ -7,27 +7,30 @@
       <span class="mt-0 text-xs text-gray-500 dark:text-gray-50">{{ booking.date }}</span>
       <span class="mt-0 text-xs text-gray-500 dark:text-gray-50">Status: {{ booking.status }}</span>
     </div>
-    
     <TabMenu
       :model="items"
-      class="pb-2 border-b"
-      :activeIndex="items.findIndex(item => item.href === $page.url) || 0"
+      class="pb-2 border-b md:flex md:flex-row flex-col w-full"
+      :active-index="items.findIndex(item => item.href === $page.url) || 0"
     >
-      <template #item="{ item }">
-        <Link
-          :href="item.href"
-          :active="$page.url === item.href"
-          custom
-          preserve-scroll
-          preserve-state
-        >
-          <a
-            role="menuitem"
-            class="p-menuitem-link"
+      <template
+        #item="{ item }"
+      >
+        <div class="flex justify-evenly items-center p-2">
+          <Link
+            :href="item.href"
+            :active="$page.url === item.href"
+            custom
+            preserve-scroll
+            preserve-state
           >
-            <span class="p-menuitem-text">{{ item.label }}</span>
-          </a>
-        </Link>
+            <a
+              role="menuitem"
+              class="p-menuitem-link"
+            >
+              <span class="p-menuitem-text">{{ item.label }}</span>
+            </a>
+          </Link>
+        </div>
       </template>
     </TabMenu>
   </div>
@@ -55,9 +58,9 @@ const props = defineProps({
 
 
 const items = computed(() => {
-    
+
     return Object.entries(props.routes).map(([name, routeInfo]) => ({
-        label: name,
+        label: name.replace('Booking ', ''),
         route: routeInfo.uri,
         href: route(name, routeParameters,false)
     }));
