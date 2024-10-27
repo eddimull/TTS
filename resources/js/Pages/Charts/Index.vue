@@ -98,7 +98,7 @@
             v-if="submitted && !chart.composer"
             class="p-error"
           >Composer is required.</small>
-        </div>                  
+        </div>
         <div class="p-field">
           <label for="description">Description</label>
           <Textarea
@@ -117,7 +117,7 @@
           <Dropdown
             id="bandSelection"
             v-model="chart.band"
-            :options="bands"
+            :options="availableBands"
             option-label="name"
             placeholder="Select a Band"
           >
@@ -131,7 +131,7 @@
               </span>
             </template>
           </Dropdown>
-        </div>          
+        </div>
         <div class="p-formgrid p-grid">
           <div class="p-field p-col">
             <label for="price">Price</label>
@@ -167,35 +167,27 @@
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
     import InputSwitch from 'primevue/inputswitch';
-    import IconField from 'primevue/iconfield';
-    import InputIcon from 'primevue/inputicon';
     import Toolbar from 'primevue/toolbar'
     import DataTable from 'primevue/datatable';
     import Column from 'primevue/column';
-    
+
     export default {
         components: {
             BreezeAuthenticatedLayout,
             Toolbar,
             DataTable,
-            Column, 
-            IconField,
-            InputIcon,
+            Column
         },
         props:{
           charts:{
             type:Array,
             default:()=>{return []}
           },
-          bands:{
-            type:Array,
-            default:()=>{return []}
-          }
         },
         data(){
             return{
                 form:{
-                    
+
                 },
               chartsData:this.charts,
               filteredChartsData: [],
@@ -207,8 +199,36 @@
             }
         },
         computed:{
+          availableBands(){
+            const bands = [];
+            if(this.$page.props.auth.user.band_owner)
+            {
+              this.$page.props.auth.user.band_owner.forEach(band=>{
+                bands.push({id:band.id,name:band.name})
+              })
+            }
+            if(this.$page.props.auth.user.band_member)
+            {
+              this.$page.props.auth.user.band_member.forEach(band=>{
 
+                bands.push({id:band.id,name:band.name})
+              })
+            }
 
+            function sortNames(a,b)
+            {
+              if(a.name < b.name)
+              {
+                return -1;
+              }
+              if(a.name > b.name)
+              {
+                return 1;
+              }
+              return 0;
+            }
+           return bands.filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i).sort(sortNames)
+          }
         },
         watch:{
           chartFilter: {
@@ -216,7 +236,7 @@
               this.filterCharts();
             }
           }
-        }, 
+        },
         created(){
 
           this.filteredChartsData = this.chartsData;
@@ -225,15 +245,15 @@
         methods:{
             selectedChart(data)
             {
-              this.$inertia.visit(this.route('charts.edit', data.data.id));  
+              this.$inertia.visit(this.route('charts.edit', data.data.id));
             },
         openNew() {
-          
+
           this.saving = false;
             this.product = {};
             this.submitted = false;
             this.chartDialog = true;
-        }, 
+        },
         saveChart(){
           this.submitted = true;
           this.saving = true;
@@ -247,13 +267,13 @@
 
         filterCharts() {
           const searchTerm = this.chartFilter.toLowerCase();
-          this.filteredChartsData = this.chartsData.filter(chart => 
+          this.filteredChartsData = this.chartsData.filter(chart =>
             chart.title.toLowerCase().includes(searchTerm) ||
             chart.composer.toLowerCase().includes(searchTerm)
           );
         }
-      }     
-        
-        
+      }
+
+
     }
 </script>

@@ -3,7 +3,7 @@
     <p class="text-gray-600 dark:text-gray-50">
       <label :for="props.name">{{ label }}</label>
     </p>
-    <p>
+    <div>
       <input
         :id="props.name"
         :value="modelValue"
@@ -13,7 +13,7 @@
         @input="$emit('update:modelValue', $event.target.value)"
         @keyup="autoComplete"
       >
-                                      
+
       <ul class="">
         <li
           v-for="(result, index) in searchResults"
@@ -24,14 +24,14 @@
           {{ result.description }}
         </li>
       </ul>
-    </p>
+    </div>
   </div>
 </template>
-  
+
   <script setup>
   import { ref, onMounted } from 'vue';
   import axios from 'axios';
-  
+
   const props = defineProps({
     modelValue: {
       type: String,
@@ -57,28 +57,28 @@
       default: 'text'
     }
   });
-  
+
   const emit = defineEmits(['update:modelValue','location-selected']);
-  
+
   const searchResults = ref(null);
   const searchTimer = ref(null);
   const sessionToken = ref(0);
-  
+
   onMounted(() => {
     generateSessionToken();
   });
-  
+
   const generateSessionToken = () => {
     sessionToken.value = Math.floor(Math.random() * 1000000000);
   };
-  
+
   const autoComplete = () => {
     if (searchTimer.value) {
       clearTimeout(searchTimer.value);
       searchTimer.value = null;
     }
-    
-    searchTimer.value = setTimeout(() => { 
+
+    searchTimer.value = setTimeout(() => {
       try {
         axios.post('/api/searchLocations', {
           sessionToken: sessionToken.value,
@@ -91,7 +91,7 @@
       }
     }, 800);
   };
-  
+
   const getLocationDetails = (place_id) => {
     axios.post('/api/getLocationDetails', {
       sessionToken: sessionToken.value,
@@ -106,7 +106,7 @@
     }).catch((error) => {
       console.error('Error getting location details', error);
     });
-  
+
     // After using the session token, generate a new one for the next use
     generateSessionToken();
   };
