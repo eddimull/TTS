@@ -72,6 +72,7 @@ class BookingsController extends Controller
         $booking->contract()->create([
             'author_id' => Auth::id(),
         ]);
+        // TODO need to refactor this outside of the controller
         $event = [
             'event_type_id' => $booking->event_type_id,
             'key' => Str::uuid(),
