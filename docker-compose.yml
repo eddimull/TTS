@@ -52,20 +52,20 @@ services:
             - sail
         healthcheck:
             test: [ "CMD", "mysqladmin", "ping" ]
-    mysql-test:
-        image: 'mysql:8.1'
-        ports:
-            - '${FORWARD_DB_PORT:-3307}:3306'
-        environment:
-            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
-            MYSQL_DATABASE: '${DB_DATABASE}'
-            MYSQL_USER: '${DB_USERNAME}'
-            MYSQL_PASSWORD: '${DB_PASSWORD}'
-            MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
-        volumes:
-            - 'sailmysqltest:/var/lib/mysql'
-        networks:
-            - sail
+    # mysql-test:
+    #     image: 'mysql:8.1'
+    #     ports:
+    #         - '${FORWARD_DB_PORT:-3307}:3306'
+    #     environment:
+    #         MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+    #         MYSQL_DATABASE: '${DB_DATABASE}'
+    #         MYSQL_USER: '${DB_USERNAME}'
+    #         MYSQL_PASSWORD: '${DB_PASSWORD}'
+    #         MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    #     volumes:
+    #         - 'sailmysqltest:/var/lib/mysql'
+    #     networks:
+    #         - sail
     redis:
         image: 'redis:alpine'
         ports:
@@ -84,15 +84,23 @@ services:
             - 'sailmeilisearch:/data.ms'
         networks:
             - sail
-    mailhog:
-        image: 'mailhog/mailhog:latest'
+    mailpit:
+        image: 'axllent/mailpit:latest'
         ports:
-            - '${FORWARD_MAILHOG_PORT:-1025}:1025'
-            - '${FORWARD_MAILHOG_DASHBOARD_PORT:-8025}:8025'
+            - '${FORWARD_MAILPIT_PORT:-1025}:1025'
+            - '${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025'
+        volumes:
+            - './storage/mailpit:/data'
         networks:
             - sail
+        environment:
+          MP_MAX_MESSAGES: 5000
+          MP_DATABASE: /data/mailpit.db
+          MP_SMTP_AUTH_ACCEPT_ANY: 1
+          MP_SMTP_AUTH_ALLOW_INSECURE: 1
     selenium:
-        image: 'selenium/standalone-chrome'
+        image: 'selenium/standalone-chromium'
+
         volumes:
             - '/dev/shm:/dev/shm'
         networks:

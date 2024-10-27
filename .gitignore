@@ -30,3 +30,4 @@ yarn-error.log
 @tmp/*
 .npm/*
 _ide_helper_models.php
+storage/mailpit/*
