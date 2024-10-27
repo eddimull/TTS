@@ -80,8 +80,11 @@ class BookingsController extends Controller
             'time' => $booking->start_time,
             'additional_data' => [
                 'times' => [
-                    'end_time' => $booking->end_time,
-                    'band_loadin_time' => Carbon::parse($booking->time)->subHours(1),
+                    ['title' => 'Load In', 'time' => Carbon::parse($booking->time)->subHours(4)->format('Y-m-d H:i')],
+                    ['title' => 'Soundcheck', 'time' => Carbon::parse($booking->time)->subHours(3)->format('Y-m-d H:i')],
+                    ['title' => 'Quiet', 'time' => Carbon::parse($booking->time)->subHours(1)->format('Y-m-d H:i')],
+                    ['title' => 'Show Time', 'time' => Carbon::parse($booking->time)->format('Y-m-d H:i')],
+                    ['title' => 'End Time', 'time' => Carbon::parse($booking->end_time)->format('Y-m-d H:i')],
                 ],
                 'backline_provided' => false,
                 'production_needed' => true,
@@ -99,14 +102,15 @@ class BookingsController extends Controller
 
         if ($booking->event_type_id === 1)
         {
-            $event['additional_data']['dances'] = [
-                'first_dance' => 'TBD',
-                'father_daughter' => 'TBD',
-                'mother_son' => 'TBD',
-                'money_dance' => 'TBD',
-                'bouquet_garter' => 'TBD'
+            $event['additional_data']['wedding']['onsite'] = true;
+            $event['additional_data']['wedding']['dances'] = [
+                ['title' => 'first_dance', 'data' => 'TBD',],
+                ['title' => 'father_daughter', 'data' => 'TBD',],
+                ['title' => 'mother_son', 'data' => 'TBD',],
+                ['title' => 'money_dance', 'data' => 'TBD',],
+                ['title' => 'bouquet_garter', 'data' => 'TBD']
             ];
-            $event['additional_data']['times']['ceremony'] = $booking->time;
+            $event['additional_data']['times'][] = ['title' => 'Ceremony', 'time' => Carbon::parse($booking->time)->format('Y-m-d H:i')];
             $event['additional_data']['onsite'] = true;
             $event['additional_data']['public'] = false;
         }
