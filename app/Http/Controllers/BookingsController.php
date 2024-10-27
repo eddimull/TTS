@@ -77,7 +77,7 @@ class BookingsController extends Controller
             'key' => Str::uuid(),
             'title' => $booking->name,
             'date' => $booking->date,
-            'time' => $booking->time,
+            'time' => $booking->start_time,
             'additional_data' => [
                 'times' => [
                     'end_time' => $booking->end_time,
