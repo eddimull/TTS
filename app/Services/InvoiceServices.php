@@ -84,10 +84,6 @@ class InvoiceServices{
             'stripe_price_id'=>$price->id
         ]);
         $customer = stripe_customers::where('proposal_id',$proposal->id)->where('proposal_contact_id',$request->contact_id)->first();
-        $invoice_item = \Stripe\InvoiceItem::create([
-            'customer' =>  $customer->stripe_account_id,
-            'price' => $price->id,
-        ]);
         
         $invoice = \Stripe\Invoice::create([
             'on_behalf_of' => $proposal->band->stripe_accounts->stripe_account_id,
@@ -98,6 +94,12 @@ class InvoiceServices{
                 'destination' => $proposal->band->stripe_accounts->stripe_account_id,
             ],
             'customer' => $customer->stripe_account_id
+        ]);
+
+        $invoice_item = \Stripe\InvoiceItem::create([
+            'customer' =>  $customer->stripe_account_id,
+            'price' => $price->id,
+            'invoice' => $invoice->id
         ]);
 
         Invoices::create([
