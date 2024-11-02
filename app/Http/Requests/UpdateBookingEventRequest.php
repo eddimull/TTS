@@ -34,7 +34,7 @@ class UpdateBookingEventRequest extends FormRequest
             'additional_data.migrated_from_event_id' => 'nullable|integer',
             'additional_data.public' => 'required|boolean',
             'additional_data.outside' => 'required|boolean',
-            'additional_data.lodging' => 'required|boolean',
+            'additional_data.lodging' => 'required|array',
             'additional_data.production_needed' => 'required|boolean',
             'additional_data.backline_provided' => 'required|boolean',
             'additional_data.attire' => 'nullable|string',
