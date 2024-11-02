@@ -142,7 +142,22 @@
         </template>
       </div>
     </div>
-
+    <!-- Lodging info-->
+    <div class="mt-4">
+      <h3 class="text-xl font-semibold mb-2">
+        Lodging Information
+      </h3>
+      <div class="grid grid-cols-1 gap-4">
+        <div v-for="(value, key) in event.additional_data.lodging" :key="key">
+          <label class="block mb-1">{{ value.title }}</label>
+          <input
+            v-model="event.additional_data.lodging[key].data"
+            :type="event.additional_data.lodging[key].type"
+            :class="{ 'form-checkbox h-5 w-5 text-blue-600': event.additional_data.lodging[key].type === 'checkbox', 'w-full p-2 border rounded': event.additional_data.lodging[key].type === 'text' }"
+          >
+        </div>
+      </div>
+    </div>
     <!-- Wedding-specific fields -->
     <div
       v-if="isWedding"
@@ -218,14 +233,14 @@ const formatLabel = (key) => {
 };
 
 const getInputType = (key, value) => {
-  const booleanFields = ['public', 'lodging', 'outside', 'onsite', 'backline_provided', 'production_needed'];
+  const booleanFields = ['public', 'outside', 'onsite', 'backline_provided', 'production_needed'];
   if (booleanFields.includes(key)) return 'checkbox';
   if (key === 'migrated_from_event_id') return 'readonly';
   if (typeof value === 'number') return 'number';
   return 'text';
 };
 
-const exclusions = ['times', 'attire', 'wedding', 'onsite'];
+const exclusions = ['times', 'attire', 'lodging', 'wedding', 'onsite'];
 
 const timeEntries = ref(event.value.additional_data.times || []);
 
