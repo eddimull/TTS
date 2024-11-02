@@ -26,7 +26,7 @@ class ChartsController extends Controller
         $charts = $user->charts();
         return Inertia::render('Charts/Index', [
             'charts' => $charts,
-            'bands' => $user->bands
+            'availableBands' => $user->bands()
         ]);
     }
 

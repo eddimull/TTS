@@ -132,6 +132,7 @@
             </template>
           </Dropdown>
         </div>
+        </div>
         <div class="p-formgrid p-grid">
           <div class="p-field p-col">
             <label for="price">Price</label>
@@ -171,6 +172,7 @@
     import DataTable from 'primevue/datatable';
     import Column from 'primevue/column';
 
+
     export default {
         components: {
             BreezeAuthenticatedLayout,
@@ -183,10 +185,15 @@
             type:Array,
             default:()=>{return []}
           },
+          availableBands:{
+            type:Array,
+            default:()=>{return []}
+          }
         },
         data(){
             return{
                 form:{
+
 
                 },
               chartsData:this.charts,
@@ -237,6 +244,7 @@
             }
           }
         },
+        },
         created(){
 
           this.filteredChartsData = this.chartsData;
@@ -246,13 +254,16 @@
             selectedChart(data)
             {
               this.$inertia.visit(this.route('charts.edit', data.data.id));
+              this.$inertia.visit(this.route('charts.edit', data.data.id));
             },
         openNew() {
+
 
           this.saving = false;
             this.product = {};
             this.submitted = false;
             this.chartDialog = true;
+        },
         },
         saveChart(){
           this.submitted = true;
@@ -268,10 +279,14 @@
         filterCharts() {
           const searchTerm = this.chartFilter.toLowerCase();
           this.filteredChartsData = this.chartsData.filter(chart =>
+          this.filteredChartsData = this.chartsData.filter(chart =>
             chart.title.toLowerCase().includes(searchTerm) ||
             chart.composer.toLowerCase().includes(searchTerm)
           );
         }
+      }
+
+
       }
 
 
