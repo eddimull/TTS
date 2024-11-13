@@ -4,7 +4,6 @@
         :style="{ width: '450px' }"
         header="Make a payment"
         :modal="true"
-        class="p-fluid"
         @update:visible="closeDialog"
     >
         <div class="flex flex-col">
@@ -21,7 +20,7 @@
             </small>
         </div>
 
-        <div class="flex flex-col">
+        <div class="flex flex-col my-4">
             <label for="amount">Amount</label>
             <InputNumber
                 id="amount"
