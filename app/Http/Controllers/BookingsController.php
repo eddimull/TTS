@@ -2,25 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use Event;
 use Carbon\Carbon;
 use Inertia\Inertia;
 use App\Models\Bands;
+use App\Models\Events;
 use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\Contracts;
 use App\Models\EventTypes;
 use Illuminate\Support\Str;
 use App\Models\BookingContacts;
+use App\Events\PaymentWasReceived;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Response;
 use App\Http\Requests\StoreBookingsRequest;
 use App\Http\Requests\UpdateBookingsRequest;
-use App\Http\Requests\StoreBookingPaymentRequest;
-use App\Http\Requests\BookingContact as BookingContactRequest;
 use App\Http\Requests\UpdateBookingEventRequest;
+use App\Http\Requests\StoreBookingPaymentRequest;
 use App\Http\Requests\UploadBookingContractRequest;
-use App\Models\Events;
-use Event;
+use App\Http\Requests\BookingContact as BookingContactRequest;
 
 class BookingsController extends Controller
 {
@@ -180,7 +181,8 @@ class BookingsController extends Controller
 
     public function storePayment(StoreBookingPaymentRequest $request, Bands $band, Bookings $booking)
     {
-        $booking->payments()->create($request->validated());
+        $payment = $booking->payments()->create($request->validated());
+        event(new PaymentWasReceived($payment));
         return redirect()->back()->with('successMessage', 'Payment has been added.');
     }
 
