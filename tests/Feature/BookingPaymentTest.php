@@ -42,7 +42,6 @@ class BookingPaymentTest extends TestCase
         $this->booking->contacts()->attach($this->contact);
     }
 
-    /** @test */
     public function it_can_store_a_payment_and_sends_notification()
     {
 
@@ -82,7 +81,6 @@ class BookingPaymentTest extends TestCase
         );
     }
 
-    /** @test */
     public function it_validates_required_fields()
     {
         // Arrange
@@ -101,7 +99,7 @@ class BookingPaymentTest extends TestCase
         Notification::assertNothingSent();
     }
 
-    /** @test */
+
     public function it_validates_amount_is_numeric()
     {
         // Arrange
@@ -126,7 +124,7 @@ class BookingPaymentTest extends TestCase
         Notification::assertNothingSent();
     }
 
-    /** @test */
+
     public function unauthorized_users_cannot_create_payments()
     {
         // Act
@@ -146,7 +144,7 @@ class BookingPaymentTest extends TestCase
         Notification::assertNothingSent();
     }
 
-    /** @test */
+
     public function it_queues_notification_for_sending()
     {
         // Arrange
