@@ -154,7 +154,10 @@ class migrateEventsToBookings extends Command
                 'migrated_from_event_id' => $event->id,
                 'public' => $event->public,
                 'outside' => $event->outside,
-                'lodging' => $event->lodging,
+                'lodging' => [
+                    ['title' => 'Lodging Provided', 'data' => $event->lodging, 'type' => 'checkbox'],
+                    ['title' => 'Lodging Notes', 'data' => $event->lodging_notes, 'type' => 'text'],
+                ],
                 'production_needed' => $event->production_needed,
                 'backline_provided' => $event->backline_provided,
                 'attire' => $event->colorway_text,
