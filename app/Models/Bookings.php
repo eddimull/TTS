@@ -95,7 +95,7 @@ class Bookings extends Model implements Contractable
 
     public function getAmountPaidAttribute()
     {
-        return $this->payments()->sum('amount') / 100;
+        return $this->payments()->where('status', 'paid')->sum('amount') / 100;
     }
 
     public function getAmountDueAttribute()

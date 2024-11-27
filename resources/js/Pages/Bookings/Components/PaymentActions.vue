@@ -4,11 +4,18 @@
       class="flex flex-wrap content-around justify-evenly lg:-mb-4"
     >
       <Button
-        v-if="booking.amountLeft !== '0.00'"
+        v-if="booking.amountLeft >= '0.00'"
         icon="pi pi-dollar"
         label="Make Payment"
         class="p-button-success"
         @click="$emit('openDialog')"
+      />
+      <Button
+        v-if="booking.amountLeft >= '0.00'"
+        icon="pi pi-receipt"
+        label="Create Invoice"
+        class="p-button-success"
+        @click="$emit('openInvoiceDialog')"
       />
       <Button
         icon="pi pi-download"
@@ -20,7 +27,7 @@
   </div>
 </template>
 <script setup>
-    defineEmits(['openDialog', 'downloadReceipt']);
+    defineEmits(['openDialog', 'downloadReceipt', 'openInvoiceDialog']);
     const props = defineProps({
         booking: {
             type: Object,

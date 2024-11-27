@@ -75,6 +75,10 @@ Route::middleware(['auth', 'verified'])->group(function ()
         ->name('Store Booking Payment')
         ->middleware('booking.access');
 
+    Route::post('bands/{band}/booking/{booking}/finances/invoice', [BookingsController::class, 'storeInvoice'])
+        ->name('Store Booking Invoice')
+        ->middleware('booking.access');
+
     Route::delete('bands/{band}/booking/{booking}/finances/{payment}', [BookingsController::class, 'destroyPayment'])
         ->name('Delete Booking Payment')
         ->middleware('booking.access');
