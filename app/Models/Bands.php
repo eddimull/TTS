@@ -42,7 +42,7 @@ class Bands extends Model
 
     public function stripe_accounts()
     {
-        return $this->hasOne(stripe_accounts::class, 'band_id');
+        return $this->hasOne(StripeAccounts::class, 'band_id');
     }
 
     public function invites()
