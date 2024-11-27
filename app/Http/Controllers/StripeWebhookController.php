@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Invoices;
 use App\Models\Payments;
+use Carbon\Carbon;
 
 class StripeWebhookController extends Controller
 {
@@ -51,6 +52,7 @@ class StripeWebhookController extends Controller
                 // update any payment linked to this invoice
                 Payments::where('invoices_id', $ttsInvoice->id)->get()->each(function ($payment){
                     $payment->status = 'paid';
+                    $payment->date = Carbon::now();
                     $payment->save();
                 });
                 break;
