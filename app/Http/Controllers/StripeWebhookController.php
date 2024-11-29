@@ -2,47 +2,58 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use App\Models\Invoices;
 use App\Models\Payments;
-use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class StripeWebhookController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $endpoint_secret = config('services.stripe.webhook_secret');
 
-        $payload = @file_get_contents('php://input');
+        $payload = $request->getContent();
         $event = null;
 
-        try {
+        try
+        {
             $event = \Stripe\Event::constructFrom(
                 json_decode($payload, true)
             );
-        } catch (\UnexpectedValueException $e) {
+        }
+        catch (\UnexpectedValueException $e)
+        {
             // Invalid payload
             echo '⚠️  Webhook error while parsing basic request.';
             http_response_code(400);
             exit();
         }
-        if ($endpoint_secret) {
+        if ($endpoint_secret)
+        {
             // Only verify the event if there is an endpoint secret defined
             // Otherwise use the basic decoded event
-            $sig_header = $_SERVER['HTTP_STRIPE_SIGNATURE'];
-            try {
+            $sig_header = $request->header('Stripe-Signature');
+            try
+            {
                 $event = \Stripe\Webhook::constructEvent(
-                    $payload, $sig_header, $endpoint_secret
+                    $payload,
+                    $sig_header,
+                    $endpoint_secret
                 );
-            } catch (\Stripe\Exception\SignatureVerificationException $e) {
-                // Invalid signature
-                echo '⚠️  Webhook error while validating signature.';
+            }
+            catch (\Stripe\Exception\SignatureVerificationException $e)
+            {
+                Log::error('⚠️  Webhook error while verifying signature.');
                 http_response_code(400);
-                exit();
+                throw $e;
             }
         }
 
         // Handle the event
-        switch ($event->type) {
+        switch ($event->type)
+        {
             case 'invoice.paid':
                 $stripeInvoice = $event->data->object; // contains a \Stripe\Invoice
                 $ttsInvoice = Invoices::where('stripe_id', $stripeInvoice->id)->firstOrFail();
@@ -50,7 +61,8 @@ class StripeWebhookController extends Controller
                 $ttsInvoice->save();
 
                 // update any payment linked to this invoice
-                Payments::where('invoices_id', $ttsInvoice->id)->get()->each(function ($payment){
+                Payments::where('invoices_id', $ttsInvoice->id)->get()->each(function ($payment)
+                {
                     $payment->status = 'paid';
                     $payment->date = Carbon::now();
                     $payment->save();
@@ -58,7 +70,10 @@ class StripeWebhookController extends Controller
                 break;
             default:
                 // Unexpected event type
-                error_log('Received unknown event type');
+                Log::info('Unexpected event type: ' . $event->type);
+                break;
         }
+
+        return response()->json(['status' => 'success']);
     }
 }
