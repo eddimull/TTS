@@ -33,7 +33,7 @@ create the database tables. Run `php artisan db:seed` to seed the database with 
 You may also run `php artisan db:seed --class=DevSetupSeeder` to seed the
 database with some generated testing data, including an admin user `admin@example.com` with password `password`.
 
-In the `app` container, run `npm run watch` to watch for changes to the frontend files and automatically recompile.
+In the `app` container, run `npm run dev` to watch for changes to the frontend files and automatically recompile.
 
 A bucket needs to be created in MinIO / S3 for storing files. The bucket name needs match what is set in the `.env` file.
 
@@ -41,7 +41,9 @@ To create a bucket on MinIO, log into the MinIO web interface on http://localhos
 
 There are certain cron jobs that need to be setup to run. These can be run on the `app` container with `php artisan schedule:work`.
 
-The app can be accessed at https://localhost:8170.
+The app can be accessed at https://localhost:8710.
+
+If you edit any routes, you can regenerate the frontend routes with Ziggy with `php artisan ziggy:generate`.
 
 ## Usage
 

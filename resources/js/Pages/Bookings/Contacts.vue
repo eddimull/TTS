@@ -14,9 +14,9 @@
           :key="contact.id"
           class="bg-gray-100 p-4 rounded-lg mb-2"
         >
-          <ContactCard 
-            :contact="contact" 
-            :band-id="band.id" 
+          <ContactCard
+            :contact="contact"
+            :band-id="band.id"
             :booking-id="booking.id"
           />
         </div>
@@ -26,7 +26,7 @@
           No contacts found for this booking.
         </p>
       </div>
-      
+
       <!-- Reuse Existing Band Contacts -->
       <div class="mb-8">
         <h3 class="text-xl font-semibold mb-2">
@@ -57,7 +57,7 @@
           No additional band contacts available.
         </p>
       </div>
-      
+
       <!-- New contact form -->
       <h3 class="text-xl font-semibold mb-2">
         Add New Contact
@@ -125,7 +125,7 @@ async function fetchBandContacts() {
 
 function addExistingContact() {
   if (selectedContact.value) {
-    
+
     const foundContact = bandContacts.value.find(c => c.id === selectedContact.value);
 
     form.name = foundContact.name;
