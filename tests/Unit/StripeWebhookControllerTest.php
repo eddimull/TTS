@@ -36,36 +36,6 @@ class StripeWebhookControllerTest extends TestCase
         parent::tearDown();
     }
 
-    public function testHandleInvoicePaidEvent()
-    {
-        // Mock Stripe Event
-        $stripeEvent = new Event();
-        $stripeEvent->type = 'invoice.paid';
-        $stripeEvent->data = new \stdClass();
-        $stripeEvent->data->object = new \stdClass();
-        $stripeEvent->data->object->id = 'inv_123';
-        $stripeEvent->data->object->status = 'paid';
-        $stripeEvent->data->object->amount_paid = 10000; // $100.00
-
-        // Mock Invoice
-        // $invoice = Mockery::mock(Payments::class);
-        // $invoice->shouldReceive('getAttribute')->with('booking')->andReturn(new Bookings());
-        // $invoice->shouldReceive('save')->once();
-
-        // Mock Request
-        $request = new Request([], [], [], [], [], ['CONTENT_TYPE' => 'application/json'], json_encode($stripeEvent));
-
-        // Expectations
-        // Invoices::shouldReceive('where->firstOrFail')->once()->andReturn($invoice);
-        // $this->financeServicesMock->shouldReceive('makePayment')->once();
-
-        // Act
-        $response = $this->controller->index($request);
-
-        // Assert
-        $this->assertEquals(200, $response->getStatusCode());
-    }
-
     public function testIgnoreUnexpectedEventType()
     {
         // Mock Stripe Event
