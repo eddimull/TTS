@@ -22,24 +22,25 @@ class InvoicesController extends Controller
     {
         $bands = Auth::user()->bandOwner;
 
-        $bandsWithProposals = (new FinanceServices())->getBandFinances($bands);
-        $proposals = [];
-        foreach($bandsWithProposals as $band)
+        $bandsWithBookings = (new FinanceServices())->getBandFinances($bands);
+        $bookings = [];
+        foreach ($bandsWithBookings as $band)
         {
-            foreach($band->proposals as $proposal)
+            foreach ($band->completedBookings as $booking)
             {
-                $proposal->attachPayments();
-                $proposal->contacts = $proposal->proposal_contacts;
-                $proposal->invoices = $proposal->invoices;
-                $proposals[] = $proposal;
+                $booking->attachPayments();
+                $booking->contacts = $booking->booking_contacts;
+                $booking->invoices = $booking->invoices;
+                $bookings[] = $booking;
             }
         }
+
         $eventTypes = EventTypes::all();
 
-        
-        return Inertia::render('Invoices/Index',[
-            'proposals'=>$proposals,
-            'eventTypes'=>$eventTypes
+
+        return Inertia::render('Invoices/Index', [
+            'bookings' => $bookings,
+            'eventTypes' => $eventTypes
         ]);
     }
 
@@ -55,10 +56,9 @@ class InvoicesController extends Controller
             'contact_id' => 'required|exists:App\Models\ProposalContacts,id',
             'buyer_pays_convenience' => 'required|boolean'
         ]);
-        
-        (new InvoiceServices())->createInvoice($proposal,$request);
 
-        return back()->with('successMessage','Invoice sent in for ' . $proposal->name);
+        (new InvoiceServices())->createInvoice($proposal, $request);
+
+        return back()->with('successMessage', 'Invoice sent in for ' . $proposal->name);
     }
-
 }

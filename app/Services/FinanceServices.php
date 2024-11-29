@@ -14,12 +14,7 @@ class FinanceServices
 
         foreach ($bands as $band)
         {
-            $band->completedProposals;
-            foreach ($band->completedProposals as $proposal)
-            {
-                $proposal->amountPaid = $proposal->amountPaid;
-                $proposal->amountLeft = $proposal->amountLeft;
-            }
+            $band->completedBookings;
         }
 
         return $bands;

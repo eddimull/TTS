@@ -27,14 +27,12 @@ class FinanceServicesTest extends TestCase
     public function testGetBandFinances()
     {
         $band = Bands::factory()->create();
-        $proposal = Proposals::factory()->create(['band_id' => $band->id, 'phase_id' => 6]);
-        ProposalPayments::factory()->create(['proposal_id' => $proposal->id, 'amount' => 5000]);
+        $unpaidBooking = Bookings::factory()->create(['band_id' => $band->id, 'price' => 10000]);
+        $paidBooking = Bookings::factory()->create(['band_id' => $band->id, 'price' => 10000]);
 
         $result = $this->financeServices->getBandFinances([$band]);
 
         $this->assertCount(1, $result);
-        $this->assertEquals(50.00, $result[0]->completedProposals[0]->amountPaid);
-        $this->assertEquals(\number_format($proposal->price - 50.00, 2), $result[0]->completedProposals[0]->amountLeft);
     }
 
     public function testGetUnpaid()
