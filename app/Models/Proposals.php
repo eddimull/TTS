@@ -66,7 +66,7 @@ class Proposals extends Model
 
     public function stripe_customers()
     {
-        return $this->hasMany(stripe_customers::class, 'proposal_id');
+        return $this->hasMany(StripeCustomers::class, 'proposal_id');
     }
 
     public function payments()

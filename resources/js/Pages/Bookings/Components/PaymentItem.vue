@@ -5,6 +5,17 @@
         <div class="px-4">
           <h3 class="mb-2 text-xl font-bold font-heading">
             {{ payment.name || 'Unnamed payment' }}
+            <span v-if="payment.invoices_id">
+              <a
+                :href="'https://dashboard.stripe.com/test/invoices/' + payment.invoice.stripe_id"
+                target="_blank"
+              >
+                <Button
+                  icon="pi pi-external-link"
+                  class="p-button-info"
+                />
+              </a>
+            </span>
           </h3>
           <p class="md:hidden text-lg text-blue-500 font-bold font-heading">
             ${{ payment.amount }}
@@ -17,7 +28,7 @@
         ${{ payment.amount }}
       </p>
     </div>
-  
+
     <div class="hidden lg:block lg:w-3/12 px-4">
       <p
         :title="formattedPaymentDateTime"
@@ -26,7 +37,7 @@
         {{ formattedPaymentDate }}
       </p>
     </div>
-  
+
     <div class="lg:w-1/12 px-4">
       <p class="text-lg text-blue-500 font-bold font-heading">
         <Button
@@ -40,18 +51,19 @@
   </div>
 </template>
 <script setup>
-import { DateTime } from 'luxon';
+import {DateTime} from 'luxon';
+
 const props = defineProps({
-  payment: {
-    type: Object,
-    required: true
-  }
+    payment: {
+        type: Object,
+        required: true
+    }
 });
 
-const formattedPaymentDate = DateTime.fromISO(props.payment.date).toFormat('yyyy-MM-dd');
-const formattedPaymentDateTime = DateTime.fromISO(props.payment.date).toFormat('yyyy-MM-dd HH:mm:ss');
+const formattedPaymentDate = props.payment.date ? DateTime.fromISO(props.payment.date).toFormat('yyyy-MM-dd') : props.payment.status;
+const formattedPaymentDateTime = props.payment.date ? DateTime.fromISO(props.payment.date).toFormat('yyyy-MM-dd HH:mm:ss') : props.payment.status;
 
 const deletePayment = (payment) => {
-  console.log('Deleting payment', payment);
+    console.log('Deleting payment', payment);
 }
 </script>

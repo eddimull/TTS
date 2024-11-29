@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Bands;
 use App\Models\BandOwners;
-use App\Models\stripe_accounts;
+use App\Models\StripeAccounts;
 use Illuminate\Support\Facades\Auth;
 use App\Models\User;
 use App\Notifications\TTSNotification;
@@ -216,7 +216,7 @@ class BandsController extends Controller
 
     public function setupStripe(Bands $band, Request $request)
     {
-        \Stripe\Stripe::setApiKey(env('STRIPE_KEY'));
+        \Stripe\Stripe::setApiKey(config('services.stripe.key'));
 
         $account = \Stripe\Account::create([
             'type' => 'standard',
@@ -229,7 +229,7 @@ class BandsController extends Controller
             'type' => 'account_onboarding',
         ]);
 
-        stripe_accounts::create([
+        StripeAccounts::create([
             'band_id' => $band->id,
             'stripe_account_id' => $account->id,
             'status' => 'incomplete'

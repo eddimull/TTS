@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use Event;
+use App\Services\InvoiceServices;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Bands;
 use App\Models\Events;
 use App\Models\Bookings;
 use App\Models\Contacts;
-use App\Models\Contracts;
 use App\Models\EventTypes;
 use Illuminate\Support\Str;
 use App\Models\BookingContacts;
@@ -169,6 +169,7 @@ class BookingsController extends Controller
 
     public function finances(Bands $band, Bookings $booking)
     {
+        $booking->load(['contacts', 'payments.invoice', 'contract']);
         $booking->amountPaid = $booking->amountPaid;
         $booking->amountLeft = $booking->amountLeft;
 
@@ -315,5 +316,15 @@ class BookingsController extends Controller
     {
         $event->delete();
         return redirect()->back()->with('successMessage', 'Event Deleted');
+    }
+
+    public function storeInvoice(Bands $band, Bookings $booking, Request $request)
+    {
+        $data = $request->validate([
+            'amount' => 'required|numeric',
+            'contactId' => 'required|exists:contacts,id',
+            'convenienceFee' => 'required|bool',
+        ]);
+        (new InvoiceServices())->createInvoice($booking, $data['amount'], $data['contactId'], $data['convenienceFee']);
     }
 }

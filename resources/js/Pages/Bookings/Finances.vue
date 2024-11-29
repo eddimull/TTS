@@ -4,6 +4,10 @@
       v-model="showDialog"
       :booking="booking"
     />
+    <CreateInvoiceDialog
+      v-model="showInvoiceDialog"
+      :booking="booking"
+    />
     <section class="py-20 bg-gray-100">
       <div class="container mx-auto px-4">
         <div class="p-8 lg:p-20 bg-white">
@@ -36,6 +40,7 @@
               <PaymentActions
                 :booking="booking"
                 @downloadReceipt="downloadReceipt"
+                @openInvoiceDialog="showInvoiceDialog = true"
                 @openDialog="setDialog(true)"
               />
             </div>
@@ -44,7 +49,7 @@
         </div>
       </div>
     </section>
-  </Container>    
+  </Container>
 </template>
 <script setup>
 import { ref, reactive } from 'vue'
@@ -53,6 +58,7 @@ import PaymentDialog from './Components/PaymentDialog.vue';
 import PaymentList from './Components/PaymentList.vue';
 import PaymentActions from './Components/PaymentActions.vue';
 import PaymentSummary from './Components/PaymentSummary.vue';
+import CreateInvoiceDialog from "./Components/CreateInvoiceDialog.vue";
 
 const props = defineProps({
   booking: {
@@ -72,6 +78,7 @@ const props = defineProps({
 //watch for changes in the action
 
 let showDialog = ref(false)
+let showInvoiceDialog = ref(false)
 
 const setDialog = (value) => {
   showDialog.value = value
@@ -92,4 +99,3 @@ defineOptions({
   layout: BookingLayout,
 })
 </script>
-  

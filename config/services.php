@@ -37,4 +37,9 @@ return [
         'access_token' => env('PANDADOC_ACCESS_TOKEN'),
     ],
 
+    'stripe' => [
+        'key' => env('STRIPE_KEY'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ]
+
 ];

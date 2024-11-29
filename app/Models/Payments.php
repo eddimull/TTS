@@ -15,7 +15,7 @@ class Payments extends Model
 
     protected $table = 'payments';
 
-    protected $fillable = ['name', 'amount', 'date', 'band_id', 'user_id'];
+    protected $fillable = ['name', 'amount', 'date', 'band_id', 'user_id', 'status', 'invoices_id'];
 
     protected $casts = [
         'amount' => Price::class,
@@ -40,5 +40,10 @@ class Payments extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoices::class, 'invoices_id');
     }
 }
