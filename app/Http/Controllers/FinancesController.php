@@ -74,12 +74,4 @@ class FinancesController extends Controller
 
         return Inertia::render('Finances/Payments', ['payments' => $payments]);
     }
-
-    private function getFinancialData($bands, FinanceServices $financeServices): array
-    {
-        return [
-            'completedBookings' => $financeServices->getBandFinances($bands),
-            'payments' => $financeServices->getBandPayments($bands)
-        ];
-    }
 }

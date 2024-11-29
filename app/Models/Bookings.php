@@ -158,4 +158,15 @@ class Bookings extends Model implements Contractable
     {
         return "Contract for {$this->name} - {$this->band->name}";
     }
+
+    public function attachPayments()
+    {
+        $this->amountLeft = $this->amountLeft;
+        $this->amountPaid = $this->amountPaid;
+
+        foreach ($this->payments as $payment)
+        {
+            $payment->formattedPaymentDate = $payment->formattedPaymentDate;
+        }
+    }
 }
