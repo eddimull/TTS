@@ -40,27 +40,27 @@ trait BookingTraits
 
     public function getContractPdf(Contacts $contact = null): string
     {
-        $logoPath = url(\str_replace(" ", "%20", $this->band->logo));
-        //there has to be a better way of doing this.
-        //this is a hack to get the logo to show up in the pdf when running locally
-        //Localhost will point back to itself (php-fpm), so we need to change it to the web container
-
-        if (app()->environment('local'))
-        {
-            $logoPath = \str_replace(url('/'), 'http://web', $logoPath);
-        }
+        $logoPath = str_replace('/images/', '', $this->band->logo);
 
         if (is_null($contact))
         {
             $contact = $this->contacts->first();
         }
 
-        $imageContents = \file_get_contents($logoPath);
+        // Use Storage facade instead of direct file_get_contents
+        $imageContents = Storage::disk('s3')->get($logoPath);
         $base64Image = base64_encode($imageContents);
         $mimeType = Storage::disk('s3')->mimeType($logoPath);
         $dataUri = "data:{$mimeType};base64,{$base64Image}";
-        $renderedView = view('pdf.bookingContract', ['booking' => $this, 'logoDataUri' => $dataUri, 'contact' => $contact])->render();
+
+        $renderedView = view('pdf.bookingContract', [
+            'booking' => $this,
+            'logoDataUri' => $dataUri,
+            'contact' => $contact
+        ])->render();
+
         $tempPath = storage_path('app/temp_pdf_' . uniqid() . '.pdf');
+
         Browsershot::html($renderedView)
             ->setNodeBinary(config('browsershot.node_binary'))
             ->setNpmBinary(config('browsershot.npm_binary'))
@@ -68,8 +68,8 @@ trait BookingTraits
             ->setOption('executablePath', config('browsershot.executablePath'))
             ->showBackground()
             ->taggedPdf()
-            ->savePdf($tempPath);
 
+            ->savePdf($tempPath);
         return file_get_contents($tempPath);
     }
 

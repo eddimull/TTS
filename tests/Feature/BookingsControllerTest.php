@@ -10,6 +10,9 @@ use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\Payments;
 use App\Models\userPermissions;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class BookingsControllerTest extends TestCase
@@ -316,12 +319,30 @@ class BookingsControllerTest extends TestCase
 
     public function test_owner_can_download_booking_contract()
     {
+        // Copy an actual default.png to the test directory
+        $sourcePath = base_path('public/images/default.png');
+        $testPath = storage_path('app/public/images/default.png');
+
+        // Ensure the directory exists
+        if (!file_exists(dirname($testPath)))
+        {
+            mkdir(dirname($testPath), 0777, true);
+        }
+
+        // Copy the file
+        copy($sourcePath, $testPath);
+
+        // Use the copied file path
+        $this->band->logo = $testPath;
+        $this->band->save();
+
         $contacts = Contacts::factory()->count(2)->create();
         $this->booking->contacts()->attach($contacts, ['role' => 'Test Role']);
         $this->booking->contract()->create([
             'author_id' => $this->owner->id,
             'custom_terms' => [['title' => 'Test Term', 'content' => 'Test Content']],
         ]);
+
         $response = $this->actingAs($this->owner)->get(route('Download Booking Contract', [$this->band, $this->booking]));
 
         $response->assertStatus(200);

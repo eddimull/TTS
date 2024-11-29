@@ -62,6 +62,12 @@ $timeA = strtotime($a['time']);
 $timeB = strtotime($b['time']);
 return $timeA - $timeB;
 });
+
+
+if (isset($additionalData->lodging))
+{
+    $event['lodging'] = $additionalData->lodging;
+}
 @endphp
 
 <div class="max-w-lg mx-auto drop-shadow-md rounded-lg lg:px-8">
