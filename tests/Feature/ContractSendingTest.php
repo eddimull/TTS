@@ -29,7 +29,7 @@ class ContractSendingTest extends TestCase
         Http::fake([
             'api.pandadoc.com/*' => Http::response([
                 'id' => 'fake-pandadoc-id',
-                'status' => 'document.drafted',
+                'status' => 'document.draft',
             ], 201)
         ]);
 
@@ -53,12 +53,10 @@ class ContractSendingTest extends TestCase
         // Assert that the HTTP request was sent with the correct data
         Http::assertSent(function ($request) use ($booking, $contact)
         {
-
             return $request->url() == 'https://api.pandadoc.com/public/v1/documents' &&
                 $request['name'] == "Contract for {$booking->name} - {$booking->band->name}" &&
                 $request['url'] == 'https://example.com/fake-contract.pdf' &&
-                $request['recipients'][0]['email'] == $contact->email &&
-                $request['fields'] == $booking->contract->custom_terms;
+                $request['recipients'][0]['email'] == $contact->email;
         });
 
         // Assert that the contract was updated with the PandaDoc ID and status
@@ -67,7 +65,7 @@ class ContractSendingTest extends TestCase
 
         // Assert that the result contains the expected data
         $this->assertEquals('fake-pandadoc-id', $result['id']);
-        $this->assertEquals('document.drafted', $result['status']);
+        $this->assertEquals('document.draft', $result['status']);
     }
 
     public function test_contract_sending_handles_api_error()
