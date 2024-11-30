@@ -27,7 +27,15 @@ class BandsFactory extends Factory
         $band = $this->faker->company();
         return [
             'name' => $band,
-            'site_name' => str_replace(' ','_',$band)
+            'site_name' => str_replace(' ', '_', $band)
         ];
+    }
+
+    public function withOwners()
+    {
+        return $this->afterCreating(function (Bands $band)
+        {
+            $band->owners()->create(['user_id' => User::factory()->create()->id]);
+        });
     }
 }

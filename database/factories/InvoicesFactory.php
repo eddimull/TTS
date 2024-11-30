@@ -4,7 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Invoices;
 use Illuminate\Database\Eloquent\Factories\Factory;
-use App\Models\Proposals;
+use App\Models\Bookings;
 
 class InvoicesFactory extends Factory
 {
@@ -22,13 +22,13 @@ class InvoicesFactory extends Factory
      */
     public function definition()
     {
-        $proposal = Proposals::factory()->create();
+        $booking = Bookings::factory()->create();
         return [
-            'proposal_id'=> $proposal->id,
-            'amount'=>$proposal->price/2,
-            'status'=>'open',
-            'stripe_id'=>'in_1234',
-            'convenience_fee'=>true
+            'booking_id' => $booking->id,
+            'amount' => $booking->price,
+            'status' => 'open',
+            'stripe_id' => 'in_1234',
+            'convenience_fee' => true
         ];
     }
 }

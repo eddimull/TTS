@@ -1,6 +1,6 @@
 <template>
   <div class="createEventInput">
-    <p class="text-gray-600">
+    <p class="text-gray-600 dark:text-gray-50">
       <label :for="props.name">{{ label }}</label>
     </p>
     <div class="mb-4">
@@ -16,7 +16,6 @@
   </div>
 </template>
 <script setup>
-    import { defineModel, defineProps } from 'vue';
     const model = defineModel()
     const props = defineProps({
         name: {

@@ -1,6 +1,6 @@
 <template>
   <div>
-    <nav class="fixed z-50 w-full bg-white border-b border-gray-100">
+    <nav class="fixed z-50 w-full bg-white dark:bg-slate-700 border-b border-gray-100">
       <!-- Primary Navigation Menu -->
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
@@ -13,7 +13,7 @@
             </div>
 
             <!-- Navigation Links -->
-            <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
+            <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex ">
               <breeze-nav-link
                 :href="route('dashboard')"
                 :active="route().current('dashboard')"
@@ -25,42 +25,35 @@
                 :active="route().current('bands')"
               >
                 Bands
-              </breeze-nav-link>                  
+              </breeze-nav-link>
+              <breeze-nav-link
+                v-if="navigation && navigation.Bookings"
+                :href="route('Bookings Home')"
+                :active="route().current().indexOf('Booking') > -1"
+              >
+                Booking
+              </breeze-nav-link>
               <breeze-nav-link
                 v-if="navigation && navigation.Events"
                 :href="route('events')"
                 :active="route().current('events')"
               >
                 Events
-              </breeze-nav-link> 
-              <breeze-nav-link
-                v-if="navigation && navigation.Proposals"
-                :href="route('proposals')"
-                :active="route().current('proposals')"
-              >
-                Proposals
-              </breeze-nav-link>       
+              </breeze-nav-link>
               <breeze-nav-link
                 v-if="navigation && navigation.Invoices"
                 :href="route('finances')"
-                :active="route().current('finances')"
+                :active="route().current('finances') || $page.props?.url?.includes('/finances')"
               >
                 Finances
-              </breeze-nav-link>                             
-              <breeze-nav-link
-                v-if="navigation && navigation.Colors"
-                :href="route('colors')"
-                :active="route().current('colors')"
-              >
-                Colors
-              </breeze-nav-link>        
+              </breeze-nav-link>
               <breeze-nav-link
                 v-if="navigation && navigation.Charts"
                 :href="route('charts')"
                 :active="route().current('charts')"
               >
                 Charts
-              </breeze-nav-link>             
+              </breeze-nav-link>
             </div>
           </div>
           <!-- notifications and username -->
@@ -74,13 +67,14 @@
                   <span class="inline-flex rounded-md">
                     <button
                       type="button"
-                      class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
+                      class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-50 bg-white dark:bg-slate-700 hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
                       @click="markSeen"
                     >
                       <span
                         v-if="unseenNotifications > 0"
                         class="absolute top-0 right-0.5 rounded-full flex items-center justify-center bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-white h-4 w-f px-1 py-1.5"
-                      >{{ unseenNotifications }}</span>
+                      >{{
+                        unseenNotifications }}</span>
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         class="h-6 w-6"
@@ -102,10 +96,10 @@
                   <div class="flex flex-col max-h-72">
                     <div class="overflow-y-auto flex-auto">
                       <notification-link
-                        v-for="(notification,index) in notifications"
+                        v-for="(notification, index) in notifications"
                         :key="index"
                         :unread="notification.read_at === null"
-                        :href="route(notification.data.route,notification.data.routeParams == null ? '' : !notification.data.routeParams.split ? '' : notification.data.routeParams.split(','))"
+                        :href="route(notification.data.route, notification.data.routeParams == null ? '' : !notification.data.routeParams.split ? '' : notification.data.routeParams.split(','))"
                         method="get"
                         as="button"
                         @click="markAsRead(notification)"
@@ -115,7 +109,7 @@
                     </div>
                   </div>
                   <button
-                    :class="['block', 'w-full', 'px-4', 'py-2','hover:underline', 'text-center', 'text-sm', 'border-t-2', 'leading-5', 'text-blue-700', 'focus:outline-none','focus:bg-gray-100','transition duration-150','ease-in-out']"
+                    :class="['block', 'w-full', 'px-4', 'py-2', 'hover:underline', 'text-center', 'text-sm', 'border-t-2', 'leading-5', 'text-blue-700', 'focus:outline-none', 'focus:bg-gray-100', 'transition duration-150', 'ease-in-out']"
                     @click="markAllAsRead()"
                   >
                     Mark all as read
@@ -133,7 +127,7 @@
                   <span class="inline-flex rounded-md">
                     <button
                       type="button"
-                      class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
+                      class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-50 bg-white dark:bg-slate-700 hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
                     >
                       {{ $page.props.auth.user.name }}
 
@@ -152,7 +146,7 @@
                     </button>
                   </span>
                 </template>
-                                       
+
                 <template #content>
                   <breeze-dropdown-link
                     :href="route('account')"
@@ -183,13 +177,14 @@
                 <span class="inline-flex rounded-md">
                   <button
                     type="button"
-                    class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
+                    class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-50 bg-white hover:text-gray-700 focus:outline-none transition ease-in-out duration-150"
                     @click="markSeen"
                   >
                     <span
                       v-if="unseenNotifications > 0"
                       class="absolute top-0 right-0.5 rounded-full flex items-center justify-center bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 text-white h-4 w-f px-1 py-1.5"
-                    >{{ unseenNotifications }}</span>
+                    >{{
+                      unseenNotifications }}</span>
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       class="h-6 w-6"
@@ -211,10 +206,10 @@
                 <div class="flex flex-col flex-grow max-h-72">
                   <div class="overflow-y-auto flex-auto">
                     <notification-link
-                      v-for="(notification,index) in notifications"
+                      v-for="(notification, index) in notifications"
                       :key="index"
                       :unread="notification.read_at === null"
-                      :href="route(notification.data.route,notification.data.routeParams == null ? '' : !notification.data.routeParams.split ? '' : notification.data.routeParams.split(','))"
+                      :href="route(notification.data.route, notification.data.routeParams == null ? '' : !notification.data.routeParams.split ? '' : notification.data.routeParams.split(','))"
                       method="get"
                       as="button"
                       @click="markAsRead(notification)"
@@ -224,7 +219,7 @@
                   </div>
                 </div>
                 <button
-                  :class="['block', 'w-full', 'px-4', 'py-2','hover:underline', 'text-center', 'text-sm', 'border-t-2', 'leading-5', 'text-blue-700', 'focus:outline-none','focus:bg-gray-100','transition duration-150','ease-in-out']"
+                  :class="['block', 'w-full', 'px-4', 'py-2', 'hover:underline', 'text-center', 'text-sm', 'border-t-2', 'leading-5', 'text-blue-700', 'focus:outline-none', 'focus:bg-gray-100', 'transition duration-150', 'ease-in-out']"
                   @click="markAllAsRead()"
                 >
                   Mark all as read
@@ -235,8 +230,8 @@
           <!-- Hamburger -->
           <div class="-mr-2 flex items-center sm:hidden">
             <button
-              class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out"
-              @click="showingNavigationDropdown = ! showingNavigationDropdown"
+              class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 dark:text-gray-50 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500 transition duration-150 ease-in-out"
+              @click="showingNavigationDropdown = !showingNavigationDropdown"
             >
               <svg
                 class="h-6 w-6"
@@ -245,14 +240,14 @@
                 viewBox="0 0 24 24"
               >
                 <path
-                  :class="{'hidden': showingNavigationDropdown, 'inline-flex': ! showingNavigationDropdown }"
+                  :class="{ 'hidden': showingNavigationDropdown, 'inline-flex': !showingNavigationDropdown }"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   stroke-width="2"
                   d="M4 6h16M4 12h16M4 18h16"
                 />
                 <path
-                  :class="{'hidden': ! showingNavigationDropdown, 'inline-flex': showingNavigationDropdown }"
+                  :class="{ 'hidden': !showingNavigationDropdown, 'inline-flex': showingNavigationDropdown }"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   stroke-width="2"
@@ -283,7 +278,7 @@
       />
       <!-- Responsive Navigation Menu -->
       <div
-        :class="{'block': showingNavigationDropdown, 'hidden': ! showingNavigationDropdown}"
+        :class="{ 'block': showingNavigationDropdown, 'hidden': !showingNavigationDropdown }"
         class="sm:hidden"
       >
         <div class="pt-2 pb-3 space-y-1">
@@ -305,36 +300,21 @@
             :active="route().current('events')"
           >
             Events
-          </breeze-responsive-nav-link> 
+          </breeze-responsive-nav-link>
           <breeze-responsive-nav-link
-            v-if="navigation && navigation.Proposals"
-            :href="route('proposals')"
-            :active="route().current('proposals')"
+            v-if="navigation && navigation.Bookings"
+            :href="route('Bookings Home')"
+            :active="route().current('Bookings Home')"
           >
-            Proposals
-          </breeze-responsive-nav-link> 
-          <breeze-responsive-nav-link
-            v-if="navigation && navigation.Events"
-            class="pl-4"
-            :href="route('questionnaire')"
-            :active="route().current('questionnaire')"
-          >
-            Questionnaires
-          </breeze-responsive-nav-link> 
+            Booking
+          </breeze-responsive-nav-link>
           <breeze-responsive-nav-link
             v-if="navigation && navigation.Invoices"
             :href="route('finances')"
             :active="route().current('finances')"
           >
             Finances
-          </breeze-responsive-nav-link> 
-          <breeze-responsive-nav-link
-            v-if="navigation && navigation.Colors"
-            :href="route('colors')"
-            :active="route().current('colors')"
-          >
-            Colors
-          </breeze-responsive-nav-link>   
+          </breeze-responsive-nav-link>
 
           <breeze-responsive-nav-link
             v-if="navigation && navigation.Charts"
@@ -342,16 +322,16 @@
             :active="route().current('charts')"
           >
             Charts
-          </breeze-responsive-nav-link>   
-        </div> 
+          </breeze-responsive-nav-link>
+        </div>
 
         <!-- Responsive Settings Options -->
         <div class="pt-4 pb-1 border-t border-gray-200">
           <div class="flex items-center px-4">
             <div class="font-medium text-base text-gray-800">
-              {{ $page.props.auth.user.name }} 
+              {{ $page.props.auth.user.name }}
             </div>
-            <div class="px-2 font-medium text-sm text-gray-500">
+            <div class="px-2 font-medium text-sm text-gray-500 dark:text-gray-50">
               {{ $page.props.auth.user.email }}
             </div>
           </div>
@@ -375,23 +355,34 @@
         </div>
       </div>
     </nav>
-    <div class="pt-16 min-h-screen bg-gradient-to-r from-blue-800 to-blue-200">
+    <div class="pt-16 min-h-screen bg-gradient-to-r from-blue-800 to-blue-200 dark:from-blue-950 dark:to-gray-600 dark:text-white">
       <!-- Page Heading -->
       <header
         v-if="$slots.header"
-        class="bg-white shadow"
+        class="bg-white dark:bg-slate-700 shadow"
       >
-        <div class="max-w-7xl mx-auto py-2 px-4 sm:px-4 lg:px-8">
+        <div class="max-w-7xl mx-auto py-2 px-4 sm:px-4 lg:px-8 ">
           <slot name="header" />
         </div>
       </header>
 
+      <header
+        v-else
+        class="bg-white dark:bg-slate-700 shadow"
+      >
+        <div class="max-w-7xl mx-auto py-2 px-4 sm:px-4 lg:px-8">
+          <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-50 leading-tight">
+            {{ route().current().charAt(0).toUpperCase() + route().current().slice(1).replace('.', ' - ') }}
+            {{
+              navSuffix ?? `- ${navSuffix}` }}
+          </h2>
+        </div>
+      </header>
+
       <!-- Page Content -->
-      <main class="rounded-t-lg relative border-t border-l border-r border-gray-400 px-3 py-4 flex justify-center">
-        <!-- <toast
-          :success-message="$page.props.successMessage"
-          :errors="$page.props.errors"
-        /> -->
+      <main
+        class="rounded-t-lg relative border-t border-l border-r border-gray-400 px-3 py-4 flex justify-center"
+      >
         <slot />
         <div class="layout-main-container">
           <slot name="content" />
@@ -399,91 +390,104 @@
       </main>
     </div>
   </div>
-  <!-- {{ $page.props.auth.user }} -->
 </template>
 
 <script>
-    import BreezeApplicationLogo from '@/Components/ApplicationLogo'
-    import BreezeDropdown from '@/Components/Dropdown'
-    import BreezeDropdownLink from '@/Components/DropdownLink'
-    import NotificationLink from '@/Components/NotificationDropdown'
-    import BreezeNavLink from '@/Components/NavLink'
-    import BreezeResponsiveNavLink from '@/Components/ResponsiveNavLink'
-    import Toast from 'primevue/toast';
-    import axios from 'axios';
-    import { mapState, mapActions } from 'vuex'
+import BreezeApplicationLogo from '@/Components/ApplicationLogo'
+import BreezeDropdown from '@/Components/Dropdown'
+import BreezeDropdownLink from '@/Components/DropdownLink'
+import NotificationLink from '@/Components/NotificationDropdown'
+import BreezeNavLink from '@/Components/NavLink'
+import BreezeResponsiveNavLink from '@/Components/ResponsiveNavLink'
+import Toast from 'primevue/toast';
+import axios from 'axios';
+import { mapState, mapActions } from 'vuex'
+import { router } from '@inertiajs/vue3'
 
-    export default {
-        components: {
-            BreezeApplicationLogo,
-            BreezeDropdown,
-            BreezeDropdownLink,
-            BreezeNavLink,
-            BreezeResponsiveNavLink,
-            NotificationLink,
-            Toast
-        },
-
-        data() {
-          return {
-              showingNavigationDropdown: false,
-              }
-        },
-        computed: {
-            ...mapState('user', ['navigation', 'notifications']),
-            unseenNotifications() {
-                return !this.notifications ? 0 : this.notifications.filter(notification => notification.seen_at === null).length
-            }
-        },        
-        watch: {
-          $page: {
-            handler:function(val,oldval){
-             
-              if(this.$page.props.errors !== null && Object.keys(this.$page.props.errors).length > 0)
-              {
-                const errors = this.$page.props.errors;
-                for(const i in errors){
-                  
-                  this.$toast.add({severity:'error', summary: 'Error', detail:errors[i], life: 3000});		
-                };			
-              }
-
-              if(this.$page.props.successMessage !== null && Object.keys(this.$page.props.successMessage).length > 0)
-              {
-                const successMessage = this.$page.props.successMessage;
-                
-                  this.$toast.add({severity:'success', summary: 'Success', detail:successMessage, life: 3000});		
-                
-              }
-              
+export default {
+    components: {
+        BreezeApplicationLogo,
+        BreezeDropdown,
+        BreezeDropdownLink,
+        BreezeNavLink,
+        BreezeResponsiveNavLink,
+        NotificationLink,
+        Toast
+    },
+    props: {
+        navSuffix: {
+            type: String,
+            default: '',
+            required: false
+        }
+    },
+    data() {
+        return {
+            showingNavigationDropdown: false,
+        }
+    },
+    computed: {
+        ...mapState('user', ['navigation', 'notifications']),
+        unseenNotifications() {
+            return !this.notifications ? 0 : this.notifications.filter(notification => notification.seen_at === null).length
+        }
+    },
+    onUpdated() {
+        this.toast();
+    },
+    watch: {
+        $page: {
+            handler: function (val, oldval) {
+                this.toast();
             },
-            deep:true
-          }
+            deep: true
+        }
+    },
+    created: async function () {
+        this.fetchUserData()
+        this.fetchEventTypes()
+    },
+    methods: {
+        ...mapActions('user', ['fetchNavigation', 'fetchNotifications', 'markAllNotificationsAsRead', 'markNotificationAsRead', 'markNotificationsAsSeen']),
+        ...mapActions('eventTypes', ['fetchEventTypes']),
+
+        fetchUserData() {
+            this.fetchNavigation()
+            this.fetchNotifications()
         },
-        created:async function(){
-            // this.unseenNotifications = this.$page.props.auth.user.notifications.filter(notification=>notification.seen_at === null).length
-            // this.getNotifications()
-            this.fetchUserData()
+
+        markAllAsRead() {
+            this.markAllNotificationsAsRead()
         },
-        methods: {
-          ...mapActions('user', ['fetchNavigation', 'fetchNotifications', 'markAllNotificationsAsRead', 'markNotificationAsRead', 'markNotificationsAsSeen']),
 
-          fetchUserData() {
-              this.fetchNavigation()
-              this.fetchNotifications()
-          },
+        markAsRead(notification) {
+            this.markNotificationAsRead(notification.id)
+        },
 
-          markAllAsRead() {
-              this.markAllNotificationsAsRead()
-          },
+        markSeen() {
+            this.markNotificationsAsSeen()
+        },
 
-          markAsRead(notification) {
-              this.markNotificationAsRead(notification.id)
-          },
+        toast() {
+            
+            if (this.$page.props.errors !== null && Object.keys(this.$page.props.errors).length > 0) {
+                const errors = this.$page.props.errors;
+                for (const i in errors) {
+                    this.$toast.add({ severity: 'error', summary: 'Error', detail: errors[i], life: 30000 });
+                };
+            }
 
-          markSeen() {
-              this.markNotificationsAsSeen()
-          }
+            if (this.$page.props.successMessage !== null && Object.keys(this.$page.props.successMessage).length > 0) {
+                const successMessage = this.$page.props.successMessage;
+                this.$toast.add({ severity: 'success', summary: 'Success', detail: successMessage, life: 3000 });
+            }
+
+            if (this.$page.props.warningMessage !== null && Object.keys(this.$page.props.warningMessage).length > 0) {
+
+                const warningMessage = this.$page.props.warningMessage;
+                this.$toast.add({ severity: 'warn', summary: 'Warning', detail: warningMessage, life: 3000 });
+            }
         }
     }
+}
 </script>

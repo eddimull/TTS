@@ -30,4 +30,16 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'pandadoc' => [
+        'api_key' => env('PANDADOC_KEY'),
+        'client_id' => env('PANDADOC_CLIENT_ID'),
+        'client_secret' => env('PANDADOC_CLIENT_SECRET'),
+        'access_token' => env('PANDADOC_ACCESS_TOKEN'),
+    ],
+
+    'stripe' => [
+        'key' => env('STRIPE_KEY'),
+        'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    ]
+
 ];

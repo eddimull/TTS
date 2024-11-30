@@ -156,7 +156,7 @@
                   class="flex flex-wrap content-around justify-evenly lg:-mb-4"
                 >
                   <Button
-                    v-if="proposal.amountLeft !== '0.00'"
+                    v-if="proposal.amountDue !== '0.00'"
                     icon="pi pi-dollar"
                     label="Make Payment"
                     class="p-button-success"

@@ -10,6 +10,7 @@
       v-if="false"
       class="md:container md:mx-auto"
     >
+    
       <div class="container">
         <a
           href="/events/create"
