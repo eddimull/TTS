@@ -63,6 +63,7 @@ class InvoiceServices
         $staticStripeCharge = 30;
         $staticStripePercent = 1.029;
         $amount = $amount * 100;
+        $paymentAmount = $amount; // this is the amount that will be paid to the band. AKA the customer will not see this amount. 
 
         if ($convenienceFee) {
             $amount = ($amount * $staticStripePercent) + $staticStripeCharge + $staticApplicationFee;
@@ -105,7 +106,7 @@ class InvoiceServices
         // create a payment record for the booking in pending state
         // this will be updated when the payment is received
         $booking->payments()->create([
-            'amount' => $amount / 100, // this gets cast to Price class which handles multiplying by 100 already
+            'amount' => $paymentAmount / 100, // this gets cast to Price class which handles multiplying by 100 already
             'status' => 'pending',
             'invoices_id' => $localInvoice->id,
             'name' => $booking->name . ', invoice ' . $invoice->id,
