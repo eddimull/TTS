@@ -35,7 +35,7 @@ describe("TimePicker", () => {
         
         if (portalContent) {
             // Find and click the "Next Hour" button in the time picker panel
-            const nextHourButton = portalContent.querySelector('.p-hour-picker .p-link[aria-label="Next Hour"]');
+            const nextHourButton = portalContent.querySelector('[aria-label="Next Hour"]');
             if (nextHourButton) {
                 await nextHourButton.dispatchEvent(new Event('mousedown'));
                 await nextHourButton.dispatchEvent(new Event('mouseup'));

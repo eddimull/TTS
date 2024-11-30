@@ -1,0 +1,3 @@
+This is a workaround for generating pdfs. Specifically, locally. Rather than trying to include a tailwind file locally with the @vite method, this will build out the view for rendering out PDFs. The PDF.blade will pull the contents of the tailwind.min.js file. 
+
+Otherwise, browsershot will try to grab css and js from https://localhost:8710... but browsershot doesn't know where localhost is. On top of that, this is getting around ssl cert errors. 

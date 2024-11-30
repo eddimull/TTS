@@ -5,8 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class stripe_accounts extends Model
+class StripeAccounts extends Model
 {
     use HasFactory;
-    protected $fillable = ['band_id','stripe_account_id','status'];
+
+    protected $fillable = ['band_id', 'stripe_account_id', 'status'];
 }

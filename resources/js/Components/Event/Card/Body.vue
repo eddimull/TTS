@@ -1,126 +1,104 @@
 <template>
-  <div class="grid grid-cols-1 content-center">
-    <ul>
-      <li class="p-2">
-        Venue: <strong>{{ event.venue_name }}</strong>
-      </li>
-      <li class="p-2">
-        Location: <strong v-if="event.city">{{ event.city }}, </strong> <strong>{{ event.state.state_name }}</strong>
-      </li>
-      <li class="p-2">
-        Load In times:
-
-        <ul
-          style="background-color: rgb(244 244 245);"
-          class="list-outside indent-1 ml-3 p-3 shadow-lg rounded"
-        >
-          <li class="mt-2 pl-3">
-            Production: <strong>{{ productionTime(event) }}</strong>
-          </li>
-          <li class="mt-2 pl-3">
-            Rhythm: <strong>{{ toTime(event.rhythm_loadin_time) }}</strong>
-          </li>
-          <li class="mt-2 pl-3">
-            Band: <strong>{{ toTime(event.band_loadin_time) }}</strong>
-          </li>
-        </ul>
-      </li>
-      <li
-        v-if="event.notes !== null"
-        class="p-2"
-      >
-        Notes: <div
-          style="background-color: rgb(244 244 245);"
-          class="ml-3 p-3 shadow-lg rounded break-normal content-container"
-          v-html="event.notes"
-        />
-      </li>
-      <li
-        v-if="event.event_type.name === 'Wedding'"
-        class="p-2"
-      >
-        Wedding songs:
-        <ul
-          style="background-color: rgb(244 244 245);"
-          class="list-outside indent-1 ml-3 p-3 shadow-lg rounded"
-        >
-          <li class="mt-2 pl-3">
-            First Dance: <strong>{{ event.first_dance }}</strong>
-          </li>
-          <li class="mt-2 pl-3">
-            Father Daughter: <strong>{{ event.father_daughter }}</strong>
-          </li>
-          <li class="mt-2 pl-3">
-            Mother Son: <strong>{{ event.mother_groom }}</strong>
-          </li>
-          <li class="mt-2 pl-3">
-            Money Dance: <strong>{{ event.money_dance }}</strong>
-          </li>
-          <li class="mt-2 pl-3">
-            Bouquet/Garter: <strong>{{ event.bouquet_garter }}</strong>
-          </li>
-        </ul>
-      </li>
-      <li v-if="event.colorway_text">
-        Attire: <div
-          style="background-color: rgb(244 244 245);"
-          class="ml-3 p-3 shadow-lg rounded break-normal"
-          v-html="event.colorway_text"
-        />
-      </li>
-      <li
-        v-if="event.event_contacts.length > 0"
-        class="mt-2"
-      >
-        <Accordion>
-          <AccordionTab header="Contacts">
-            <ul 
-              v-for="contact in event.event_contacts"
-              :key="contact.id"
-              class="hover:bg-gray-100"
-            >
-              <li>
-                <div>
-                  <ul class="p-3">
-                    <li>
-                      Name: {{ contact.name }}
-                    </li>
-                    <li>
-                      Phone: {{ contact.phonenumber }}
-                    </li>
-                    <li>
-                      Email: {{ contact.email }}
-                    </li>
-                  </ul>
+    <div class="grid grid-cols-1 content-center">
+        <ul>
+            <li class="p-2">
+                Venue: <strong>{{ event.venue_name }}</strong>
+            </li>
+            <li class="p-2">
+                Location:
+                <strong v-if="event.venue_address"
+                    >{{ event.venue_address }} </strong
+                ><strong v-else class="text-red-500">
+                    No address provided
+                </strong>
+            </li>
+            <li class="p-2">
+                Public:
+                <strong>{{
+                    event.additional_data?.public ? "Yes" : "No"
+                }}</strong>
+            </li>
+            <li class="p-2">
+                Timeline:
+                <Times :times="event.additional_data?.times" />
+            </li>
+            <li v-if="event.notes !== null" class="p-2">
+                Notes:
+                <div
+                    class="ml-3 p-3 shadow-lg rounded break-normal content-container bg-gray-100 dark:bg-slate-700"
+                    v-html="event.notes"
+                />
+            </li>
+            <li class="p-2">
+                Extra Details:
+                <div
+                    class="ml-3 p-3 shadow-lg rounded break-normal bg-gray-100 dark:bg-slate-700"
+                >
+                    <ul>
+                        <li>
+                            Outside Event:
+                            <strong>{{
+                                event.additional_data?.outside ? "Yes" : "No"
+                            }}</strong>
+                        </li>
+                        <li>
+                            Lodging Provided:
+                            <strong
+                                >{{
+                                    event.additional_data?.lodging?.find(
+                                        (item) =>
+                                            item.title === "Lodging Provided"
+                                    )?.data
+                                        ? "Yes"
+                                        : "No"
+                                }}
+                            </strong>
+                        </li>
+                        <li>
+                            Backline Provided:
+                            <strong>{{
+                                event.additional_data?.backline_provided
+                                    ? "Yes"
+                                    : "No"
+                            }}</strong>
+                        </li>
+                        <li>
+                            Production Needed:
+                            <strong>{{
+                                event.additional_data?.production_needed
+                                    ? "Yes"
+                                    : "No"
+                            }}</strong>
+                        </li>
+                    </ul>
                 </div>
-              </li>
-            </ul>
-          </AccordionTab>
-        </Accordion>
-      </li>
-    </ul>
-    <!-- {{ event }} -->
-  </div>
+            </li>
+            <li
+                v-if="
+                    event.event_type_id === 1 && event.additional_data?.wedding
+                "
+                class="p-2"
+            >
+                Wedding Info:
+                <Wedding :wedding="event.additional_data?.wedding" />
+            </li>
+            <li v-if="event.additional_data?.attire">
+                Attire:
+                <div
+                    class="ml-3 p-3 shadow-lg rounded break-normal bg-gray-100 dark:bg-slate-700"
+                    v-html="event.additional_data?.attire"
+                />
+            </li>
+            <Contacts :contacts="event.contacts" />
+        </ul>
+    </div>
 </template>
 
-<script>
-import moment from 'moment'
-export default {
-    props:['event', 'type'],
-    methods:{
-      productionTime(event)
-      {
-        let timeOrNot = this.toTime(event.production_loadin_time);
-        if(!event.production_needed)
-        {
-          timeOrNot = "N/A"
-        }
+<script setup>
+import Times from "./Components/Times.vue";
+import Wedding from "./Components/Wedding.vue";
+import Contacts from "./Components/Contacts.vue";
+import { find } from "lodash";
 
-        return timeOrNot;
-      },
-      toTime(time){
-        return moment(time).format('h:mm A')
-      }
-    }
-}
+const props = defineProps(["event", "type"]);
 </script>

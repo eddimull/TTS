@@ -2,11 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Models\Invoices;
-use App\Models\Proposals;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
+use App\Models\Bookings;
+use App\Models\Invoices;
+use Illuminate\Foundation\Testing\WithFaker;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class invoiceModelTest extends TestCase
 {
@@ -15,14 +15,14 @@ class invoiceModelTest extends TestCase
      *
      * @return void
      */
-    public function test_invoice_returns_proposal()
+    public function test_invoice_returns_booking()
     {
-        $proposal = Proposals::factory()->create();
+        $booking = Bookings::factory()->create();
 
         $invoice = Invoices::factory()->create([
-            'proposal_id'=>$proposal->id
+            'booking_id' => $booking->id
         ]);
 
-        $this->assertEquals($proposal->name,$invoice->proposal->name);
+        $this->assertEquals($booking->name, $invoice->booking->name);
     }
 }

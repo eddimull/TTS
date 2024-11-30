@@ -38,7 +38,8 @@ class RouteServiceProvider extends ServiceProvider
     {
         $this->configureRateLimiting();
 
-        $this->routes(function () {
+        $this->routes(function ()
+        {
             Route::prefix('api')
                 ->middleware('api')
                 ->namespace($this->namespace)
@@ -46,10 +47,15 @@ class RouteServiceProvider extends ServiceProvider
 
             Route::middleware('web')
                 ->namespace($this->namespace)
-                ->group(function ($router){
+                ->group(function ($router)
+                {
                     require base_path('routes/web.php');
                     require base_path('routes/management.php');
                 });
+
+            Route::prefix('webhook')
+                ->namespace($this->namespace)
+                ->group(base_path('routes/webhooks.php'));
 
             Route::prefix('charts')
                 ->middleware('web')
@@ -65,7 +71,8 @@ class RouteServiceProvider extends ServiceProvider
      */
     protected function configureRateLimiting()
     {
-        RateLimiter::for('api', function (Request $request) {
+        RateLimiter::for('api', function (Request $request)
+        {
             return Limit::perMinute(60)->by(optional($request->user())->id ?: $request->ip());
         });
     }

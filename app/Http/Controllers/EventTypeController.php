@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Models\EventTypes;
 
 class EventTypeController extends Controller
 {
-    //
+    public function getAllEventTypes()
+    {
+        $eventTypes = EventTypes::all();
+        return response()->json($eventTypes);
+    }
 }

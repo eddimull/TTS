@@ -90,7 +90,7 @@ class RegisteredUserController extends Controller
                     'band_id' => $invitation->band_id
                 ]);
             }
-            if ($invitation->invite_type_id == static::MEMBER_INVITE_TYPE)
+            if ($invitation->invite_type_id === static::MEMBER_INVITE_TYPE)
             {
                 BandMembers::create([
                     'user_id' => $user->id,

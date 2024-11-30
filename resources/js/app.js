@@ -18,6 +18,7 @@ import Column from 'primevue/column';
 import Editor from 'primevue/editor';
 import Panel from 'primevue/panel';
 import PrimeVue from 'primevue/config';
+import Aura from '@primevue/themes/aura';
 import Calendar from 'primevue/calendar';
 import Divider from 'primevue/divider';
 import Button from 'primevue/button';
@@ -31,7 +32,6 @@ import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import Image from 'primevue/image';
 import qs from 'qs';
-import AudioVisual from 'vue-audio-visual'
 import Chart from 'primevue/chart';
 import TabView from 'primevue/tabview';
 import TabPanel from 'primevue/tabpanel';
@@ -40,18 +40,20 @@ import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
 import Container from '@/Components/Container'
 import ToastService from 'primevue/toastservice';
 import 'sweetalert2/dist/sweetalert2.min.css';
-import 'primevue/resources/themes/saga-blue/theme.css'
-import 'primevue/resources/primevue.min.css'
+// import 'primevue/resources/themes/saga-blue/theme.css'
+// import 'primevue/resources/primevue.min.css'
 // import 'primeflex/primeflex.css';
 import 'primeicons/primeicons.css'
 
 import questionnaire from '@/Store/questionnaire';
 import user from '@/Store/userStore';
+import eventTypes from '@/Store/eventTypesStore';
 
 const store = createStore({
     modules: {
         questionnaire,
-        user
+        user,
+        eventTypes
     }
 })
 
@@ -61,48 +63,57 @@ createInertiaApp({
     setup({ el, App, props, plugin }) {
         const app = createApp({ render: () => h(App, props) });
 
+        app.component('BreezeAuthenticatedLayout', BreezeAuthenticatedLayout)
         app.use(plugin)
             .use(ZiggyVue, Ziggy)
             .use(store)
             .use(VueSweetalert2)
-            .use(PrimeVue)
-            .use(AudioVisual)
+            .use(PrimeVue, { ripple: true, theme: { preset: Aura } })
             .use(ToastService)
-            .component('Layout', BreezeAuthenticatedLayout)
-            .component('Link', Link)
-            .component('Container', Container)
-            .component('Chart', Chart)
-            .component("card-modal", CardModal)
-            .component('calendar', Calendar)
-            .component('Checkbox', Checkbox)
-            .component('Column', Column)
-            .component('Accordion', Accordion)
-            .component('AccordionTab', AccordionTab)
-            .component('Editor', Editor)
-            .component('Button', Button)
-            .component('Divider', Divider)
-            .component("card", Card)
-            .component('RadioButton', RadioButton)
-            .component('InputText', InputText)
-            .component('Image', Image)
-            .component('InputNumber', InputNumber)
-            .component('InputSwitch', InputSwitch)
-            .component('Textarea', Textarea)
-            .component('PVtextarea', Textarea)
-            .component('Dialog', Dialog)
-            .component('Dropdown', Dropdown)
-            .component('DataTable', DataTable)
-            .component('Panel', Panel)
-            .component('TabView', TabView)
-            .component('TabPanel', TabPanel)
-            .component('ProgressSpinner', ProgressSpinner)
-            .mixin({ methods: { route } });
+        const components = {
+            Link,
+            Container,
+            Chart,
+            CardModal,
+            Calendar,
+            Checkbox,
+            Column,
+            Accordion,
+            AccordionTab,
+            Editor,
+            Button,
+            Divider,
+            Card,
+            RadioButton,
+            InputText,
+            Image,
+            InputNumber,
+            Textarea,
+            PVtextarea: Textarea,
+            Dialog,
+            DataTable,
+            Panel,
+            TabView,
+            TabPanel,
+            ProgressSpinner
+        };
+
+        Object.entries(components).forEach(([name, component]) => {
+            app.component(name, component);
+        });
+        app.mixin({ methods: { route } });
 
         app.config.globalProperties.$moment = moment;
         app.config.globalProperties.$qs = qs;
         app.config.globalProperties.$route = route;
 
-        return app.mount(el);
+        return (() => {
+            return store.dispatch('eventTypes/fetchEventTypes')
+        })().then(() => {
+            return app.mount(el);
+        })
+
+
     }
 });
 

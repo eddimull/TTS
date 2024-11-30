@@ -1,107 +1,68 @@
 <template>
-  <calendar
-    v-model="date"
+  <DatePicker
+    :dates="dates"
     :show-time="false"
     :step-minute="15"
     hour-format="12"
-    :inline="true"
+    inline
   >
-    <template #date="slotProps">
+    <template #date="{ date }">
       <strong
-        v-if="findReservedDate(slotProps.date)"
-        :title="findReservedDate(slotProps.date,'name')"
+        v-if="isReserved(date)"
+        :title="getEventName(date)"
         class="rounded-full h-24 w-24 flex items-center justify-center bg-blue-300"
-        @click="setEventId(slotProps.date)"
-      >{{ slotProps.date.day }}</strong>
+        @click="setEventId(date)"
+      >
+        {{ date.day }}
+      </strong>
       <template v-else>
-        {{ slotProps.date.day }}
+        {{ date.day }}
       </template>
     </template>
-  </calendar>
+  </DatePicker>
 </template>
 
-<script>
-import { usePage } from '@inertiajs/inertia-vue3'
-import { computed } from '@vue/runtime-core'
-export default {
+<script setup>
+import { DateTime } from 'luxon';
+import DatePicker from 'primevue/datepicker';
 
-  setup(){
-    if(!usePage().props.value?.events)
-    {
-      return {events:[]}
-    }
-    const events = computed(()=>usePage().props.value.events);
+const props = defineProps({
+  events: {
+    type: Object,
+    default: () => ({})
+  }
+});
+const emit = defineEmits(['date']);
 
-    return {events}
-  },
-  data(){
-    return {
-      date:null,
-      event_id:null
-    }
-  },
-  watch:{
-    event_id(){
-      this.emit_id();
-    }
-  },
+const dates = { ...props.events };
 
-  
-methods:{
-  emit_id()
-  {
-    this.$emit('date',this.event_id)
-  },
-  parsePrimeVueDate(date)
-  {
+const parseDate = (date) => {
+  const dateString = `${date.year}-${String(date.month + 1).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`;
+  return DateTime.fromFormat(dateString, 'yyyy-MM-dd');
+};
 
-    function zeroPad(data)
-    {
-      let padded = data;
-      if(data < 10)
-      {
-        padded = "0" + data;
-      }
-      return String(padded);
-    }
-    const dateString = String(date.year) + '-' + zeroPad(date.month + 1) + '-' + zeroPad(date.day);
-    const jsDate = this.$moment(dateString).format('YYYY-MM-DD');
-    return jsDate;
-  },
-  setEventId(date)
-  {
-    this.event_id = this.findReservedDate(date,'id');
-  },
-     findReservedDate(date,sendBack)
-            {
-                const jsDate = this.parsePrimeVueDate(date);
-                var data = false;
-                
-                for(const i in this.events){
-                  const bookedDate = this.events[i];
-                  const parsedDate = this.$moment(bookedDate.event_time).format('YYYY-MM-DD');
-                    if(parsedDate === jsDate)
-                    {
-                        data = true;
-                        if(sendBack === 'name')
-                        {
-                          data = bookedDate.event_name;
-                        }
+const isReserved = (date) => {
+  const jsDate = parseDate(date);
+  return Object.values(props.events).some(event => 
+    DateTime.fromFormat(event.date, 'yyyy-MM-dd').equals(jsDate)
+  );
+};
 
-                        if(sendBack === 'id')
-                        {
-                          data = bookedDate.id;
-                        }
-                    }
-                }
+const getEventName = (date) => {
+  const jsDate = parseDate(date);
+  const event = Object.values(props.events).find(event => 
+    DateTime.fromFormat(event.date, 'yyyy-MM-dd').equals(jsDate)
+  );
+  return event ? event.event_name : '';
+};
 
-                return data
-            },
-      
-}
-}
+const setEventId = (date) => {
+  const jsDate = parseDate(date);
+  const event = Object.values(props.events).find(event => 
+    DateTime.fromFormat(event.date, 'yyyy-MM-dd').equals(jsDate)
+  );
+  if (event) {
+    emit('date', event.id);
+  }
+};
 </script>
-
-<style>
-
-</style>
