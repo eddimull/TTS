@@ -2,8 +2,9 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Bands extends Model
 {
@@ -41,7 +42,7 @@ class Bands extends Model
 
     public function stripe_accounts()
     {
-        return $this->hasOne(stripe_accounts::class, 'band_id');
+        return $this->hasOne(StripeAccounts::class, 'band_id');
     }
 
     public function invites()
@@ -67,6 +68,11 @@ class Bands extends Model
         return $this->hasMany(Proposals::class, 'band_id')->where('phase_id', '=', '6')->with(['invoices', 'payments'])->orderBy('name', 'asc');
     }
 
+    public function completedBookings()
+    {
+        return $this->hasMany(Bookings::class, 'band_id')->where('status', '=', 'confirmed')->with(['payments'])->orderBy('name', 'asc');
+    }
+
     public function events()
     {
         return $this->hasMany(BandEvents::class, 'band_id');
@@ -85,6 +91,34 @@ class Bands extends Model
 
     public function payments()
     {
-        return $this->hasManyThrough(ProposalPayments::class, Proposals::class, 'band_id', 'proposal_id')->orderBy('paymentDate', 'desc');
+        return $this->hasMany(Payments::class, 'band_id');
+    }
+
+    public function paymentsByYear()
+    {
+        return $this->payments()
+            ->selectRaw('YEAR(date) as year, SUM(amount) as total')
+            ->groupBy(DB::raw('YEAR(date)'))
+            ->orderBy('year', 'desc');
+    }
+
+    public function bookings()
+    {
+        return $this->hasMany(Bookings::class, 'band_id');
+    }
+
+    public function getUnpaidBookings()
+    {
+        return $this->bookings()->unpaid();
+    }
+
+    public function getPaidBookings()
+    {
+        return $this->bookings()->paid();
+    }
+
+    public function contacts()
+    {
+        return $this->hasMany(Contacts::class, 'band_id')->orderBy('name', 'asc');
     }
 }

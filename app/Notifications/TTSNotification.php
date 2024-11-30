@@ -21,21 +21,21 @@ class TTSNotification extends Notification
     public function __construct($data)
     {
         $this->data = $data;
-        
 
-        if(!isset($this->data['text']))
+
+        if (!isset($this->data['text']))
         {
             $this->data['text'] = '';
         }
-        if(!isset($this->data['link']))
+        if (!isset($this->data['link']))
         {
             $this->data['link'] = '/';
         }
-        if(!isset($this->data['route']))
+        if (!isset($this->data['route']))
         {
             $this->data['route'] = 'dashboard';
         }
-        if(!isset($this->data['routeParams']))
+        if (!isset($this->data['routeParams']))
         {
             $this->data['routeParams'] = '';
         }
@@ -50,9 +50,9 @@ class TTSNotification extends Notification
     public function via($notifiable)
     {
         $notificationMethods = ['database'];
-        if($notifiable->emailNotifications)
+        if ($notifiable->emailNotifications)
         {
-            array_push($notificationMethods,'mail');
+            array_push($notificationMethods, 'mail');
         }
         return $notificationMethods;
     }
@@ -65,19 +65,18 @@ class TTSNotification extends Notification
      */
     public function toMail($notifiable)
     {
-            return (new MailMessage)
+        return (new MailMessage)
             ->line(isset($this->data['emailHeader']) ? $this->data['emailHeader'] : '')
-            ->action(isset($this->data['actionText']) ? $this->data['actionText'] : 'Check it out', config('app.url') .  (isset($this->data['url']) ? $this->data['url'] : '') )
+            ->action(isset($this->data['actionText']) ? $this->data['actionText'] : 'Check it out', config('app.url') .  (isset($this->data['url']) ? $this->data['url'] : ''))
             ->line(isset($this->data['text']) ? $this->data['text'] : '');
     }
 
     /**
      * Get the array representation of the notification.
      *
-     * @param  mixed  $notifiable
      * @return array
      */
-    public function toArray($notifiable)
+    public function toArray()
     {
         return $this->data;
     }

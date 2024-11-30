@@ -12,7 +12,7 @@ use App\Models\Bands;
 use Illuminate\Support\Facades\Config;
 use Spatie\GoogleCalendar\Event as CalendarEvent;
 use App\Models\EventContacts;
-use App\Models\Contracts;
+use App\Models\ProposalContracts;
 use PDF;
 
 
@@ -226,7 +226,7 @@ class ProposalServices
             $sent = $this->sendToPandaDoc($body, $uploadedDocumentId);
         }
 
-        Contracts::create([
+        ProposalContracts::create([
             'proposal_id' => $this->proposal->id,
             'envelope_id' => $uploadedDocumentId,
             'status' => 'sent',

@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config'
+import DefineOptions from 'unplugin-vue-define-options/vite'
 import laravel from 'laravel-vite-plugin';
 import vue from '@vitejs/plugin-vue';
 
@@ -16,6 +17,7 @@ export default defineConfig({
                 },
             },
         }),
+        DefineOptions(),
     ],
     resolve: {
         alias: {

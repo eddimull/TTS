@@ -7,35 +7,36 @@
     </template>
 
     <Container>
-      <Toolbar class="p-mb-4 border-b-2">
-        <template #start>
-          <Button
-            icon="pi pi-plus"
-            class="mr-2"
-            severity="secondary"
-            text
-            label="New"
-            @click="openNew"
-          />
-        </template>
-
-        <template #end>
-          <IconField>
-            <InputIcon>
-              <i class="pi pi-search" />
-            </InputIcon>
-            <InputText
-              v-model="chartFilter"
-              placeholder="Search"
-              class="ml-2"
-              @input="filterCharts"
+      <div class="card">
+        <Toolbar class="p-mb-4">
+          <template #left>
+            <Button
+              label="New"
+              icon="pi pi-plus"
+              class="p-button-success p-mr-2"
+              @click="openNew"
             />
-          </IconField>
-        </template>
-      </Toolbar>
-      <div class="card mt-2">
+          <!-- <Button
+                label="Delete"
+                icon="pi pi-trash"
+                class="hidden p-button-danger"
+                :disabled="!selectedProducts || !selectedProducts.length"
+                @click="confirmDeleteSelected"
+              /> -->
+          </template>
+
+          <template #right>
+          <!-- <Button
+
+                label="Export"
+                icon="pi pi-upload"
+                class="hidden p-button-help"
+                @click="exportCSV($event)"
+              /> -->
+          </template>
+        </Toolbar>
         <DataTable
-          :value="filteredChartsData"
+          :value="chartsData"
           striped-rows
           row-hover
           responsive-layout="scroll"
@@ -98,7 +99,7 @@
             v-if="submitted && !chart.composer"
             class="p-error"
           >Composer is required.</small>
-        </div>
+        </div>                  
         <div class="p-field">
           <label for="description">Description</label>
           <Textarea
@@ -131,7 +132,7 @@
               </span>
             </template>
           </Dropdown>
-        </div>
+        </div>          
         <div class="p-formgrid p-grid">
           <div class="p-field p-col">
             <label for="price">Price</label>
@@ -170,7 +171,7 @@
     import Toolbar from 'primevue/toolbar'
     import DataTable from 'primevue/datatable';
     import Column from 'primevue/column';
-
+    
     export default {
         components: {
             BreezeAuthenticatedLayout,
@@ -182,52 +183,70 @@
           charts:{
             type:Array,
             default:()=>{return []}
-          },
-          availableBands:{
-            type:Array,
-            default:()=>{return []}
           }
         },
         data(){
             return{
                 form:{
-
+                    
                 },
               chartsData:this.charts,
-              filteredChartsData: [],
               chart:{},
               saving:false,
               submitted:false,
               chartDialog:false,
-              chartFilter:'',
             }
         },
-
-
-        watch:{
-          chartFilter: {
-            handler(newValue) {
-              this.filterCharts();
+        computed:{
+          availableBands(){
+            const bands = [];
+            if(this.$page.props.auth.user.band_owner)
+            {
+              this.$page.props.auth.user.band_owner.forEach(band=>{
+                bands.push({id:band.id,name:band.name})
+              })
             }
+            if(this.$page.props.auth.user.band_member)
+            {
+              this.$page.props.auth.user.band_member.forEach(band=>{
+                
+                bands.push({id:band.id,name:band.name})
+              })
+            }
+
+            function sortNames(a,b)
+            {
+              if(a.name < b.name)
+              {
+                return -1;
+              }
+              if(a.name > b.name)
+              {
+                return 1;
+              }
+              return 0;
+            }
+           return bands.filter((v,i,a)=>a.findIndex(t=>(t.id === v.id))===i).sort(sortNames)
           }
         },
+        watch:{
+            
+        }, 
         created(){
-
-          this.filteredChartsData = this.chartsData;
-
+          
         },
         methods:{
             selectedChart(data)
             {
-              this.$inertia.visit(this.route('charts.edit', data.data.id));
+              this.$inertia.visit(this.route('charts.edit', data.data.id));  
             },
         openNew() {
-
+          
           this.saving = false;
             this.product = {};
             this.submitted = false;
             this.chartDialog = true;
-        },
+        }, 
         saveChart(){
           this.submitted = true;
           this.saving = true;
@@ -237,17 +256,9 @@
         closeDialog(){
           this.saving = false;
           this.chartDialog = false;
-        },
-
-        filterCharts() {
-          const searchTerm = this.chartFilter.toLowerCase();
-          this.filteredChartsData = this.chartsData.filter(chart =>
-            chart.title.toLowerCase().includes(searchTerm) ||
-            chart.composer.toLowerCase().includes(searchTerm)
-          );
         }
-      }
-
-
+      }     
+        
+        
     }
 </script>

@@ -2,125 +2,145 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Contracts;
-use Illuminate\Http\Request;
-use PDF;
 use App\Models\Bands;
+use App\Models\Bookings;
+use App\Models\Contracts;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use App\Models\User;
-use App\Notifications\TTSNotification;
-use Illuminate\Support\Facades\Http;
+use App\Http\Requests\StoreContractsRequest;
+use App\Http\Requests\UpdateContractsRequest;
+use Illuminate\Http\Request;
 
 class ContractsController extends Controller
 {
     /**
      * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
      */
     public function index()
     {
-
-        $sent = Http::withHeaders([
-            'Authorization' => 'API-Key 9af58cc39e881426bb08c7664db5cade47ed110c'
-        ])->post('https://api.pandadoc.com/=>https://dev.tts.band/pandadocWebhook');
-
-        return $sent;
+        //
     }
 
-    private function make_document_for_pandadoc($proposal)
+    /**
+     * Show the form for creating a new resource.
+     */
+    public function create()
     {
-        $pdf = PDF::loadView('contract', ['proposal' => $proposal]);
-        $base64PDF = base64_encode($pdf->output());
-        $band = Bands::find(1);
-        $imagePath = $band->site_name . '/' . $proposal->name . '_contract_' . time() . '.pdf';
-
-        $path = Storage::disk('s3')->put(
-            $imagePath,
-            base64_decode($base64PDF),
-            ['visibility' => 'public']
-        );
-
-        $body =  [
-            "name" => "Contract for " . $proposal->band->name,
-            "url" => Storage::disk('s3')->url($imagePath),
-            "tags" => [
-                "tag_1"
-            ],
-            "recipients" => [
-                [
-                    "email" => $proposal->proposal_contacts[0]->email,
-                    "first_name" => explode(' ', $proposal->proposal_contacts[0]->name)[0],
-                    "last_name" => explode(' ', $proposal->proposal_contacts[0]->name)[1],
-                    "role" => "user"
-                ]
-            ],
-            "fields" => [
-                "name" => [
-                    "value" => $proposal->proposal_contacts[0]->name,
-                    "role" => "user"
-                ]
-            ],
-            "parse_form_fields" => false
-        ];
-
-
-
-        $response = Http::withHeaders([
-            'Authorization' => 'API-Key 9af58cc39e881426bb08c7664db5cade47ed110c'
-        ])
-            ->acceptJson()
-            ->post('https://api.pandadoc.com/public/v1/documents', $body);
-
-
-        sleep(5);
-        $uploadedDocumentId = $response['id'];
-
-        $sent = Http::withHeaders([
-            'Authorization' => 'API-Key 9af58cc39e881426bb08c7664db5cade47ed110c'
-        ])->post('https://api.pandadoc.com/https://dev.tts.band/pandadocWebhook', [
-            "messsage" => 'Please sign this contract so we can make this official!',
-            "subject" => 'Contract for ' . $proposal->band->name
-        ]);
-
-        $sent = Http::withHeaders([
-            'Authorization' => 'API-Key 9af58cc39e881426bb08c7664db5cade47ed110c'
-        ])->post('https://api.pandadoc.com/public/v1/documents/' . $uploadedDocumentId . '/send', [
-            "messsage" => 'Please sign this contract so we can make this official!',
-            "subject" => 'Contract for ' . $proposal->band->name
-        ]);
-
-        return $sent;
+        //
     }
 
-    public function webhook(Request $request)
+    /**
+     * Store a newly created resource in storage.
+     */
+    public function store(StoreContractsRequest $request)
     {
+        //
+    }
 
-        $contract = Contracts::where('envelope_id', $request['envelopeId'])->first();
-        if ($contract)
+    /**
+     * Display the specified resource.
+     */
+    public function show(Contracts $contract)
+    {
+        $filePath = \urldecode($contract->asset_url); // Adjust this based on your actual model structure
+        $filePath = Str::replace('https://bandapp.s3.us-east-2.amazonaws.com/', '', $filePath);
+        // dd($filePath);
+        // Check if the file exists
+        if (!Storage::disk('s3')->exists($filePath))
         {
-            $proposal = $contract->proposal;
-            $contract->status = $request['status'];
-
-            if ($contract->status == 'completed')
-            {
-
-                $band = Bands::find($proposal->band_id);
-
-                foreach ($band->owners as $owner)
-                {
-                    $user = User::find($owner->user_id);
-                    $user->notify(new TTSNotification([
-                        'text' => 'Contract for ' . $proposal->name . ' signed and completed!',
-                        'route' => 'proposals',
-                        'routeParams' => '',
-                        'url' => '/proposals/'
-                    ]));
-                }
-            }
-            $contract->save();
+            abort(404);
         }
 
-        return response('success');
+        // Stream the file from S3
+        $stream = Storage::disk('s3')->readStream($filePath);
+
+        return response()->stream(
+            function () use ($stream)
+            {
+                fpassthru($stream);
+            },
+            200,
+            [
+                'Content-Type' => Storage::disk('s3')->mimeType($filePath),
+                'Content-Disposition' => 'inline; filename="' . basename($filePath) . '"',
+            ]
+        );
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(Contracts $contracts)
+    {
+        //
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(UpdateContractsRequest $request, Bands $band, Bookings $booking)
+    {
+        $contract = $booking->contract()->firstOrCreate([], ['author_id' => Auth::id()]);
+
+        $contract->update($request->validated());
+
+        return redirect()->back()->with('successMessage', 'Contract Saved.');
+    }
+
+    public function downloadBookingContract(Bands $band, Bookings $booking)
+    {
+        // return 'test';
+        $contract = $booking->contract;
+        dd($contract);
+    }
+
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  Bands  $band
+     * @param  Bookings  $booking
+     * @return \Illuminate\Http\Response
+     */
+    public function sendBookingContract(Request $request, Bands $band, Bookings $booking,)
+    {
+        //get the contact from the request input 'contact'
+        $contact = $booking->contacts()->find($request->input('contact'));
+        $contractPdf = $booking->getContractPdf($contact);
+        $booking->storeContractPdf($contractPdf);
+        $contract = $booking->contract;
+
+
+        if (!$contract)
+        {
+            return redirect()->back()->withErrors(['Contract not found' => 'No contract found for this booking.']);
+        }
+
+        try
+        {
+            $contract->sendToPandaDoc($contact);
+            $booking->status = 'pending';
+            $booking->save();
+            return redirect()->back()->with('successMessage', 'Contract sent successfully to PandaDoc.');
+        }
+        catch (\Exception $e)
+        {
+            return redirect()->back()->withErrors(['Failed to send contract:' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(Contracts $contracts)
+    {
+        //
+    }
+
+    public function getHistory(Contracts $contract)
+    {
+        return response()->json(['history' => $contract->auditTrail()]);
     }
 }

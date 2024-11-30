@@ -25,7 +25,6 @@ class UpdateEventsTest extends TestCase
     public function test_update_event()
     {
         $band = Bands::factory()->create();
-        Log::info('Band object:', [$band]);
         $user = User::factory()->create();
 
         BandOwners::create([

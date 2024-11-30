@@ -19,8 +19,8 @@ class ProposalPayments extends Model
     protected $guarded = [];
 
     protected $with = ['proposal:id,name,key,band_id,author_id,price'];
-    protected $appends = ['formattedPaymentDate','formattedPaymentAmount'];
-    protected $table = 'payments';
+    protected $appends = ['formattedPaymentDate', 'formattedPaymentAmount'];
+    protected $table = 'proposal_payments';
 
     public function getformattedPaymentDateAttribute()
     {
@@ -29,13 +29,13 @@ class ProposalPayments extends Model
 
     public function getformattedPaymentAmountAttribute()
     {
-        return number_format($this->amount/100,2);
+        return number_format($this->amount / 100, 2);
     }
 
     public function sendReceipt()
     {
         $contacts = $this->proposal->ProposalContacts;
-        foreach($contacts as $contact)
+        foreach ($contacts as $contact)
         {
             Mail::to($contact->email)->send(
                 new PaymentMade($this)

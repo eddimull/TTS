@@ -12,7 +12,9 @@ RUN apt-get update && apt-get install -y  \
     phpize && \
     ./configure && \
     make && \
-    make install
+    make install && \
+    pecl install pcov && \
+    docker-php-ext-enable pcov
 
 
 # Final stage
@@ -28,7 +30,7 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     wkhtmltopdf \
     --no-install-recommends \
-    && docker-php-ext-enable imagick \
+    && docker-php-ext-enable imagick pcov \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
@@ -37,7 +39,31 @@ COPY --from=node:20-slim /usr/local/bin /usr/local/bin
 # Get npm
 COPY --from=node:20-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
 
+# Install browser based on architecture
+RUN apt-get update && apt-get install -y \
+    wget \
+    gnupg \
+    ca-certificates \
+    apt-transport-https
+
+# Check architecture and install appropriate browser
+RUN case $(uname -m) in \
+    x86_64) \
+        wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
+        echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list && \
+        apt-get update && \
+        apt-get install -y google-chrome-stable \
+        ;; \
+    aarch64|arm64) \
+        apt-get update && \
+        apt-get install -y chromium \
+        ;; \
+    *) \
+        echo "Unsupported architecture: $(uname -m)" && \
+        exit 1 \
+        ;; \
+esac
+
 WORKDIR /var/www
 
 RUN php -v && composer --version && node -v && npm -v
-

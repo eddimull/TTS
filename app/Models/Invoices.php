@@ -8,10 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 class Invoices extends Model
 {
     use HasFactory;
-    protected $fillable = ['proposal_id','amount','status','stripe_id','convenience_fee'];
+    protected $fillable = ['booking_id', 'amount', 'status', 'stripe_id', 'convenience_fee'];
 
-    public function proposal()
+    public function booking()
     {
-        return $this->belongsTo(Proposals::class);
+        return $this->belongsTo(Bookings::class);
     }
 }

@@ -47,7 +47,7 @@
 
             <!-- header -->
             <div class="px-4 py-3 border-b border-gray-200 flex flex-col lg:flex-row">
-              <h2 class="text-xl font-semibold text-gray-600 m-3">
+              <h2 class="text-xl font-semibold text-gray-600 dark:text-gray-50 m-3">
                 <slot name="header" />
               </h2>
               <slot name="headerBody" />
