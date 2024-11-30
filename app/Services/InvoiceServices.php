@@ -131,7 +131,7 @@ class InvoiceServices
         StripeProducts::create([
             'band_id' => $bandID,
             'stripe_product_id' => $product->id,
-            'name' => $name,
+            'product_name' => $name,
         ]);
 
         return $product;
