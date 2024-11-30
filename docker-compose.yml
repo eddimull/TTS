@@ -5,6 +5,12 @@ services:
         build:
             context: .
             dockerfile: ./docker/app.dockerfile
+        environment:
+            PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: true
+            PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
+            CHROME_CONFIG_HOME: '/tmp/.config'
+            XDG_CONFIG_HOME: "$WORKSPACE@tmp/.chromium"
+            XDG_CACHE_HOME: "$WORKSPACE@tmp/.chromium"
         working_dir: /var/www
         volumes:
             - ./:/var/www
@@ -15,7 +21,7 @@ services:
             - redis
             - selenium
         ports:
-          - 8000:9000
+            - 8000:9000
     web:
         build:
             context: .
@@ -28,6 +34,7 @@ services:
         depends_on:
             - app
         ports:
+            - 8080:80
             - 8710:443
     mysql:
         image: 'mysql:8.1'
@@ -44,11 +51,11 @@ services:
         networks:
             - sail
         healthcheck:
-          test: ["CMD", "mysqladmin", "ping"]
+            test: [ "CMD", "mysqladmin", "ping" ]
     mysql-test:
         image: 'mysql:8.1'
         ports:
-          - '${FORWARD_DB_PORT:-3307}:3306'
+            - '${FORWARD_DB_PORT:-3307}:3306'
         environment:
             MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
             MYSQL_DATABASE: '${DB_DATABASE}'
@@ -68,7 +75,7 @@ services:
         networks:
             - sail
         healthcheck:
-          test: ["CMD", "redis-cli", "ping"]
+            test: [ "CMD", "redis-cli", "ping" ]
     meilisearch:
         image: 'getmeili/meilisearch:latest'
         ports:
@@ -77,33 +84,56 @@ services:
             - 'sailmeilisearch:/data.ms'
         networks:
             - sail
-    mailhog:
-        image: 'mailhog/mailhog:latest'
+    mailpit:
+        image: 'axllent/mailpit:latest'
         ports:
-            - '${FORWARD_MAILHOG_PORT:-1025}:1025'
-            - '${FORWARD_MAILHOG_DASHBOARD_PORT:-8025}:8025'
+            - '${FORWARD_MAILPIT_PORT:-1025}:1025'
+            - '${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025'
+        volumes:
+            - './storage/mailpit:/data'
         networks:
             - sail
+        environment:
+          MP_MAX_MESSAGES: 5000
+          MP_DATABASE: /data/mailpit.db
+          MP_SMTP_AUTH_ACCEPT_ANY: 1
+          MP_SMTP_AUTH_ALLOW_INSECURE: 1
     selenium:
-       image: 'selenium/standalone-chrome'
-       volumes:
+        image: 'selenium/standalone-chromium'
+
+        volumes:
             - '/dev/shm:/dev/shm'
-       networks:
-           - sail
+        networks:
+            - sail
     minio:
-      image: 'minio/minio:latest'
-      environment:
-        MINIO_ROOT_USER: '${AWS_ACCESS_KEY_ID:-minioadmin}'
-        MINIO_ROOT_PASSWORD: '${AWS_SECRET_ACCESS_KEY-minioadmin}'
-        MINIO_DEFAULT_BUCKET: '${AWS_BUCKET:-default-bucket}'
-      command: minio server /data/minio --console-address ":9001"
-      volumes:
-        - 'sailminio:/data'
-      ports:
-        - '${FORWARD_MINIO_PORT:-9000}:9000'
-        - '${FORWARD_MINIO_CONSOLE_PORT:-9001}:9001'
-      networks:
-        - sail
+        image: 'minio/minio:latest'
+        environment:
+            MINIO_ROOT_USER: '${AWS_ACCESS_KEY_ID:-minioadmin}'
+            MINIO_ROOT_PASSWORD: '${AWS_SECRET_ACCESS_KEY-minioadmin}'
+            MINIO_DEFAULT_BUCKET: '${AWS_BUCKET:-default-bucket}'
+        command: minio server /data/minio --console-address ":9001"
+        volumes:
+            - 'sailminio:/data'
+        ports:
+            - '${FORWARD_MINIO_PORT:-9000}:9000'
+            - '${FORWARD_MINIO_CONSOLE_PORT:-9001}:9001'
+        networks:
+            - sail
+    ngrok:
+        image: 'ngrok/ngrok:latest'
+        ports:
+            - '4040:4040'
+        environment:
+            NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
+            NGROK_URL: ${NGROK_URL}
+        depends_on:
+            - web
+        networks:
+            - sail
+        command:
+            - "http"
+            - "--url=${NGROK_URL}"
+            - "http://web:80"
 
 networks:
     sail:

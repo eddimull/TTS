@@ -5,7 +5,7 @@ namespace App\Console;
 use App\Mail\EventReminder;
 use App\Models\BandEvents;
 use App\Models\Bands;
-use App\Models\Contracts;
+use App\Models\ProposalContracts;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 use Illuminate\Support\Facades\Http;
@@ -42,7 +42,7 @@ class Kernel extends ConsoleKernel
         $schedule->call(function ()
         {
 
-            $contracts = Contracts::where('status', '!=', 'completed')->where('created_at', '>', Carbon::now()->subMonths(2))->get();
+            $contracts = ProposalContracts::where('status', '!=', 'completed')->where('created_at', '>', Carbon::now()->subMonths(2))->get();
 
             foreach ($contracts as $contract)
             {

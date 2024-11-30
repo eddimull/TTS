@@ -41,7 +41,7 @@
                   :title="'Initial Information'"
                 />
                 <div class="createEventInput">
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     <label for="name">Band</label>
                   </p>
                   <div>
@@ -68,7 +68,7 @@
                   placeholder="Event Name"
                 />
                 <div class="createEventInput">
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     Event Date
                   </p>
                   <p>
@@ -78,7 +78,7 @@
                   </p>
                 </div>
                 <div class="createEventInput">
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     <label for="eventType">Event Type</label>
                   </p>
                   <div>
@@ -98,7 +98,7 @@
                   </div>
                 </div>
                 <div class="createEventInput">
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     Public
                   </p>
                   <p>
@@ -152,7 +152,7 @@
                   v-if="form.event_type_id === 1"
                   class="createEventInput"
                 >
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     Second Line
                   </p>
                   <p>
@@ -169,7 +169,7 @@
                   :title="'Venue Information'"
                 />
                 <div class="createEventInput">
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     <label for="eventType">Production</label>
                   </p>
                   <div>
@@ -192,7 +192,7 @@
                   v-if="form.event_type_id == 3 || form.event_type_id === 6"
                   class="createEventInput"
                 >
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     Backline Provided
                   </p>
                   <p>
@@ -203,7 +203,7 @@
                   </p>
                 </div>       
                 <div class="createEventInput">
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     Contacts
                   </p>
                   <div>
@@ -332,7 +332,7 @@
                   </div>
                 </div>  
                 <div class="createEventInput">
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     Venue Name
                   </p>
                   <p>
@@ -374,7 +374,7 @@
                   placeholder="Townsville"
                 />                                 
                 <div class="createEventInput">
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     <label for="state">State</label>
                   </p>
                   <p>
@@ -394,7 +394,7 @@
                   </p>
                 </div>  
                 <div class="createEventInput">
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     Outside
                   </p>
                   <p>
@@ -411,7 +411,7 @@
                   :title="'Band Notes'"
                 />
                 <div class="createEventInput">
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     Notes
                   </p>
                   <p>
@@ -422,7 +422,7 @@
                   </p>
                 </div>                                                                                                                                                                                                                                                                                                                                    
                 <div class="createEventInput">
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     Color
                   </p>
                   <p>
@@ -433,7 +433,7 @@
                   </p>
                 </div>
                 <div class="createEventInput">
-                  <p class="text-gray-600">
+                  <p class="text-gray-600 dark:text-gray-50">
                     Lodging Required
                   </p>
                   <p>

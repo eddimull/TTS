@@ -43,7 +43,7 @@ class ClientCanAcceptProposalTest extends TestCase
         ]);
 
         $response->assertStatus(302); //really need that inertia plugin...
-        $this->assertDatabaseHas('contracts', [
+        $this->assertDatabaseHas('proposal_contracts', [
             'proposal_id' => $proposal->id
         ]);
     }

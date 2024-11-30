@@ -26,6 +26,8 @@ public/test/*
 storage/fonts/*
 wkhtmltox-0.12.6-1.amazonlinux2.x86_64.rpm
 yarn-error.log
-_ide_helper_models.php
+.local/share/applications/mimeapps.list
+@tmp/*
 .npm/*
-
+_ide_helper_models.php
+storage/mailpit/*

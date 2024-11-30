@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BandEvents;
 use App\Models\Bands;
-use App\Models\Contracts;
+use App\Models\ProposalContracts;
 use App\Models\EventTypes;
 use App\Models\ProposalContacts;
 use App\Models\ProposalPhases;
