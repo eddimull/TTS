@@ -1,6 +1,6 @@
 
 <template>
-  <div class="mt-4 p-4 bg-gray-100 rounded-lg">
+  <div class="mt-4 p-4 bg-gray-100 dark:bg-slate-700 dark:text-gray-50 rounded-lg">
     <h2 class="text-2xl font-bold mb-4">
       Edit Event: {{ event.title }}
     </h2>
@@ -10,7 +10,7 @@
         <input
           v-model="event.title"
           type="text"
-          class="w-full p-2 border rounded"
+          class="w-full p-2 border dark:bg-slate-700 dark:text-gray-50 rounded"
         >
       </div>
       <div>
@@ -18,7 +18,7 @@
         <input
           v-model="event.date"
           type="date"
-          class="w-full p-2 border rounded"
+          class="w-full p-2 border dark:bg-slate-700 dark:text-gray-50 rounded"
         >
       </div>
       <div>
@@ -26,7 +26,7 @@
         <input
           v-model="event.time"
           type="time"
-          class="w-full p-2 border rounded"
+          class="w-full p-2 border dark:bg-slate-700 dark:text-gray-50 rounded"
         >
       </div>
     </div>
@@ -53,12 +53,12 @@
           v-model.trim="entry.title"
           type="text"
           placeholder="Time title"
-          class="w-1/3 p-2 border rounded mr-2"
+          class="w-1/3 p-2 border rounded dark:bg-slate-700 dark:text-gray-50 mr-2"
         >
         <input
           v-model="entry.time"
           type="datetime-local"
-          class="w-1/3 p-2 border rounded mr-2"
+          class="w-1/3 p-2 border dark:bg-slate-700 dark:text-gray-50 rounded mr-2"
         >
         <button
           class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
@@ -153,7 +153,7 @@
           <input
             v-model="event.additional_data.lodging[key].data"
             :type="event.additional_data.lodging[key].type"
-            :class="{ 'form-checkbox h-5 w-5 text-blue-600': event.additional_data.lodging[key].type === 'checkbox', 'w-full p-2 border rounded': event.additional_data.lodging[key].type === 'text' }"
+            :class="{ 'form-checkbox h-5 w-5 text-blue-600': event.additional_data.lodging[key].type === 'checkbox', 'w-full p-2 border rounded dark:bg-slate-700 dark:text-gray-50': event.additional_data.lodging[key].type === 'text' }"
           >
         </div>
       </div>
@@ -180,7 +180,7 @@
             <input
               v-model="dance.data"
               type="text"
-              class="w-full p-2 border rounded"
+              class="w-full p-2 border dark:bg-slate-700 dark:text-gray-50 rounded"
             >
           </div>
         </div>

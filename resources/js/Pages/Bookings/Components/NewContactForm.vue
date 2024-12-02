@@ -11,7 +11,7 @@
                 v-model="form.name"
                 type="text"
                 required
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                class="mt-1 block w-full rounded-md border-gray-300  dark:bg-slate-700 dark:text-gray-50 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
             />
         </div>
 
@@ -26,7 +26,7 @@
                 v-model="form.email"
                 type="email"
                 required
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                class="mt-1 block w-full rounded-md border-gray-300 dark:bg-slate-700 dark:text-gray-50 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
             />
         </div>
 
@@ -40,7 +40,7 @@
                 id="phone"
                 v-model="form.phone"
                 type="tel"
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-slate-700 dark:text-gray-50 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
             />
         </div>
 
@@ -54,7 +54,7 @@
                 id="role"
                 v-model="form.role"
                 type="text"
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-slate-700 dark:text-gray-50 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
             />
         </div>
 
@@ -68,7 +68,7 @@
                 id="notes"
                 v-model="form.notes"
                 rows="3"
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-slate-700 dark:text-gray-50 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
             />
         </div>
 
@@ -79,7 +79,7 @@
                 type="checkbox"
                 class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-offset-0 focus:ring-indigo-200 focus:ring-opacity-50"
             />
-            <label for="is_primary" class="ml-2 block text-sm text-gray-900"
+            <label for="is_primary" class="ml-2 block text-sm text-gray-900 dark:text-white"
                 >Primary Contact</label
             >
         </div>

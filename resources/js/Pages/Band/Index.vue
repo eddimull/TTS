@@ -1,17 +1,17 @@
 <template>
   <breeze-authenticated-layout>
     <template #header>
-      <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+      <h2 class="font-semibold text-xl text-gray-800 dark:text-white leading-tight">
         Band List
       </h2>
     </template>
 
     <div class="md:container md:mx-auto">
       <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg pt-4">
+        <div class="bg-white dark:bg-slate-700 overflow-hidden shadow-sm sm:rounded-lg pt-4">
           <div
             v-if="bands.length > 0"
-            class="container"
+            class="container dark:bg-slate-700"
           >
             <a
               href="/bands/create"
@@ -35,7 +35,7 @@
                   <tr
                     v-for="(band, index) in bands"
                     :key="band.id"
-                    :class="{ 'bg-gray-100': index % 2 === 0, 'border-b': index % 2 !== 0 }"
+                    :class="{ 'bg-gray-100 dark:bg-gray-700 dark:text-white': index % 2 === 0, 'border-b dark:bg-gray-600 dark:text-white': index % 2 !== 0 }"
                   >
                     <td class="w-1/3 text-center py-3 px-4">
                       {{ band.name }}
@@ -46,7 +46,7 @@
                     <td>
                       <div class="flex justify-center items-center">
                         <Link
-                          class="border bg-white hover:bg-blue-500 rounded p-1 px-4 flex no-grow"
+                          class="border bg-white dark:bg-slate-600 hover:bg-blue-500 rounded p-1 px-4 flex no-grow"
                           :href="`/bands/${band.id}/edit`"
                         >
                           Edit

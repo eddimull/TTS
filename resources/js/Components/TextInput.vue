@@ -8,7 +8,7 @@
         :id="props.name"
         v-model="model"
         type="text"
-        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 dark:bg-slate-700 dark:text-gray-50 leading-tight focus:outline-none focus:shadow-outline"
         :placeholder="props.placeholder"
       >
     </div>
