@@ -8,7 +8,7 @@
             <!-- Logo -->
             <div class="flex-shrink-0 flex items-center">
               <Link :href="route('dashboard')">
-                <breeze-application-logo class="block h-9 w-auto" />
+                <span><breeze-application-logo class="block h-9 w-auto dark:text-white" /></span>
               </Link>
             </div>
 
@@ -359,7 +359,7 @@
       <!-- Page Heading -->
       <header
         v-if="$slots.header"
-        class="bg-white dark:bg-slate-700 shadow"
+        class="bg-white dark:bg-slate-700 dark:text-white shadow"
       >
         <div class="max-w-7xl mx-auto py-2 px-4 sm:px-4 lg:px-8 ">
           <slot name="header" />

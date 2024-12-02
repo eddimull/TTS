@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white dark:bg-slate-800 border block p-2 my-2 shadow-lg">
+  <div class="bg-white dark:bg-slate-800 dark:text-white border block p-2 my-2 shadow-lg">
     <event-header
       :eventkey="event.key"
       :name="event.title"

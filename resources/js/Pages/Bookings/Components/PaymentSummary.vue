@@ -1,6 +1,6 @@
 <template>
   <div class="w-full xl:w-4/12 px-4">
-    <div class="p-6 md:p-12 bg-blue-300">
+    <div class="p-6 md:p-12 bg-blue-300 dark:bg-blue-900">
       <h2 class="mb-6 text-4xl font-bold font-heading text-white">
         Summary
       </h2>

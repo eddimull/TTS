@@ -5,7 +5,7 @@
         <div class="bg-white dark:bg-slate-700 overflow-hidden shadow-sm sm:rounded-lg">
           <div class="p-6 bg-white dark:bg-slate-700 border-b border-gray-200">
             <div class="flex justify-between items-center mb-4">
-              <span class="text-xl font-bold">Booking Kanban Board</span>
+              <span class="hidden lg:flex text-xl font-bold">Booking Kanban Board</span>
               <div class="flex items-center">
                 <input 
                   v-model="searchTerm" 
@@ -43,7 +43,7 @@
               <h3 class="font-bold mb-2 capitalize">
                 {{ status }}
               </h3>
-              <ul class="bg-gray-100 rounded p-2 min-h-[200px] max-h-[1000px] overflow-y-auto">
+              <ul class="bg-gray-100 dark:bg-gray-600 rounded p-2 min-h-[200px] max-h-[1000px] overflow-y-auto">
                 <BookingCard
                   v-for="booking in getFilteredBookings(status)"
                   :key="booking.id"
@@ -51,7 +51,7 @@
                 />
                 <li
                   v-if="getFilteredBookings(status).length === 0"
-                  class="text-gray-500 italic"
+                  class="text-gray-500 dark:text-white italic"
                 >
                   No bookings in this status
                 </li>
