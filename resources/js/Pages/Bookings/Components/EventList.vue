@@ -1,5 +1,5 @@
 <template>
-    <div class="p-4 bg-white shadow rounded-lg">
+    <div class="p-4 bg-white dark:bg-slate-700 dark:text-gray-50 shadow rounded-lg">
         <div
             v-for="event in events"
             :key="event.id"

@@ -12,7 +12,7 @@
         <div
           v-for="contact in localBookingContacts"
           :key="contact.id"
-          class="bg-gray-100 p-4 rounded-lg mb-2"
+          class="bg-gray-100 dark:bg-slate-700 dark:text-gray-50 p-4 rounded-lg mb-2"
         >
           <ContactCard
             :contact="contact"
@@ -35,7 +35,7 @@
         <div v-if="availableBandContacts.length > 0">
           <select
             v-model="selectedContact"
-            class="w-full p-2 border rounded"
+            class="w-full p-2 border dark:bg-slate-700 dark:text-gray-50 rounded"
             @change="addExistingContact"
           >
             <option value="">
