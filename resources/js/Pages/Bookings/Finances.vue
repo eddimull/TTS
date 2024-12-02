@@ -8,9 +8,9 @@
       v-model="showInvoiceDialog"
       :booking="booking"
     />
-    <section class="py-20 bg-gray-100">
+    <section class="py-20 bg-gray-100 dark:bg-gray-800">
       <div class="container mx-auto px-4">
-        <div class="p-8 lg:p-20 bg-white">
+        <div class="p-8 lg:p-20 bg-white dark:bg-gray-700">
           <h2 class="mb-20 text-5xl font-bold font-heading">
             Payments - {{ booking.name }}
           </h2>

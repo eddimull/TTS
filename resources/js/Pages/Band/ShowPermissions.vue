@@ -3,7 +3,7 @@
   <breeze-authenticated-layout>
     <template #header>
       <div class="">
-        <div class="mb-5 text-2xl underline">
+        <div class="mb-5 text-2xl underline dark:text-white">
           Edit Permissions
         </div>
       </div>
