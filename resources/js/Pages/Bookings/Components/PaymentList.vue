@@ -9,7 +9,7 @@
     <PaymentItem
       v-for="payment in payments"
       :key="payment.id"
-      class="mb-6 py-6 border-t border-b border-gray-200 cursor-pointer hover:bg-gray-100 "
+      class="mb-6 py-6 border-t border-b border-gray-200 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600"
       :payment="payment"
       @dblclick="payment.enableDelete = !payment.enableDelete"
     />       

@@ -28,8 +28,8 @@
         This contract is pending. The contract is no longer editable.
       </p>
       <div class="grid gap-6 lg:grid-cols-3">
-        <div class="bg-white rounded-lg shadow-md overflow-hidden" :class="[booking.contract_option === 'default' ? 'lg:col-span-2' : 'lg:col-span-3']">
-          <h2 class="text-lg font-semibold bg-gray-100 px-4 py-2 border-b">Contract Preview</h2>
+        <div class="bg-white dark:bg-slate-700 rounded-lg shadow-md overflow-hidden" :class="[booking.contract_option === 'default' ? 'lg:col-span-2' : 'lg:col-span-3']">
+          <h2 class="text-lg font-semibold bg-gray-100 dark:bg-slate-700 px-4 py-2 border-b">Contract Preview</h2>
           <iframe
             v-if="booking.contract?.asset_url"
             :src="booking.contract.asset_url"
@@ -38,8 +38,8 @@
             class="border-0"
           />
         </div>
-        <div class="bg-white rounded-lg shadow-md overflow-hidden" v-if="booking.contract_option === 'default'">
-          <h2 class="text-lg font-semibold bg-gray-100 px-4 py-2 border-b">Contract History</h2>
+        <div class="bg-white dark:bg-slate-700 rounded-lg shadow-md overflow-hidden" v-if="booking.contract_option === 'default'">
+          <h2 class="text-lg font-semibold bg-gray-100 dark:bg-slate-700 px-4 py-2 border-b">Contract History</h2>
           <div class="p-4 overflow-y-auto" style="height: 800px;">
             <ContractStatus :contract="booking.contract" />
           </div>

@@ -18,7 +18,7 @@
           <select
             id="event_type_id"
             v-model="form.event_type_id"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            class="mt-1 block w-full rounded-md border-gray-300 dark:bg-slate-700 dark:text-gray-50 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
           >
             <option
               v-for="eventType in eventTypes"
@@ -39,7 +39,7 @@
             id="date"
             v-model="form.date"
             type="date"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            class="mt-1 block w-full rounded-md border-gray-300 dark:bg-slate-700 dark:text-gray-50 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
           >
         </div>
         <div>
@@ -51,7 +51,7 @@
             id="start_time"
             v-model="form.start_time"
             type="time"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            class="mt-1 block w-full rounded-md border-gray-300 dark:bg-slate-700 dark:text-gray-50 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
           >
         </div>
         <div>
@@ -63,7 +63,7 @@
             id="end_time"
             v-model="form.end_time"
             type="time"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-slate-700 dark:text-gray-50 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
           >
         </div>
         <div>
@@ -92,7 +92,7 @@
             v-model="form.price"
             type="number"
             step="0.01"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            class="mt-1 block w-full rounded-md border-gray-300 dark:bg-slate-700 dark:text-gray-50 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
           >
         </div>
         <div>
@@ -103,7 +103,7 @@
           <select
             id="status"
             v-model="form.status"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-slate-700 dark:text-gray-50 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
           >
             <option value="draft">
               Draft
@@ -127,7 +127,7 @@
           <select
             id="contract_option"
             v-model="form.contract_option"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-slate-700 dark:text-gray-50 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
           >
             <option value="default">
               Default (Automatic)
@@ -150,7 +150,7 @@
           id="notes"
           v-model="form.notes"
           rows="3"
-          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-slate-700 dark:text-gray-50 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
         />
       </div>
       <div class="flex justify-end space-x-4">
