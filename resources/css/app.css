@@ -1,6 +1,6 @@
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
 .content-container a {
     display: inline-block;
@@ -8,4 +8,14 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
+}
+
+@layer components {
+    .layout-background {
+        @apply bg-gradient-to-r from-purple-100 via-indigo-100 to-purple-200 dark:from-purple-950 dark:via-indigo-900 dark:to-purple-950;
+    }
+
+    .componentPanel {
+        @apply bg-white dark:bg-slate-700 border-b border-gray-200;
+    }
+}
