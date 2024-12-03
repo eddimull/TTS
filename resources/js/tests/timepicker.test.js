@@ -6,8 +6,8 @@ import { DateTime } from 'luxon';
 
 describe("TimePicker", () => {
     it("should update time when Next Hour is clicked", async () => {
-        const timeString = DateTime.now().toFormat('yyyy-MM-dd H:00:00').toString();
-        const timeStringPlusOneHour = DateTime.now().plus({hours: 1}).toFormat('yyyy-MM-dd H:00:00').toString();
+        const timeString = DateTime.now().toFormat('yyyy-06-05 12:00:00').toString();
+        const timeStringPlusOneHour = DateTime.now().plus({hours: 1}).toFormat('yyyy-06-05 13:00:00').toString();
         const time = ref(timeString);
         const wrapper = mount(TimePicker, {
             props: {
