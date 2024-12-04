@@ -4,7 +4,7 @@
             Paid vs Unpaid Amounts and Booking Count by Month
         </h2>
         <div
-            class="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center"
+            class="mb-8 flex flex-col md:flex-row justify-between sm:justify-around items-center"
         >
             <div class="mb-4 md:mb-0">
                 <label
@@ -28,13 +28,15 @@
                 </select>
             </div>
             <div
-                class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg shadow-inner"
+                class="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg shadow-inner grow md:grow-0 w-full md:w-1/2 lg:w-1/3"
             >
-                <h3
-                    class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100"
-                >
-                    Year Totals
-                </h3>
+                <div class="hidden lg:block">
+                    <h3
+                        class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-100"
+                    >
+                        Year Totals
+                    </h3>
+                </div>
                 <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                     <dt class="font-medium text-gray-600 dark:text-gray-50">
                         Total paid:
