@@ -6,7 +6,6 @@ on:
     branches: [master, staging, dev]
 jobs:
   frontend:
-    if: github.event_name == 'pull_request'
     uses: ./.github/workflows/frontend.yml
     with:
       node-version: ${{ vars.NODE_VERSION }}
@@ -14,7 +13,6 @@ jobs:
       php-version: ${{ vars.PHP_VERSION }}
 
   backend:
-    if: github.event_name == 'pull_request'
     uses: ./.github/workflows/backendTests.yml
     with:
       node-version: ${{ vars.NODE_VERSION }}
@@ -31,5 +29,5 @@ jobs:
         run: |
           gh pr merge --merge "${{ github.event.pull_request.number }}"
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
   
