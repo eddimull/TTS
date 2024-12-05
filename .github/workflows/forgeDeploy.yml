@@ -1,17 +1,26 @@
 name: Deploy to Forge
 
 on:
-  workflow_call:
-    inputs:
-      environment:
-        description: 'The environment to deploy to'
-        required: true
-        type: string
+  pull_request:
+    branches: 
+      - master
+      - staging
+      - dev
+    types: [closed]
 
 jobs:
+  build_frontend:
+    uses: ./.github/workflows/frontend.yml
+    with:
+      node-version: ${{ vars.NODE_VERSION }}
+      npm-version: ${{ vars.NPM_VERSION }}
+      php-version: ${{ vars.PHP_VERSION }}
+      build-artifacts: true
+      run-tests: false
   deploy:
+    needs: build_frontend
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: ${{ github.base_ref == 'master' && 'production' || 'staging' }}
     steps:
     - name: Trigger Forge Deployment
       env:
