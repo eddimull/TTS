@@ -4,8 +4,7 @@ on:
   pull_request:
     types: [opened, synchronize]
     branches: [master, staging, dev]
-  pull_request_target:
-    types: [closed]
+  push:
     branches: [master, staging, dev]
 
 jobs:
@@ -38,10 +37,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
-    needs: [frontend, backend]
-    if: github.event_name == 'pull_request_target' && github.event.pull_request.merged == true
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/staging'
     uses: ./.github/workflows/forgeDeploy.yml
     with:
-      environment: ${{ github.base_ref == 'master' && 'production' || 'staging' }}
+      environment:  ${{ github.ref == 'refs/heads/master' && 'production' || 'staging' }}
     secrets: inherit
   
