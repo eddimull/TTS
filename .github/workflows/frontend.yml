@@ -3,6 +3,16 @@ name: Laravel Frontend Build and Test
 on:
   workflow_call:
     inputs:
+      build-artifacts:
+        description: 'Build assets for deployment'
+        required: false
+        type: boolean
+        default: false
+      run-tests:
+        description: 'Run tests'
+        required: false
+        type: boolean
+        default: true
       node-version:
         description: 'Node.js version'
         required: true
@@ -85,7 +95,7 @@ jobs:
         run: npm run build
 
       - name: Archive production artifacts
-        if: ${{ github.event_name != 'pull_request' }}
+        if: ${{ inputs.build-artifacts }}
         uses: actions/upload-artifact@v3
         with:
           name: build-assets
@@ -123,5 +133,5 @@ jobs:
           key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}
 
       - name: Run tests
-        if: ${{ github.event_name == 'pull_request' }}
+        if: ${{ inputs.run-tests }}
         run: npm run test:pipeline
