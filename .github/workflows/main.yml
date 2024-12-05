@@ -1,29 +1,47 @@
 name: CI/CD Pipeline
 
 on:
-    push:
-        branches: [master, staging, dev]
-    pull_request:
-        branches: [master, staging, dev]
-jobs:
-    frontend:
-        uses: ./.github/workflows/frontend.yml
-        with:
-            node-version: ${{ vars.NODE_VERSION }}
-            npm-version: ${{ vars.NPM_VERSION }}
-            php-version: ${{ vars.PHP_VERSION }}
-    backend:
-        uses: ./.github/workflows/backendTests.yml
-        with:
-            node-version: ${{ vars.NODE_VERSION }}
-            npm-version: ${{ vars.NPM_VERSION }}
-            php-version: ${{ vars.PHP_VERSION }}
-    deploy:
-        needs: [frontend, backend]
-        if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/staging'
-        uses: ./.github/workflows/forgeDeploy.yml
-        with:
-            environment:  ${{ github.ref == 'refs/heads/master' && 'production' || 'staging' }}
-        secrets: inherit
+  pull_request:
+    types: [opened, synchronize]
+    branches: [master, staging, dev]
+  pull_request_target:
+    types: [closed]
+    branches: [master, staging, dev]
 
+jobs:
+  frontend:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/frontend.yml
+    with:
+      node-version: ${{ vars.NODE_VERSION }}
+      npm-version: ${{ vars.NPM_VERSION }}
+      php-version: ${{ vars.PHP_VERSION }}
+
+  backend:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/backendTests.yml
+    with:
+      node-version: ${{ vars.NODE_VERSION }}
+      npm-version: ${{ vars.NPM_VERSION }}
+      php-version: ${{ vars.PHP_VERSION }}
+
+  auto-merge:
+    needs: [frontend, backend]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Merge pull request
+        run: |
+          gh pr merge --auto --merge "${{ github.event.pull_request.number }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy:
+    needs: [frontend, backend]
+    if: github.event_name == 'pull_request_target' && github.event.pull_request.merged == true
+    uses: ./.github/workflows/forgeDeploy.yml
+    with:
+      environment: ${{ github.base_ref == 'master' && 'production' || 'staging' }}
+    secrets: inherit
   
