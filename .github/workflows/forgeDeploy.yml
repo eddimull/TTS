@@ -9,6 +9,12 @@ on:
     types: [closed]
 
 jobs:
+  build_frontend:
+    uses: ./.github/workflows/frontend.yml
+    with:
+      node-version: ${{ vars.NODE_VERSION }}
+      npm-version: ${{ vars.NPM_VERSION }}
+      php-version: ${{ vars.PHP_VERSION }}
   deploy:
     runs-on: ubuntu-latest
     environment: ${{ github.base_ref == 'master' && 'production' || 'staging' }}
