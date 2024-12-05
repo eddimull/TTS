@@ -5,7 +5,7 @@
             :key="index"
             class="card my-4"
         >
-            <Toolbar class="p-mb-4 border-b-2">
+            <Toolbar class="p-mb-4 border-b-2 sticky top-[60px] z-10">
                 <template #start>
                     <div>
                         <h3 class="font-bold">
@@ -21,9 +21,17 @@
                         <InputText
                             v-model="serviceFilter"
                             placeholder="Search"
-                            class="ml-2"
                         />
                     </IconField>
+
+                    <Select
+                        v-model="selectedYear"
+                        placeholder="Year"
+                        class="mx-2 border rounded shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-black dark:text-gray-100"
+                        :options="availableYears"
+                        showClear
+                    >
+                    </Select>
                 </template>
             </Toolbar>
             <DataTable
@@ -45,7 +53,18 @@
                     header="Booking Name"
                     :sortable="true"
                     class="w-1/4"
-                />
+                >
+                    <template #body="value">
+                        <span
+                            :class="{
+                                'line-through':
+                                    value?.data?.status === 'cancelled',
+                            }"
+                        >
+                            {{ value.data.name }}
+                        </span>
+                    </template>
+                </Column>
                 <Column field="price" header="Price" :sortable="true">
                     <template #body="value"> ${{ value.data.price }} </template>
                 </Column>
@@ -68,11 +87,9 @@
                                 }"
                             />
                             <div
-                                class="absolute top-0 left-0 w-full h-full flex items-center justify-center text-white text-stroke"
+                                class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center font-bold bg-slate-700 bg-opacity-30 px-2 py-1 rounded"
                             >
-                                ${{ slotProps.data.amount_paid }} / ${{
-                                    slotProps.data.price
-                                }}
+                                ${{ slotProps.data.amount_paid }}
                             </div>
                         </div>
                     </template>
@@ -92,6 +109,7 @@ import { router } from "@inertiajs/vue3";
 import Toolbar from "primevue/toolbar";
 import IconField from "primevue/iconfield";
 import InputIcon from "primevue/inputicon";
+import Select from "primevue/select";
 
 const props = defineProps({
     unpaid: {
@@ -100,29 +118,55 @@ const props = defineProps({
     },
 });
 
+const selectedYear = ref("");
+
 const serviceFilter = ref("");
 
 const filteredServices = computed(() => {
-    if (!serviceFilter.value) {
+    // If no filters are active, return original data
+    if (!serviceFilter.value && !selectedYear.value) {
         return props.unpaid;
     }
+
     return props.unpaid.map((band) => ({
         ...band,
-        unpaidBookings: band.unpaidBookings.filter(
-            (unpaid) =>
+        unpaidBookings: band.unpaidBookings.filter((unpaid) => {
+            // Handle year filter
+            const matchesYear = selectedYear.value
+                ? unpaid.date.includes(selectedYear.value)
+                : true;
+
+            // If only year filter is active, return year matches
+            if (!serviceFilter.value) {
+                return matchesYear;
+            }
+
+            // Handle service filter
+            const searchTerm = serviceFilter.value.toLowerCase();
+            const matchesService =
                 unpaid.amount_paid
                     .toString()
                     .toLowerCase()
-                    .includes(serviceFilter.value.toLowerCase()) ||
-                unpaid.name
-                    .toLowerCase()
-                    .includes(serviceFilter.value.toLowerCase()) ||
-                unpaid.price.toString().includes(serviceFilter.value) ||
-                unpaid.date
-                    .toLowerCase()
-                    .includes(serviceFilter.value.toLowerCase())
-        ),
+                    .includes(searchTerm) ||
+                unpaid.name.toLowerCase().includes(searchTerm) ||
+                unpaid.price.toString().includes(searchTerm) ||
+                unpaid.date.toLowerCase().includes(searchTerm);
+
+            // If both filters are active, both conditions must be true
+            return matchesYear && matchesService;
+        }),
     }));
+});
+
+const availableYears = computed(() => {
+    const years = new Set(
+        props.unpaid
+            .reduce((acc, band) => {
+                return acc.concat(band.unpaidBookings);
+            }, [])
+            .map((booking) => new Date(booking.date).getFullYear())
+    );
+    return Array.from(years).sort((a, b) => b - a);
 });
 
 const getPaymentPercentage = (booking) => {

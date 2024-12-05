@@ -475,7 +475,7 @@
 
             <!-- Page Content -->
             <main
-                class="rounded-t-lg relative border-t border-l border-r border-gray-400 px-3 py-4 flex justify-center"
+                class="rounded-t-lg relative border-t border-l border-r border-gray-400 px-1 sm:px-3 py-0 sm:py-4 flex justify-center"
             >
                 <slot />
                 <div class="layout-main-container">
