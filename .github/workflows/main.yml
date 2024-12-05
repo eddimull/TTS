@@ -21,15 +21,15 @@ jobs:
       npm-version: ${{ vars.NPM_VERSION }}
       php-version: ${{ vars.PHP_VERSION }}
 
-  auto-merge:
-    needs: [frontend, backend]
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
-    steps:
-      - uses: actions/checkout@v4
-      - name: Merge pull request
-        run: |
-          gh pr merge --auto --merge "${{ github.event.pull_request.number }}"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # auto-merge:
+  #   needs: [frontend, backend]
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Merge pull request
+  #       run: |
+  #         gh pr merge --auto --merge "${{ github.event.pull_request.number }}"
+  #       env:
+  #         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   
