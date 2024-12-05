@@ -22,7 +22,7 @@
                 <template #end>
                     <IconField>
                         <InputIcon>
-                            <i class="pi pi-search" />
+                            <i class="pi pi-search pl-2" />
                         </InputIcon>
                         <InputText
                             v-model="chartFilter"
@@ -59,96 +59,117 @@
                 :style="{ width: '450px' }"
                 header="Chart Details"
                 :modal="true"
-                class="p-fluid"
             >
                 <img
                     v-if="chart.image"
                     src="https://www.primefaces.org/wp-content/uploads/2020/05/placeholder.png"
                     :alt="chart.image"
-                    class="product-image"
+                    class="w-full h-auto mb-4"
                 />
-                <div class="p-field">
-                    <label for="name">Name</label>
-                    <InputText
-                        id="name"
-                        v-model.trim="chart.name"
-                        required="true"
-                        autofocus
-                        :class="{ 'p-invalid': submitted && !chart.name }"
-                    />
-                    <small v-if="submitted && !chart.name" class="p-error"
-                        >Name is required.</small
-                    >
-                </div>
-                <div class="p-field">
-                    <label for="name">Composer</label>
-                    <InputText
-                        id="name"
-                        v-model.trim="chart.composer"
-                        required="true"
-                        autofocus
-                        :class="{ 'p-invalid': submitted && !chart.composer }"
-                    />
-                    <small v-if="submitted && !chart.composer" class="p-error"
-                        >Composer is required.</small
-                    >
-                </div>
-                <div class="p-field">
-                    <label for="description">Description</label>
-                    <Textarea
-                        id="description"
-                        v-model="chart.description"
-                        required="true"
-                        rows="3"
-                        cols="20"
-                    />
-                </div>
-                <div class="p-field">
-                    <label for="band" class="p-mb-3">Band</label>
-                    <Dropdown
-                        id="bandSelection"
-                        v-model="chart.band"
-                        :options="availableBands"
-                        option-label="name"
-                        placeholder="Select a Band"
-                    >
-                        <template #value="slotProps">
-                            <div v-if="slotProps.value && slotProps.value.id">
-                                <span>{{ slotProps.value.name }}</span>
-                            </div>
-
-                            <span v-else>
-                                {{ slotProps.placeholder }}
-                            </span>
-                        </template>
-                    </Dropdown>
-                </div>
-                <div class="p-formgrid p-grid">
-                    <div class="p-field p-col">
-                        <label for="price">Price</label>
+                <div class="flex flex-col space-y-4">
+                    <div class="flex flex-col">
+                        <label for="name" class="mb-2 font-medium">Name</label>
+                        <InputText
+                            id="name"
+                            v-model.trim="chart.name"
+                            required="true"
+                            autofocus
+                            class="w-full"
+                            :class="{ 'p-invalid': submitted && !chart.name }"
+                        />
+                        <small
+                            v-if="submitted && !chart.name"
+                            class="text-red-500 mt-1"
+                            >Name is required.</small
+                        >
+                    </div>
+                    <div class="flex flex-col">
+                        <label for="composer" class="mb-2 font-medium"
+                            >Composer</label
+                        >
+                        <InputText
+                            id="composer"
+                            v-model.trim="chart.composer"
+                            required="true"
+                            class="w-full"
+                            :class="{
+                                'p-invalid': submitted && !chart.composer,
+                            }"
+                        />
+                        <small
+                            v-if="submitted && !chart.composer"
+                            class="text-red-500 mt-1"
+                            >Composer is required.</small
+                        >
+                    </div>
+                    <div class="flex flex-col">
+                        <label for="description" class="mb-2 font-medium"
+                            >Description</label
+                        >
+                        <Textarea
+                            id="description"
+                            v-model="chart.description"
+                            required="true"
+                            rows="3"
+                            cols="20"
+                            class="w-full"
+                        />
+                    </div>
+                    <div class="flex flex-col">
+                        <label for="bandSelection" class="mb-2 font-medium"
+                            >Band</label
+                        >
+                        <Select
+                            id="bandSelection"
+                            v-model="chart.band"
+                            :options="availableBands"
+                            option-label="name"
+                            placeholder="Select a Band"
+                            class="w-full"
+                        >
+                            <template #value="slotProps">
+                                <div
+                                    v-if="slotProps.value && slotProps.value.id"
+                                    class="text-center"
+                                >
+                                    <span>{{ slotProps.value.name }}</span>
+                                </div>
+                                <span v-else class="text-center">
+                                    {{ slotProps.placeholder }}
+                                </span>
+                            </template>
+                        </Select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label for="price" class="mb-2 font-medium"
+                            >Price</label
+                        >
                         <InputNumber
                             id="price"
                             v-model="chart.price"
                             mode="currency"
                             currency="USD"
                             locale="en-US"
+                            class="w-full text-center"
                         />
                     </div>
                 </div>
                 <template #footer>
-                    <Button
-                        label="Cancel"
-                        icon="pi pi-times"
-                        class="p-button-text"
-                        @click="closeDialog"
-                    />
-                    <Button
-                        :label="saving ? 'Saving...' : 'Save'"
-                        :disabled="saving"
-                        icon="pi pi-check"
-                        class="p-button-text"
-                        @click="saveChart"
-                    />
+                    <div class="flex justify-end space-x-2">
+                        <Button
+                            label="Cancel"
+                            icon="pi pi-times"
+                            class="p-button-text"
+                            @click="closeDialog"
+                        />
+                        <Button
+                            :label="saving ? 'Saving...' : 'Save'"
+                            :disabled="saving"
+                            icon="pi pi-check"
+                            class="p-button-text"
+                            @click="saveChart"
+                        />
+                    </div>
                 </template>
             </Dialog>
         </Container>
@@ -158,14 +179,20 @@
 <script>
 import BreezeAuthenticatedLayout from "@/Layouts/Authenticated";
 import InputSwitch from "primevue/inputswitch";
+import IconField from "primevue/iconfield";
+import InputIcon from "primevue/inputicon";
 import Toolbar from "primevue/toolbar";
 import DataTable from "primevue/datatable";
+import Select from "primevue/select";
 import Column from "primevue/column";
 
 export default {
     components: {
         BreezeAuthenticatedLayout,
         Toolbar,
+        IconField,
+        InputIcon,
+        Select,
         DataTable,
         Column,
     },
@@ -188,41 +215,16 @@ export default {
             form: {},
             chartsData: this.charts,
             filteredChartsData: [],
-            chart: {},
+            chart: {
+                price: 0,
+            },
             saving: false,
             submitted: false,
             chartDialog: false,
             chartFilter: "",
         };
     },
-    computed: {
-        availableBands() {
-            const bands = [];
-            if (this.$page.props.auth.user.band_owner) {
-                this.$page.props.auth.user.band_owner.forEach((band) => {
-                    bands.push({ id: band.id, name: band.name });
-                });
-            }
-            if (this.$page.props.auth.user.band_member) {
-                this.$page.props.auth.user.band_member.forEach((band) => {
-                    bands.push({ id: band.id, name: band.name });
-                });
-            }
-
-            function sortNames(a, b) {
-                if (a.name < b.name) {
-                    return -1;
-                }
-                if (a.name > b.name) {
-                    return 1;
-                }
-                return 0;
-            }
-            return bands
-                .filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i)
-                .sort(sortNames);
-        },
-    },
+    computed: {},
     watch: {
         chartFilter: {
             handler(newValue) {
