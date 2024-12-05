@@ -4,15 +4,15 @@ on:
   workflow_call:
     inputs:
       node-version:
-        description: 'Node.js version'
+        description: "Node.js version"
         required: true
         type: string
       npm-version:
-        description: 'NPM version'
+        description: "NPM version"
         required: true
         type: string
       php-version:
-        description: 'PHP version'
+        description: "PHP version"
         required: true
         type: string
 jobs:
@@ -74,7 +74,7 @@ jobs:
       - name: Install NPM dependencies
         if: steps.cache-node-and-composer.outputs.cache-hit != 'true'
         run: npm ci
-      
+
       - name: Build assets
         run: npm run build
 
@@ -87,5 +87,5 @@ jobs:
       - name: Execute tests via Artisan
         env:
           DB_CONNECTION: mysql
-          DB_HOST: 127.0.0.1 
+          DB_HOST: 127.0.0.1
         run: php artisan test
