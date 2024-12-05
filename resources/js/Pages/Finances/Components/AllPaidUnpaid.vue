@@ -15,6 +15,7 @@
                 <select
                     id="year-select"
                     v-model="selectedYear"
+                    placeholder="Year"
                     class="p-2 pr-8 border rounded shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-gray-100"
                     @change="updateChartData"
                 >
@@ -100,6 +101,9 @@ const processedData = computed(() => {
     const dataByMonth = {};
 
     allBookings.value.forEach((booking) => {
+        if (booking?.status === "cancelled") {
+            return;
+        }
         const date = new Date(booking.date);
         const year = date.getFullYear();
         if (year !== selectedYear.value) return;
