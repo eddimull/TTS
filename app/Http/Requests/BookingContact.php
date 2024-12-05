@@ -27,7 +27,7 @@ class BookingContact extends FormRequest
         return [
             'name' => 'required|string|max:255',
             'email' => 'required|email',
-            'phone' => 'string|max:12',
+            'phone' => 'nullable|string|max:12',
             'notes' => 'nullable|string',
             'role' => 'nullable|string',
             'is_primary' => 'boolean',
