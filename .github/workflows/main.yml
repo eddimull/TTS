@@ -4,8 +4,7 @@ on:
   pull_request:
     types: [opened, synchronize]
     branches: [master, staging, dev]
-  pull_request_target:
-    types: [closed]
+  push:
     branches: [master, staging, dev]
 
 jobs:
@@ -25,23 +24,22 @@ jobs:
       npm-version: ${{ vars.NPM_VERSION }}
       php-version: ${{ vars.PHP_VERSION }}
 
-  deploy:
+  auto-merge:
     needs: [frontend, backend]
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     steps:
-        - uses: actions/checkout@v4
-        - name: Auto-merge if tests pass
-          if: github.event_name == 'pull_request'
-          run: |
-              gh pr merge --auto --merge "${{ github.event.pull_request.number }}"
-          env:
-              GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        - name: Deploy if merged
-          if: github.event_name == 'pull_request_target'
-          uses: ./.github/workflows/forgeDeploy.yml
-          with:
-            environment: ${{ github.base_ref == 'master' && 'production' || 'staging' }}
-          env:
-            secrets: inherit
+      - uses: actions/checkout@v4
+      - name: Merge pull request
+        run: |
+          gh pr merge --auto --merge "${{ github.event.pull_request.number }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy:
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/staging'
+    uses: ./.github/workflows/forgeDeploy.yml
+    with:
+      environment:  ${{ github.ref == 'refs/heads/master' && 'production' || 'staging' }}
+    secrets: inherit
   
