@@ -1,0 +1,15 @@
+# .github/workflows/deploy.yml
+name: Deploy
+
+on:
+  pull_request_target:
+    types: [closed]
+    branches: [master, staging, dev]
+
+jobs:
+  deploy:
+    if: github.event.pull_request.merged == true
+    uses: ./.github/workflows/forgeDeploy.yml
+    with:
+      environment: ${{ github.base_ref == 'master' && 'production' || 'staging' }}
+    secrets: inherit
