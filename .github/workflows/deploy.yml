@@ -2,13 +2,11 @@
 name: Deploy
 
 on:
-  pull_request:
-    types: [closed]
+  push:
     branches: [master, staging, dev]
 
 jobs:
   deploy:
-    if: github.event.pull_request.merged == true
     uses: ./.github/workflows/forgeDeploy.yml
     with:
       environment: ${{ github.base_ref == 'master' && 'production' || 'staging' }}
