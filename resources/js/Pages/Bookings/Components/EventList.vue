@@ -1,5 +1,7 @@
 <template>
-    <div class="p-4 bg-white dark:bg-slate-700 dark:text-gray-50 shadow rounded-lg">
+    <div
+        class="p-4 bg-white dark:bg-slate-700 dark:text-gray-50 shadow rounded-lg"
+    >
         <div
             v-for="event in events"
             :key="event.id"
@@ -17,12 +19,6 @@
                 >
                     Edit
                 </button>
-                <button
-                    class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-                    @click="removeEvent(event.id)"
-                >
-                    Remove
-                </button>
             </div>
         </div>
 
@@ -37,6 +33,7 @@
         <EventEditor
             v-if="editingEvent"
             :initial-event="editingEvent"
+            @removeEvent="removeEvent"
             @save="saveEvent"
             @cancel="cancelEdit"
         />
@@ -46,6 +43,7 @@
 import { ref, computed } from "vue";
 import EventEditor from "./EventEditor.vue";
 import { router } from "@inertiajs/vue3";
+import { DateTime } from "luxon";
 
 const props = defineProps({
     initialEvents: {
@@ -63,7 +61,7 @@ const editingEvent = ref(null);
 const isAddingEvent = ref(false);
 
 const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString();
+    return DateTime.fromISO(dateString).toLocaleString(DateTime.DATE_HUGE);
 };
 
 const formatTime = (timeString) => {
@@ -153,7 +151,6 @@ const addNewEvent = () => {
 };
 
 const removeEvent = (eventId) => {
-    // events.value = events.value.filter(e => e.id !== eventId);
     router.delete(
         route("Delete Booking Event", [
             props.booking.band_id,
