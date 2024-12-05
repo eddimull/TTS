@@ -2,7 +2,6 @@
     <FinanceLayout>
         <AllPaidUnpaid :paid-unpaid="paidUnpaid" />
     </FinanceLayout>
-    <Button label="Toggle Dark Mode" @click="toggleDarkMode()" />
 </template>
 
 <script setup>
@@ -15,8 +14,4 @@ const props = defineProps({
         required: true,
     },
 });
-
-function toggleDarkMode() {
-    document.documentElement.classList.toggle("my-app-dark");
-}
 </script>
