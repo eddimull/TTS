@@ -1,17 +1,17 @@
 name: Deploy to Forge
 
 on:
-  workflow_call:
-    inputs:
-      environment:
-        description: 'The environment to deploy to'
-        required: true
-        type: string
+  pull_request:
+    branches: 
+      - master
+      - staging
+      - dev
+    types: [closed]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: ${{ github.base_ref == 'master' && 'production' || 'staging' }}
     steps:
     - name: Trigger Forge Deployment
       env:
