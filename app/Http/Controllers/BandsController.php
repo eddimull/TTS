@@ -239,7 +239,29 @@ class BandsController extends Controller
 
     public function contacts(Bands $band)
     {
-        $band->load('contacts');
-        return $band->contacts;
+        // First load all the necessary relationships
+        // Eager load what we need for the booking_history calculation
+        $band->load([
+            'contacts.bookingContacts' => function ($query)
+            {
+                $query->select('id', 'contact_id', 'booking_id');
+            },
+            'contacts.bookingContacts.booking' => function ($query)
+            {
+                $query->select('id', 'name', 'date');
+            }
+        ]);
+
+        // Transform to only include what we need
+        return $band->contacts->map(function ($contact)
+        {
+            return [
+                'id' => $contact->id,
+                'name' => $contact->name,
+                'email' => $contact->email,
+                'phone' => $contact->phone,
+                'booking_history' => $contact->booking_history
+            ];
+        });
     }
 }
