@@ -239,7 +239,23 @@ class BandsController extends Controller
 
     public function contacts(Bands $band)
     {
-        $band->load('contacts');
+        // First load all the necessary relationships
+        $band->load([
+            'contacts.bookingContacts' => function ($query)
+            {
+                $query->select('id', 'contact_id', 'booking_id');
+            },
+            'contacts.bookingContacts.booking' => function ($query)
+            {
+                $query->select('id', 'name', 'date');
+            }
+        ]);
+
+        // 2. Transform the data using the already loaded relations
+        $band->contacts->each(function ($contact)
+        {
+            $contact->setAppends(['booking_history'])->makeVisible('booking_history');
+        });
         return $band->contacts;
     }
 }

@@ -19,7 +19,7 @@ class Contacts extends Model
         'phone'
     ];
 
-    protected $appends = ['booking_history'];
+    // protected $appends = ['booking_history'];
 
     public function bookingContacts()
     {
@@ -38,9 +38,7 @@ class Contacts extends Model
         return Attribute::make(
             get: function ()
             {
-                return $this->bookingContacts()
-                    ->with('booking')
-                    ->get()
+                return $this->bookingContacts
                     ->map(function ($bookingContact)
                     {
                         return [

@@ -247,7 +247,7 @@ class User extends Authenticatable
                     $event->band_id = $booking->band_id;
                     $event->booking_name = $booking->name;
                     $event->booking_id = $booking->id;
-                    $event->contacts = $booking->contacts->makeHidden('booking_history');
+                    $event->contacts = $booking->contacts;
                     $event->venue_name = $booking->venue_name;
                     $event->venue_address = $booking->venue_address;
                     return $event;
