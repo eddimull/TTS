@@ -236,7 +236,7 @@ class User extends Authenticatable
                 $query->where('date', '>', $afterDate);
             }
             $query->orderBy('date');
-        }]);
+        }, 'bookings.contacts']);
 
         $events = $bands->flatMap(function ($band)
         {

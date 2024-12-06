@@ -40,10 +40,12 @@ class BookingsController extends Controller
 
         $bookings = $band ? $band->bookings() : Bookings::whereIn('band_id', $userBands->pluck('id'));
 
+
         $bookings = $bookings->where('date', '>=', Carbon::now()->subMonths(6))
             ->with('contract') // Eager load the contract relationship
             ->with('contacts') // Eager load the contacts relationship
             ->get();
+
 
         return Inertia::render('Bookings/Index', [
             'bookings' => $bookings,
@@ -137,6 +139,13 @@ class BookingsController extends Controller
     public function contacts(Bands $band, Bookings $booking)
     {
         $booking->load('contacts');
+
+        // If bookingHistory is protected/hidden, make it visible after loading
+        $booking->contacts->each(function ($contact)
+        {
+            $contact->append('booking_history');
+        });
+
         return Inertia::render('Bookings/Contacts', ['booking' => $booking, 'band' => $band]);
     }
 

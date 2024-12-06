@@ -65,7 +65,7 @@ class FinanceServices
     {
         foreach ($bands as $band)
         {
-            $band->payments = $band->payments()
+            $band->payments = $band->payments()->with('payable')
                 ->orderBy('date', 'desc')
                 ->get()
                 ->map(function ($payment)
