@@ -15,39 +15,37 @@ class ImageController extends Controller
      */
     public function index($file)
     {
-        if (Storage::disk('s3')->exists($file)) {
-            
+        if (Storage::disk('s3')->exists($file))
+        {
             $storage = Storage::disk('s3')->get($file);
-            $mimeType = Storage::mimeType($file);
+            $mimeType = Storage::disk('s3')->mimeType($file);
         }
         else
         {
             $storage = Storage::disk('s3')->get('default.png');
-            $mimeType = Storage::mimeType('default.png');
+            $mimeType = Storage::disk('s3')->mimeType('default.png');
         }
-        
+
         return (new Response($storage, 200))
-        ->header('Content-Type', $mimeType);
+            ->header('Content-Type', $mimeType);
     }
-    public function siteImages($band_site,$uri)
+
+    public function siteImages($band_site, $path = null)
     {
-        
-        if (Storage::disk('s3')->exists($band_site.'/'.$uri)) {
-            $storage = Storage::disk('s3')->get($band_site.'/'.$uri);
-            $mimeType = Storage::mimeType($band_site.'/'.$uri);
+        $path = $band_site . '/' . $path;
+
+        if (Storage::disk('s3')->exists($path))
+        {
+            $storage = Storage::disk('s3')->get($path);
+            $mimeType = Storage::disk('s3')->mimeType($path);
         }
         else
         {
             $storage = Storage::disk('s3')->get('default.png');
-            $mimeType = Storage::mimeType('default.png');
+            $mimeType = Storage::disk('s3')->mimeType('default.png');
         }
-        // $contents = 
-        
-        // $handle = fopen($storage);
 
-        
         return (new Response($storage, 200))
-        ->header('Content-Type', $mimeType);
-    }    
-
+            ->header('Content-Type', $mimeType);
+    }
 }

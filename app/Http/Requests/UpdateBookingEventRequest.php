@@ -78,9 +78,20 @@ class UpdateBookingEventRequest extends FormRequest
         {
             $processedNotes = $this->imageProcessor->processContent(
                 $this->input('notes'),
-                $this->route('band')->site_name . '/event_uploads/'
+                $this->route('band')->site_name . '/event_uploads',
+                true
             );
             $this->merge(['notes' => $processedNotes]);
+        }
+
+        if ($this->has('additional_data.attire'))
+        {
+            $processedAttire = $this->imageProcessor->processContent(
+                $this->input('additional_data.attire'),
+                $this->route('band')->site_name . '/event_uploads',
+                true
+            );
+            $this->merge(['additional_data' => array_merge($this->input('additional_data'), ['attire' => $processedAttire])]);
         }
     }
 
