@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Storage;
 use App\Services\AdvanceReminderService;
+use App\Http\Controllers\ImageController;
 use App\Http\Controllers\EventsController;
 use App\Http\Controllers\FinancesController;
 use App\Http\Controllers\InvoicesController;
@@ -130,9 +131,9 @@ Route::group(['prefix' => 'finances', 'middleware' => ['auth', 'verified']], fun
 
 
 
-Route::get('/images/{uri}', 'ImageController@index');
-Route::get('/images/{band_site}/{uri}', 'ImageController@siteImages');
-
+Route::get('/images/{uri}', [ImageController::class, 'index']);
+Route::get('/images/{band_site}/{path?}', [ImageController::class, 'siteImages'])
+    ->where('path', '.*');
 Route::post('/inviteOwner/{band_id}', [InvitationsController::class, 'createOwner'])->middleware(['auth', 'verified'])->name('invite.createOwner');
 Route::post('/inviteMember/{band_id}', [InvitationsController::class, 'createMember'])->middleware(['auth', 'verified'])->name('invite.createMember');
 Route::delete('/deleteInvite/{band}/{invitations}', 'InvitationsController@destroy')->middleware(['auth', 'verified'])->name('invite.delete');
@@ -192,7 +193,7 @@ Route::post('/seentIt', function ()
 
 Route::group(['prefix' => 'questionnaire', 'middleware' => ['auth', 'verified']], function ()
 {
-    // Route::resource('/','QuestionnaireController'); 
+    // Route::resource('/','QuestionnaireController');
     Route::get('/', [QuestionnaireController::class, 'index'])->name('questionnaire');
     Route::post('/new', [QuestionnaireController::class, 'store'])->name('questionnaire.new');
     Route::get('/{questionnaire:slug}', [QuestionnaireController::class, 'edit'])->name('questionnaire.edit');

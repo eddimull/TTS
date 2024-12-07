@@ -14,7 +14,7 @@ class ImageProcessingService
      * @param string $path
      * @return string|null
      */
-    public function processAndUpload($base64Data, $path = 'uploads')
+    public function processAndUpload($base64Data, $path = 'uploads', $throughSite = false)
     {
         try
         {
@@ -46,7 +46,15 @@ class ImageProcessingService
             Storage::disk('s3')->put($fullPath, $fileData);
 
             // Return the full URL to the uploaded file
-            return Storage::disk('s3')->url($fullPath);
+
+            $url = Storage::disk('s3')->url($fullPath);
+
+            if ($throughSite)
+            {
+                $url = '/images/' . $fullPath;
+            }
+
+            return $url;
         }
         catch (\Exception $e)
         {
@@ -62,7 +70,7 @@ class ImageProcessingService
      * @param string $path
      * @return string
      */
-    public function processContent($content, $path = 'uploads')
+    public function processContent($content, $path = 'uploads', $throughSite = false)
     {
         if (empty($content))
         {
@@ -72,15 +80,23 @@ class ImageProcessingService
         // Regular expression to find base64 images in HTML content
         $pattern = '/<img[^>]*src=[\'"](data:image\/[^;]+;base64,[^\'\"]+)[\'"][^>]*>/i';
 
-        return preg_replace_callback($pattern, function ($matches) use ($path)
+        return preg_replace_callback($pattern, function ($matches) use ($path, $throughSite)
         {
             $base64Data = $matches[1];
-            $s3Url = $this->processAndUpload($base64Data, $path);
+            $s3Url = $this->processAndUpload($base64Data, $path, $throughSite);
 
             if ($s3Url)
             {
+                $imgTag = $matches[0];
+
+                // Add loading="lazy" attribute if it doesn't already exist
+                if (!str_contains($imgTag, 'loading='))
+                {
+                    $imgTag = str_replace('<img', '<img loading="lazy"', $imgTag);
+                }
+
                 // Replace the base64 src with the S3 URL
-                return str_replace($base64Data, $s3Url, $matches[0]);
+                return str_replace($base64Data, $s3Url, $imgTag);
             }
 
             return $matches[0];
