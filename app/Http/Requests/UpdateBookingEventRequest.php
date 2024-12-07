@@ -5,16 +5,27 @@ namespace App\Http\Requests;
 use Carbon\Carbon;
 use App\Models\Bookings;
 use Illuminate\Foundation\Http\FormRequest;
+use App\Services\ImageProcessingService;
 use Illuminate\Validation\Rule;
 
 class UpdateBookingEventRequest extends FormRequest
 {
+
+    protected $imageProcessor;
+    protected $band;
+
+
+    public function __construct(ImageProcessingService $imageProcessor)
+    {
+        $this->imageProcessor = $imageProcessor;
+    }
     /**
      * Determine if the user is authorized to make this request.
      */
     public function authorize()
     {
         $band = $this->route('band');
+
         return $this->user()->can('store', [Bookings::class, $band]);
     }
 
@@ -57,6 +68,20 @@ class UpdateBookingEventRequest extends FormRequest
     protected function prepareForValidation()
     {
         $this->formatDateTimes();
+        $this->processImages();
+    }
+
+    protected function processImages()
+    {
+        // Process notes field if it contains base64 images
+        if ($this->has('notes'))
+        {
+            $processedNotes = $this->imageProcessor->processContent(
+                $this->input('notes'),
+                $this->route('band')->site_name . '/event_uploads/'
+            );
+            $this->merge(['notes' => $processedNotes]);
+        }
     }
 
     /**
