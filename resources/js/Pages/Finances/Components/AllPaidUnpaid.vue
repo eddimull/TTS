@@ -52,6 +52,12 @@
                         {{ moneyFormat(yearTotals.unpaid) }}
                     </dd>
                     <dt class="font-medium text-gray-600 dark:text-gray-50">
+                        Forecasted Revenue:
+                    </dt>
+                    <dd class="text-gray-800 dark:text-white">
+                        {{ moneyFormat(yearTotals.forecast) }}
+                    </dd>
+                    <dt class="font-medium text-gray-600 dark:text-gray-50">
                         Total bookings:
                     </dt>
                     <dd class="text-gray-800 dark:text-white">
@@ -112,12 +118,18 @@ const processedData = computed(() => {
         const yearMonth = `${year}-${month}`;
 
         if (!dataByMonth[yearMonth]) {
-            dataByMonth[yearMonth] = { paid: 0, unpaid: 0, bookings: 0 };
+            dataByMonth[yearMonth] = {
+                paid: 0,
+                unpaid: 0,
+                bookings: 0,
+                forecast: 0,
+            };
         }
 
         const price = parseFloat(booking.price) || 0;
         const amountPaid = parseFloat(booking.amount_paid) || 0;
 
+        dataByMonth[yearMonth].forecast += price;
         dataByMonth[yearMonth].paid += amountPaid;
         dataByMonth[yearMonth].unpaid += Math.max(0, price - amountPaid);
         dataByMonth[yearMonth].bookings += 1;
@@ -139,9 +151,10 @@ const yearTotals = computed(() => {
             acc.paid += month.paid;
             acc.unpaid += month.unpaid;
             acc.bookings += month.bookings;
+            acc.forecast += month.forecast;
             return acc;
         },
-        { paid: 0, unpaid: 0, bookings: 0 }
+        { paid: 0, unpaid: 0, bookings: 0, forecast: 0 }
     );
 });
 
@@ -183,6 +196,19 @@ const updateChartData = () => {
                     (month) =>
                         processedData.value[`${selectedYear.value}-${month}`]
                             ?.unpaid || 0
+                ),
+                yAxisID: "y-axis-1",
+            },
+            {
+                type: "line",
+                label: "Forecasted Revenue",
+                borderColor: "#16c20a",
+                borderWidth: 2,
+                fill: false,
+                data: months.map(
+                    (month) =>
+                        processedData.value[`${selectedYear.value}-${month}`]
+                            ?.forecast || 0
                 ),
                 yAxisID: "y-axis-1",
             },
