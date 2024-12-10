@@ -20,7 +20,11 @@
             </li>
             <li class="p-2">
                 Timeline:
-                <Times :times="event.additional_data?.times" />
+                <Times
+                    :event-time="event.time"
+                    :event-date="event.date"
+                    :times="event.additional_data?.times"
+                />
             </li>
             <li v-if="event.notes !== null" class="p-2">
                 Notes:
