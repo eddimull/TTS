@@ -21,7 +21,7 @@
                 />
             </div>
             <div>
-                <label class="block mb-2">Time (start time)</label>
+                <label class="block mb-2">Time (show time)</label>
                 <input
                     v-model="event.time"
                     type="time"
@@ -39,34 +39,36 @@
         </div>
 
         <!-- Times Section -->
-        <div class="mt-4">
-            <h3 class="text-xl font-semibold mb-2">Times</h3>
-            <div
-                v-for="(entry, index) in timeEntries"
-                :key="index"
-                class="flex items-center mb-2"
-            >
-                <input
-                    v-model.trim="entry.title"
-                    type="text"
-                    placeholder="Time title"
-                    class="w-1/3 p-2 border rounded dark:bg-slate-700 dark:text-gray-50 mr-2"
-                />
-                <input
-                    v-model="entry.time"
-                    type="datetime-local"
-                    class="w-1/3 p-2 border dark:bg-slate-700 dark:text-gray-50 rounded mr-2"
-                />
-                <button
-                    class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-                    @click="removeTimeEntry(index)"
+        <div class="mt-4 p-4">
+            <h3 class="text-xl font-semibold mb-4">Timeline</h3>
+            <TransitionGroup name="time-entries" tag="div" class="space-y-4">
+                <div
+                    v-for="(entry, index) in sortedTimeEntries"
+                    :key="entry.id || index"
+                    class="flex flex-col sm:flex-row items-start sm:items-center mb-4 space-y-2 sm:space-y-0 sm:space-x-2 transition-all duration-300"
                 >
-                    Remove
-                </button>
-            </div>
-            <div class="mt-2">
+                    <input
+                        v-model.trim="entry.title"
+                        type="text"
+                        placeholder="Time title"
+                        class="w-full sm:w-1/3 p-2 border rounded dark:bg-slate-700 dark:text-gray-50"
+                    />
+                    <input
+                        v-model="entry.time"
+                        type="datetime-local"
+                        class="w-full sm:w-1/3 p-2 border dark:bg-slate-700 dark:text-gray-50 rounded"
+                    />
+                    <button
+                        class="w-full sm:w-auto px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                        @click="removeTimeEntry(entry.id)"
+                    >
+                        Remove
+                    </button>
+                </div>
+            </TransitionGroup>
+            <div class="mt-4">
                 <button
-                    class="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                    class="w-full sm:w-auto px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
                     @click="addTimeEntry"
                 >
                     Add Time Entry
@@ -277,18 +279,35 @@ const getInputType = (key, value) => {
 
 const exclusions = ["times", "attire", "lodging", "wedding", "onsite"];
 
-const timeEntries = ref(event.value.additional_data.times || []);
+const timeEntries = ref(
+    (event.value.additional_data.times || []).map((entry) => ({
+        ...entry,
+        id: crypto.randomUUID(), // Add unique ID to each entry
+    }))
+);
+
+const sortedTimeEntries = computed(() => {
+    return [...timeEntries.value].sort((a, b) => {
+        const timeA = new Date(a.time || 0);
+        const timeB = new Date(b.time || 0);
+        return timeA - timeB;
+    });
+});
 
 const addTimeEntry = () => {
     const defaultDateTime = `${event.value.date}T${event.value.time}`;
     timeEntries.value.push({
+        id: crypto.randomUUID(),
         title: "New Time Entry",
         time: defaultDateTime,
     });
 };
 
-const removeTimeEntry = (index) => {
-    timeEntries.value.splice(index, 1);
+const removeTimeEntry = (id) => {
+    const index = timeEntries.value.findIndex((entry) => entry.id === id);
+    confirm(
+        `Are you sure you want to remove this time entry - ${timeEntries.value[index].title}?`
+    ) && timeEntries.value.splice(index, 1);
 };
 
 const save = () => {
@@ -307,3 +326,22 @@ const removeEvent = () => {
     emit("removeEvent", event.value.id);
 };
 </script>
+<style scoped>
+.time-entries-move, /* apply transition to moving elements */
+.time-entries-enter-active,
+.time-entries-leave-active {
+    transition: all 0.5s ease;
+}
+
+.time-entries-enter-from,
+.time-entries-leave-to {
+    opacity: 0;
+    transform: translateX(-30px);
+}
+
+/* ensure leaving items are taken out of layout flow so that moving
+   animations can be calculated correctly */
+.time-entries-leave-active {
+    position: absolute;
+}
+</style>
