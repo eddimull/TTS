@@ -56,6 +56,7 @@ class FinanceServices
         return $bands->load(['payments' => function ($query)
         {
             $query->select('band_id', DB::raw('YEAR(date) as year'), DB::raw('SUM(amount) as total'))
+                ->where('date', '!=', null) // Invoices that are pending do not have a payment date
                 ->groupBy('band_id', DB::raw('YEAR(date)'))
                 ->orderBy('year', 'desc');
         }]);
@@ -75,9 +76,9 @@ class FinanceServices
                         'name' => $payment->name,
                         'payable_type' => $payment->payable_type,
                         'payable_name' => $payment->payable->name,
-                        'payable_date' => $payment->payable->date->format('Y-m-d'),
+                        'payable_date' => $payment->payable?->date ? $payment->payable->date->format('Y-m-d') : null,
                         'payable_id' => $payment->payable_id,
-                        'formattedPaymentDate' => $payment->date->format('Y-m-d'), // Adjust format as needed
+                        'formattedPaymentDate' => $payment->date ? $payment->date->format('Y-m-d') : null,
                         'formattedPaymentAmount' => number_format($payment->amount, 2)
                     ];
                 });
