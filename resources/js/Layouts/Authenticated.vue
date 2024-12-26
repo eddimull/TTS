@@ -117,15 +117,7 @@
                                                     route(
                                                         notification.data.route,
                                                         notification.data
-                                                            .routeParams == null
-                                                            ? ''
-                                                            : !notification.data
-                                                                  .routeParams
-                                                                  .split
-                                                            ? ''
-                                                            : notification.data.routeParams.split(
-                                                                  ','
-                                                              )
+                                                            .routeParams || {}
                                                     )
                                                 "
                                                 method="get"
@@ -258,14 +250,7 @@
                                                 route(
                                                     notification.data.route,
                                                     notification.data
-                                                        .routeParams == null
-                                                        ? ''
-                                                        : !notification.data
-                                                              .routeParams.split
-                                                        ? ''
-                                                        : notification.data.routeParams.split(
-                                                              ','
-                                                          )
+                                                        .routeParams || {}
                                                 )
                                             "
                                             method="get"
