@@ -5,22 +5,56 @@ namespace App\Models\Traits;
 use App\Models\Contacts;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Database\Eloquent\Collection;
 
 trait Signable
 {
-    public function sendToPandaDoc(Contacts $contact = null)
+    public function sendToPandaDoc(Contacts $signer, ?Collection $ccRecipients = null)
     {
         $apiKey = config('services.pandadoc.api_key');
         $apiUrl = 'https://api.pandadoc.com/public/v1/documents';
 
+        // Get all potential recipients
         $recipients = $this->getContractRecipients();
 
-        if ($contact)
+        // Filter to keep only the signer
+        $signerRecipient = array_values(array_filter($recipients, function ($recipient) use ($signer)
         {
-            $recipients = array_values(array_filter($recipients, function ($recipient) use ($contact)
+            return $recipient['email'] === $signer->email;
+        }));
+
+        // If we have CC recipients, add them to the recipients array
+        if ($ccRecipients && $ccRecipients->isNotEmpty())
+        {
+            $ccRecipientsArray = $ccRecipients->map(function ($ccContact) use ($recipients)
             {
-                return $recipient['email'] === $contact->email;
-            }));
+                // Find matching recipient from original recipients array
+                $matchingRecipient = collect($recipients)->first(function ($recipient) use ($ccContact)
+                {
+                    return $recipient['email'] === $ccContact->email;
+                });
+
+                if ($matchingRecipient)
+                {
+                    // Override the role to be 'cc' instead of whatever it was
+                    return array_merge($matchingRecipient, ['role' => 'cc']);
+                }
+
+                // If no matching recipient found, create a new CC recipient
+                return [
+                    'email' => $ccContact->email,
+                    'first_name' => $ccContact->first_name,
+                    'last_name' => $ccContact->last_name,
+                    'role' => 'cc'
+                ];
+            })->all();
+
+            // Combine signer and CC recipients
+            $recipients = array_merge($signerRecipient, $ccRecipientsArray);
+        }
+        else
+        {
+            $recipients = $signerRecipient;
         }
 
         try
@@ -44,7 +78,6 @@ trait Signable
                 $documentId = $response->json('id');
                 $this->update([
                     'envelope_id' => $documentId,
-                    // 'status' => 'processing'
                 ]);
 
                 // Poll for document status

@@ -56,7 +56,7 @@ trait BookingTraits
         $renderedView = view('pdf.bookingContract', [
             'booking' => $this,
             'logoDataUri' => $dataUri,
-            'contact' => $contact
+            'signer' => $contact
         ])->render();
 
         $tempPath = storage_path('app/temp_pdf_' . uniqid() . '.pdf');
