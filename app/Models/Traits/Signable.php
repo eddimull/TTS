@@ -26,7 +26,7 @@ trait Signable
         // If we have CC recipients, add them to the recipients array
         if ($ccRecipients && $ccRecipients->isNotEmpty())
         {
-            $ccRecipientsArray = $ccRecipients->map(function ($ccContact) use ($recipients)
+            $ccRecipientsArray = $ccRecipients->map(function ($ccContact, $index) use ($recipients)
             {
                 // Find matching recipient from original recipients array
                 $matchingRecipient = collect($recipients)->first(function ($recipient) use ($ccContact)
@@ -36,16 +36,14 @@ trait Signable
 
                 if ($matchingRecipient)
                 {
-                    // Override the role to be 'cc' instead of whatever it was
-                    return array_merge($matchingRecipient, ['role' => 'cc']);
+                    return array_merge($matchingRecipient, ['recipient_type' => 'CC', 'role' => 'CC_' . ($index + 1)]);
                 }
 
                 // If no matching recipient found, create a new CC recipient
                 return [
                     'email' => $ccContact->email,
-                    'first_name' => $ccContact->first_name,
-                    'last_name' => $ccContact->last_name,
-                    'role' => 'cc'
+                    'recipient_type' => 'CC',
+                    'role' => 'CC_' . ($index + 1),
                 ];
             })->all();
 

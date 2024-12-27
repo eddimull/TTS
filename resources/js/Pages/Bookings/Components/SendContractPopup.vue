@@ -154,7 +154,7 @@
                 </StepPanel>
 
                 <StepPanel v-slot="{ activateCallback }" value="3">
-                    <div class="flex flex-col h-48">
+                    <div class="flex flex-col min-h-48">
                         <div
                             class="border-2 p-6 border-dashed border-surface-200 dark:border-surface-700 rounded-lg bg-surface-50 dark:bg-surface-950 flex-auto flex justify-center items-center"
                         >
