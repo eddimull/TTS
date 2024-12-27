@@ -6,11 +6,12 @@ use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\Contracts;
 use Illuminate\Support\Str;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Requests\StoreContractsRequest;
 use App\Http\Requests\UpdateContractsRequest;
-use Illuminate\Http\Request;
+use App\Http\Requests\SendBookingContractRequest;
 
 class ContractsController extends Controller
 {
@@ -104,30 +105,46 @@ class ContractsController extends Controller
      * @param  Bookings  $booking
      * @return \Illuminate\Http\Response
      */
-    public function sendBookingContract(Request $request, Bands $band, Bookings $booking,)
+    public function sendBookingContract(SendBookingContractRequest $request, Bands $band, Bookings $booking,)
     {
-        //get the contact from the request input 'contact'
-        $contact = $booking->contacts()->find($request->input('contact'));
+        $contact = $booking->contacts()->find($request->signer);
+
+        if (!$contact)
+        {
+            return redirect()->back()
+                ->withErrors(['Contact not found' => 'The specified signer contact was not found for this booking.'])
+                ->withInput();
+        }
+
         $contractPdf = $booking->getContractPdf($contact);
         $booking->storeContractPdf($contractPdf);
         $contract = $booking->contract;
 
-
         if (!$contract)
         {
-            return redirect()->back()->withErrors(['Contract not found' => 'No contract found for this booking.']);
+            return redirect()->back()
+                ->withErrors(['Contract not found' => 'No contract found for this booking.'])
+                ->withInput();
         }
 
         try
         {
-            $contract->sendToPandaDoc($contact);
+            $contract->sendToPandaDoc(
+                $contact,
+                $request->has('cc') ? $booking->contacts()->find($request->cc) : null
+            );
+
             $booking->status = 'pending';
             $booking->save();
-            return redirect()->back()->with('successMessage', 'Contract sent successfully to PandaDoc.');
+
+            return redirect()->back()
+                ->with('successMessage', 'Contract sent successfully to PandaDoc.');
         }
         catch (\Exception $e)
         {
-            return redirect()->back()->withErrors(['Failed to send contract:' => $e->getMessage()]);
+            return redirect()->back()
+                ->withErrors(['Failed to send contract:' => $e->getMessage()])
+                ->withInput();
         }
     }
 
