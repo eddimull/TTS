@@ -8,7 +8,7 @@
 </x-pdf.contractHeader>
 <x-pdf.section>
     <strong>{{ $booking->band->name }}</strong> (hereinafter referred to as "Artist"), enter into this Agreement
-    with <strong>{{ $booking->contacts[0]->name }}</strong> (hereinafter referred to as "Buyer"), for the engagement of a live musical performance
+    with <strong>{{ $signer->name }}</strong> (hereinafter referred to as "Buyer"), for the engagement of a live musical performance
     (hereinafter referred to as the "Venue"), subject to the following conditions:
 </x-pdf.section>
 <x-pdf.section>
@@ -25,7 +25,7 @@
                 <span class="font-bold">Point(s) of Contact:</span>
                 <ul class="list-disc pl-5">
                     @foreach($booking->contacts as $contact)
-                    <li>{{ $contact['name'] }} - {{ $contact['email'] }} - {{ $contact['phonenumber'] }}</li>
+                    <li>{{ $contact['name'] }} - {{ $contact['email'] }}</li>
                     @endforeach
                 </ul>
             </li>
@@ -100,7 +100,7 @@
         </p>
         <p>I Agree to the terms and conditions of this contract</p>
         <div>
-            <strong class="underline">{{ $contact->name }}</strong> - <strong>{{ date('m/d/Y') }}</strong>
+            <strong class="underline">{{ $signer->name }}</strong> - <strong>{{ date('m/d/Y') }}</strong>
         </div>
         <br />
         <br />
