@@ -48,7 +48,7 @@ class ContractSendingTest extends TestCase
         ]);
 
         // Send the contract to PandaDoc
-        $result = $contract->sendToPandaDoc();
+        $result = $contract->sendToPandaDoc($contact);
 
         // Assert that the HTTP request was sent with the correct data
         Http::assertSent(function ($request) use ($booking, $contact)
@@ -67,6 +67,59 @@ class ContractSendingTest extends TestCase
         $this->assertEquals('fake-pandadoc-id', $result['id']);
         $this->assertEquals('document.draft', $result['status']);
     }
+
+    public function test_cc_contacts_can_be_sent_to_pandadoc()
+    {
+        // Mock the PandaDoc API response
+        Http::fake([
+            'api.pandadoc.com/*' => Http::response([
+                'id' => 'fake-pandadoc-id',
+                'status' => 'document.draft',
+            ], 201)
+        ]);
+
+        // Create a band, booking, and contract
+        $band = Bands::factory()->create();
+        $booking = Bookings::factory()->forBand($band)->create();
+        $contact = Contacts::factory()->create();
+        $ccContact1 = Contacts::factory()->create();
+        $ccContact2 = Contacts::factory()->create();
+        $booking->contacts()->attach($contact, ['role' => 'Primary', 'is_primary' => true]);
+        $booking->contacts()->attach($ccContact1, ['role' => 'CC']);
+        $booking->contacts()->attach($ccContact2, ['role' => 'CC']);
+
+        $contract = Contracts::factory()->for($booking, 'contractable')->create([
+            'asset_url' => 'https://example.com/fake-contract.pdf',
+            'custom_terms' => [
+                ['title' => 'Term 1', 'content' => 'Content 1'],
+                ['title' => 'Term 2', 'content' => 'Content 2'],
+            ],
+        ]);
+
+        // Send the contract to PandaDoc
+        $result = $contract->sendToPandaDoc($contact, $booking->contacts()->find([$ccContact1->id, $ccContact2->id]));
+
+        // Assert that the HTTP request was sent with the correct data
+        Http::assertSent(function ($request) use ($booking, $contact, $ccContact1, $ccContact2)
+        {
+            return $request->url() == 'https://api.pandadoc.com/public/v1/documents' &&
+                $request['name'] == "Contract for {$booking->name} - {$booking->band->name}" &&
+                $request['url'] == 'https://example.com/fake-contract.pdf' &&
+                $request['recipients'][0]['email'] == $contact->email &&
+                $request['recipients'][1]['email'] == $ccContact1->email &&
+                $request['recipients'][2]['email'] == $ccContact2->email;
+        });
+
+        // Assert that the contract was updated with the PandaDoc ID and status
+        $this->assertEquals('fake-pandadoc-id', $contract->fresh()->envelope_id);
+        $this->assertEquals('sent', $contract->fresh()->status);
+
+        // Assert that the result contains the expected data
+        $this->assertEquals('fake-pandadoc-id', $result['id']);
+        $this->assertEquals('document.draft', $result['status']);
+    }
+
+
 
     public function test_contract_sending_handles_api_error()
     {
@@ -87,7 +140,7 @@ class ContractSendingTest extends TestCase
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage('Failed to send document to PandaDoc');
 
-        $contract->sendToPandaDoc();
+        $contract->sendToPandaDoc($contact);
 
         // Assert that the contract status was not updated
         $this->assertNotEquals('sent', $contract->fresh()->status);
