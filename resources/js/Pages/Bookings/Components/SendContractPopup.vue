@@ -330,8 +330,10 @@ const handleNextFromSelectRecipient = (activateCallback) => {
 };
 
 const sendContract = () => {
-    // isVisible.value = false;
     sending.value = true;
-    emit("confirm", selectedContactId.value);
+    emit("confirm", {
+        signer: selectedContactId.value,
+        cc: selectedCCContactIds.value,
+    });
 };
 </script>
