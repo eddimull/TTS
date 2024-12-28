@@ -62,9 +62,16 @@ class Bookings extends Model implements Contractable
 
     public function getDurationAttribute()
     {
-        // Calculate the duration of the booking
-        $diff = $this->start_time->diff($this->end_time);
-        return $diff->h;
+        $start = $this->start_time;
+        $end = $this->end_time;
+
+        // If end time is earlier than start time, add a day to end time
+        if ($end < $start)
+        {
+            $end = $end->addDay();
+        }
+
+        return $start->diffInHours($end);
     }
 
     public function events(): MorphMany
