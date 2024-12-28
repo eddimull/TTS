@@ -105,6 +105,16 @@ class BookingOperationsTest extends TestCase
         $this->assertEquals(4, $booking->duration);
     }
 
+    public function test_can_calculate_duration_after_midnight()
+    {
+        $booking = Bookings::factory()->create([
+            'start_time' => '21:00:00',
+            'end_time' => '01:00:00',
+        ]);
+
+        $this->assertEquals(4, $booking->duration);
+    }
+
     public function test_can_determine_if_booking_is_paid()
     {
         // Create a booking with a price of 1000
