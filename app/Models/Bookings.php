@@ -71,7 +71,7 @@ class Bookings extends Model implements Contractable
             $end = $end->addDay();
         }
 
-        return $start->diffInHours($end);
+        return round($start->diffInHours($end, true), 2);
     }
 
     public function events(): MorphMany
