@@ -8,7 +8,7 @@
                         <span v-if="payment.invoices_id">
                             <a
                                 :href="
-                                    'https://dashboard.stripe.com/test/invoices/' +
+                                    invoiceUrl +
                                     payment.invoice.stripe_id
                                 "
                                 target="_blank"
@@ -57,7 +57,7 @@
 </template>
 <script setup>
 import { DateTime } from "luxon";
-import { router } from "@inertiajs/vue3";
+import {router, usePage} from "@inertiajs/vue3";
 
 const props = defineProps({
     payment: {
@@ -76,6 +76,9 @@ const formattedPaymentDate = props.payment.date
 const formattedPaymentDateTime = props.payment.date
     ? DateTime.fromISO(props.payment.date).toFormat("yyyy-MM-dd HH:mm:ss")
     : props.payment.status;
+
+const config = usePage().props.config;
+const invoiceUrl = config.StripeInvoiceURL;
 
 const deletePayment = (payment) => {
     console.log("Deleting payment", payment);
