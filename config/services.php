@@ -40,6 +40,7 @@ return [
     'stripe' => [
         'key' => env('STRIPE_KEY'),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        'invoice_url' => env('STRIPE_INVOICE_URL'),
     ]
 
 ];
