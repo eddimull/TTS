@@ -18,6 +18,21 @@ class AppServiceProvider extends ServiceProvider
     public function register()
     {
         //
+    }
+
+    /**
+     * Bootstrap any application services.
+     *
+     * @return void
+     */
+    public function boot()
+    {
+        QuestionnaireComponents::observe(QuestionnaireComponentObserver::class);
+        Inertia::share([
+            'config' => [
+                'StripeInvoiceURL' => config('services.stripe.invoice_url'),
+            ],
+        ]);
         Inertia::share('app.name', config('app.name'));
         Inertia::share('errors', function ()
         {
@@ -31,15 +46,5 @@ class AppServiceProvider extends ServiceProvider
         {
             return session()->get('warningMessage') ? session()->get('warningMessage') : null;
         });
-    }
-
-    /**
-     * Bootstrap any application services.
-     *
-     * @return void
-     */
-    public function boot()
-    {
-        QuestionnaireComponents::observe(QuestionnaireComponentObserver::class);
     }
 }
