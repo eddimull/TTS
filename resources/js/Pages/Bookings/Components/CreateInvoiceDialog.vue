@@ -82,11 +82,11 @@
           id="fee"
           v-model="newInvoice.convenienceFee"
         />
-        Charge 2.9% convenience fee
+        Charge 4% convenience fee
       </label>
       <small>
         In order to cover the cost of processing credit card payments,
-        you have the option of charging a 2.9% + $0.30 convenience fee.
+        you have the option of charging a 4% + $0.30 convenience fee.
         This fee will be added into the line item total.
       </small>
     </div>
