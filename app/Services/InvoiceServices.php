@@ -58,12 +58,12 @@ class InvoiceServices
 
         $customer = $this->getStripeCustomer($contactId, $stripeAccount->stripe_account_id);
 
-        $staticApplicationPercent = 0.029;
+        $staticApplicationPercent = 0.04;
         $staticApplicationFee = 500;
         $staticStripeCharge = 30;
-        $staticStripePercent = 1.029;
+        $staticStripePercent = 1.04;
         $amount = $amount * 100;
-        $paymentAmount = $amount; // this is the amount that will be paid to the band. AKA the customer will not see this amount. 
+        $paymentAmount = $amount; // this is the amount that will be paid to the band. AKA the customer will not see this amount.
 
         if ($convenienceFee) {
             $amount = ($amount * $staticStripePercent) + $staticStripeCharge + $staticApplicationFee;
