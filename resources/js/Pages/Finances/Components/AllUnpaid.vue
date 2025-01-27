@@ -42,6 +42,8 @@
                 :paginator="true"
                 :rows="20"
                 class="cursor-pointer"
+                sort-field="date"
+                sort-order="1"
                 @row-click="
                     (event) => {
                         gotoPayment(event.data, band);
@@ -118,7 +120,8 @@ const props = defineProps({
     },
 });
 
-const selectedYear = ref("");
+// default to the current year
+const selectedYear = ref(new Date().getFullYear());
 
 const serviceFilter = ref("");
 
