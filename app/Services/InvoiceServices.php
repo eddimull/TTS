@@ -118,7 +118,7 @@ class InvoiceServices
     public function getStripeProduct(StripeClient $stripe, string $name, int $bandID): Product
     {
         $results = $stripe->products->search([
-            'query' => "name:'$name'",
+            'query' => "name:'" . addslashes($name) . "'",
             'limit' => 1,
         ]);
         if (count($results->data) > 0) {
