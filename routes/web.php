@@ -17,6 +17,8 @@ Route::get('/dashboard', 'DashboardController@index')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+Route::any('/account', 'AccountController@index')->middleware(['auth', 'verified'])->name('account');
+Route::patch('/account/update', 'AccountController@update')->middleware(['auth', 'verified'])->name('account.update');
 // Include all route files
 require __DIR__ . '/auth.php';
 require __DIR__ . '/bands.php';
