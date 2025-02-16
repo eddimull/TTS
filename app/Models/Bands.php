@@ -9,6 +9,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Bands extends Model
 {
     use HasFactory;
+
+
+    public function getRouteKeyName()
+    {
+        return 'id';
+    }
+
     protected $fillable = ['name', 'site_name', 'calendar_id'];
     // protected $with = ['proposals'];
 
