@@ -19,11 +19,13 @@ class Owner
      */
     public function handle(Request $request, Closure $next)
     {
-        $user = Auth::user();
-        if(!$user->ownsBand($request->band->id))
-        {
-            return redirect(RouteServiceProvider::HOME)
-             ->withErrors('You are not an owner of this band.');
+        $user = $request->user();
+        $band = $request->route('band');
+        if (is_string($band)) {
+            $band = Bands::find($band);
+        }
+        if (!$band instanceof Bands || !$user->isOwner($band->id)) {
+            return abort(403, 'Unauthorized access');
         }
 
         return $next($request);
