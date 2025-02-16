@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Unit\Observers;
+namespace Tests\Feature;
 
 use Tests\TestCase;
 use App\Models\Bands;

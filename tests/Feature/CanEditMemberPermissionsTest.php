@@ -30,22 +30,21 @@ class CanEditMemberPermissionsTest extends TestCase
         $this->setupBandAndUser();
         $randomUser = User::factory()->create();
 
-        
+
         $response = $this->actingAs($randomUser)->post('/permissions/' . $this->band->id . '/' . $this->member->id,[
             'permissions'=>[
                 'read_colors'=> true,
                 'write_colors'=> true
             ]
         ]);
-        $response->assertStatus(302);
-        $response->assertSessionHasErrors();
+        $response->assertStatus(403);
         $this->assertDatabaseMissing('user_permissions',[
-            
+
                 'user_id'=>$this->member->id,
                 'band_id'=>$this->band->id,
                 'read_colors'=>true,
                 'write_colors'=>true
-            
+
         ]);
     }
     /**
@@ -57,7 +56,7 @@ class CanEditMemberPermissionsTest extends TestCase
     {
         $this->setupBandAndUser();
 
-        
+
         $response = $this->actingAs($this->user)->post('/permissions/' . $this->band->id . '/' . $this->member->id,[
             'permissions'=>[
                 'read_colors'=> true,
@@ -68,12 +67,12 @@ class CanEditMemberPermissionsTest extends TestCase
         $response->assertSessionHasNoErrors();
         $response->assertSessionHas('successMessage');
         $this->assertDatabaseHas('user_permissions',[
-            
+
                 'user_id'=>$this->member->id,
                 'band_id'=>$this->band->id,
                 'read_colors'=>true,
                 'write_colors'=>true
-            
+
         ]);
     }
 }
