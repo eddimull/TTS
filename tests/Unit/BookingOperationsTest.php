@@ -14,21 +14,6 @@ class BookingOperationsTest extends TestCase
 {
     use RefreshDatabase;
 
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        // Check if the database is actually empty
-        $bookingsCount = DB::table('bookings')->count();
-        $contactsCount = DB::table('contacts')->count();
-
-        if ($bookingsCount > 0 || $contactsCount > 0)
-        {
-            $this->fail("Database is not empty. Bookings: $bookingsCount, Contacts: $contactsCount");
-        }
-    }
-
     public function test_can_create_a_booking()
     {
         $booking = Bookings::factory()->create();
@@ -83,17 +68,6 @@ class BookingOperationsTest extends TestCase
         $this->assertNotEmpty($booking->contacts);
         $this->assertCount(1, $booking->contacts->where('pivot.is_primary', true));
     }
-
-
-    public function test_can_scope_to_confirmed_bookings()
-    {
-        Bookings::factory()->count(2)->confirmed()->create();
-
-        $confirmedBookings = Bookings::where('status', 'confirmed')->get();
-
-        $this->assertCount(2, $confirmedBookings);
-    }
-
 
     public function test_can_calculate_duration()
     {

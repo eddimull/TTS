@@ -17,13 +17,12 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class BookingsControllerTest extends TestCase
 {
-    use RefreshDatabase;
-
-    private $band;
-    private $owner;
-    private $member;
-    private $nonMember;
-    private $booking;
+    private Bands $band;
+    private User $owner;
+    private User $privilegedMember;
+    private User $unprivilegedMember;
+    private User $nonMember;
+    private Bookings $booking;
 
     protected function setUp(): void
     {
@@ -31,11 +30,17 @@ class BookingsControllerTest extends TestCase
 
         $this->band = Bands::factory()->create();
         $this->owner = User::factory()->create();
-        $this->member = User::factory()->create();
+        $this->privilegedMember = User::factory()->create();
+        $this->unprivilegedMember = User::factory()->create();
         $this->nonMember = User::factory()->create();
 
+        setPermissionsTeamId($this->band->id);
+        $this->privilegedMember->givePermissionTo('read_bookings', 'write_bookings');
+        $this->unprivilegedMember->givePermissionTo('read_bookings');
+
         $this->band->owners()->create(['user_id' => $this->owner->id]);
-        $this->band->members()->create(['user_id' => $this->member->id]);
+        $this->band->members()->create(['user_id' => $this->privilegedMember->id]);
+        $this->band->members()->create(['user_id' => $this->unprivilegedMember->id]);
 
         $this->booking = Bookings::factory()->create(['band_id' => $this->band->id]);
     }
@@ -46,6 +51,8 @@ class BookingsControllerTest extends TestCase
 
         $response = $this->actingAs($this->owner)->get(route('Bookings Home', $this->band));
 
+        // log out the response for debugging
+        $response->dump();
 
         $response->assertStatus(200);
         $response->assertInertia(
@@ -56,11 +63,20 @@ class BookingsControllerTest extends TestCase
         );
     }
 
-    public function test_member_can_view_bookings_index()
+    public function test_members_can_view_bookings_index()
     {
         $bookings = Bookings::factory()->count(3)->create(['band_id' => $this->band->id]);
 
-        $response = $this->actingAs($this->member)->get(route('Bookings Home', $this->band));
+        $response = $this->actingAs($this->privilegedMember)->get(route('Bookings Home', $this->band));
+
+        $response->assertStatus(200);
+        $response->assertInertia(
+            fn($assert) => $assert
+                ->component('Bookings/Index')
+                ->has('bookings', 4)
+        );
+
+        $response = $this->actingAs($this->unprivilegedMember)->get(route('Bookings Home', $this->band));
 
         $response->assertStatus(200);
         $response->assertInertia(
@@ -70,35 +86,24 @@ class BookingsControllerTest extends TestCase
         );
     }
 
-    public function test_member_can_create_booking()
+    public function test_owner_can_create_booking()
     {
-        $this->markTestIncomplete('Flaky test');
-        $duration = 2;
+        $bookingData = Bookings::factory()->make(['band_id' => $this->band->id, 'author_id' => $this->owner->id])->toArray();
+        $bookingData['duration'] = 3;
 
-        userPermissions::create([
-            'user_id' => $this->member->id,
-            'band_id' => $this->band->id,
-            'read_bookings' => true,
-            'write_bookings' => true,
-        ]);
+        $response = $this->actingAs($this->owner)->postJson(route('bands.booking.store', $this->band), $bookingData);
 
+        $response->assertRedirect();
 
+        $checkData = [
+            'name' => $bookingData['name'],
+            'author_id' => $bookingData['author_id'],
+            'band_id' => $bookingData['band_id'],
+            'event_type_id' => $bookingData['event_type_id'],
+            'venue_name' => $bookingData['venue_name'],
+        ];
 
-        $bookingData = Bookings::factory()->duration($duration)->make(['band_id' => $this->band->id])->toArray();
-        $bookingData['duration'] = $duration;
-        $bookingData['start_time'] = Carbon::parse($bookingData['start_time'])->format('H:i');
-        unset($bookingData['end_time']);
-
-        $response = $this->actingAs($this->member)->post(route('bands.booking.store', $this->band), $bookingData);
-
-        $response->assertStatus(302); // Assert that a redirect occurred
-
-        unset($bookingData['duration']);
-        unset($bookingData['author_id']); // sometimes an owner or member can create a booking, which results in a different author_id
-        $bookingData['author_id'] = $this->member->id;
-        $bookingData['price'] = $bookingData['price'] * 100;
-
-        $this->assertDatabaseHas('bookings', $bookingData);
+        $this->assertDatabaseHas('bookings', $checkData);
 
         $booking = $this->band->bookings()->where('name', $bookingData['name'])->first();
 
@@ -107,14 +112,61 @@ class BookingsControllerTest extends TestCase
         $response->assertRedirect(route('Booking Details', ['band' => $this->band, 'booking' => $booking]));
     }
 
+    public function test_privileged_member_can_create_booking()
+    {
+        $bookingData = Bookings::factory()->make(['band_id' => $this->band->id, 'author_id' => $this->privilegedMember->id])->toArray();
+        $bookingData['duration'] = 3;
+
+        $response = $this->actingAs($this->privilegedMember)->postJson(route('bands.booking.store', $this->band), $bookingData);
+
+        $response->assertStatus(302); // Assert that a redirect occurred
+
+        $checkData = [
+            'name' => $bookingData['name'],
+            'author_id' => $bookingData['author_id'],
+            'band_id' => $bookingData['band_id'],
+            'event_type_id' => $bookingData['event_type_id'],
+            'venue_name' => $bookingData['venue_name'],
+        ];
+
+        $this->assertDatabaseHas('bookings', $checkData);
+
+        $booking = $this->band->bookings()->where('name', $bookingData['name'])->first();
+
+        $this->assertNotNull($booking, 'Booking was not created');
+
+        $response->assertRedirect(route('Booking Details', ['band' => $this->band, 'booking' => $booking]));
+    }
+
+    public function test_unprivileged_member_cannot_create_booking()
+    {
+        $bookingData = Bookings::factory()->make(['band_id' => $this->band->id])->toArray();
+
+        $response = $this->actingAs($this->unprivilegedMember)->postJson(route('bands.booking.store', $this->band), $bookingData);
+
+        $response->assertStatus(403);
+        $this->assertDatabaseMissing('bookings', $bookingData);
+    }
+
     public function test_non_member_cannot_create_booking()
     {
         $bookingData = Bookings::factory()->make(['band_id' => $this->band->id])->toArray();
 
-        $response = $this->actingAs($this->nonMember)->post(route('bands.booking.store', $this->band), $bookingData);
+        $response = $this->actingAs($this->nonMember)->postJson(route('bands.booking.store', $this->band), $bookingData);
 
         $response->assertStatus(403);
         $this->assertDatabaseMissing('bookings', $bookingData);
+    }
+
+    public function test_owner_cannot_create_booking_for_another_band()
+    {
+        $band = Bands::factory()->hasOwners(1)->create();
+        $bookingData = Bookings::factory()->make(['band_id' => $band->id, 'author_id' => $this->owner->id])->toArray();
+        $bookingData['duration'] = 3;
+
+        $response = $this->actingAs($this->owner)->postJson(route('bands.booking.store', $band), $bookingData);
+
+        $response->assertForbidden();
     }
 
     public function test_owner_can_update_booking()
@@ -169,7 +221,7 @@ class BookingsControllerTest extends TestCase
 
     public function test_member_can_view_booking_details()
     {
-        $response = $this->actingAs($this->member)->get(route('Booking Details', [$this->band, $this->booking]));
+        $response = $this->actingAs($this->privilegedMember)->get(route('Booking Details', [$this->band, $this->booking]));
 
         $response->assertStatus(200);
         $response->assertInertia(

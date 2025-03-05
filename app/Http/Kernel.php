@@ -37,6 +37,7 @@ class Kernel extends HttpKernel
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\SelectTeam::class,
             \App\Http\Middleware\HandleInertiaRequests::class,
         ],
 
@@ -68,6 +69,7 @@ class Kernel extends HttpKernel
         'charts.read' => \App\Http\Middleware\CanReadCharts::class,
         'charts.write' => \App\Http\Middleware\CanWriteCharts::class,
         'booking.access' => \App\Http\Middleware\BookingAccessMiddleware::class,
-        'dev' => \App\Http\Middleware\dev::class
+        'dev' => \App\Http\Middleware\dev::class,
+        'team' => \App\Http\Middleware\SelectTeam::class,
     ];
 }

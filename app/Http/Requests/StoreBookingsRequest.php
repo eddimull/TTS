@@ -14,7 +14,7 @@ class StoreBookingsRequest extends FormRequest
      *
      * @return bool
      */
-    public function authorize()
+    public function authorize(): bool
     {
         $band = $this->route('band');
         return $this->user()->can('store', [Bookings::class, $band]);
@@ -25,7 +25,7 @@ class StoreBookingsRequest extends FormRequest
      *
      * @return array<string, mixed>
      */
-    public function rules()
+    public function rules(): array
     {
         return [
             'name' => 'required|string|max:255',
@@ -43,7 +43,7 @@ class StoreBookingsRequest extends FormRequest
         ];
     }
 
-    protected function prepareForValidation()
+    protected function prepareForValidation(): void
     {
         $this->mergeIfMissing([
             'end_time' => '00:00'
@@ -53,7 +53,7 @@ class StoreBookingsRequest extends FormRequest
         ]);
     }
 
-    public function messages()
+    public function messages(): array
     {
         return [
             'event_type.in' => 'The selected event type is invalid.',
@@ -63,7 +63,7 @@ class StoreBookingsRequest extends FormRequest
         ];
     }
 
-    public function validated($key = null, $default = null)
+    public function validated($key = null, $default = null): mixed
     {
         $validated = parent::validated($key, $default);
 

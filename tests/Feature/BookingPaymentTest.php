@@ -33,8 +33,10 @@ class BookingPaymentTest extends TestCase
 
         // Create test data
         $this->user = User::factory()->create();
-        $this->contact = Contacts::factory()->create();
         $this->band = Bands::factory()->create();
+        setPermissionsTeamId($this->band->id);
+        $this->user->givePermissionTo('read_bookings', 'write_bookings');
+        $this->contact = Contacts::factory()->create();
         $this->booking = Bookings::factory()->create([
             'band_id' => $this->band->id
         ]);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\InvoiceServices;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use App\Models\Bands;
 use App\Models\Events;
@@ -27,16 +28,14 @@ class BookingsController extends Controller
 {
     public function index(Bands $band = null)
     {
+        $this->authorize('viewAny', Bookings::class);
+
         if (app()->environment('local'))
         {
             ini_set('memory_limit', '2048M');
         }
         $user = Auth::user();
         $userBands = $user->bands();
-        if ($band && !$userBands->contains($band))
-        {
-            abort(403, 'Unauthorized action.');
-        }
 
         $bookings = $band ? $band->bookings() : Bookings::whereIn('band_id', $userBands->pluck('id'));
 
@@ -55,6 +54,8 @@ class BookingsController extends Controller
 
     public function create(Bands $band)
     {
+        $this->authorize('create', Bookings::class);
+
         $eventTypes = EventTypes::all();
         return Inertia::render('Bookings/Create', [
             'band' => $band,
@@ -64,6 +65,8 @@ class BookingsController extends Controller
 
     public function store(StoreBookingsRequest $request, Bands $band)
     {
+        $this->authorize('create', Bookings::class);
+
         $booking = $band->bookings()->create($request->validated());
 
         if ($booking->contract_option === 'none')
@@ -126,18 +129,24 @@ class BookingsController extends Controller
 
     public function show(Bands $band, Bookings $booking)
     {
+        $this->authorize('view', $booking);
+
         $booking->load('band');
         return Inertia::render('Bookings/Show', ['booking' => $booking, 'band' => $band]);
     }
 
     public function update(UpdateBookingsRequest $request, Bands $band, Bookings $booking)
     {
+        $this->authorize('create', Bookings::class);
+
         $booking->update($request->validated());
         return redirect()->back()->with('successMessage', "$booking->name has been updated.");
     }
 
     public function contacts(Bands $band, Bookings $booking)
     {
+        $this->authorize('view', $booking);
+
         $booking->load('contacts');
 
         // If bookingHistory is protected/hidden, make it visible after loading
@@ -151,6 +160,8 @@ class BookingsController extends Controller
 
     public function storeContact(BookingContactRequest $request, Bands $band, Bookings $booking)
     {
+        $this->authorize('update', $booking);
+
         $contact = Contacts::firstOrCreate(
             ['email' => $request->email],
             $request->only(['name', 'phone']) + ['band_id' => $band->id]
@@ -164,13 +175,18 @@ class BookingsController extends Controller
 
     public function updateContact(BookingContactRequest $request, Bands $band, Bookings $booking, BookingContacts $contact)
     {
+        $this->authorize('update', $booking);
+
         $contact->update($request->validated());
         return redirect()->back()->with('successMessage', "{$request->name} has been updated.");
     }
 
     public function destroyContact(Bands $band, Bookings $booking, BookingContacts $contact)
     {
-        $contact->delete($contact);
+        $this->authorize('update', $booking);
+
+        $booking->contacts()->detach($contact->id);
+        $contact->delete();
         return redirect()->back()->with('successMessage', "{$contact->name} has been removed.");
     }
 
@@ -178,6 +194,8 @@ class BookingsController extends Controller
 
     public function finances(Bands $band, Bookings $booking)
     {
+        $this->authorize('view', $booking);
+
         $booking->load(['contacts', 'payments.invoice', 'contract']);
         $booking->amountPaid = $booking->amountPaid;
         $booking->amountLeft = $booking->amountLeft;
@@ -191,6 +209,8 @@ class BookingsController extends Controller
 
     public function storePayment(StoreBookingPaymentRequest $request, Bands $band, Bookings $booking)
     {
+        $this->authorize('update', $booking);
+
         $payment = $booking->payments()->create($request->validated());
         event(new PaymentWasReceived($payment));
         return redirect()->back()->with('successMessage', 'Payment has been added.');
@@ -198,12 +218,16 @@ class BookingsController extends Controller
 
     public function destroyPayment(Bands $band, Bookings $booking, $payment)
     {
+        $this->authorize('delete', $booking);
+
         $booking->payments()->find($payment)->delete();
         return redirect()->back()->with('successMessage', 'Payment has been removed.');
     }
 
     public function receipt(Bands $band, Bookings $booking)
     {
+        $this->authorize('view', $booking);
+
         // $booking->payments = $booking->payments;
 
         $paymentPDF = $booking->getPaymentPdf();
@@ -229,11 +253,15 @@ class BookingsController extends Controller
 
     public function paymentPDF(Bookings $booking)
     {
+        $this->authorize('view', $booking);
+
         return view('pdf.bookingPayment', ['booking' => $booking]);
     }
 
     public function downloadContract(Bands $band, Bookings $booking)
     {
+        $this->authorize('view', $booking);
+
         // return view('pdf.bookingContract', ['booking' => $booking]);
         $contractPDF = $booking->getContractPdf();
         if ($contractPDF === null)
@@ -256,12 +284,16 @@ class BookingsController extends Controller
 
     public function destroy(Bands $band, Bookings $booking)
     {
+        $this->authorize('delete', $booking);
+
         $booking->delete();
         return redirect()->route('Bookings Home')->with('successMessage', "{$booking->name} has been deleted.");
     }
 
     public function cancelBooking(Bands $band, Bookings $booking)
     {
+        $this->authorize('update', $booking);
+
         $booking->status = 'cancelled';
         $booking->save();
         return redirect()->route('Bookings Home')->with('successMessage', "{$booking->name} has been cancelled.");
@@ -269,6 +301,8 @@ class BookingsController extends Controller
 
     public function contract(Bands $band, Bookings $booking)
     {
+        $this->authorize('view', $booking);
+
         $booking->contacts = $booking->contacts()->get();
         if (count($booking->contacts) === 0 && $booking->contract_option !== 'none')
         {
@@ -285,6 +319,8 @@ class BookingsController extends Controller
 
     public function uploadContract(UploadBookingContractRequest $request, Bands $band, Bookings $booking)
     {
+        $this->authorize('update', $booking);
+
         $booking->storeContractPdf($request->file('pdf')->get());
         $booking->status = 'confirmed';
         $booking->save();
@@ -293,6 +329,8 @@ class BookingsController extends Controller
 
     public function events(Bands $band, Bookings $booking)
     {
+        $this->authorize('view', $booking);
+
         return Inertia::render('Bookings/Events', [
             'booking' => $booking,
             'events' => $booking->events
@@ -301,6 +339,8 @@ class BookingsController extends Controller
 
     public function updateOrCreateEvent(UpdateBookingEventRequest $request, Bands $band, Bookings $booking, Events $event = null)
     {
+        $this->authorize('update', $booking);
+
         $validatedData = $request->validated();
 
         // If $event is null, it means we're creating a new event
@@ -323,12 +363,16 @@ class BookingsController extends Controller
 
     public function deleteEvent(Bands $band, Bookings $booking, Events $event)
     {
+        $this->authorize('update', $booking);
+
         $event->delete();
         return redirect()->back()->with('successMessage', 'Event Deleted');
     }
 
     public function storeInvoice(Bands $band, Bookings $booking, Request $request)
     {
+        $this->authorize('update', $booking);
+
         $data = $request->validate([
             'amount' => 'required|numeric',
             'contactId' => 'required|exists:contacts,id',
