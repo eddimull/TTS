@@ -25,7 +25,10 @@ class BookingNavigationTest extends TestCase
     {
         $band = Bands::factory()->hasMembers(1)->create();
         $member = $band->members->first()->user;
+        setPermissionsTeamId($band->id);
+        $member->givePermissionTo('read_bookings');
         $response = $this->actingAs($member)->get('/bookings');
+        $response->dump();
         $response->assertStatus(200);
     }
 

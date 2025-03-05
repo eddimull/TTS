@@ -2,18 +2,14 @@
 
 namespace App\Models;
 
-use App\Models\Bandnotification;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use App\Models\Charts;
-use App\Models\userPermissions;
-use Illuminate\Support\Carbon;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, HasRoles;
 
     /**
      * The attributes that are mass assignable.
@@ -63,12 +59,22 @@ class User extends Authenticatable
         return $this->belongsToMany(Bands::class, 'band_members', 'user_id', 'band_id');
     }
 
+    /**
+     * @param $id
+     * @return userPermissions
+     * @deprecated use Laravel "can" and check for specific permissions instead
+     */
     public function permissionsForBand($id)
     {
         return userPermissions::firstOrCreate(['user_id' => $this->id, 'band_id' => $id]);
     }
 
 
+    /**
+     * @param $bandId
+     * @return bool
+     * @deprecated use Laravel "can" and check for specific permissions instead
+     */
     public function canWriteCharts($bandId)
     {
         // dd($bandId);

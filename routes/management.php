@@ -18,9 +18,9 @@ use App\Models\Bands;
 //     });
 
 Route::get('/permissions/{band}/{user}',[UserPermissionsController::class,'index'])
-        ->middleware(['auth','verified','owner','userInBand'])
+        ->middleware(['auth','verified','owner','userInBand', 'team'])
         ->name('userpermissions');
 
 Route::post('/permissions/{band}/{user}',[UserPermissionsController::class,'store'])
-        ->middleware(['auth','verified','owner','userInBand'])
-        ->name('userpermissions.save');        
+        ->middleware(['auth','verified','owner','userInBand', 'team'])
+        ->name('userpermissions.save');

@@ -24,7 +24,8 @@ class UserFactory extends Factory
     {
         return [
             'name' => $this->faker->name(),
-            'email' => $this->faker->unique()->safeEmail(),
+            // adding numberBetween() to the email for better uniqueness, have had collisions
+            'email' => $this->faker->numberBetween() . $this->faker->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => bcrypt('supersecretpassword'),
             'remember_token' => Str::random(10),
