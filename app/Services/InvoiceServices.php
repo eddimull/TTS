@@ -52,11 +52,11 @@ class InvoiceServices
         Stripe::setApiKey(config('services.stripe.key'));
         $stripe = new StripeClient(config('services.stripe.key'));
 
-        $stripeAccount = StripeAccounts::where('stripe_account_id', $booking->band->stripe_accounts->stripe_account_id)->first();
+        $connectedAccount = StripeAccounts::where('stripe_account_id', $booking->band->stripe_accounts->stripe_account_id)->first();
 
         $product = $this->getStripeProduct($stripe, $booking->name, $booking->band_id);
 
-        $customer = $this->getStripeCustomer($contactId, $stripeAccount->stripe_account_id);
+        $customer = $this->getStripeCustomer($contactId, $connectedAccount->stripe_account_id);
 
         $staticApplicationPercent = 0.04;
         $staticApplicationFee = 500;
@@ -77,11 +77,11 @@ class InvoiceServices
             'collection_method' => 'send_invoice',
             'days_until_due' => 30,
             'transfer_data' => [
-                'destination' => $stripeAccount->stripe_account_id,
+                'destination' => $connectedAccount->stripe_account_id,
             ],
             'customer' => $customer->stripe_customer_id,
-        ]
-        );
+            'on_behalf_of' => $connectedAccount->stripe_account_id,
+        ]);
 
         InvoiceItem::create([
             'customer' => $customer->stripe_customer_id,
