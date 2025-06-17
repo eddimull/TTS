@@ -52,18 +52,29 @@
                         type="text"
                         placeholder="Time title"
                         class="w-full sm:w-1/3 p-2 border rounded dark:bg-slate-700 dark:text-gray-50"
+                        :disabled="entry.isEventTime"
+                        :class="{'bg-gray-100 dark:bg-slate-600': entry.isEventTime}"
                     />
                     <input
                         v-model="entry.time"
                         type="datetime-local"
                         class="w-full sm:w-1/3 p-2 border dark:bg-slate-700 dark:text-gray-50 rounded"
+                        :disabled="entry.isEventTime"
+                        :class="{'bg-gray-100 dark:bg-slate-600': entry.isEventTime}"
                     />
                     <button
+                        v-if="!entry.isEventTime"
                         class="w-full sm:w-auto px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
                         @click="removeTimeEntry(entry.id)"
                     >
                         Remove
                     </button>
+                    <span 
+                        v-else 
+                        class="w-full sm:w-auto px-4 py-2 text-gray-500 italic"
+                    >
+                        Event time (fixed)
+                    </span>
                 </div>
             </TransitionGroup>
             <div class="mt-4">
@@ -287,7 +298,15 @@ const timeEntries = ref(
 );
 
 const sortedTimeEntries = computed(() => {
-    return [...timeEntries.value].sort((a, b) => {
+    return [
+        {
+            id: 'event-time', // Special ID to identify this entry
+            title: 'Show Time',
+            time: `${event.value.date}T${event.value.time}`,
+            isEventTime: true // Flag to identify this as a special non-removable entry
+        },
+        ...timeEntries.value
+    ].sort((a, b) => {
         const timeA = new Date(a.time || 0);
         const timeB = new Date(b.time || 0);
         return timeA - timeB;
@@ -304,6 +323,9 @@ const addTimeEntry = () => {
 };
 
 const removeTimeEntry = (id) => {
+    // Don't allow removal of the event time entry
+    if (id === 'event-time') return;
+    
     const index = timeEntries.value.findIndex((entry) => entry.id === id);
     confirm(
         `Are you sure you want to remove this time entry - ${timeEntries.value[index].title}?`
