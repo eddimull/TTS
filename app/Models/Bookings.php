@@ -10,11 +10,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Laravel\Scout\Searchable;
 
 class Bookings extends Model implements Contractable
 {
     use HasFactory;
     use BookingTraits;
+    use Searchable;
 
     protected $fillable = [
         'band_id',
@@ -176,4 +178,45 @@ class Bookings extends Model implements Contractable
             $payment->formattedPaymentDate = $payment->formattedPaymentDate;
         }
     }
+
+    /**
+     * Get the indexable data array for the model.
+     */
+    public function toSearchableArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'venue_name' => $this->venue_name,
+            'venue_address' => $this->venue_address,
+            'status' => $this->status,
+            'date' => $this->date->format('Y-m-d'),
+            'price' => $this->price,
+            'band_id' => $this->band_id,
+            'event_type_id' => $this->event_type_id,
+            'created_at' => $this->created_at->timestamp,
+            'updated_at' => $this->updated_at->timestamp,
+            'band_name' => $this->band?->name,
+            'author_name' => $this->author?->name,
+            'notes' => $this->notes,
+        ];
+    }
+
+    /**
+     * Get the name of the index associated with the model.
+     */
+    public function searchableAs(): string
+    {
+        return 'bookings';
+    }
+
+    /**
+     * Determine if the model should be searchable.
+     */
+    public function shouldBeSearchable(): bool
+    {
+        // Only index bookings that are not cancelled or deleted
+        return !in_array($this->status, ['cancelled', 'deleted']);
+    }
+
 }
