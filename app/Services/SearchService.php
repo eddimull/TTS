@@ -27,7 +27,8 @@ class SearchService
             try {
                 $modelResults = $model->search($query)->get();
                 
-                $results[] = $modelResults;
+                $modelName = strtolower(class_basename($model));
+                $results[$modelName] = $modelResults;
             } catch (\Exception $e) {
                 // Log error or handle as needed
                 continue;

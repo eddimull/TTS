@@ -68,6 +68,12 @@
                             </breeze-nav-link>
                         </div>
                     </div>
+
+                    <!-- Search Component -->
+                    <div class="hidden sm:flex sm:items-center sm:ml-6 flex-1 max-w-md mx-8">
+                        <SearchComponent />
+                    </div>
+
                     <!-- notifications and username -->
                     <div class="hidden sm:flex sm:items-center sm:ml-6">
                         <div class="ml-3 relative">
@@ -354,6 +360,11 @@
                 class="sm:hidden overflow-hidden"
             >
                 <div class="pt-2 pb-3 space-y-1">
+                    <!-- Mobile Search -->
+                    <div class="px-4 py-2">
+                        <SearchComponent />
+                    </div>
+                    
                     <breeze-responsive-nav-link
                         :href="route('dashboard')"
                         :active="route().current('dashboard')"
@@ -478,6 +489,7 @@ import BreezeDropdownLink from "@/Components/DropdownLink";
 import NotificationLink from "@/Components/NotificationDropdown";
 import BreezeNavLink from "@/Components/NavLink";
 import BreezeResponsiveNavLink from "@/Components/ResponsiveNavLink";
+import SearchComponent from "@/Components/Search/SearchComponent.vue";
 import Toast from "primevue/toast";
 import axios from "axios";
 import { mapState, mapActions } from "vuex";
@@ -491,6 +503,7 @@ export default {
         BreezeNavLink,
         BreezeResponsiveNavLink,
         NotificationLink,
+        SearchComponent,
         Toast,
     },
     props: {

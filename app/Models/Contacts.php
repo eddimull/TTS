@@ -21,7 +21,6 @@ class Contacts extends Model
         'email',
         'phone'
     ];
-
     // protected $appends = ['booking_history'];
 
     public function bookingContacts()
@@ -57,5 +56,30 @@ class Contacts extends Model
     protected function makeAllSearchableUsing(Builder $query)
     {
         return $query->with(['bookings']);
+    }
+
+    public function makeSearchableUsing($query)
+    {
+        return $query->with(['bookings']);
+    }
+
+    public function toSearchableArray()
+    {
+        $searchableArray = $this->toArray();
+        
+        // Include bookings data in searchable results
+        $searchableArray['bookings'] = $this->bookings->map(function ($booking) {
+            return [
+                'id' => $booking->id,
+                'name' => $booking->name,
+                'date' => $booking->date?->format('Y-m-d'),
+                'role' => $booking->pivot->role,
+                'is_primary' => $booking->pivot->is_primary,
+                'notes' => $booking->pivot->notes,
+                'additional_info' => $booking->pivot->additional_info,
+            ];
+        })->toArray();
+        
+        return $searchableArray;
     }
 }
