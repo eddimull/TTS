@@ -18,6 +18,7 @@ Route::get('/dashboard', 'DashboardController@index')
     ->name('dashboard');
 
 // Include all route files
+require __DIR__ . '/account.php';
 require __DIR__ . '/auth.php';
 require __DIR__ . '/bands.php';
 require __DIR__ . '/booking.php';
