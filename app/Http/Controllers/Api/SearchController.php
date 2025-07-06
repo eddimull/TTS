@@ -33,12 +33,14 @@ class SearchController extends Controller
             // Merge and deduplicate bookings
             $allBookings = collect($results['bookings'] ?? [])
                 ->merge($bookingsFromContacts)
-                ->unique('id');
+                ->unique('id')
+                ->values();
             
             // Merge and deduplicate contacts
             $allContacts = collect($results['contacts'] ?? [])
                 ->merge($contactsFromBookings)
-                ->unique('id');
+                ->unique('id')
+                ->values();
             
             $results['bookings'] = $allBookings;
             $results['contacts'] = $allContacts;
