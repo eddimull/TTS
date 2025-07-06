@@ -7,6 +7,7 @@ use App\Http\Controllers\LocationController;
 use App\Http\Controllers\ContractsController;
 use App\Http\Controllers\EventTypeController;
 use App\Http\Controllers\StripeWebhookController;
+use App\Http\Controllers\Api\SearchController;
 
 /*
 |--------------------------------------------------------------------------
@@ -34,4 +35,7 @@ Route::get('/bands/{band}/contacts', [BandsController::class, 'contacts']);
 Route::post('/searchLocations', [LocationController::class, 'searchLocations'])->name('searchLocations');
 Route::post('/getLocationDetails', [LocationController::class, 'getLocationDetails'])->name('getLocationDetails');
 Route::get('/contracts/{contract:envelope_id}/history', [ContractsController::class, 'getHistory'])->name('getContractHistory');
+Route::get('/search', [SearchController::class, 'search']);
 // });
+
+
