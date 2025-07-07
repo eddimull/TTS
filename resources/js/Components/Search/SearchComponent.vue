@@ -1,7 +1,20 @@
 <template>
   <div class="relative">
     <div class="relative">
-      <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+      <!-- Close button for overlay mode -->
+      <div v-if="isOverlay" class="absolute inset-y-0 left-0 pl-3 flex items-center">
+        <button
+          @click="$emit('close')"
+          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none"
+        >
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      
+      <!-- Search icon for normal mode -->
+      <div v-if="!isOverlay" class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
         <svg
           class="h-5 w-5 text-gray-400"
           xmlns="http://www.w3.org/2000/svg"
@@ -15,18 +28,24 @@
           />
         </svg>
       </div>
+      
       <input
         v-model="searchQuery"
         type="text"
-        placeholder="Search bookings, contacts, events..."
-        class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-        :class="{ 'pr-10': searchQuery.length > 0 }"
+        :placeholder="isOverlay ? 'Search bookings, contacts, events...' : 'Search bookings, contacts, events...'"
+        :class="[
+          'block w-full pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm',
+          isOverlay ? 'pl-10 text-lg' : 'pl-10',
+          { 'pr-10': searchQuery.length > 0 }
+        ]"
         @input="handleSearch"
         @focus="showResults = true"
-        @keydown.escape="closeSearch"
+        @click="$event.stopPropagation()"
+        @keydown.escape="handleEscape"
         @keydown.arrow-down="navigateDown"
         @keydown.arrow-up="navigateUp"
         @keydown.enter="selectResult"
+        ref="searchInput"
       >
       
       <!-- Clear Button -->
@@ -78,7 +97,7 @@
       v-if="showResults && (hasResults || loading)"
       :class="[
         'absolute z-50 mt-1 bg-white dark:bg-gray-800 shadow-lg rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm transition-all duration-200',
-        expandedView ? 'max-h-[32rem] w-[32rem] max-w-[90vw]' : 'max-h-96 w-full'
+        isOverlay ? 'max-h-[32rem] w-full' : (expandedView ? 'max-h-[32rem] w-[32rem] max-w-[90vw]' : 'max-h-96 w-full')
       ]"
     >
       <div v-if="loading" class="px-4 py-2 text-center">
@@ -276,10 +295,20 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { router } from '@inertiajs/vue3'
 import axios from 'axios'
 
+const props = defineProps({
+  isOverlay: {
+    type: Boolean,
+    default: false
+  }
+})
+
+const emit = defineEmits(['close'])
+
+const searchInput = ref(null)
 const searchQuery = ref('')
 const results = ref({})
 const loading = ref(false)
@@ -422,9 +451,20 @@ const selectChart = (chart) => {
   router.visit(route('charts.edit', chart.id))
 }
 
+const handleEscape = () => {
+  console.log('escaping');
+  if (props.isOverlay) {
+    // emit('close')
+  } else {
+    closeSearch()
+  }
+}
+
 const closeSearch = () => {
   showResults.value = false
-  
+  if (props.isOverlay) {
+    // emit('close')
+  }
 }
 
 const clearSearch = () => {
@@ -455,8 +495,15 @@ const getStatusClass = (status) => {
   return statusClasses[status?.toLowerCase()] || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
 }
 
+// Auto-focus when overlay opens
+onMounted(() => {
+  if (props.isOverlay) {
+    searchInput.value?.focus()
+  }
+})
+
 // Watch for route changes to close search
 watch(() => router.page, () => {
-  closeSearch()
+  // closeSearch()
 })
 </script>

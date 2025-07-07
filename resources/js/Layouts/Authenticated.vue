@@ -19,7 +19,8 @@
 
                         <!-- Navigation Links -->
                         <div
-                            class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex"
+                            class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex transition-opacity duration-300 ease-in-out"
+                            :class="{ 'opacity-0 pointer-events-none': searchActive }"
                         >
                             <breeze-nav-link
                                 :href="route('dashboard')"
@@ -69,13 +70,44 @@
                         </div>
                     </div>
 
-                    <!-- Search Component -->
-                    <div class="hidden sm:flex sm:items-center sm:ml-6 flex-1 max-w-md mx-8">
-                        <SearchComponent />
+                    <!-- Search Toggle Button -->
+                    <div class="hidden sm:flex sm:items-center sm:ml-6">
+                        <button
+                            @click="toggleSearch"
+                            class="p-2 rounded-md text-gray-400 dark:text-gray-300 hover:text-gray-500 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
+                            :class="{ 'text-indigo-600 dark:text-indigo-400': searchActive }"
+                        >
+                            <svg
+                                class="h-5 w-5"
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                            >
+                                <path
+                                    fill-rule="evenodd"
+                                    d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z"
+                                    clip-rule="evenodd"
+                                />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Search Overlay -->
+                    <div
+                        
+                        class="absolute inset-0 bg-white dark:bg-slate-700 z-10 flex items-center px-4 sm:px-6 lg:px-8 transition-all duration-300 ease-in-out transform"
+                        :class="{
+                            'translate-y-0 opacity-100': searchActive,
+                            '-translate-y-full opacity-0': !searchActive
+                        }"
+                    >
+                        <div class="flex-1 max-w-2xl mx-auto">
+                            <SearchComponent :is-overlay="true" @close="closeSearch" />
+                        </div>
                     </div>
 
                     <!-- notifications and username -->
-                    <div class="hidden sm:flex sm:items-center sm:ml-6">
+                    <div class="hidden sm:flex sm:items-center sm:ml-6 transition-opacity duration-300 ease-in-out" :class="{ 'opacity-0 pointer-events-none': searchActive }">
                         <div class="ml-3 relative">
                             <breeze-dropdown align="right" width="56">
                                 <template #trigger>
@@ -516,6 +548,7 @@ export default {
     data() {
         return {
             showingNavigationDropdown: false,
+            searchActive: false,
         };
     },
     computed: {
@@ -568,6 +601,15 @@ export default {
 
         markSeen() {
             this.markNotificationsAsSeen();
+        },
+
+        toggleSearch() {
+            this.searchActive = !this.searchActive;
+        },
+
+        closeSearch() {
+            console.log('closing search');
+            this.searchActive = false;
         },
 
         toast() {
