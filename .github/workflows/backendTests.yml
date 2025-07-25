@@ -36,6 +36,8 @@ jobs:
         env:
           MEILI_PORT: "7700"
           MEILI_MASTER_KEY: "masterKey"
+        ports:
+          - 7700:7700
 
     steps:
       - uses: shivammathur/setup-php@v2
