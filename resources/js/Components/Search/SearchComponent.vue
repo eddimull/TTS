@@ -435,15 +435,12 @@ const selectResult = () => {
 }
 
 const selectBooking = (booking) => {
-  // closeSearch()
   router.visit(route('Booking Details', [booking.band_id, booking.id]))
 }
 
 const selectContact = (contact) => {
-  // closeSearch()
-  // Navigate to contact details or contacts page
-  // router.visit(route('contacts.show', contact.id))
-  console.log('Selected contact:', contact)
+  const booking = contact.booking || contact.bookings?.[0]
+  router.visit(route('Booking Contacts', [booking.band_id, booking.id]));
 }
 
 const selectChart = (chart) => {

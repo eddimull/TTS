@@ -35,6 +35,11 @@ class Contacts extends Model
             ->withTimestamps();
     }
 
+    public function band()
+    {
+        return $this->belongsTo(Bands::class, 'band_id');
+    }
+
     protected function bookingHistory(): Attribute
     {
         return Attribute::make(
@@ -82,4 +87,5 @@ class Contacts extends Model
         
         return $searchableArray;
     }
+    
 }

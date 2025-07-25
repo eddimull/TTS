@@ -30,7 +30,6 @@ class SearchService
                 $modelName = strtolower(class_basename($model));
                 $results[$modelName] = $modelResults;
             } catch (\Exception $e) {
-                // Log error or handle as needed
                 continue;
             }
         }
