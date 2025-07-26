@@ -7,6 +7,7 @@ use App\Http\Controllers\LocationController;
 use App\Http\Controllers\ContractsController;
 use App\Http\Controllers\EventTypeController;
 use App\Http\Controllers\StripeWebhookController;
+use App\Http\Controllers\Api\SearchController;
 
 /*
 |--------------------------------------------------------------------------
@@ -28,10 +29,14 @@ Route::any('/stripe', [StripeWebhookController::class, 'index'])->name('webhook.
 
 Route::get('/getAllEventTypes', [EventTypeController::class, 'getAllEventTypes'])->name('getAllEventTypes');
 
-// Route::group(['middleware' => ['auth', 'verified']], function ()
-// {
-Route::get('/bands/{band}/contacts', [BandsController::class, 'contacts']);
+Route::middleware(['web', 'auth'])->group(function () {
+    Route::get('/bands/{band}/contacts', [BandsController::class, 'contacts']);
+    Route::get('/search', [SearchController::class, 'search']);
+});
+
 Route::post('/searchLocations', [LocationController::class, 'searchLocations'])->name('searchLocations');
 Route::post('/getLocationDetails', [LocationController::class, 'getLocationDetails'])->name('getLocationDetails');
 Route::get('/contracts/{contract:envelope_id}/history', [ContractsController::class, 'getHistory'])->name('getContractHistory');
 // });
+
+

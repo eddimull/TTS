@@ -31,6 +31,13 @@ jobs:
         ports:
           - 3306:3306
         options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+      meilisearch:
+        image: getmeili/meilisearch:v1.3
+        env:
+          MEILI_PORT: "7700"
+          MEILI_MASTER_KEY: "masterKey"
+        ports:
+          - 7700:7700
 
     steps:
       - uses: shivammathur/setup-php@v2
@@ -88,4 +95,6 @@ jobs:
         env:
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
+          MEILISEARCH_HOST: http://127.0.0.1:7700
+          MEILISEARCH_KEY: masterKey
         run: php artisan test
