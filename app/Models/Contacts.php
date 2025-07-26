@@ -58,16 +58,6 @@ class Contacts extends Model
         );
     }
 
-    protected function makeAllSearchableUsing(Builder $query)
-    {
-        return $query->with(['bookings']);
-    }
-
-    public function makeSearchableUsing($query)
-    {
-        return $query->with(['bookings']);
-    }
-
     public function toSearchableArray()
     {
         $searchableArray = $this->toArray();
@@ -87,5 +77,4 @@ class Contacts extends Model
         
         return $searchableArray;
     }
-    
 }
