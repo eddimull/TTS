@@ -126,17 +126,11 @@
 <script>
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
 import Checkbox from 'primevue/checkbox'
-import Button from 'primevue/button'
-import Container from '@/Components/Container.vue'
-import { Link } from '@inertiajs/vue3'
 
 export default {
   components: {
     BreezeAuthenticatedLayout,
     Checkbox,
-    Button,
-    Container,
-    Link
   },
   props: {
     band: {
