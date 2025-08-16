@@ -18,7 +18,7 @@
         <li
           v-for="(result, index) in searchResults"
           :key="index"
-          class="border-black my-4 p-4 bg-gray-200 hover:bg-gray-300 cursor-pointer"
+          class="border-black my-4 p-4 bg-gray-200 hover:bg-gray-300 hover:dark:bg-gray-700 dark:bg-slate-700 dark:text-gray-50  cursor-pointer"
           @click="getLocationDetails(result.place_id)"
         >
           {{ result.description }}
