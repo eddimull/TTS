@@ -3,6 +3,7 @@
 namespace App\Models\Traits;
 
 use App\Models\Contacts;
+use App\Services\PandaDocService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Database\Eloquent\Collection;
@@ -156,18 +157,22 @@ trait Signable
 
     public function auditTrail()
     {
-        $accessToken = config('services.pandadoc.access_token');
+        $pandaDocService = new PandaDocService();
 
         $documentId = $this->envelope_id;
-        $auditUrl = "https://api.pandadoc.com/documents/{$documentId}/audit_trail";
-        $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $accessToken,
-            'Content-Type' => 'application/json',
-        ])->get($auditUrl);
-
-        if ($response->successful())
-        {
-            return $response->json();
+        $auditUrl = "https://api.pandadoc.com/public/v2/documents/{$documentId}/audit-trail";
+        $response = $pandaDocService->makeAuthenticatedRequest('get', $auditUrl);
+        if ($response->successful()) {
+            $data = $response->json();
+            
+            // Transform the raw audit trail into readable format
+            if (isset($data['results'])) {
+                $data['results'] = array_map(function($event) {
+                    return $this->transformAuditEvent($event);
+                }, $data['results']);
+            }
+            
+            return $data;
         }
 
         Log::error('Failed to get audit trail: ' . $response->body());
@@ -190,6 +195,108 @@ trait Signable
 
         Log::error('Failed to get document status: ' . $response->body());
         throw new \Exception('Failed to get document status: ' . $response->body());
+    }
+
+
+    private function transformAuditEvent($event)
+    {
+        // PandaDoc action code mappings
+        $actionMap = [
+            1 => 'Document Created',
+            2 => 'Document Updated', 
+            3 => 'Document Deleted',
+            4 => 'Document Restored',
+            5 => 'Document Duplicated',
+            6 => 'Document Sent',
+            7 => 'Document Signed',
+            8 => 'Document Viewed',
+            9 => 'Document Downloaded',
+            10 => 'Document Completed',
+            11 => 'Document Declined',
+            12 => 'Document Voided',
+            13 => 'Document Expired',
+            14 => 'Payment Requested',
+            15 => 'Payment Completed',
+            16 => 'Payment Failed',
+            17 => 'Reminder Sent',
+            18 => 'Comment Added',
+            19 => 'Approval Requested',
+            20 => 'Approval Granted',
+            21 => 'Approval Denied',
+            22 => 'Document Archived',
+            23 => 'Document Unarchived',
+            24 => 'Document Shared',
+            25 => 'Document Unshared',
+        ];
+
+        $actionCode = $event['action'] ?? 0;
+        $actionName = $actionMap[$actionCode] ?? "Unknown Action ({$actionCode})";
+        
+        return [
+            'id' => $event['id'],
+            'action' => $actionName,
+            'action_code' => $actionCode,
+            'user_email' => $event['user']['email'] ?? 'Unknown',
+            'user_id' => $event['user']['id'] ?? null,
+            'description' => $this->getActionDescription($actionCode, $event),
+            'created_at' => $event['date_created'],
+            'ip_address' => $event['ip_address'] ?? null,
+            'reason' => $event['reason'],
+            'status' => $this->getEventStatus($actionCode)
+        ];
+    }
+
+    private function getActionDescription($actionCode, $event)
+    {
+        $userEmail = $event['user']['email'] ?? 'Unknown user';
+        
+        $descriptions = [
+            1 => "Document was created by {$userEmail}",
+            2 => "Document was updated by {$userEmail}",
+            3 => "Document was deleted by {$userEmail}",
+            4 => "Document was restored by {$userEmail}",
+            5 => "Document was duplicated by {$userEmail}",
+            6 => "Document was sent to recipients by {$userEmail}",
+            7 => "Document was signed by {$userEmail}",
+            8 => "Document was viewed by {$userEmail}",
+            9 => "Document was downloaded by {$userEmail}",
+            10 => "Document was completed (all signatures collected)",
+            11 => "Document was declined by {$userEmail}",
+            12 => "Document was voided by {$userEmail}",
+            13 => "Document expired",
+            14 => "Payment was requested",
+            15 => "Payment was completed",
+            16 => "Payment failed",
+            17 => "Reminder was sent",
+            18 => "Comment was added by {$userEmail}",
+            19 => "Approval was requested",
+            20 => "Document was approved by {$userEmail}",
+            21 => "Document was denied by {$userEmail}",
+            22 => "Document was archived by {$userEmail}",
+            23 => "Document was unarchived by {$userEmail}",
+            24 => "Document was shared by {$userEmail}",
+            25 => "Document sharing was removed by {$userEmail}",
+        ];
+
+        return $descriptions[$actionCode] ?? "Unknown action performed by {$userEmail}";
+    }
+
+    private function getEventStatus($actionCode)
+    {
+        // Map action codes to status categories
+        $completedActions = [1, 6, 7, 8, 9, 10, 15, 18, 20, 22, 24];
+        $failedActions = [3, 11, 12, 13, 16, 21];
+        $pendingActions = [14, 17, 19];
+        
+        if (in_array($actionCode, $completedActions)) {
+            return 'completed';
+        } elseif (in_array($actionCode, $failedActions)) {
+            return 'failed';
+        } elseif (in_array($actionCode, $pendingActions)) {
+            return 'pending';
+        }
+        
+        return 'info';
     }
 
     abstract public function getPdfUrl(): string;
