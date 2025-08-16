@@ -593,6 +593,10 @@ export default {
             if (this.pageTitle) {
                 return this.pageTitle;
             }
+            // Check if the current page component has pageTitle option
+            if (this.$page.component && this.$page.component.pageTitle) {
+                return this.$page.component.pageTitle;
+            }
             // Then check if the slot component has pageTitle option
             if (this.$slots.default && this.$slots.default()[0]?.type?.pageTitle) {
                 return this.$slots.default()[0].type.pageTitle;
