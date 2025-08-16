@@ -31,6 +31,7 @@
       
       <input
         v-model="searchQuery"
+        id="everythingSearchInput"
         type="text"
         :placeholder="isOverlay ? 'Search bookings, contacts, events...' : 'Search bookings, contacts, events...'"
         :class="[
