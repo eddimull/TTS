@@ -1,23 +1,26 @@
 <template>
-  <breeze-authenticated-layout>
-    <template #header>
-      <h2 class="font-semibold text-xl text-gray-800 dark:text-white leading-tight">
-        <Link href="/bands">
-          Bands
-        </Link> :: {{ band.name }}
-      </h2>
-    </template>
-    <div class="w-full max-w-lg">
-      <div class="mb-4 bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-        <div class="mb-4 flex text-center">
-          <div
+  <Container>
+    <div class="max-w-4xl mx-auto">
+      <div class="componentPanel shadow-md rounded-lg p-6">
+        <!-- Panel Tabs -->
+        <div class="mb-6 flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600">
+          <button
             v-for="panel in panels"
             :key="panel.name"
-            :class="[activePanel == panel.name ? 'bg-blue-600' : 'bg-blue-400', 'cursor-pointer', 'inline', 'w-1/2', 'hover:bg-blue-700', 'text-white', 'font-bold', 'py-2']"
-            :title="panel.name"
+            :class="[
+              activePanel === panel.name 
+                ? 'bg-blue-600 text-white' 
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600',
+              'flex-1 py-3 px-4 font-medium transition-colors duration-200 flex items-center justify-center gap-2'
+            ]"
             @click="activePanel = panel.name"
-            v-html="panel.icon"
-          />
+          >
+            <span
+              class="w-5 h-5"
+              v-html="panel.icon"
+            />
+            {{ panel.name }}
+          </button>
         </div>
 
         <form
@@ -26,269 +29,398 @@
           method="PATCH"
           @submit.prevent="updateBand"
         >
-          <div class="mb-4">
-            <label
-              class="block text-gray-700 text-sm font-bold mb-2"
-              for="name"
-            >Name</label>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Band Name
+            </label>
             <input
-              id="name"
               v-model="form.name"
               type="text"
-              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              placeholder="Band Name"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              placeholder="Enter band name"
+              required
             >
           </div>
-          <div class="mb-4">
-            <label
-              class="block text-gray-700 text-sm font-bold mb-2"
-              for="name"
-            >Page Name (URL)</label>
+          <!-- Site Name -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Page Name (URL)
+            </label>
             <input
-              id="site_name"
               v-model="form.site_name"
               type="text"
-              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              placeholder="Band_Name"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              placeholder="band_name"
               pattern="([a-zA-z0-9\-_]+)"
               @input="filter"
             >
-            <span
+            <p
               v-if="urlWarn"
-              class="text-red-700"
-            >Letters, numbers, _, +, and - are the only characters allowed</span>
+              class="mt-1 text-sm text-red-600 dark:text-red-400"
+            >
+              Only letters, numbers, underscores, and hyphens are allowed
+            </p>
           </div>
-          <div class="mb-4">
-            <label
-              class="block text-gray-700 text-sm font-bold mb-2"
-              for="name"
-            >Logo</label>
-            <img :src="band.logo">
-            <FileUpload
-              ref="fileUpload"
-              mode="basic"
-              name="logo"
-              accept="image/*"
-              :auto="true"
-              :custom-upload="true"
-              @uploader="uploadLogo"
-            />
+          <!-- Logo -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Band Logo
+            </label>
+            <div class="space-y-3">
+              <div
+                v-if="band.logo"
+                class="flex items-center gap-4"
+              >
+                <img
+                  :src="band.logo"
+                  alt="Current logo"
+                  class="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
+                >
+                <span class="text-sm text-gray-600 dark:text-gray-400">Current logo</span>
+              </div>
+              <FileUpload
+                ref="fileUpload"
+                mode="basic"
+                name="logo"
+                accept="image/*"
+                :auto="true"
+                :custom-upload="true"
+                choose-label="Upload New Logo"
+                class="w-full"
+                @uploader="uploadLogo"
+              />
+            </div>
           </div>
-          <div class="mb-4">
-            <label
-              class="block text-gray-700 text-sm font-bold mb-2"
-              for="name"
-            >Google Calendar ID</label>
+          <!-- Google Calendar Integration -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Google Calendar ID
+            </label>
             <input
-              id="calendarID"
               v-model="form.calendar_id"
               type="text"
-              class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              placeholder="Calendar ID"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+              placeholder="your-calendar-id@group.calendar.google.com"
             >
-            <span
-              class="cursor-pointer"
-              @click="showInstructions = !showInstructions"
-            ><strong><svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-5 w-5 inline"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M19 9l-7 7-7-7"
-              />
-            </svg> How to integrate calendar</strong></span>
-            <p v-if="showInstructions">
-              <span> In order to get this set up, you have to give the app permissions to write events to the calendar and
-                then you have to specify the calendar's ID you give permission to write to.</span>
-            </p>
-            <hr>
-            <ol class="list-decimal px-2 my-4">
-              <li>Goto <a href="https://calendar.google.com">Google calendar</a></li>
-              <li>Under 'my calendars', find the 3 little dots and click 'settings and sharing'</li>
-              <li>
-                Find 'Share with specific people' and add in
-                <strong>ttscalendar@threethirtyseven.iam.gserviceaccount.com</strong>
-              </li>
-              <li>
-                Scroll down a little bit to find your Calendar ID under Integrate calendar. It will look like
-                somethingsomethingsomething@whatever.google.com
-              </li>
-              <li>Copy the calendar ID and paste it in above</li>
-            </ol>
-          </div>
-          <div
-            v-if="!band.stripe_accounts"
-            class="mb-4"
-          >
-            <a :href="'/bands/' + band.id + '/setupStripe'">
-              <button
-                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-                type="button"
-              >
-                Setup Stripe
-              </button>
-            </a>
-          </div>
-          <div
-            v-else
-            class="mb-4"
-          >
-            <p class="text-green-500">
-              Stripe account setup
-            </p>
-          </div>
-          <div class="flex items-center justify-around">
-            <Button
-              label="Update"
-              type="submit"
-            >
-              Update
-            </button>
-            <Button
-              :disabled="syncing"
-              :label="syncing ? 'Syncing...' : 'Sync Calendar'"
-              @click="syncCalendar"
-            />
-          </div>
-        </form>
-
-        <div v-if="activePanel == 'Band Members'">
-          Members:
-          <ul
-            v-if="band.members"
-            class="px-3"
-          >
-            <li
-              v-for="(member, index) in band.members"
-              :key="index"
-              class="my-2"
-            >
-              <Link :href="'/permissions/' + band.id + '/' + member.user.id">
-                {{ member.user.name }} - {{ member.user.email }}
-              </Link>
-            </li>
-          </ul>
-          <div v-else>
-            No Members
-          </div>
-          Owners:
-
-          <ul
-            v-if="band.owners"
-            class="px-3"
-          >
-            <li
-              v-for="(owner, index) in band.owners"
-              :key="index"
-              class="my-2 cursor-pointer"
-              @click="deleteOwner(owner)"
-            >
-              {{ owner.user.name }} - {{ owner.user.email }}
-            </li>
-          </ul>
-          <div v-else>
-            No Owners
-          </div>
-          Pending Invites:
-          <ul
-            v-if="band.pending_invites"
-            class="px-3"
-          >
-            <li
-              v-for="(pendingInvite, index) in band.pending_invites"
-              :key="index"
-              class="italic text-gray-400 my-2 cursor-pointer"
-              @click="deleteInvite(pendingInvite)"
-            >
-              {{ pendingInvite.email }}
-            </li>
-          </ul>
-          <div v-else>
-            No Members
-          </div>
-
-          <p v-if="band.members.legth == 0">
-            Looks like you don't have any members in your band. Invite some!
-          </p>
-          <transition name="slide-down">
-            <div
-              v-if="inviting"
-              class="my-4"
-            >
-              <input
-                id="email"
-                v-model="invite.email"
-                type="email"
-                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                placeholder="user@email.com"
-              >
-              <div>
-                <button
-                  class="mx-3 my-2 px-4 py-2 text-sm font-semibold tracking-wider text-blue-600 rounded hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  @click="inviting = !inviting"
-                >
-                  Cancel
-                </button>
-                <button
-                  class="mx-3 my-2 bg-blue-100 px-4 py-2 text-sm font-semibold tracking-wider text-blue-600 rounded hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  @click="inviteOwner"
-                >
-                  Add Owner
-                </button>
-                <button
-                  class="mx-3 my-2 bg-blue-100 px-4 py-2 text-sm font-semibold tracking-wider text-blue-600 rounded hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  @click="inviteMember"
-                >
-                  Add Member
-                </button>
-              </div>
-            </div>
-          </transition>
-          <transition name="slide-down">
+              
+            <!-- Instructions Toggle -->
             <button
-              v-if="!inviting"
-              class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-              type="submit"
-              @click="inviting = !inviting"
+              type="button"
+              class="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+              @click="showInstructions = !showInstructions"
             >
               <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="h-6 w-6"
+                class="w-4 h-4 transition-transform"
+                :class="{ 'rotate-180': showInstructions }"
                 fill="none"
-                viewBox="0 0 24 24"
                 stroke="currentColor"
+                viewBox="0 0 24 24"
               >
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
                   stroke-width="2"
-                  d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                  d="M19 9l-7 7-7-7"
                 />
               </svg>
+              How to integrate with Google Calendar
             </button>
-          </transition>
+
+            <!-- Instructions -->
+            <div
+              v-if="showInstructions"
+              class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
+            >
+              <p class="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                To set up calendar integration, follow these steps:
+              </p>
+              <ol class="text-sm text-gray-700 dark:text-gray-300 space-y-2 list-decimal list-inside">
+                <li>
+                  Go to <a
+                    href="https://calendar.google.com"
+                    target="_blank"
+                    class="text-blue-600 dark:text-blue-400 hover:underline"
+                  >Google Calendar</a>
+                </li>
+                <li>Under "My calendars", click the three dots next to your calendar and select "Settings and sharing"</li>
+                <li>Find "Share with specific people" and add: <code class="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-xs">ttscalendar@threethirtyseven.iam.gserviceaccount.com</code></li>
+                <li>Scroll down to find your Calendar ID under "Integrate calendar"</li>
+                <li>Copy the Calendar ID and paste it in the field above</li>
+              </ol>
+            </div>
+          </div>
+
+          <!-- Stripe Setup -->
+          <div class="border-t border-gray-200 dark:border-gray-600 pt-6">
+            <div
+              v-if="!band.stripe_accounts"
+              class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4"
+            >
+              <div class="flex items-center gap-3">
+                <svg
+                  class="w-6 h-6 text-yellow-600 dark:text-yellow-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+                <div>
+                  <h3 class="font-medium text-yellow-800 dark:text-yellow-200">
+                    Stripe Payment Setup Required
+                  </h3>
+                  <p class="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                    Set up Stripe to accept payments for your band.
+                  </p>
+                  <a
+                    :href="'/bands/' + band.id + '/setupStripe'"
+                    class="inline-block mt-3"
+                  >
+                    <Button
+                      severity="warning"
+                      size="small"
+                    >Setup Stripe</Button>
+                  </a>
+                </div>
+              </div>
+            </div>
+            <div
+              v-else
+              class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4"
+            >
+              <div class="flex items-center gap-2">
+                <svg
+                  class="w-5 h-5 text-green-600 dark:text-green-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                <span class="text-green-800 dark:text-green-200 font-medium">Stripe account configured</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-600">
+            <Button
+              type="submit"
+              label="Update Band"
+              icon="pi pi-save"
+              :loading="loading"
+            />
+            <Button
+              type="button"
+              :label="syncing ? 'Syncing...' : 'Sync Calendar'"
+              icon="pi pi-calendar"
+              severity="secondary"
+              :disabled="syncing"
+              :loading="syncing"
+              @click="syncCalendar"
+            />
+          </div>
+        </form>
+
+        <div
+          v-if="activePanel === 'Band Members'"
+          class="space-y-6"
+        >
+          <!-- Members Section -->
+          <div>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+              Members
+            </h3>
+            <div
+              v-if="band.members && band.members.length > 0"
+              class="space-y-2"
+            >
+              <div
+                v-for="member in band.members"
+                :key="member.id"
+                class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+              >
+                <div>
+                  <p class="font-medium text-gray-900 dark:text-white">
+                    {{ member.user.name }}
+                  </p>
+                  <p class="text-sm text-gray-600 dark:text-gray-400">
+                    {{ member.user.email }}
+                  </p>
+                </div>
+                <Link
+                  :href="'/permissions/' + band.id + '/' + member.user.id"
+                  class="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+                >
+                  Edit Permissions
+                </Link>
+              </div>
+            </div>
+            <p
+              v-else
+              class="text-gray-600 dark:text-gray-400 italic"
+            >
+              No members added yet.
+            </p>
+          </div>
+
+          <!-- Owners Section -->
+          <div>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+              Owners
+            </h3>
+            <div
+              v-if="band.owners && band.owners.length > 0"
+              class="space-y-2"
+            >
+              <div
+                v-for="owner in band.owners"
+                :key="owner.id"
+                class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
+              >
+                <div>
+                  <p class="font-medium text-gray-900 dark:text-white">
+                    {{ owner.user.name }}
+                  </p>
+                  <p class="text-sm text-gray-600 dark:text-gray-400">
+                    {{ owner.user.email }}
+                  </p>
+                </div>
+                <button
+                  class="text-red-600 dark:text-red-400 hover:underline text-sm"
+                  @click="deleteOwner(owner)"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+            <p
+              v-else
+              class="text-gray-600 dark:text-gray-400 italic"
+            >
+              No owners found.
+            </p>
+          </div>
+
+          <!-- Pending Invites -->
+          <div>
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+              Pending Invitations
+            </h3>
+            <div
+              v-if="band.pending_invites && band.pending_invites.length > 0"
+              class="space-y-2"
+            >
+              <div
+                v-for="pendingInvite in band.pending_invites"
+                :key="pendingInvite.id"
+                class="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800"
+              >
+                <div>
+                  <p class="font-medium text-gray-900 dark:text-white">
+                    {{ pendingInvite.email }}
+                  </p>
+                  <p class="text-sm text-yellow-700 dark:text-yellow-400">
+                    Invitation pending
+                  </p>
+                </div>
+                <button
+                  class="text-red-600 dark:text-red-400 hover:underline text-sm"
+                  @click="deleteInvite(pendingInvite)"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+            <p
+              v-else
+              class="text-gray-600 dark:text-gray-400 italic"
+            >
+              No pending invitations.
+            </p>
+          </div>
+
+          <!-- Invite Form -->
+          <div class="border-t border-gray-200 dark:border-gray-600 pt-6">
+            <div v-if="!inviting">
+              <Button
+                label="Invite New Member"
+                icon="pi pi-user-plus"
+                @click="inviting = true"
+              />
+            </div>
+              
+            <transition name="slide-down">
+              <div
+                v-if="inviting"
+                class="space-y-4"
+              >
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Email Address
+                  </label>
+                  <input
+                    v-model="invite.email"
+                    type="email"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                    placeholder="user@example.com"
+                    required
+                  >
+                </div>
+                <div class="flex items-center gap-3">
+                  <Button
+                    label="Invite as Owner"
+                    icon="pi pi-star"
+                    severity="secondary"
+                    size="small"
+                    @click="inviteOwner"
+                  />
+                  <Button
+                    label="Invite as Member"
+                    icon="pi pi-user"
+                    severity="secondary"
+                    size="small"
+                    @click="inviteMember"
+                  />
+                  <Button
+                    label="Cancel"
+                    icon="pi pi-times"
+                    severity="secondary"
+                    text
+                    size="small"
+                    @click="inviting = false"
+                  />
+                </div>
+              </div>
+            </transition>
+          </div>
         </div>
       </div>
     </div>
-  </breeze-authenticated-layout>
+    <Container />
+  </Container>
 </template>
 
 <script>
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
 import FileUpload from 'primevue/fileupload';
-import { Link } from '@inertiajs/inertia-vue3'
 export default {
   components: {
     BreezeAuthenticatedLayout,
     FileUpload,
-    Link
   },
+  layout: BreezeAuthenticatedLayout,
+  pageTitle: 'Edit Band',
   props: ['errors', 'band', 'members', 'owners'],
   data() {
     return {
@@ -296,13 +428,11 @@ export default {
       syncing: false,
       showInstructions: false,
       activePanel: 'Details',
+      loading: false,
       inviting: false,
       invite: {
         email: ''
       },
-      members: [
-
-      ],
       panels: [
         {
           name: 'Details',
@@ -374,7 +504,7 @@ export default {
         confirmButtonText: 'Yes, delete it!'
       }).then((result) => {
         if (result.value) {
-          this.$inertia.delete('/deleteOwner/' + this.band.id + '/' + owner.user.id);
+          this.$inertia.delete('/bands/deleteOwner/' + this.band.id + '/' + owner.user.id);
         }
       })
     },
