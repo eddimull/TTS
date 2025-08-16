@@ -81,7 +81,7 @@ services:
         ports:
             - '${FORWARD_MEILISEARCH_PORT:-7700}:7700'
         volumes:
-            - 'sailmeilisearch:/data.ms'
+            - 'sailmeilisearch:/meili_data'
         networks:
             - sail
     mailpit:
