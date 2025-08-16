@@ -1,84 +1,104 @@
 <template>
-  <breeze-authenticated-layout>
-    <template #header>
-      <h2 class="font-semibold text-xl text-gray-800 dark:text-white leading-tight">
-        Band List
-      </h2>
-    </template>
+  <Container>
+    <div class="componentPanel rounded-lg shadow-sm p-6">
+      <div v-if="bands.length > 0">
+        <!-- Header with Create Button -->
+        <div class="flex justify-between items-center mb-6">
+          <Link href="/bands/create">
+            <Button
+              label="Create New Band"
+              icon="pi pi-plus"
+              size="small"
+            />
+          </Link>
+        </div>
 
-    <div class="md:container md:mx-auto">
-      <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        <div class="bg-white dark:bg-slate-700 overflow-hidden shadow-sm sm:rounded-lg pt-4">
+        <!-- Bands Grid -->
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <div
-            v-if="bands.length > 0"
-            class="container dark:bg-slate-700"
+            v-for="band in bands"
+            :key="band.id"
+            class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md transition-shadow"
           >
-            <a
-              href="/bands/create"
-              class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline m-10 p-5"
-            >Create
-              Band</a>
-            <div class="shadow overflow-hidden rounded border-b border-gray-200 flex">
-              <table class="grow bg-white m-5 rounded">
-                <thead class="bg-gray-800 text-white">
-                  <tr>
-                    <th scope="w-1/3 text-left py-3 uppercase font-semibold text-sm">
-                      Name
-                    </th>
-                    <th scope="w-1/3 text-left py-3 uppercase font-semibold text-sm">
-                      Site Name
-                    </th>
-                    <th scope="w-1/3 text-left py-3 uppercase font-semibold text-sm" />
-                  </tr>
-                </thead>
-                <tbody class="text-gray-700">
-                  <tr
-                    v-for="(band, index) in bands"
-                    :key="band.id"
-                    :class="{ 'bg-gray-100 dark:bg-gray-700 dark:text-white': index % 2 === 0, 'border-b dark:bg-gray-600 dark:text-white': index % 2 !== 0 }"
+            <div class="flex items-start justify-between">
+              <div class="flex-1 min-w-0">
+                <h4 class="text-lg font-medium text-gray-900 dark:text-white truncate">
+                  {{ band.name }}
+                </h4>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {{ band.site_name }}
+                </p>
+                <div
+                  v-if="band.logo"
+                  class="mt-3"
+                >
+                  <img 
+                    :src="band.logo" 
+                    :alt="band.name + ' logo'"
+                    class="w-12 h-12 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
                   >
-                    <td class="w-1/3 text-center py-3 px-4">
-                      {{ band.name }}
-                    </td>
-                    <td class="w-1/3 text-center py-3 px-4">
-                      {{ band.site_name }}
-                    </td>
-                    <td>
-                      <div class="flex justify-center items-center">
-                        <Link
-                          class="border bg-white dark:bg-slate-600 hover:bg-blue-500 rounded p-1 px-4 flex no-grow"
-                          :href="`/bands/${band.id}/edit`"
-                        >
-                          Edit
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                </div>
+              </div>
+              <div class="ml-4 flex-shrink-0">
+                <Link :href="`/bands/${band.id}/edit`">
+                  <Button
+                    icon="pi pi-pencil"
+                    severity="secondary"
+                    text
+                    size="small"
+                  />
+                </Link>
+              </div>
             </div>
           </div>
-          <div v-else>
-            It looks like you don't have any bands.
-            <a
-              href="/bands/create"
-              class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-            >Create
-              Band</a>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div
+        v-else
+        class="text-center py-12"
+      >
+        <div class="max-w-sm mx-auto">
+          <svg
+            class="mx-auto h-16 w-16 text-gray-400 dark:text-gray-600"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1"
+              d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
+            />
+          </svg>
+          <h3 class="mt-6 text-lg font-medium text-gray-900 dark:text-white">
+            No bands yet
+          </h3>
+          <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            Get started by creating your first band.
+          </p>
+          <div class="mt-6">
+            <Link href="/bands/create">
+              <Button
+                label="Create Your First Band"
+                icon="pi pi-plus"
+              />
+            </Link>
           </div>
         </div>
       </div>
     </div>
-  </breeze-authenticated-layout>
+  </Container>
 </template>
 
 <script>
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
-
 export default {
-  components: {
-    BreezeAuthenticatedLayout,
-  },
-  props: ['bands', 'successMessage'],
+
+  layout: BreezeAuthenticatedLayout,
+  
+  props: ['bands', 'successMessage']
 }
 </script>
