@@ -35,6 +35,8 @@ return [
         'client_id' => env('PANDADOC_CLIENT_ID'),
         'client_secret' => env('PANDADOC_CLIENT_SECRET'),
         'access_token' => env('PANDADOC_ACCESS_TOKEN'),
+        'refresh_token' => env('PANDADOC_REFRESH_TOKEN'),
+        'token_expires_at' => env('PANDADOC_TOKEN_EXPIRES_AT'),
     ],
 
     'stripe' => [
