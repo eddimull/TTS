@@ -1,11 +1,5 @@
 <template>
   <breeze-authenticated-layout>
-    <template #header>
-      <h2 class="font-semibold text-xl text-gray-800 dark:text-white leading-tight">
-        Band List
-      </h2>
-    </template>
-
     <div class="md:container md:mx-auto">
       <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <div class="bg-white dark:bg-slate-700 overflow-hidden shadow-sm sm:rounded-lg pt-4">
