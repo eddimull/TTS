@@ -605,6 +605,17 @@ export default {
 
         toggleSearch() {
             this.searchActive = !this.searchActive;
+            if (this.searchActive) {
+            const input = document.getElementById('everythingSearchInput');
+            if (input) {
+                try {
+                    input.focus();
+                        input.click();
+                    } catch (e) {
+                        console.error('Direct DOM focus error:', e);
+                    }
+                }
+            }
         },
 
         closeSearch() {
