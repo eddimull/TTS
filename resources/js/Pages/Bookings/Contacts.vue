@@ -91,7 +91,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:booking']);
 
-const localBookingContacts = ref([...props.booking.contacts]);
+const localBookingContacts = computed(() => props.booking.contacts || []);
 const bandContacts = ref([]);
 const selectedContact = ref('');
 
@@ -133,7 +133,7 @@ function addExistingContact() {
     form.phone = foundContact.phone.toString();
 
     form.post(route('Store Booking Contact', [props.band.id, props.booking.id]), {
-      preserveState: false,
+      preserveState: true,
       preserveScroll: true,
       onSuccess: (response) => {
         selectedContact.value = '';

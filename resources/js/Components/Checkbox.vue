@@ -1,32 +1,41 @@
 <template>
-    <input type="checkbox" :value="value" v-model="proxyChecked"
-           class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+  <div class="flex items-center cursor-pointer">
+    <input
+      :id="inputId"
+      :checked="modelValue"
+      type="checkbox"
+      class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+      @change="$emit('update:modelValue', $event.target.checked)"
+    >
+    <Label
+      v-if="label"
+      :for="inputId"
+      class="ml-2 cursor-pointer"
+    >{{ label }}</Label>
+  </div>
 </template>
 
 <script>
+import Label from './Label.vue';
 export default {
-    emits: ['update:checked'],
-
+    components: { Label },
+    inheritAttrs: false,
     props: {
-        checked: {
-            type: [Array, Boolean],
+        modelValue: {
+            type: Boolean,
             default: false,
         },
-        value: {
-            default: null,
+        label: {
+            type: String,
+            default: '',
         },
     },
+    emits: ['update:modelValue'],
 
     computed: {
-        proxyChecked: {
-            get() {
-                return this.checked;
-            },
-
-            set(val) {
-                this.$emit("update:checked", val);
-            },
-        },
+        inputId() {
+            return this.label ? `input-${Math.random().toString(36).substr(2, 9)}` : undefined
+        }
     },
 }
 </script>
