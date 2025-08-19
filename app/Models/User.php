@@ -227,33 +227,60 @@ class User extends Authenticatable
 
     public function getEventsAttribute($afterDate = null)
     {
-        $bands = $this->bands();
-
-        $bands->load(['bookings.events' => function ($query) use ($afterDate)
-        {
-            if ($afterDate)
-            {
-                $query->where('date', '>', $afterDate);
-            }
-            $query->orderBy('date');
-        }, 'bookings.contacts']);
-
-        $events = $bands->flatMap(function ($band)
-        {
-            return $band->bookings->flatMap(function ($booking)
-            {
-                return $booking->events->map(function ($event) use ($booking)
-                {
-                    $event->band_id = $booking->band_id;
-                    $event->booking_name = $booking->name;
-                    $event->booking_id = $booking->id;
-                    $event->contacts = $booking->contacts;
-                    $event->venue_name = $booking->venue_name;
-                    $event->venue_address = $booking->venue_address;
-                    return $event;
-                });
-            });
+        $bandIds = $this->bands()->pluck('id')->toArray();
+        
+        if (empty($bandIds)) {
+            return collect();
+        }
+        
+        // Build the main events query
+        $query = \DB::table('events')
+            ->join('bookings', 'events.eventable_id', '=', 'bookings.id')
+            ->whereIn('bookings.band_id', $bandIds)
+            ->where('events.eventable_type', 'App\\Models\\Bookings') 
+            ->select([
+                'events.date',
+                'events.event_type_id',
+                'event_types.name as event_type_name',
+                'events.id',
+                'events.title',
+                'events.date',
+                'events.time',
+                'events.key',
+                'events.additional_data',
+                'bookings.band_id',
+                'bookings.name as booking_name',
+                'bookings.id as booking_id',
+                'bookings.venue_name',
+                'bookings.venue_address'
+            ])
+            ->join('event_types', 'events.event_type_id', '=', 'event_types.id');
+        
+        // Apply date filter if provided
+        if ($afterDate) {
+            $query->where('events.date', '>', $afterDate);
+        }
+        
+        // Get events
+        $events = $query->orderBy('events.date')->get();
+        
+        if ($events->isEmpty()) {
+            return collect();
+        }
+        
+        // Get all booking IDs from the events
+        $bookingIds = $events->pluck('booking_id')->unique()->toArray();
+        
+        // Load all contacts for these bookings in one query
+        $contacts = \DB::table('booking_contacts') // Adjust table name as needed
+            ->whereIn('booking_id', $bookingIds)
+            ->get()
+            ->groupBy('booking_id');
+        
+        // Attach contacts to events
+        return $events->map(function ($event) use ($contacts) {
+            $event->contacts = $contacts->get($event->booking_id, collect());
+            return $event;
         });
-        return $events->sortBy('date')->values();
     }
 }
