@@ -55,7 +55,7 @@
             <DataTable
               v-model:filters="filters"
               :value="filteredEvents"
-
+              selection-mode="single"
               paginator
               :rows="10"
               :rows-per-page-options="[10, 20, 50, 100]"
