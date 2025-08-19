@@ -5,7 +5,7 @@
         {{ errors.name }}
         <div
           v-if="errors.name"
-          class="alert alert-danger mt-4"
+          class="alert alert-danger mt-4 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-100 px-4 py-3 rounded"
         >
           Errors:
           <ul> 
@@ -15,19 +15,18 @@
         <form
           action="/events"
           method="POST"
-          class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4"
+          class="bg-white dark:bg-gray-800 shadow-md rounded px-8 pt-6 pb-8 mb-4"
           @submit.prevent="createEvent"
         >
           <div class="flex flex-col gap-8">
-            <div class="p-4 border-b">
-              <h2 class="text-2xl ">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 class="text-2xl text-gray-900 dark:text-gray-100">
                 Event Information
               </h2>
-              <p class="text-sm text-gray-500">
+              <p class="text-sm text-gray-500 dark:text-gray-400">
                 Event name/type/load in etc. 
               </p>
             </div>
-
 
             <div class="section">
               <SectionTitle
@@ -35,14 +34,14 @@
                 :title="'Initial Information'"
               />
               <div class="createEventInput">
-                <p class="text-gray-600 dark:text-gray-50">
+                <p class="text-gray-600 dark:text-gray-300">
                   <label for="name">Band</label>
                 </p>
                 <div>
                   <select
                     id="bandDropdown"
                     v-model="form.band_id"
-                    class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded"
+                    class="block appearance-none w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 py-3 px-4 pr-8 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     @change="colorsForBand()"
                   >
                     <option
@@ -56,22 +55,20 @@
                 </div>
               </div>
               <div class="createEventInput">
-                <p class="text-gray-600 dark:text-gray-50">
+                <p class="text-gray-600 dark:text-gray-300">
                   <label for="name">Name</label>
                 </p>
                 <div class="mb-4">
-                  <p-inputtext v-model="form.event_name" />
-                  <input
+                  <Input
                     id="name"
                     v-model="form.event_name"
                     type="text"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     placeholder="Event Name"
-                  >
+                  />
                 </div>
               </div>
               <div class="createEventInput">
-                <p class="text-gray-600 dark:text-gray-50">
+                <p class="text-gray-600 dark:text-gray-300">
                   Event Date
                 </p>
                 <p>
@@ -83,14 +80,14 @@
                 </p>
               </div>
               <div class="createEventInput">
-                <p class="text-gray-600 dark:text-gray-50">
+                <p class="text-gray-600 dark:text-gray-300">
                   <label for="eventType">Event Type</label>
                 </p>
                 <div>
                   <select
                     id="productionDropdown"
                     v-model="form.event_type_id"
-                    class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded"
+                    class="block appearance-none w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 py-3 px-4 pr-8 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     @change="alterProductionNeeded()"
                   >
                     <option
@@ -104,14 +101,11 @@
                 </div>
               </div>
               <div class="createEventInput">
-                <p class="text-gray-600 dark:text-gray-50">
+                <p class="text-gray-600 dark:text-gray-300">
                   Public
                 </p>
                 <p>
-                  <input
-                    v-model="form.public"
-                    type="checkbox"
-                  >
+                  <Checkbox v-model="form.public" />
                 </p>
               </div> 
             </div>
@@ -124,97 +118,80 @@
                 :number="'1a'"
                 :title="'Wedding Information'"
               />
-              <div
-                class="createEventInput"
-              >
-                <p class="text-gray-600 dark:text-gray-50">
+              <div class="createEventInput">
+                <p class="text-gray-600 dark:text-gray-300">
                   <label for="firstDance">First Dance</label>
                 </p>
                 <p>
-                  <input
+                  <Input
                     id="firstDance"
                     v-model="form.first_dance"
                     type="text"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     placeholder="First Dance"
-                  >
+                  />
                 </p>
               </div>
-              <div
-                class="createEventInput"
-              >
-                <p class="text-gray-600 dark:text-gray-50">
+              <div class="createEventInput">
+                <p class="text-gray-600 dark:text-gray-300">
                   <label for="father_daughter">Father / Daughter Dance:</label>
                 </p>
                 <p>
-                  <input
+                  <Input
                     id="secondDance"
                     v-model="form.father_daughter"
                     type="text"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     placeholder="Second Dance"
-                  >
+                  />
                 </p>
               </div>  
-              <div
-                class="createEventInput"
-              >
-                <p class="text-gray-600 dark:text-gray-50">
-                  <label for="father_daughter">Mother / Groom Dance:</label>
+              <div class="createEventInput">
+                <p class="text-gray-600 dark:text-gray-300">
+                  <label for="mother_groom">Mother / Groom Dance:</label>
                 </p>
                 <p>
-                  <input
-                    id="secondDance"
+                  <Input
+                    id="motherGroomDance"
                     v-model="form.mother_groom"
                     type="text"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                    placeholder="Second Dance"
-                  >
+                    placeholder="Mother Groom Dance"
+                  />
                 </p>
               </div>                                 
-              <div
-                class="createEventInput"
-              >
-                <p class="text-gray-600 dark:text-gray-50">
+              <div class="createEventInput">
+                <p class="text-gray-600 dark:text-gray-300">
                   <label for="moneyDance">Money Dance</label>
                 </p>
                 <p>
-                  <input
+                  <Input
                     id="moneyDance"
                     v-model="form.money_dance"
                     type="text"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     placeholder="Money Dance"
-                  >
+                  />
                 </p>
               </div>      
-              <div
-                class="createEventInput"
-              >
-                <p class="text-gray-600 dark:text-gray-50">
+              <div class="createEventInput">
+                <p class="text-gray-600 dark:text-gray-300">
                   <label for="secondDance">Bouquet / Garter</label>
                 </p>
                 <p>
-                  <input
+                  <Input
                     id="bouquetDance"
                     v-model="form.bouquet_garter"
                     type="text"
-                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                     placeholder="Bouquet Stuff"
-                  >
+                  />
                 </p>
               </div> 
-              <div
-                class="createEventInput"
-              >
-                <p class="text-gray-600 dark:text-gray-50">
+              <div class="createEventInput">
+                <p class="text-gray-600 dark:text-gray-300">
                   Second Line
                 </p>
                 <p>
-                  <input
+                  <Checkbox
                     v-model="form.second_line"
                     type="checkbox"
-                  >
+                  />
                 </p>
               </div>   
             </div>
@@ -226,14 +203,14 @@
               />
               <div>
                 <div class="createEventInput">
-                  <p class="text-gray-600 dark:text-gray-50">
+                  <p class="text-gray-600 dark:text-gray-300">
                     <label for="eventType">Production</label>
                   </p>
                   <div>
                     <div class="mb-4">
                       <select
                         v-model="form.production_needed"
-                        class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded"
+                        class="block appearance-none w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 py-3 px-4 pr-8 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option :value="true">
                           Provided by band
@@ -249,29 +226,29 @@
                   v-if="form.event_type_id == 3 || form.event_type_id === 6"
                   class="createEventInput"
                 >
-                  <p class="text-gray-600 dark:text-gray-50">
+                  <p class="text-gray-600 dark:text-gray-300">
                     Backline Provided
                   </p>
                   <p>
-                    <input
+                    <Checkbox
                       v-model="form.backline_provided"
                       type="checkbox"
-                    >
+                    />
                   </p>
                 </div>                          
                 <div class="createEventInput">
-                  <p class="text-gray-600 dark:text-gray-50">
+                  <p class="text-gray-600 dark:text-gray-300">
                     Venue Name
                   </p>
                   <p>
-                    <input
+                    <Input
                       v-model="form.venue_name"
                       type="text"
                       placeholder="Venue Name"
                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                       @input="unsavedChanges=true"
                       @keyup="autoComplete()"
-                    >
+                    />
                                     
                     <ul class="">
                       <li
@@ -287,42 +264,42 @@
                 </div>
  
                 <div class="createEventInput">
-                  <p class="text-gray-600 dark:text-gray-50">
+                  <p class="text-gray-600 dark:text-gray-300">
                     <label for="streetAddress">Street Address</label>
                   </p>
                   <p>
-                    <input
+                    <Input
                       id="streetAddress"
                       v-model="form.address_street"
                       type="text"
                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                       placeholder="P. Sherman, 42"
-                    >
+                    />
                   </p>
                 </div>          
                 <div class="createEventInput">
-                  <p class="text-gray-600 dark:text-gray-50">
+                  <p class="text-gray-600 dark:text-gray-300">
                     <label for="zipCode">City</label>
                   </p>
                   <p>
-                    <input
+                    <Input
                       id="city"
                       v-model="form.city"
                       type="text"
                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                       placeholder="Townsville"
-                    >
+                    />
                   </p>
                 </div>                                 
                 <div class="createEventInput">
-                  <p class="text-gray-600 dark:text-gray-50">
+                  <p class="text-gray-600 dark:text-gray-300">
                     <label for="state">State</label>
                   </p>
                   <p>
                     <select
                       id="stateDropdown"
                       v-model="form.state_id"
-                      class="block appearance-none w-full bg-grey-lighter border border-grey-lighter text-grey-darker py-3 px-4 pr-8 rounded"
+                      class="block appearance-none w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 py-3 px-4 pr-8 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option
                         v-for="state in states"
@@ -335,29 +312,29 @@
                   </p>
                 </div>   
                 <div class="createEventInput">
-                  <p class="text-gray-600 dark:text-gray-50">
+                  <p class="text-gray-600 dark:text-gray-300">
                     <label for="zipCode">Zip Code</label>
                   </p>
                   <p>
-                    <input
+                    <Input
                       id="zipCode"
                       v-model="form.zip"
                       type="text"
                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                       placeholder="70506"
-                    >
+                    />
                   </p>
                 </div> 
                 
                 <div class="createEventInput">
-                  <p class="text-gray-600 dark:text-gray-50">
+                  <p class="text-gray-600 dark:text-gray-300">
                     Outdoors
                   </p>
                   <p>
-                    <input
+                    <Checkbox
                       v-model="form.outdoors"
                       type="checkbox"
-                    >
+                    />
                   </p>
                 </div>
               </div>     
@@ -371,7 +348,7 @@
                 :title="'Band Notes'"
               />                          
               <div class="createEventInput">
-                <p class="text-gray-600 dark:text-gray-50">
+                <p class="text-gray-600 dark:text-gray-300">
                   Notes
                 </p>
                 <p>
@@ -382,7 +359,7 @@
                 </p>
               </div>                                                                                                                                                                                                                                                                                                                                    
               <div class="createEventInput">
-                <p class="text-gray-600 dark:text-gray-50">
+                <p class="text-gray-600 dark:text-gray-300">
                   Color
                 </p>
                 <p>
@@ -393,14 +370,14 @@
                 </p>
               </div>
               <div class="createEventInput">
-                <p class="text-gray-600 dark:text-gray-50">
+                <p class="text-gray-600 dark:text-gray-300">
                   Lodging Provided
                 </p>
                 <p>
-                  <input
+                  <Checkbox
                     v-model="form.lodging"
                     type="checkbox"
-                  >
+                  />
                 </p>
               </div>  
             </div>
@@ -423,7 +400,7 @@
                     v-if="form.event_time !== ''"
                     class="createEventInput"
                   >
-                    <p class="text-gray-600 dark:text-gray-50">
+                    <p class="text-gray-600 dark:text-gray-300">
                       Show Time
                     </p>
                     <p>
@@ -440,7 +417,7 @@
                     v-if="form.event_time !== ''"
                     class="createEventInput"
                   >
-                    <p class="text-gray-600 dark:text-gray-50">
+                    <p class="text-gray-600 dark:text-gray-300">
                       End Time
                     </p>
                     <p>
@@ -458,7 +435,7 @@
                     v-if="form.event_type_id === 1 && form.event_time !== ''"
                     class="createEventInput"
                   >
-                    <p class="text-gray-600 dark:text-gray-50">
+                    <p class="text-gray-600 dark:text-gray-300">
                       Ceremony Time
                     </p>
                     <p>
@@ -470,17 +447,17 @@
                         :time-only="true"
                         hour-format="12"
                       />
-                      On Site: <input
+                      On Site: <Checkbox
                         v-model="form.onsite"
                         type="checkbox"
-                      >
+                      />
                     </p>
                   </div>                                               
                   <div
                     v-if="form.event_time !== ''"
                     class="createEventInput"
                   >
-                    <p class="text-gray-600 dark:text-gray-50">
+                    <p class="text-gray-600 dark:text-gray-300">
                       Quiet Time                                        
                     </p>
                     <p>
@@ -521,7 +498,7 @@
                     v-if="form.event_time !== '' && form.production_needed"
                     class="createEventInput"
                   >
-                    <p class="text-gray-600 dark:text-gray-50">
+                    <p class="text-gray-600 dark:text-gray-300">
                       Production Load In Time
                     </p>
                     <p>
@@ -539,7 +516,7 @@
                     v-if="form.event_time !== ''"
                     class="createEventInput"
                   >
-                    <p class="text-gray-600 dark:text-gray-50">
+                    <p class="text-gray-600 dark:text-gray-300">
                       Rhythm Load In Time
                     </p>
                     <p>
@@ -557,7 +534,7 @@
                     v-if="form.event_time !== ''"
                     class="createEventInput"
                   >
-                    <p class="text-gray-600 dark:text-gray-50">
+                    <p class="text-gray-600 dark:text-gray-300">
                       Band Load In Time
                     </p>
                     <p>
@@ -593,10 +570,12 @@
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
     import moment from 'moment'
     import SectionTitle from './CreateSectionTitle.vue';
+    import Input from '@/Components/Input.vue';
+    import Checkbox from '@/Components/Checkbox.vue';
 
     export default {
         components: {
-            BreezeAuthenticatedLayout,SectionTitle
+            BreezeAuthenticatedLayout,SectionTitle, Input, Checkbox
         },
         props:['eventTypes','bands','states','errors'],
         data(){
@@ -776,12 +755,12 @@
 }
 
 .section{
-  @apply bg-gray-100 shadow-lg rounded-lg p-4;
+  @apply bg-gray-100 dark:bg-gray-900 shadow-lg rounded-lg p-4;
 }
 .createEventInput:last-child{
   @apply border-none
 }
 .createEventInput{
-  @apply md:grid md:grid-cols-2 hover:bg-gray-50 md:space-y-0 space-y-1 p-4 border-b
+  @apply md:grid md:grid-cols-2 hover:bg-gray-50 hover:dark:bg-gray-800 md:space-y-0 space-y-1 p-4 border-b
 }
 </style>
