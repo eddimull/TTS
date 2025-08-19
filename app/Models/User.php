@@ -234,8 +234,7 @@ class User extends Authenticatable
         }
         
         // Build the main events query
-        $query = \DB::table('events')
-            ->join('bookings', 'events.eventable_id', '=', 'bookings.id')
+        $query = Events::join('bookings', 'events.eventable_id', '=', 'bookings.id')
             ->whereIn('bookings.band_id', $bandIds)
             ->where('events.eventable_type', 'App\\Models\\Bookings') 
             ->select([
