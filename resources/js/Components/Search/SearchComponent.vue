@@ -2,19 +2,35 @@
   <div class="relative">
     <div class="relative">
       <!-- Close button for overlay mode -->
-      <div v-if="isOverlay" class="absolute inset-y-0 left-0 pl-3 flex items-center">
+      <div
+        v-if="isOverlay"
+        class="absolute inset-y-0 left-0 pl-3 flex items-center"
+      >
         <button
-          @click="$emit('close')"
           class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none"
+          @click="$emit('close')"
         >
-          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          <svg
+            class="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
       </div>
       
       <!-- Search icon for normal mode -->
-      <div v-if="!isOverlay" class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+      <div
+        v-if="!isOverlay"
+        class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+      >
         <svg
           class="h-5 w-5 text-gray-400"
           xmlns="http://www.w3.org/2000/svg"
@@ -30,8 +46,9 @@
       </div>
       
       <input
-        v-model="searchQuery"
         id="everythingSearchInput"
+        ref="searchInput"
+        v-model="searchQuery"
         type="text"
         :placeholder="isOverlay ? 'Search bookings, contacts, events...' : 'Search bookings, contacts, events...'"
         :class="[
@@ -46,7 +63,6 @@
         @keydown.arrow-down="navigateDown"
         @keydown.arrow-up="navigateUp"
         @keydown.enter="selectResult"
-        ref="searchInput"
       >
       
       <!-- Clear Button -->
@@ -55,13 +71,23 @@
         class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-auto"
       >
         <button
-          @mousedown.prevent
-          @click="clearSearch"
           class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none"
           title="Clear search"
+          @mousedown.prevent
+          @click="clearSearch"
         >
-          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          <svg
+            class="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
       </div>
@@ -101,7 +127,10 @@
         isOverlay ? 'max-h-[32rem] w-full' : (expandedView ? 'max-h-[32rem] w-[32rem] max-w-[90vw]' : 'max-h-96 w-full')
       ]"
     >
-      <div v-if="loading" class="px-4 py-2 text-center">
+      <div
+        v-if="loading"
+        class="px-4 py-2 text-center"
+      >
         <span class="text-gray-500 dark:text-gray-400">Searching...</span>
       </div>
       
@@ -113,8 +142,8 @@
               {{ totalResults }} result{{ totalResults !== 1 ? 's' : '' }}
             </span>
             <button
-              @click="expandedView = !expandedView"
               class="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 flex items-center"
+              @click="expandedView = !expandedView"
             >
               <span>{{ expandedView ? 'Collapse' : 'Expand' }}</span>
               <svg
@@ -123,7 +152,12 @@
                 stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 9l-7 7-7-7"
+                />
               </svg>
             </button>
           </div>
@@ -147,32 +181,59 @@
             <div class="flex items-center">
               <div class="flex-shrink-0">
                 <div class="h-8 w-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                  <svg class="h-4 w-4 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  <svg
+                    class="h-4 w-4 text-blue-600 dark:text-blue-400"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
               </div>
               <div class="ml-3 flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 dark:text-gray-100" :class="expandedView ? '' : 'truncate'">
+                <p
+                  class="text-sm font-medium text-gray-900 dark:text-gray-100"
+                  :class="expandedView ? '' : 'truncate'"
+                >
                   {{ booking.name }}
                 </p>
-                <p v-if="!expandedView" class="text-sm text-gray-500 dark:text-gray-400">
-                  {{ formatDate(booking.date) }}
+                <p
+                  v-if="!expandedView"
+                  class="text-sm text-gray-500 dark:text-gray-400"
+                >
+                  {{ formatDate(booking.date) }} 
                 </p>                
-                <p class="text-sm text-gray-500 dark:text-gray-400" :class="expandedView ? '' : 'truncate'">
+                <p
+                  class="text-sm text-gray-500 dark:text-gray-400"
+                  :class="expandedView ? '' : 'truncate'"
+                >
                   {{ booking.venue_name }} • {{ formatDate(booking.date) }}
                 </p>
-                <div v-if="expandedView" class="mt-2 space-y-1">
-                  <p v-if="booking.band_name" class="text-xs text-gray-600 dark:text-gray-300">
+                <div
+                  v-if="expandedView"
+                  class="mt-2 space-y-1"
+                >
+                  <p
+                    v-if="booking.band_name"
+                    class="text-xs text-gray-600 dark:text-gray-300"
+                  >
                     Band: {{ booking.band_name }}
                   </p>
-                  <p v-if="booking.status" class="text-xs">
-                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
-                          :class="getStatusClass(booking.status)">
+                  <p
+                    v-if="booking.status"
+                    class="text-xs"
+                  >
+                    <span
+                      class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                      :class="getStatusClass(booking.status)"
+                    >
                       {{ booking.status }}
                     </span>
                   </p>
-                  <p v-if="booking.notes" class="text-xs text-gray-600 dark:text-gray-300">
+                  <p
+                    v-if="booking.notes"
+                    class="text-xs text-gray-600 dark:text-gray-300"
+                  >
                     Notes: {{ booking.notes }}
                   </p>
                 </div>
@@ -199,29 +260,54 @@
             <div class="flex items-center">
               <div class="flex-shrink-0">
                 <div class="h-8 w-8 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center">
-                  <svg class="h-4 w-4 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"/>
+                  <svg
+                    class="h-4 w-4 text-green-600 dark:text-green-400"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
                   </svg>
                 </div>
               </div>
               <div class="ml-3 flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 dark:text-gray-100" :class="expandedView ? '' : 'truncate'">
+                <p
+                  class="text-sm font-medium text-gray-900 dark:text-gray-100"
+                  :class="expandedView ? '' : 'truncate'"
+                >
                   {{ contact.name }}
                 </p>
-                <p class="text-sm text-gray-500 dark:text-gray-400" :class="expandedView ? '' : 'truncate'">
+                <p
+                  class="text-sm text-gray-500 dark:text-gray-400"
+                  :class="expandedView ? '' : 'truncate'"
+                >
                   {{ contact.email }}
                 </p>
-                <div v-if="expandedView" class="mt-2 space-y-1">
-                  <p v-if="contact.phone" class="text-xs text-gray-600 dark:text-gray-300">
+                <div
+                  v-if="expandedView"
+                  class="mt-2 space-y-1"
+                >
+                  <p
+                    v-if="contact.phone"
+                    class="text-xs text-gray-600 dark:text-gray-300"
+                  >
                     Phone: {{ contact.phone }}
                   </p>
-                  <p v-if="contact.company" class="text-xs text-gray-600 dark:text-gray-300">
+                  <p
+                    v-if="contact.company"
+                    class="text-xs text-gray-600 dark:text-gray-300"
+                  >
                     Company: {{ contact.company }}
                   </p>
-                  <p v-if="contact.role" class="text-xs text-gray-600 dark:text-gray-300">
+                  <p
+                    v-if="contact.role"
+                    class="text-xs text-gray-600 dark:text-gray-300"
+                  >
                     Role: {{ contact.role }}
                   </p>
-                  <p v-if="contact.last_contacted" class="text-xs text-gray-500 dark:text-gray-400">
+                  <p
+                    v-if="contact.last_contacted"
+                    class="text-xs text-gray-500 dark:text-gray-400"
+                  >
                     Last contacted: {{ formatDate(contact.last_contacted) }}
                   </p>
                 </div>
@@ -248,28 +334,58 @@
             <div class="flex items-center">
               <div class="flex-shrink-0">
                 <div class="h-8 w-8 bg-purple-100 dark:bg-purple-900 rounded-full flex items-center justify-center">
-                  <svg class="h-4 w-4 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+                  <svg
+                    class="h-4 w-4 text-purple-600 dark:text-purple-400"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
                   </svg>
                 </div>
               </div>
               <div class="ml-3 flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 dark:text-gray-100" :class="expandedView ? '' : 'truncate'">
+                <p
+                  class="text-sm font-medium text-gray-900 dark:text-gray-100"
+                  :class="expandedView ? '' : 'truncate'"
+                >
                   {{ chart.title }}
                 </p>
-                <p class="text-sm text-gray-500 dark:text-gray-400" :class="expandedView ? '' : 'truncate'">
+                <p
+                  class="text-sm text-gray-500 dark:text-gray-400"
+                  :class="expandedView ? '' : 'truncate'"
+                >
                   by {{ chart.composer }}
                 </p>
-                <div v-if="expandedView" class="mt-2 space-y-1">
-                  <p v-if="chart.arranger" class="text-xs text-gray-600 dark:text-gray-300">
+                <div
+                  v-if="expandedView"
+                  class="mt-2 space-y-1"
+                >
+                  <p
+                    v-if="chart.arranger"
+                    class="text-xs text-gray-600 dark:text-gray-300"
+                  >
                     Arranged by: {{ chart.arranger }}
                   </p>                  
-                  <p v-if="chart.description" class="text-xs text-gray-600 dark:text-gray-300">
+                  <p
+                    v-if="chart.description"
+                    class="text-xs text-gray-600 dark:text-gray-300"
+                  >
                     {{ chart.description }}
                   </p>
-                  <div v-if="chart.uploads?.length > 0" class="flex items-center text-xs text-gray-500 dark:text-gray-400">
-                    <svg class="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                  <div
+                    v-if="chart.uploads?.length > 0"
+                    class="flex items-center text-xs text-gray-500 dark:text-gray-400"
+                  >
+                    <svg
+                      class="h-3 w-3 mr-1"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fill-rule="evenodd"
+                        d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
+                        clip-rule="evenodd"
+                      />
                     </svg>
                     {{ chart.uploads.length }} file{{ chart.uploads.length !== 1 ? 's' : '' }}
                   </div>
@@ -280,7 +396,10 @@
         </div>
 
         <!-- No Results -->
-        <div v-if="searchQuery && !hasResults" class="px-4 py-2 text-center">
+        <div
+          v-if="searchQuery && !hasResults"
+          class="px-4 py-2 text-center"
+        >
           <span class="text-gray-500 dark:text-gray-400">No results found for "{{ searchQuery }}"</span>
         </div>
       </div>
@@ -298,6 +417,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { router } from '@inertiajs/vue3'
+import { DateTime } from 'luxon'
 import axios from 'axios'
 
 const props = defineProps({
@@ -476,11 +596,7 @@ const clearSearch = () => {
 }
 
 const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
+  return DateTime.fromISO(dateString).toLocaleString(DateTime.DATE_MED)
 }
 
 const getStatusClass = (status) => {
