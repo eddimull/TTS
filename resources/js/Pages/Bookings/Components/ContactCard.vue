@@ -30,7 +30,7 @@
       <p v-if="contact.pivot.notes">
         <strong>Notes:</strong> {{ contact.pivot.notes }}
       </p>
-      <p
+      <div
         v-if="contact.booking_history"
         class="pt-4 border-t mt-4"
       >
@@ -48,7 +48,7 @@
             </NavLink>
           </li>
         </ul>
-      </p>
+      </div>
       <div
         v-if="false"
         class="mt-4 space-x-2"
@@ -74,77 +74,56 @@
       @submit.prevent="updateContact"
     >
       <div>
-        <label
-          for="name"
-          class="block text-sm font-medium text-gray-700 dark:text-gray-50"
-        >Name</label>
-        <input
+        <Input
           id="name"
           v-model="form.name"
+          label="name"
           type="text"
           required
-          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-        >
+          class="mt-1 block w-full rounded-md"
+        />
       </div>
       <div>
-        <label
-          for="email"
-          class="block text-sm font-medium text-gray-700 dark:text-gray-50"
-        >Email</label>
-        <input
+        <Input
           id="email"
           v-model="form.email"
+          label="email"
           type="email"
           required
-          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-        >
+          class="mt-1 block w-full rounded-md"
+        />
       </div>
       <div>
-        <label
-          for="phone"
-          class="block text-sm font-medium text-gray-700 dark:text-gray-50"
-        >Phone</label>
-        <input
+        <Input
           id="phone"
           v-model="form.phone"
+          label="phone"
           type="tel"
-          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-        >
+          class="mt-1 block w-full rounded-md"
+        />
       </div>
       <div>
-        <label
-          for="role"
-          class="block text-sm font-medium text-gray-700 dark:text-gray-50"
-        >Role</label>
-        <input
+        <Input
           id="role"
           v-model="form.role"
+          label="Role"
           type="text"
-          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-        >
+          class="mt-1 block w-full rounded-md"
+        />
       </div>
       <div class="flex my-2 items-center">
-        <input
+        <Checkbox
           id="is_primary"
           v-model="form.is_primary"
           type="checkbox"
-          class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-        >
-        <label
-          for="is_primary"
-          class="ml-2 block text-sm text-gray-900"
-        >Primary Contact</label>
+          label="Primary Contact"
+        />
       </div>
       <div>
-        <label
-          for="notes"
-          class="block text-sm font-medium text-gray-700 dark:text-gray-50"
-        >Notes</label>
-        <textarea
-          id="notes"
+        <TextArea
           v-model="form.notes"
-          rows="3"
-          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+          label="Notes"
+          name="notes"          
         />
       </div>
       <div class="space-x-2">
@@ -174,6 +153,10 @@
   import Menu from 'primevue/menu';
   import Button from 'primevue/button';
   import NavLink from '@/Components/NavLink.vue';
+  import Input from '@/Components/Input.vue';
+  import Label from '@/Components/Label.vue';
+  import Checkbox from '@/Components/Checkbox.vue';
+  import TextArea from '@/Components/TextArea.vue';
   
   const props = defineProps({
     contact: {
@@ -232,43 +215,45 @@
   const updateContact = () => {
     form.put(route('Update Booking Contact', [props.bandId, props.bookingId, props.contact.pivot.id]), {
       preserveScroll: true,
-      preserveState: false,
+      preserveState: true,
       onSuccess: () => {
         isEditing.value = false;
       },
     });
   };
   
+ 
   const deleteContact = () => {
     Swal.fire({
-    title: 'Are you sure?',
-    text: "You won't be able to revert this!",
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#3085d6',
-    cancelButtonColor: '#d33',
-    confirmButtonText: 'Yes, delete it!'
-  }).then((result) => {
-    if (result.isConfirmed) {
-      router.delete(route('Delete Booking Contact', { band: props.bandId, booking: props.bookingId, contact: props.contact.pivot.id})), {
-        preserveScroll: true,
-        preserveState: true,
-        onSuccess: () => {
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, delete it!'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        router.delete(route('Delete Booking Contact', { 
+          band: props.bandId, 
+          booking: props.bookingId, 
+          contact: props.contact.pivot.id
+        }), {
+          preserveScroll: true,
+          preserveState: true,
+          onSuccess: () => {
+            router.reload();
+          },
+          onError: () => {
             Swal.fire(
-            'Deleted!',
-            'The contact has been deleted.',
-            'success'
-          );
-        },
-        onError: () => {
-          Swal.fire(
-            'Error!',
-            'There was a problem deleting the contact.',
-            'error'
-          );
-        },
-      };
-    }
-  });
-};
+              'Error!',
+              'There was a problem deleting the contact.',
+              'error'
+            );
+          },
+        });
+      }
+    });
+  };
+
   </script>
