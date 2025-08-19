@@ -165,13 +165,15 @@ class BookingsController extends Controller
     public function updateContact(BookingContactRequest $request, Bands $band, Bookings $booking, BookingContacts $contact)
     {
         $contact->update($request->validated());
+        $contact->contact->update(collect($request->validated())->only(['name', 'email', 'phone'])->filter()->toArray());
         return redirect()->back()->with('successMessage', "{$request->name} has been updated.");
     }
 
     public function destroyContact(Bands $band, Bookings $booking, BookingContacts $contact)
     {
         $contact->delete($contact);
-        return redirect()->back()->with('successMessage', "{$contact->name} has been removed.");
+        
+        return redirect()->back()->with('successMessage', "{$contact->contact->name} has been removed from booking.");
     }
 
 
