@@ -30,12 +30,22 @@ class EventsController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
-        $afterDate = Carbon::now()->subMonth(1);
-        $events = Auth::user()->getEventsAttribute($afterDate);
+        $includeAll = $request->boolean('include_all', false);
+        
+        if ($includeAll) {
+            // Get all events without date filtering
+            $events = Auth::user()->getEventsAttribute();
+        } else {
+            // Get events from 1 month ago (existing behavior)
+            $afterDate = Carbon::now()->subMonth(1);
+            $events = Auth::user()->getEventsAttribute($afterDate);
+        }
+        
         return Inertia::render('Events/Index', [
-            'events' => $events
+            'events' => $events,
+            'includeAll' => $includeAll
         ]);
     }
 
