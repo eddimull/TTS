@@ -73,9 +73,10 @@ class StoreBookingsRequest extends FormRequest
             $endTime = $startTime->copy()->addHours($validated['duration']);
 
             $validated['end_time'] = $endTime->format('H:i');
+            
             unset($validated['duration']);
         }
-
+        
         return $validated;
     }
 }
