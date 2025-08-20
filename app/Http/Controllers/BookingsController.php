@@ -56,14 +56,31 @@ class BookingsController extends Controller
     public function create(Bands $band)
     {
         $eventTypes = EventTypes::all();
+        $bookingDetails = $band->bookings()
+            ->with('eventType')
+            ->where('status', '!=', 'cancelled')
+            ->get()
+            ->keyBy('date')
+            ->map(function ($booking) {
+                return [
+                    'name' => $booking->name,
+                    'event_type' => $booking->eventType->name ?? 'Unknown',
+                    'start_time' => $booking->start_time,
+                    'status' => $booking->status,
+                ];
+            });
+        
         return Inertia::render('Bookings/Create', [
             'band' => $band,
-            'eventTypes' => $eventTypes
+            'eventTypes' => $eventTypes,
+            'bookedDates' => $band->bookings()->where('status', '!=', 'cancelled')->pluck('date')->toArray(),
+            'bookingDetails' => $bookingDetails,
         ]);
     }
 
     public function store(StoreBookingsRequest $request, Bands $band)
     {
+        
         $booking = $band->bookings()->create($request->validated());
 
         if ($booking->contract_option === 'none')
@@ -84,11 +101,10 @@ class BookingsController extends Controller
             'time' => $booking->start_time,
             'additional_data' => [
                 'times' => [
-                    ['title' => 'Load In', 'time' => Carbon::parse($booking->time)->subHours(4)->format('Y-m-d H:i')],
-                    ['title' => 'Soundcheck', 'time' => Carbon::parse($booking->time)->subHours(3)->format('Y-m-d H:i')],
-                    ['title' => 'Quiet', 'time' => Carbon::parse($booking->time)->subHours(1)->format('Y-m-d H:i')],
-                    ['title' => 'Show Time', 'time' => Carbon::parse($booking->time)->format('Y-m-d H:i')],
-                    ['title' => 'End Time', 'time' => Carbon::parse($booking->end_time)->format('Y-m-d H:i')],
+                    ['title' => 'Load In', 'time' => $booking->start_date_time->copy()->subHours(4)->format('Y-m-d H:i')],
+                    ['title' => 'Soundcheck', 'time' => $booking->start_date_time->copy()->subHours(3)->format('Y-m-d H:i')],
+                    ['title' => 'Quiet', 'time' => $booking->start_date_time->copy()->subHours(1)->format('Y-m-d H:i')],
+                    ['title' => 'End Time', 'time' => $booking->end_date_time->format('Y-m-d H:i')],
                 ],
                 'backline_provided' => false,
                 'production_needed' => true,
