@@ -3,14 +3,16 @@
 namespace App\Models;
 
 use App\Casts\Price;
-use App\Http\Traits\BookingTraits;
 use App\Models\Contracts;
+use Laravel\Scout\Searchable;
+use App\Casts\BookingDateTime;
+use App\Http\Traits\BookingTraits;
 use App\Models\Interfaces\Contractable;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Laravel\Scout\Searchable;
 
 class Bookings extends Model implements Contractable
 {
@@ -100,6 +102,28 @@ class Bookings extends Model implements Contractable
     {
         $totalPayments = $this->payments()->sum('amount');
         return $totalPayments >= $this->price;
+    }
+
+    public function eventType()
+    {
+        return $this->belongsTo(EventTypes::class, 'event_type_id');
+    }
+
+    public function getStartDateTimeAttribute(): ?Carbon
+    {
+        return Carbon::parse($this->date->format('Y-m-d') . ' ' . $this->start_time->format('H:i'));
+    }
+
+    public function getEndDateTimeAttribute(): ?Carbon
+    {
+        $endTime = Carbon::parse($this->date->format('Y-m-d') . ' ' . $this->end_time->format('H:i'))->copy();
+
+        $startTime = Carbon::parse($this->date->format('Y-m-d') . ' ' . $this->start_time->format('H:i'))->copy();
+
+        if ($endTime->lt($startTime)) {
+            $endTime->addDay();
+        }
+        return $endTime;
     }
 
     public function getAmountPaidAttribute()
