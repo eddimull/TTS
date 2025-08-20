@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Models\User;
 use Inertia\Inertia;
 use App\Models\Bands;
 use App\Models\BandOwners;
+use Illuminate\Http\Request;
 use App\Models\StripeAccounts;
-use Illuminate\Support\Facades\Auth;
-use App\Models\User;
-use App\Notifications\TTSNotification;
 use App\Services\CalendarService;
+use Illuminate\Support\Facades\Auth;
+use App\Notifications\TTSNotification;
+use App\Http\Requests\CreateCalendarRequest;
 
 class BandsController extends Controller
 {
@@ -113,9 +114,23 @@ class BandsController extends Controller
     {
         $calService = new CalendarService($band);
         $calService->syncEvents();
+        $calService->syncBookings();
 
         return back()->with('successMessage', 'Events written to your calendar!');
     }
+
+    public function createCalendar(CreateCalendarRequest $request, Bands $band)
+    {
+        $calService = new CalendarService($band);
+        $calendarId = $calService->createBandCalendar();
+        
+        if ($calendarId) {
+            return back()->with('successMessage', 'Calendar created successfully! Calendar ID: ' . $calendarId);
+        } else {
+            return back()->withErrors(['Failed to create calendar. Please check the logs for more details.']);
+        }
+    }
+
 
     /**
      * Update the specified resource in storage.
@@ -263,5 +278,41 @@ class BandsController extends Controller
                 'booking_history' => $contact->booking_history
             ];
         });
+    }
+
+    public function grantCalendarAccess(Request $request, Bands $band)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'role' => 'required|in:reader,writer,owner'
+        ]);
+
+        // Find the user by email
+        $user = \App\Models\User::where('email', $request->email)->first();
+        
+        if (!$user) {
+            return back()->withErrors(['User with email ' . $request->email . ' not found.']);
+        }
+
+        $calService = new CalendarService($band);
+        $success = $calService->grantUserAccess(null, $user, $request->role);
+        
+        if ($success) {
+            return back()->with('successMessage', 'Calendar access granted to ' . $request->email);
+        } else {
+            return back()->withErrors(['Failed to grant calendar access. Please check the logs for more details.']);
+        }
+    }
+
+    public function syncBandCalendarAccess(Bands $band)
+    {
+        $calService = new CalendarService($band);
+        $success = $calService->grantBandAccess();
+        
+        if ($success) {
+            return back()->with('successMessage', 'All band members now have calendar access!');
+        } else {
+            return back()->withErrors(['Failed to sync band member access. Please check the logs for more details.']);
+        }
     }
 }

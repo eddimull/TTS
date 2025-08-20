@@ -17,6 +17,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{band}/uploadLogo', [BandsController::class, 'uploadLogo'])->middleware(['owner'])->name('bands.uploadLogo');
         Route::get('/{band}/setupStripe', [BandsController::class, 'setupStripe'])->middleware(['owner'])->name('bands.setupStripe');
         Route::post('/{band}/syncCalendar', [BandsController::class, 'syncCalendar'])->middleware(['owner'])->name('bands.syncCalendar');
+        Route::post('/{band}/createCalendar', [BandsController::class, 'createCalendar'])->middleware(['owner'])->name('bands.createCalendar');
+        Route::post('/{band}/grantCalendarAccess', [BandsController::class, 'grantCalendarAccess'])->middleware(['owner'])->name('bands.grantCalendarAccess');
+        Route::post('/{band}/syncBandCalendarAccess', [BandsController::class, 'syncBandCalendarAccess'])->middleware(['owner'])->name('bands.syncBandCalendarAccess');
     });
 
     // Invitations routes

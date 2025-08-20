@@ -96,57 +96,48 @@
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Google Calendar ID
             </label>
-            <input
-              v-model="form.calendar_id"
-              type="text"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-              placeholder="your-calendar-id@group.calendar.google.com"
-            >
-              
-            <!-- Instructions Toggle -->
-            <button
-              type="button"
-              class="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
-              @click="showInstructions = !showInstructions"
-            >
-              <svg
-                class="w-4 h-4 transition-transform"
-                :class="{ 'rotate-180': showInstructions }"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+            <div class="flex gap-3">
+              <input
+                v-model="form.calendar_id"
+                type="text"
+                class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                placeholder="your-calendar-id@group.calendar.google.com"
+                :readonly="form.calendar_id"
               >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M19 9l-7 7-7-7"
-                />
-              </svg>
-              How to integrate with Google Calendar
-            </button>
-
-            <!-- Instructions -->
-            <div
-              v-if="showInstructions"
-              class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
+              <Button
+                v-if="!form.calendar_id"
+                type="button"
+                label="Create Calendar"
+                icon="pi pi-plus"
+                severity="success"
+                size="small"
+                :loading="creatingCalendar"
+                @click="createCalendar"
+              />
+            </div>
+            
+            <div 
+              v-if="form.calendar_id"
+              class="mt-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg"
             >
-              <p class="text-sm text-gray-700 dark:text-gray-300 mb-3">
-                To set up calendar integration, follow these steps:
-              </p>
-              <ol class="text-sm text-gray-700 dark:text-gray-300 space-y-2 list-decimal list-inside">
-                <li>
-                  Go to <a
-                    href="https://calendar.google.com"
-                    target="_blank"
-                    class="text-blue-600 dark:text-blue-400 hover:underline"
-                  >Google Calendar</a>
-                </li>
-                <li>Under "My calendars", click the three dots next to your calendar and select "Settings and sharing"</li>
-                <li>Find "Share with specific people" and add: <code class="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-xs">ttscalendar@threethirtyseven.iam.gserviceaccount.com</code></li>
-                <li>Scroll down to find your Calendar ID under "Integrate calendar"</li>
-                <li>Copy the Calendar ID and paste it in the field above</li>
-              </ol>
+              <div class="flex items-center gap-2">
+                <svg
+                  class="w-5 h-5 text-green-600 dark:text-green-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                <span class="text-green-800 dark:text-green-200 font-medium text-sm">
+                  Calendar configured and ready to sync
+                </span>
+              </div>
             </div>
           </div>
 
@@ -405,6 +396,129 @@
             </transition>
           </div>
         </div>
+
+        <!-- Calendar Access Panel -->
+        <div
+          v-if="activePanel === 'Calendar Access'"
+          class="space-y-6"
+        >
+          <div
+            v-if="!form.calendar_id"
+            class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4"
+          >
+            <div class="flex items-center gap-3">
+              <svg
+                class="w-6 h-6 text-yellow-600 dark:text-yellow-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z"
+                />
+              </svg>
+              <div>
+                <h3 class="font-medium text-yellow-800 dark:text-yellow-200">
+                  No Calendar Configured
+                </h3>
+                <p class="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                  Please create or configure a Google Calendar first to manage access.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div v-else>
+            <!-- Grant Access Form -->
+            <div class="border-b border-gray-200 dark:border-gray-600 pb-6">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                Grant Calendar Access
+              </h3>
+              <div v-if="!grantingAccess">
+                <Button
+                  label="Grant Access to User"
+                  icon="pi pi-calendar-plus"
+                  @click="grantingAccess = true"
+                />
+              </div>
+              
+              <transition name="slide-down">
+                <div
+                  v-if="grantingAccess"
+                  class="space-y-4"
+                >
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Email Address
+                    </label>
+                    <input
+                      v-model="calendarAccess.email"
+                      type="email"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                      placeholder="user@example.com"
+                      required
+                    >
+                  </div>
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Access Level
+                    </label>
+                    <select
+                      v-model="calendarAccess.role"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                    >
+                      <option value="reader">
+                        Reader (view only)
+                      </option>
+                      <option value="writer">
+                        Writer (can edit events)
+                      </option>
+                      <option value="owner">
+                        Owner (full access)
+                      </option>
+                    </select>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <Button
+                      label="Grant Access"
+                      icon="pi pi-check"
+                      :loading="grantingAccessLoading"
+                      @click="grantCalendarAccess"
+                    />
+                    <Button
+                      label="Cancel"
+                      icon="pi pi-times"
+                      severity="secondary"
+                      text
+                      size="small"
+                      @click="cancelGrantAccess"
+                    />
+                  </div>
+                </div>
+              </transition>
+            </div>
+
+            <!-- Sync All Band Members -->
+            <div class="pt-6">
+              <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                Sync Band Members
+              </h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                Grant calendar access to all current band members and owners automatically.
+              </p>
+              <Button
+                label="Sync All Band Members"
+                icon="pi pi-sync"
+                severity="info"
+                :loading="syncingMembers"
+                @click="syncAllBandMembers"
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     <Container />
@@ -416,7 +530,6 @@ import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
 import FileUpload from 'primevue/fileupload';
 export default {
   components: {
-    BreezeAuthenticatedLayout,
     FileUpload,
   },
   layout: BreezeAuthenticatedLayout,
@@ -433,6 +546,14 @@ export default {
       invite: {
         email: ''
       },
+      creatingCalendar: false,
+      grantingAccess: false,
+      grantingAccessLoading: false,
+      syncingMembers: false,
+      calendarAccess: {
+        email: '',
+        role: 'writer'
+      },
       panels: [
         {
           name: 'Details',
@@ -440,6 +561,9 @@ export default {
         }, {
           name: 'Band Members',
           icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>'
+        }, {
+          name: 'Calendar Access',
+          icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>'
         }],
       form: {
         name: this.band.name,
@@ -468,7 +592,7 @@ export default {
       if (this.form.site_name.length > 0) {
 
         let message = this.form.site_name;
-        let urlsafeName = message.replace(/[^a-zA-Z0-9\-_]/gm, "")
+        let urlsafeName = message.replace(/[^aA-zZ0-9\-_]/gm, "")
         this.urlWarn = urlsafeName !== this.form.site_name
         this.form.site_name = urlsafeName;
 
@@ -542,6 +666,55 @@ export default {
           this.syncing = false;
         }
       })
+    },
+    createCalendar() {
+      this.creatingCalendar = true;
+      this.$inertia.post('/bands/' + this.band.id + '/createCalendar', {}, {
+        onSuccess: (page) => {
+          this.creatingCalendar = false;
+          // Update the form with the new calendar_id if it was created
+          if (page.props.band && page.props.band.calendar_id) {
+            this.form.calendar_id = page.props.band.calendar_id;
+          }
+        },
+        onError: () => {
+          this.creatingCalendar = false;
+        }
+      });
+    },
+    grantCalendarAccess() {
+      this.grantingAccessLoading = true;
+      this.$inertia.post(`/bands/${this.band.id}/grantCalendarAccess`, {
+        email: this.calendarAccess.email,
+        role: this.calendarAccess.role
+      }, {
+        onSuccess: () => {
+          this.$swal.fire("Access Granted", `Calendar access granted to ${this.calendarAccess.email}`, "success");
+          this.cancelGrantAccess();
+        },
+        onError: () => {
+          this.grantingAccessLoading = false;
+        },
+        onFinish: () => {
+          this.grantingAccessLoading = false;
+        }
+      });
+    },
+    cancelGrantAccess() {
+      this.grantingAccess = false;
+      this.calendarAccess.email = '';
+      this.calendarAccess.role = 'writer';
+    },
+    syncAllBandMembers() {
+      this.syncingMembers = true;
+      this.$inertia.post(`/bands/${this.band.id}/syncBandCalendarAccess`, {}, {
+        onSuccess: () => {
+          this.$swal.fire("Members Synced", "All band members now have calendar access", "success");
+        },
+        onFinish: () => {
+          this.syncingMembers = false;
+        }
+      });
     }
   }
 }
