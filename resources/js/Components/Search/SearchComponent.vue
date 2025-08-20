@@ -610,11 +610,11 @@ const getStatusClass = (status) => {
 }
 
 // Auto-focus when overlay opens
-onMounted(() => {
-  if (props.isOverlay) {
-    searchInput.value?.focus()
-  }
-})
+// onMounted(() => {
+//   if (props.isOverlay) {
+//     searchInput.value?.focus()
+//   }
+// })
 
 // Watch for route changes to close search
 watch(() => router.page, () => {

@@ -56,9 +56,25 @@ class BookingsController extends Controller
     public function create(Bands $band)
     {
         $eventTypes = EventTypes::all();
+        $bookingDetails = $band->bookings()
+            ->with('eventType')
+            ->where('status', '!=', 'cancelled')
+            ->get()
+            ->keyBy('date')
+            ->map(function ($booking) {
+                return [
+                    'name' => $booking->name,
+                    'event_type' => $booking->eventType->name ?? 'Unknown',
+                    'start_time' => $booking->start_time,
+                    'status' => $booking->status,
+                ];
+            });
+        
         return Inertia::render('Bookings/Create', [
             'band' => $band,
-            'eventTypes' => $eventTypes
+            'eventTypes' => $eventTypes,
+            'bookedDates' => $band->bookings()->where('status', '!=', 'cancelled')->pluck('date')->toArray(),
+            'bookingDetails' => $bookingDetails,
         ]);
     }
 

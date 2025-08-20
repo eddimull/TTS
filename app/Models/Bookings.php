@@ -104,6 +104,11 @@ class Bookings extends Model implements Contractable
         return $totalPayments >= $this->price;
     }
 
+    public function eventType()
+    {
+        return $this->belongsTo(EventTypes::class, 'event_type_id');
+    }
+
     public function getStartDateTimeAttribute(): ?Carbon
     {
         return Carbon::parse($this->date->format('Y-m-d') . ' ' . $this->start_time->format('H:i'));
