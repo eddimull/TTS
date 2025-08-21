@@ -13,7 +13,7 @@
                 : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600',
               'flex-1 py-3 px-4 font-medium transition-colors duration-200 flex items-center justify-center gap-2'
             ]"
-            @click="activePanel = panel.name"
+            @click="gotoPage(panel.name.toLowerCase())"
           >
             <span
               class="w-5 h-5"
@@ -23,537 +23,149 @@
           </button>
         </div>
 
-        <form
-          v-if="activePanel == 'Details'"
-          :action="'/bands/' + band.id"
-          method="PATCH"
-          @submit.prevent="updateBand"
-        >
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Band Name
-            </label>
-            <input
-              v-model="form.name"
-              type="text"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-              placeholder="Enter band name"
-              required
-            >
-          </div>
-          <!-- Site Name -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Page Name (URL)
-            </label>
-            <input
-              v-model="form.site_name"
-              type="text"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-              placeholder="band_name"
-              pattern="([a-zA-z0-9\-_]+)"
-              @input="filter"
-            >
-            <p
-              v-if="urlWarn"
-              class="mt-1 text-sm text-red-600 dark:text-red-400"
-            >
-              Only letters, numbers, underscores, and hyphens are allowed
-            </p>
-          </div>
-          <!-- Logo -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Band Logo
-            </label>
-            <div class="space-y-3">
-              <div
-                v-if="band.logo"
-                class="flex items-center gap-4"
-              >
-                <img
-                  :src="band.logo"
-                  alt="Current logo"
-                  class="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-gray-600"
-                >
-                <span class="text-sm text-gray-600 dark:text-gray-400">Current logo</span>
-              </div>
-              <FileUpload
-                ref="fileUpload"
-                mode="basic"
-                name="logo"
-                accept="image/*"
-                :auto="true"
-                :custom-upload="true"
-                choose-label="Upload New Logo"
-                class="w-full"
-                @uploader="uploadLogo"
-              />
-            </div>
-          </div>
-          <!-- Google Calendar Integration -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Google Calendar ID
-            </label>
-            <div class="flex gap-3">
-              <input
-                v-model="form.calendar_id"
-                type="text"
-                class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                placeholder="your-calendar-id@group.calendar.google.com"
-                :readonly="form.calendar_id"
-              >
-              <Button
-                v-if="!form.calendar_id"
-                type="button"
-                label="Create Calendar"
-                icon="pi pi-plus"
-                severity="success"
-                size="small"
-                :loading="creatingCalendar"
-                @click="createCalendar"
-              />
-            </div>
-            
-            <div 
-              v-if="form.calendar_id"
-              class="mt-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg"
-            >
-              <div class="flex items-center gap-2">
-                <svg
-                  class="w-5 h-5 text-green-600 dark:text-green-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                <span class="text-green-800 dark:text-green-200 font-medium text-sm">
-                  Calendar configured and ready to sync
-                </span>
-              </div>
-            </div>
-          </div>
+        <!-- Details Panel -->
+        <EditDetails
+          v-if="activePanel === 'Details'"
+          :band="band"
+          :form="form"
+          :loading="loading"
+          :url-warn="urlWarn"
+          @update-band="updateBand"
+          @update-form="updateForm"
+          @upload-logo="uploadLogo"
+        />
 
-          <!-- Stripe Setup -->
-          <div class="border-t border-gray-200 dark:border-gray-600 pt-6">
-            <div
-              v-if="!band.stripe_accounts"
-              class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4"
-            >
-              <div class="flex items-center gap-3">
-                <svg
-                  class="w-6 h-6 text-yellow-600 dark:text-yellow-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z"
-                  />
-                </svg>
-                <div>
-                  <h3 class="font-medium text-yellow-800 dark:text-yellow-200">
-                    Stripe Payment Setup Required
-                  </h3>
-                  <p class="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                    Set up Stripe to accept payments for your band.
-                  </p>
-                  <a
-                    :href="'/bands/' + band.id + '/setupStripe'"
-                    class="inline-block mt-3"
-                  >
-                    <Button
-                      severity="warning"
-                      size="small"
-                    >Setup Stripe</Button>
-                  </a>
-                </div>
-              </div>
-            </div>
-            <div
-              v-else
-              class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4"
-            >
-              <div class="flex items-center gap-2">
-                <svg
-                  class="w-5 h-5 text-green-600 dark:text-green-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                <span class="text-green-800 dark:text-green-200 font-medium">Stripe account configured</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Action Buttons -->
-          <div class="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-600">
-            <Button
-              type="submit"
-              label="Update Band"
-              icon="pi pi-save"
-              :loading="loading"
-            />
-            <Button
-              type="button"
-              :label="syncing ? 'Syncing...' : 'Sync Calendar'"
-              icon="pi pi-calendar"
-              severity="secondary"
-              :disabled="syncing"
-              :loading="syncing"
-              @click="syncCalendar"
-            />
-          </div>
-        </form>
-
-        <div
+        <!-- Members Panel -->
+        <EditMembers
           v-if="activePanel === 'Band Members'"
-          class="space-y-6"
-        >
-          <!-- Members Section -->
-          <div>
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Members
-            </h3>
-            <div
-              v-if="band.members && band.members.length > 0"
-              class="space-y-2"
-            >
-              <div
-                v-for="member in band.members"
-                :key="member.id"
-                class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
-              >
-                <div>
-                  <p class="font-medium text-gray-900 dark:text-white">
-                    {{ member.user.name }}
-                  </p>
-                  <p class="text-sm text-gray-600 dark:text-gray-400">
-                    {{ member.user.email }}
-                  </p>
-                </div>
-                <Link
-                  :href="'/permissions/' + band.id + '/' + member.user.id"
-                  class="text-blue-600 dark:text-blue-400 hover:underline text-sm"
-                >
-                  Edit Permissions
-                </Link>
-              </div>
-            </div>
-            <p
-              v-else
-              class="text-gray-600 dark:text-gray-400 italic"
-            >
-              No members added yet.
-            </p>
-          </div>
-
-          <!-- Owners Section -->
-          <div>
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Owners
-            </h3>
-            <div
-              v-if="band.owners && band.owners.length > 0"
-              class="space-y-2"
-            >
-              <div
-                v-for="owner in band.owners"
-                :key="owner.id"
-                class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
-              >
-                <div>
-                  <p class="font-medium text-gray-900 dark:text-white">
-                    {{ owner.user.name }}
-                  </p>
-                  <p class="text-sm text-gray-600 dark:text-gray-400">
-                    {{ owner.user.email }}
-                  </p>
-                </div>
-                <button
-                  class="text-red-600 dark:text-red-400 hover:underline text-sm"
-                  @click="deleteOwner(owner)"
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-            <p
-              v-else
-              class="text-gray-600 dark:text-gray-400 italic"
-            >
-              No owners found.
-            </p>
-          </div>
-
-          <!-- Pending Invites -->
-          <div>
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Pending Invitations
-            </h3>
-            <div
-              v-if="band.pending_invites && band.pending_invites.length > 0"
-              class="space-y-2"
-            >
-              <div
-                v-for="pendingInvite in band.pending_invites"
-                :key="pendingInvite.id"
-                class="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800"
-              >
-                <div>
-                  <p class="font-medium text-gray-900 dark:text-white">
-                    {{ pendingInvite.email }}
-                  </p>
-                  <p class="text-sm text-yellow-700 dark:text-yellow-400">
-                    Invitation pending
-                  </p>
-                </div>
-                <button
-                  class="text-red-600 dark:text-red-400 hover:underline text-sm"
-                  @click="deleteInvite(pendingInvite)"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-            <p
-              v-else
-              class="text-gray-600 dark:text-gray-400 italic"
-            >
-              No pending invitations.
-            </p>
-          </div>
-
-          <!-- Invite Form -->
-          <div class="border-t border-gray-200 dark:border-gray-600 pt-6">
-            <div v-if="!inviting">
-              <Button
-                label="Invite New Member"
-                icon="pi pi-user-plus"
-                @click="inviting = true"
-              />
-            </div>
-              
-            <transition name="slide-down">
-              <div
-                v-if="inviting"
-                class="space-y-4"
-              >
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Email Address
-                  </label>
-                  <input
-                    v-model="invite.email"
-                    type="email"
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                    placeholder="user@example.com"
-                    required
-                  >
-                </div>
-                <div class="flex items-center gap-3">
-                  <Button
-                    label="Invite as Owner"
-                    icon="pi pi-star"
-                    severity="secondary"
-                    size="small"
-                    @click="inviteOwner"
-                  />
-                  <Button
-                    label="Invite as Member"
-                    icon="pi pi-user"
-                    severity="secondary"
-                    size="small"
-                    @click="inviteMember"
-                  />
-                  <Button
-                    label="Cancel"
-                    icon="pi pi-times"
-                    severity="secondary"
-                    text
-                    size="small"
-                    @click="inviting = false"
-                  />
-                </div>
-              </div>
-            </transition>
-          </div>
-        </div>
+          :band="band"
+          :inviting="inviting"
+          :invite="invite"
+          @delete-owner="deleteOwner"
+          @delete-invite="deleteInvite"
+          @invite-owner="inviteOwner"
+          @invite-member="inviteMember"
+          @update-inviting="updateInviting"
+          @update-invite-email="updateInviteEmail"
+        />
 
         <!-- Calendar Access Panel -->
-        <div
+        <EditCalendar
           v-if="activePanel === 'Calendar Access'"
-          class="space-y-6"
-        >
-          <div
-            v-if="!form.calendar_id"
-            class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4"
-          >
-            <div class="flex items-center gap-3">
-              <svg
-                class="w-6 h-6 text-yellow-600 dark:text-yellow-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z"
-                />
-              </svg>
-              <div>
-                <h3 class="font-medium text-yellow-800 dark:text-yellow-200">
-                  No Calendar Configured
-                </h3>
-                <p class="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
-                  Please create or configure a Google Calendar first to manage access.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div v-else>
-            <!-- Grant Access Form -->
-            <div class="border-b border-gray-200 dark:border-gray-600 pb-6">
-              <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                Grant Calendar Access
-              </h3>
-              <div v-if="!grantingAccess">
-                <Button
-                  label="Grant Access to User"
-                  icon="pi pi-calendar-plus"
-                  @click="grantingAccess = true"
-                />
-              </div>
-              
-              <transition name="slide-down">
-                <div
-                  v-if="grantingAccess"
-                  class="space-y-4"
-                >
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Email Address
-                    </label>
-                    <input
-                      v-model="calendarAccess.email"
-                      type="email"
-                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                      placeholder="user@example.com"
-                      required
-                    >
-                  </div>
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Access Level
-                    </label>
-                    <select
-                      v-model="calendarAccess.role"
-                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                    >
-                      <option value="reader">
-                        Reader (view only)
-                      </option>
-                      <option value="writer">
-                        Writer (can edit events)
-                      </option>
-                      <option value="owner">
-                        Owner (full access)
-                      </option>
-                    </select>
-                  </div>
-                  <div class="flex items-center gap-3">
-                    <Button
-                      label="Grant Access"
-                      icon="pi pi-check"
-                      :loading="grantingAccessLoading"
-                      @click="grantCalendarAccess"
-                    />
-                    <Button
-                      label="Cancel"
-                      icon="pi pi-times"
-                      severity="secondary"
-                      text
-                      size="small"
-                      @click="cancelGrantAccess"
-                    />
-                  </div>
-                </div>
-              </transition>
-            </div>
-
-            <!-- Sync All Band Members -->
-            <div class="pt-6">
-              <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-                Sync Band Members
-              </h3>
-              <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                Grant calendar access to all current band members and owners automatically.
-              </p>
-              <Button
-                label="Sync All Band Members"
-                icon="pi pi-sync"
-                severity="info"
-                :loading="syncingMembers"
-                @click="syncAllBandMembers"
-              />
-            </div>
-          </div>
-        </div>
+          :band="band"
+          :calendar-types="calendarTypes"
+          :creating-calendars="creatingCalendars"
+          :creating-all-calendars="creatingAllCalendars"
+          :syncing-calendars="syncingCalendars"
+          :syncing-all-calendars="syncingAllCalendars"
+          :granting-access="grantingAccess"
+          :granting-access-loading="grantingAccessLoading"
+          :syncing-members="syncingMembers"
+          :calendar-access="calendarAccess"
+          :calendar-statuses="calendarStatuses"
+          @create-calendar-by-type="createCalendarByType"
+          @sync-calendar-by-type="syncCalendarByType"
+          @create-all-calendars="createAllCalendars"
+          @sync-all-calendars="syncAllCalendars"
+          @grant-calendar-access="grantCalendarAccess"
+          @cancel-grant-access="cancelGrantAccess"
+          @sync-all-band-members="syncAllBandMembers"
+          @update-granting-access="updateGrantingAccess"
+          @update-calendar-access="updateCalendarAccess"
+        />
       </div>
     </div>
-    <Container />
   </Container>
 </template>
 
 <script>
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
-import FileUpload from 'primevue/fileupload';
+import EditDetails from './Components/EditDetails.vue'
+import EditMembers from './Components/EditMembers.vue'
+import EditCalendar from './Components/EditCalendar.vue'
+
 export default {
   components: {
-    FileUpload,
+    EditDetails,
+    EditMembers,
+    EditCalendar,
   },
   layout: BreezeAuthenticatedLayout,
   pageTitle: 'Edit Band',
-  props: ['errors', 'band', 'members', 'owners'],
+  props: {
+    errors: {
+      type: Object,
+      default: () => ({})
+    },
+    band: {
+      type: Object,
+      required: true
+    },
+    members: {
+      type: Array,
+      default: () => []
+    },
+    owners: {
+      type: Array,
+      default: () => []
+    },
+    setting:{
+      type: String,
+      default: null
+    }
+  },
   data() {
     return {
       urlWarn: false,
       syncing: false,
       showInstructions: false,
-      activePanel: 'Details',
+      activePanel: this.getInitialPanel(),
       loading: false,
       inviting: false,
       invite: {
         email: ''
       },
       creatingCalendar: false,
+      creatingCalendars: {
+        booking: false,
+        events: false,
+        public: false
+      },
+      creatingAllCalendars: false,
+      syncingCalendars: {
+        booking: false,
+        events: false,
+        public: false
+      },
+      syncingAllCalendars: false,
       grantingAccess: false,
       grantingAccessLoading: false,
       syncingMembers: false,
       calendarAccess: {
         email: '',
-        role: 'writer'
+        role: 'writer',
+        calendarType: 'all'
       },
+      calendarTypes: [
+        { 
+          value: 'booking', 
+          label: 'Booking Calendar', 
+          description: 'Private booking information - Owners only',
+          access: 'Owners: Read only'
+        },
+        { 
+          value: 'event', 
+          label: 'All Events Calendar', 
+          description: 'All band events (private and public)',
+          access: 'Owners: Edit, Members: Read'
+        },
+        { 
+          value: 'public', 
+          label: 'Public Events Calendar', 
+          description: 'Public events only - Visible to everyone',
+          access: 'Owners: Edit, Members: Read, Public: Read'
+        }
+      ],
       panels: [
         {
           name: 'Details',
@@ -572,6 +184,31 @@ export default {
       }
     }
   },
+  computed: {
+    calendarStatuses() {
+      const statuses = {
+        booking: false,
+        event: false,
+        public: false
+      };
+      
+      if (this.band.calendars && Array.isArray(this.band.calendars)) {
+        this.band.calendars.forEach(calendar => {
+          if (calendar.type && statuses.hasOwnProperty(calendar.type)) {
+            statuses[calendar.type] = true;
+          }
+        });
+      }
+      
+      return statuses;
+    },
+    allCalendarsExist() {
+      return Object.values(this.calendarStatuses).every(status => status);
+    },
+    anyCalendarExists() {
+      return Object.values(this.calendarStatuses).some(status => status);
+    }
+  },
   watch: {
     form: {
       deep: true,
@@ -581,22 +218,92 @@ export default {
     }
   },
   methods: {
+    // Initial panel setup
+    getInitialPanel() {
+      if (!this.setting) {
+        return 'Details';
+      }
+      
+      // Map URL settings to panel names
+      const settingToPanelMap = {
+        'details': 'Details',
+        'members': 'Band Members',
+        'band members': 'Band Members',
+        'calendar': 'Calendar Access',
+        'calendars': 'Calendar Access',
+        'calendar access': 'Calendar Access',
+        'access': 'Calendar Access'
+      };
+      
+      return settingToPanelMap[this.setting.toLowerCase()] || 'Details';
+    },
+    gotoPage(pageName) {
+      this.$inertia.visit(`/bands/${this.band.id}/edit/${pageName}`);
+    },
+
+    // Form update methods
+    updateForm(field, value) {
+      this.form[field] = value;
+      if (field === 'site_name') {
+        this.filter();
+      }
+    },
+    filter() {
+      if (this.form.site_name.length > 0) {
+        let message = this.form.site_name;
+        let urlsafeName = message.replace(/[^aA-zZ0-9\-_]/gm, "")
+        this.urlWarn = urlsafeName !== this.form.site_name
+        this.form.site_name = urlsafeName;
+      }
+    },
+
+    // Details methods
     updateBand() {
       const bandID = this.band.id;
+      this.loading = true;
       this.$inertia.patch('/bands/' + bandID, this.form)
         .then(() => {
           this.loading = false;
         })
     },
-    filter() {
-      if (this.form.site_name.length > 0) {
+    uploadLogo(event) {
+      this.$inertia.post('./uploadLogo', { 'logo': event.files }, {
+        forceFormData: true,
+        onSuccess: () => {
+          this.$swal.fire("logo uploaded", "(no need to update)", "success");
+        }
+      });
+    },
+    syncCalendar() {
+      this.syncing = true;
+      this.$inertia.post('./syncCalendar', {}, {
+        onSuccess: () => {
+          this.$swal.fire("Calendar Synced", "", "success");
+          this.syncing = false;
+        }
+      })
+    },
+    createCalendar() {
+      this.creatingCalendar = true;
+      this.$inertia.post('/bands/' + this.band.id + '/createCalendar', {}, {
+        onSuccess: (page) => {
+          this.creatingCalendar = false;
+          if (page.props.band && page.props.band.calendar_id) {
+            this.form.calendar_id = page.props.band.calendar_id;
+          }
+        },
+        onError: () => {
+          this.creatingCalendar = false;
+        }
+      });
+    },
 
-        let message = this.form.site_name;
-        let urlsafeName = message.replace(/[^aA-zZ0-9\-_]/gm, "")
-        this.urlWarn = urlsafeName !== this.form.site_name
-        this.form.site_name = urlsafeName;
-
-      }
+    // Members methods
+    updateInviting(value) {
+      this.inviting = value;
+    },
+    updateInviteEmail(value) {
+      this.invite.email = value;
     },
     inviteOwner() {
       this.$inertia.post('/inviteOwner/' + this.band.id, {
@@ -604,9 +311,10 @@ export default {
         email: this.invite.email
       }, {
         onSuccess: () => {
+          this.inviting = false;
+          this.invite.email = '';
         }
       })
-
     },
     inviteMember() {
       this.$inertia.post('/inviteMember/' + this.band.id, {
@@ -614,6 +322,8 @@ export default {
         email: this.invite.email
       }, {
         onSuccess: () => {
+          this.inviting = false;
+          this.invite.email = '';
         }
       })
     },
@@ -647,46 +357,80 @@ export default {
         }
       })
     },
-    uploadLogo(event) {
-      // console.log(event.files);
-      this.$inertia.post('./uploadLogo', { 'logo': event.files }, {
-        forceFormData: true,
-        onSuccess: () => {
-          this.$swal.fire("logo uploaded", "(no need to update)", "success");
-          this.$refs.fileUpload.clear()
-        }
-      });
-    },
 
-    syncCalendar() {
-      this.syncing = true;
-      this.$inertia.post('./syncCalendar', {}, {
-        onSuccess: () => {
-          this.$swal.fire("Calendar Synced", "", "success");
-          this.syncing = false;
-        }
-      })
-    },
-    createCalendar() {
-      this.creatingCalendar = true;
-      this.$inertia.post('/bands/' + this.band.id + '/createCalendar', {}, {
+    // Calendar methods
+    createCalendarByType(type) {
+      this.creatingCalendars[type] = true;
+      this.$inertia.post(`/bands/${this.band.id}/createCalendar/${type}`, {}, {
         onSuccess: (page) => {
-          this.creatingCalendar = false;
-          // Update the form with the new calendar_id if it was created
-          if (page.props.band && page.props.band.calendar_id) {
-            this.form.calendar_id = page.props.band.calendar_id;
-          }
+          this.creatingCalendars[type] = false;
+          this.$swal.fire("Calendar Created", `${this.getCalendarTypeLabel(type)} has been created successfully`, "success");
         },
         onError: () => {
-          this.creatingCalendar = false;
+          this.creatingCalendars[type] = false;
         }
       });
+    },
+    syncCalendarByType(type) {
+      this.syncingCalendars[type] = true;
+      this.$inertia.post(`/bands/${this.band.id}/syncCalendar/${type}`, {}, {
+        onSuccess: () => {
+          this.syncingCalendars[type] = false;
+          this.$swal.fire("Calendar Synced", `${this.getCalendarTypeLabel(type)} has been synced`, "success");
+        },
+        onError: () => {
+          this.syncingCalendars[type] = false;
+        }
+      });
+    },
+    createAllCalendars() {
+      this.creatingAllCalendars = true;
+      this.$inertia.post(`/bands/${this.band.id}/createCalendars`, {}, {
+        onSuccess: (page) => {
+          this.creatingAllCalendars = false;
+          this.$swal.fire({
+            title: "All Calendars Created",
+            html: `
+              <div class="text-left">
+                <p class="mb-3">All calendar types have been created with proper access:</p>
+                <ul class="text-sm">
+                  <li><strong>Booking Calendar:</strong> Owners can view bookings</li>
+                  <li><strong>Event Calendar:</strong> All events (private + public), Members can read</li>
+                  <li><strong>Public Calendar:</strong> Public events only, visible to everyone</li>
+                </ul>
+              </div>
+            `,
+            icon: "success"
+          });
+        },
+        onError: () => {
+          this.creatingAllCalendars = false;
+        }
+      });
+    },
+    syncAllCalendars() {
+      this.syncingAllCalendars = true;
+      this.$inertia.post(`/bands/${this.band.id}/syncAllCalendars`, {}, {
+        onSuccess: () => {
+          this.$swal.fire("All Calendars Synced", "Bookings, events, and public events have been synced to their respective calendars", "success");
+        },
+        onFinish: () => {
+          this.syncingAllCalendars = false;
+        }
+      });
+    },
+    updateGrantingAccess(value) {
+      this.grantingAccess = value;
+    },
+    updateCalendarAccess(field, value) {
+      this.calendarAccess[field] = value;
     },
     grantCalendarAccess() {
       this.grantingAccessLoading = true;
       this.$inertia.post(`/bands/${this.band.id}/grantCalendarAccess`, {
         email: this.calendarAccess.email,
-        role: this.calendarAccess.role
+        role: this.calendarAccess.role,
+        calendarType: this.calendarAccess.calendarType
       }, {
         onSuccess: () => {
           this.$swal.fire("Access Granted", `Calendar access granted to ${this.calendarAccess.email}`, "success");
@@ -704,6 +448,7 @@ export default {
       this.grantingAccess = false;
       this.calendarAccess.email = '';
       this.calendarAccess.role = 'writer';
+      this.calendarAccess.calendarType = 'all';
     },
     syncAllBandMembers() {
       this.syncingMembers = true;
@@ -715,6 +460,10 @@ export default {
           this.syncingMembers = false;
         }
       });
+    },
+    getCalendarTypeLabel(type) {
+      const calType = this.calendarTypes.find(ct => ct.value === type);
+      return calType ? calType.label : type;
     }
   }
 }
