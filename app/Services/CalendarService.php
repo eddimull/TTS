@@ -2,54 +2,238 @@
 
 namespace App\Services;
 
+use Google\Client;
 use App\Models\BandEvents;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Mail;
 use App\Mail\WeeklyAdvance;
+use Google\Service\Calendar;
+use App\Models\BandCalendars;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Config;
-use Spatie\GoogleCalendar\Event as CalendarEvent;
 use Spatie\GoogleCalendar\GoogleCalendar;
 use Spatie\GoogleCalendar\GoogleCalendarFactory;
-use Illuminate\Support\Facades\Log;
+use Spatie\GoogleCalendar\Event as CalendarEvent;
 
 class CalendarService{
 
     protected $band;
-    protected $googleCalendar = false;
+    protected $googleCalendar;
+    protected $calendarType = null;
+    protected $googleClient;
 
-   public function __construct($band)
+   public function __construct($band, $calendarType = null)
    {
        $this->band = $band;
+       $this->calendarType = $calendarType;
        $this->setGoogleCalendar();
+       $this->setGoogleClient();
+   }
+
+   private function setGoogleClient()
+   {
+        $credentialsPath = config('google-calendar.auth_profiles.service_account.credentials_json');
+        if (!file_exists($credentialsPath)) {
+            Log::error('Google Calendar credentials file not found at: ' . $credentialsPath);
+            return null;
+        }
+
+        $client = new Client();
+        $client->setAuthConfig($credentialsPath);
+        $client->addScope(Calendar::CALENDAR);
+        
+        $this->googleClient = $client;
    }
 
    private function setGoogleCalendar()
    {
-       if ($this->band->calendar_id) {
-           // Use the factory to create a GoogleCalendar instance for this specific calendar
-           Config::set('google-calendar.calendar_id', $this->band->calendar_id);
-           $this->googleCalendar = GoogleCalendarFactory::createForCalendarId($this->band->calendar_id);
+       $calendarId = $this->getCalendarId();
+       if ($calendarId) {
+           Config::set('google-calendar.calendar_id', $calendarId);
+           $this->googleCalendar = GoogleCalendarFactory::createForCalendarId($calendarId);
        }
    }
 
-   public function syncEvents()
+   /**
+    * Get calendar ID based on type
+    */
+   private function getCalendarId()
    {
-    // Sync existing band events
-    $BandEvents = $this->band->events;
-    if(count($BandEvents) > 0)
-    {
-       foreach($BandEvents as $event)
-       {
-           $this->writeEventToCalendar($event);
-           sleep(0.1);//to prevent google rate limiting tts.band
+       if ($this->calendarType) {
+           $calendar = $this->band->calendars()->where('type', $this->calendarType)->first();
+           return $calendar ? $calendar->calendar_id : null;
        }
-    }
-    
-    // Sync bookings
-    $this->syncBookings();
-}
+       
+       // Fallback to old single calendar for backward compatibility
+       return $this->band->calendar_id;
+   }
 
-/**
+   /**
+    * Create calendars for all three types
+    */
+   public function createAllBandCalendars()
+   {
+       $types = ['booking', 'events', 'public'];
+       $results = [];
+       
+       foreach ($types as $type) {
+           $calendarId = $this->createBandCalendarByType($type);
+           if ($calendarId) {
+               $results[$type] = $calendarId;
+           }
+       }
+       
+       return $results;
+   }
+
+   /**
+    * Create a new Google Calendar for the band by type
+    */
+   public function createBandCalendarByType($type)
+   {
+       try {
+           // Check if calendar already exists for this type
+           $existingCalendar = $this->band->calendars()->where('type', $type)->first();
+           if ($existingCalendar) {
+               Log::info("Calendar of type {$type} already exists for band {$this->band->name}");
+               return $existingCalendar->calendar_id;
+           }
+
+           $credentialsPath = config('google-calendar.auth_profiles.service_account.credentials_json');
+           if (!file_exists($credentialsPath)) {
+               Log::error('Google Calendar credentials file not found at: ' . $credentialsPath);
+               return null;
+           }
+
+           $client = new Client();
+           $client->setAuthConfig($credentialsPath);
+           $client->addScope(Calendar::CALENDAR);
+
+           $service = new Calendar($client);
+
+           // Create calendar
+           $calendar = new \Google\Service\Calendar\Calendar();
+
+           // Create calendar with type-specific naming
+           $calendar = new \Google\Service\Calendar\Calendar();
+           $calendarName = $this->getCalendarNameByType($type);
+           $calendar->setSummary($calendarName);
+           $calendar->setDescription($this->getCalendarDescriptionByType($type));
+           $calendar->setTimeZone('America/Chicago');
+
+           $createdCalendar = $service->calendars->insert($calendar);
+           
+           if (!$createdCalendar || !$createdCalendar->getId()) {
+               Log::error("Failed to create {$type} calendar - no calendar ID returned");
+               return null;
+           }
+
+           $calendarId = $createdCalendar->getId();
+           Log::info("Created Google Calendar with ID: {$calendarId} for type: {$type}");
+
+           // Save to band_calendars table
+           BandCalendars::create([
+               'band_id' => $this->band->id,
+               'calendar_id' => $calendarId,
+               'type' => $type
+           ]);
+
+           return $calendarId;
+           
+       } catch (\Exception $e) {
+           Log::error("Failed to create Google Calendar for type {$type}: " . $e->getMessage());
+           return null;
+       }
+   }
+
+   private function getCalendarNameByType($type)
+   {
+       switch ($type) {
+           case 'booking':
+               return $this->band->name . ' - Bookings (Private)';
+           case 'events':
+               return $this->band->name . ' - All Events';
+           case 'public':
+               return $this->band->name . ' - Public Events';
+           default:
+               return $this->band->name . ' - Calendar';
+       }
+   }
+
+   private function getCalendarDescriptionByType($type)
+   {
+       switch ($type) {
+           case 'booking':
+               return 'Private booking calendar for ' . $this->band->name . ' - Owners only';
+           case 'events':
+               return 'All events calendar for ' . $this->band->name . ' - Private and public events';
+           case 'public':
+               return 'Public events calendar for ' . $this->band->name . ' - Public events only';
+           default:
+               return 'Calendar for ' . $this->band->name;
+       }
+   }
+
+   /**
+    * Sync events to appropriate calendars based on type
+    */
+   public function syncEventsByType($type = null)
+   {
+       if ($type) {
+           $this->calendarType = $type;
+           $this->setGoogleCalendar();
+       }
+
+       switch ($this->calendarType) {
+           case 'booking':
+               $this->syncBookings();
+               break;
+           case 'events':
+               $this->syncAllEventsToEventsCalendar();
+               break;
+           case 'public':
+               $this->syncPublicEventsToPublicCalendar();
+               break;
+           default:
+               // Sync all calendars if no specific type
+               $this->syncAllCalendars();
+               break;
+       }
+   }
+
+   private function syncAllCalendars()
+   {
+       $types = ['booking', 'events', 'public'];
+       foreach ($types as $type) {
+           $this->syncEventsByType($type);
+       }
+   }
+
+   /**
+    * Sync ALL events (both private and public) to the events calendar
+    */
+   private function syncAllEventsToEventsCalendar()
+   {
+       $events = $this->band->events; // Get all events regardless of public status
+       foreach ($events as $event) {
+           $this->writeEventToCalendar($event);
+           sleep(0.1);
+       }
+   }
+
+   /**
+    * Sync only public events to the public calendar
+    */
+   private function syncPublicEventsToPublicCalendar()
+   {
+       $events = $this->band->events()->where('public', true)->get();
+       foreach ($events as $event) {
+           $this->writeEventToCalendar($event);
+           sleep(0.1);
+       }
+   }
+
+   /**
  * Sync all bookings to Google Calendar with status-based color coding
  */
 public function syncBookings()
@@ -331,10 +515,10 @@ public function deleteBookingFromCalendar($booking)
     /**
      * Grant calendar access to a specific user
      */
-    public function grantUserAccess($service = null, $user = null, $role = 'writer')
+    public function grantUserAccess($user = null, $role = 'writer')
     {
         try {
-            if (!$this->band->calendar_id) {
+            if (is_null($this->googleCalendar)) {
                 Log::error('No calendar ID set for band: ' . $this->band->name);
                 return false;
             }
@@ -361,9 +545,9 @@ public function deleteBookingFromCalendar($booking)
             $scope->setValue($user->email);
             $rule->setScope($scope);
             $rule->setRole($aclRole);
-
+            $service = new Calendar($this->googleClient);
             // Insert the ACL rule
-            $service->acl->insert($this->band->calendar_id, $rule);
+            $service->acl->insert($this->getCalendarId(), $rule);
 
             Log::info("Granted {$role} access to {$user->email} for calendar {$this->band->calendar_id}");
             return true;

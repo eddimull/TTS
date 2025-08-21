@@ -17,7 +17,6 @@ class Bands extends Model
     }
 
     protected $fillable = ['name', 'site_name', 'calendar_id'];
-    // protected $with = ['proposals'];
 
     public function owner()
     {
@@ -127,5 +126,10 @@ class Bands extends Model
     public function contacts()
     {
         return $this->hasMany(Contacts::class, 'band_id')->orderBy('name', 'asc');
+    }
+
+    public function calendars()
+    {
+        return $this->hasMany(BandCalendars::class, 'band_id');
     }
 }
