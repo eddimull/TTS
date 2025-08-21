@@ -87,10 +87,10 @@ class BandsController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function edit(Bands $band)
-    {
+    public function edit(Bands $band, $setting = null)
+    {   
         // Load the relationships if they're not already loaded
-        $band->load('owners.user', 'members.user', 'pendingInvites', 'stripe_accounts');
+        $band->load('owners.user', 'members.user', 'pendingInvites', 'stripe_accounts', 'calendars');
 
         // Merge additional data into the $band object
         $band->owners_with_users = $band->owners->map(function ($owner)
@@ -106,7 +106,8 @@ class BandsController extends Controller
         });
 
         return Inertia::render('Band/Edit', [
-            'band' => $band
+            'band' => $band,
+            'setting' => $setting
         ]);
     }
 
@@ -121,8 +122,8 @@ class BandsController extends Controller
 
     public function createCalendar(CreateCalendarRequest $request, Bands $band)
     {
-        $calService = new CalendarService($band);
-        $calendarId = $calService->createBandCalendar();
+        $calService = new CalendarService($band, $request->type);
+        $calendarId = $calService->createBandCalendarByType($request->type);
         
         if ($calendarId) {
             return back()->with('successMessage', 'Calendar created successfully! Calendar ID: ' . $calendarId);
@@ -131,6 +132,43 @@ class BandsController extends Controller
         }
     }
 
+    public function createCalendars(CreateCalendarRequest $request, Bands $band)
+    {
+        $calService = new CalendarService($band);
+        $results = $calService->createAllBandCalendars();
+        
+        if (count($results) > 0) {
+            // Automatically grant appropriate access to all band members
+            foreach (['booking', 'events', 'public'] as $type) {
+                $calService->grantBandAccessByType($type);
+            }
+            
+            // Make public calendar publicly readable
+            $calService->makePublicCalendarPublic();
+            
+            $message = 'Calendars created successfully and access granted! ';
+            foreach ($results as $type => $calendarId) {
+                $message .= ucfirst($type) . ': ' . $calendarId . ' ';
+            }
+            return back()->with('successMessage', $message);
+        } else {
+            return back()->withErrors(['Failed to create calendars. Please check the logs for more details.']);
+        }
+    }
+
+    public function syncAllCalendars(Bands $band)
+    {
+        $types = ['booking', 'events', 'public'];
+        $results = [];
+        
+        foreach ($types as $type) {
+            $calService = new CalendarService($band, $type);
+            $calService->syncEventsByType($type);
+            $results[] = $type;
+        }
+
+        return back()->with('successMessage', 'All calendars synced: ' . implode(', ', $results));
+    }
 
     /**
      * Update the specified resource in storage.
@@ -161,14 +199,24 @@ class BandsController extends Controller
 
         return redirect()->route('bands')->with('successMessage', $band->name . ' was successfully updated');
     }
+    public function deleteMember(Bands $band, User $user)
+    {
+        $author = Auth::user();
 
+        if ($author->ownsBand($band->id))
+        {
+            $band->members()->where('user_id', $user->id)->delete();
+            return redirect()->route('bands.editSettings', [$band->id, 'band members'])->with('successMessage', $user->name . ' removed from band members');
+        }
+        else
+        {
+            return back()->withErrors(['You are not authorized to remove members from this band.']);
+        }
+    }
 
     public function deleteOwner(Bands $band, $ownerParam)
     {
-
-
         $owner = BandOwners::where('user_id', '=', $ownerParam)->where('band_id', '=', $band->id)->first();
-        /** @var \App\Models\User $user */
         $author = Auth::user();
         if ($author->ownsBand($band->id))
         {
@@ -294,11 +342,58 @@ class BandsController extends Controller
             return back()->withErrors(['User with email ' . $request->email . ' not found.']);
         }
 
-        $calService = new CalendarService($band);
-        $success = $calService->grantUserAccess(null, $user, $request->role);
+        $calService = new CalendarService($band, $request->calendarType);
+        
+        $success = $calService->grantUserAccess($user, $request->role);
         
         if ($success) {
             return back()->with('successMessage', 'Calendar access granted to ' . $request->email);
+        } else {
+            return back()->withErrors(['Failed to grant calendar access. Please check the logs for more details.']);
+        }
+    }
+
+    public function grantCalendarAccessByType(Request $request, Bands $band, $type)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'role' => 'required|in:reader,writer,owner',
+        ]);
+
+        $user = \App\Models\User::where('email', $request->email)->first();
+        
+        if (!$user) {
+            return back()->withErrors(['User with email ' . $request->email . ' not found.']);
+        }
+
+        $calendar = $band->calendars()->where('type', $type)->first();
+        if (!$calendar) {
+            return back()->withErrors(['No ' . $type . ' calendar found for this band.']);
+        }
+
+        // Check if this access level is appropriate for the calendar type
+        $calService = new CalendarService($band, $type);
+        
+        // Determine if user is owner or member of band
+        $userRole = 'guest';
+        if ($band->owners()->where('user_id', $user->id)->exists()) {
+            $userRole = 'owner';
+        } elseif ($band->members()->where('user_id', $user->id)->exists()) {
+            $userRole = 'member';
+        }
+
+        // Get appropriate role for this calendar type
+        $appropriateRole = $calService->getAccessRoleByType($type, $userRole);
+        
+        if (!$appropriateRole && $type === 'booking' && $userRole === 'member') {
+            return back()->withErrors(['Members cannot access booking calendar. Only owners have access to bookings.']);
+        }
+
+        $service = GoogleCalendarFactory::createForCalendarId($calendar->calendar_id)->getService();
+        $success = $calService->grantUserAccessToCalendar($service, $user, $request->role, $calendar->calendar_id);
+        
+        if ($success) {
+            return back()->with('successMessage', ucfirst($type) . ' calendar access granted to ' . $request->email);
         } else {
             return back()->withErrors(['Failed to grant calendar access. Please check the logs for more details.']);
         }
