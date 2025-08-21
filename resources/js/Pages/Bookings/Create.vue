@@ -3,6 +3,8 @@
     <BookingCreateForm
       :band="band"
       :event-types="eventTypes"
+      :booked-dates="bookedDates"
+      :booking-details="bookingDetails"
     />
   </Container>
 </template>
@@ -18,6 +20,8 @@ layout: BreezeAuthenticatedLayout,
 props: {
     band: Object,
     eventTypes: Array,
+    bookedDates: Array,
+    bookingDetails: Object,
 },
 }
 </script>
