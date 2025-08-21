@@ -22,7 +22,7 @@ class CreateCalendarRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            // Remove this rule since type comes from URL, not request body
         ];
     }
 
@@ -30,8 +30,15 @@ class CreateCalendarRequest extends FormRequest
     {
         $validator->after(function ($validator) {
             $band = $this->route('band');
+            $type = $this->route('type'); // Get type from URL parameter
             
-            if (!empty($band->calendar_id)) {
+            // Validate the type parameter
+            if (!in_array($type, ['booking', 'event', 'public'])) {
+                $validator->errors()->add('type', 'Invalid calendar type.');
+                return;
+            }
+            
+            if (!empty($band->calendars()->where('type', $type)->first())) {
                 $validator->errors()->add('calendar', 'This band already has a calendar. Calendar ID: ' . $band->calendar_id);
             }
         });

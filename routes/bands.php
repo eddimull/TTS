@@ -14,12 +14,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/{band}', [BandsController::class, 'update'])->middleware(['owner'])->name('bands.update');
         Route::delete('/{band}', [BandsController::class, 'destroy'])->middleware(['owner'])->name('bands.destroy');
         Route::delete('/deleteOwner/{band}/{owner}', [BandsController::class, 'deleteOwner'])->middleware(['owner'])->name('bands.deleteOwner');
+        Route::delete('/{band}/members/{user}', [BandsController::class, 'deleteMember'])->middleware(['owner'])->name('bands.deleteMember');
         Route::post('/{band}/uploadLogo', [BandsController::class, 'uploadLogo'])->middleware(['owner'])->name('bands.uploadLogo');
         Route::get('/{band}/setupStripe', [BandsController::class, 'setupStripe'])->middleware(['owner'])->name('bands.setupStripe');
         Route::post('/{band}/syncCalendar', [BandsController::class, 'syncCalendar'])->middleware(['owner'])->name('bands.syncCalendar');
-        Route::post('/{band}/createCalendar', [BandsController::class, 'createCalendar'])->middleware(['owner'])->name('bands.createCalendar');
+        Route::post('/{band}/createCalendar/{type}', [BandsController::class, 'createCalendar'])->middleware(['owner'])->name('bands.createCalendar');
         Route::post('/{band}/grantCalendarAccess', [BandsController::class, 'grantCalendarAccess'])->middleware(['owner'])->name('bands.grantCalendarAccess');
         Route::post('/{band}/syncBandCalendarAccess', [BandsController::class, 'syncBandCalendarAccess'])->middleware(['owner'])->name('bands.syncBandCalendarAccess');
+
     });
 
     // Invitations routes
