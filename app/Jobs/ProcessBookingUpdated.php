@@ -29,10 +29,10 @@ class ProcessBookingUpdated implements ShouldQueue
     {
         // Update calendar event
         try {
-            if($this->booking->band->calendar_id === null) {
+            if($this->booking->band->bookingCalendar === null) {
                 Log::info('No calendar ID found for band, skipping calendar update for booking ID: ' . $this->booking->id);
             } else {
-                $calendarService = new CalendarService($this->booking->band);
+                $calendarService = new CalendarService($this->booking->band, 'booking');
                 Log::info('Updating calendar for booking ID: ' . $this->booking->id);
                 $calendarService->writeBookingToCalendar($this->booking);
             }

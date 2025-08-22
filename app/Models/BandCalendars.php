@@ -19,4 +19,5 @@ class BandCalendars extends Model
     {
         return $this->belongsTo(Bands::class, 'band_id');
     }
+
 }

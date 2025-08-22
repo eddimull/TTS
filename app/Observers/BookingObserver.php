@@ -10,7 +10,7 @@ use App\Jobs\ProcessBookingUpdated;
 
 class BookingObserver
 {
-        public function created(Bookings $booking)
+    public function created(Bookings $booking)
     {
         ProcessBookingCreated::dispatch($booking);
     }

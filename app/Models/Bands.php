@@ -132,4 +132,19 @@ class Bands extends Model
     {
         return $this->hasMany(BandCalendars::class, 'band_id');
     }
+
+    public function eventCalendar()
+    {
+        return $this->hasOne(BandCalendars::class, 'band_id')->where('type', 'event');
+    }
+
+    public function publicCalendar()
+    {
+        return $this->hasOne(BandCalendars::class, 'band_id')->where('type', 'public');
+    }
+
+    public function bookingCalendar()
+    {
+        return $this->hasOne(BandCalendars::class, 'band_id')->where('type', 'booking');
+    }
 }
