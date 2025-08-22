@@ -335,7 +335,7 @@ export default {
         showCancelButton: true,
         confirmButtonColor: '#3085d6',
         cancelButtonColor: '#d33',
-        confirmButtonText: 'Yes, delete it!'
+        confirmButtonText: 'Yes, BANISH THEM!'
       }).then((result) => {
         if (result.value) {
           this.$inertia.delete('/bands/deleteOwner/' + this.band.id + '/' + owner.user.id);

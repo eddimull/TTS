@@ -18,7 +18,6 @@ Route::middleware(['auth', 'verified'])->group(function ()
     Route::post('bands/{band}/booking/{booking}', [BookingsController::class, 'cancelBooking'])
         ->name('Cancel Booking')
         ->middleware('booking.access');
-
     Route::get('bands/{band}/booking/create', [BookingsController::class, 'create'])
         ->name('Create Booking')
         ->middleware('booking.access');

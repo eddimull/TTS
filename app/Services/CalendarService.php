@@ -327,9 +327,9 @@ private function buildBookingDescription($booking)
     if($booking->price) {
         $description .= "Price: $" . number_format($booking->price, 2) . "\n";
     }
-    
-    $description .= "Duration: " . (Carbon::parse($booking->end_time)->diffInHours(Carbon::parse($booking->start_time))) . " hours\n";
-    
+
+    $description .= "Duration: " . (Carbon::parse($booking->start_time)->diffInHours(Carbon::parse($booking->end_time))) . " hours\n";
+
     if($booking->notes) {
         $description .= "\nNotes: " . strip_tags($booking->notes) . "\n";
     }
@@ -362,10 +362,10 @@ public function updateBookingInCalendar($booking)
  */
 public function deleteBookingFromCalendar($booking)
 {
-    if($booking->google_calendar_event_id && $this->band->calendar_id)
+    if($booking->google_calendar_event_id && $this->band->bookingCalendar !== null)
     {
         try {
-            $calendarEvent = CalendarEvent::find($booking->google_calendar_event_id, $this->band->calendar_id);
+            $calendarEvent = CalendarEvent::find($booking->google_calendar_event_id, $this->band->bookingCalendar);
             if($calendarEvent) {
                 $calendarEvent->delete();
             }

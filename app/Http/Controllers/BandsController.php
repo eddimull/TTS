@@ -193,7 +193,6 @@ class BandsController extends Controller
 
         $band->name = $request->name;
         $band->site_name = $request->site_name;
-        $band->calendar_id = $request->calendar_id;
 
         $band->save();
 
