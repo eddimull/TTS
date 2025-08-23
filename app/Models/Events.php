@@ -58,8 +58,27 @@ class Events extends Model
         return Carbon::parse("{$date} {$time}")->isoFormat('YYYY-MM-DD Thh:mm:ss.sss');
     }
 
+    public function getStartDateTimeAttribute()
+    {
+        $date = $this->date->toDateString();
+
+        // Assuming $this->time is in 'HH:mm:ss' format after TimeCast
+        $time = $this->time;
+
+        return Carbon::parse("{$date} {$time}")->isoFormat('YYYY-MM-DD Thh:mm:ss.sss');
+    }
+
+    public function getEndDateTimeAttribute()
+    {
+        $endTime = collect($this->additional_data->times)->max('time');
+
+        return $endTime;
+    }
+
+
     public function advanceURL()
     {
         return config('app.url') . '/events/' . $this->key . '/advance';
     }
+    
 }

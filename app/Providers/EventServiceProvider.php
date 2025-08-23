@@ -3,11 +3,14 @@
 namespace App\Providers;
 
 use App\Models\Bookings;
+
+use App\Observers\EventObserver;
 use App\Events\PaymentWasReceived;
 use App\Observers\BookingObserver;
-use Illuminate\Support\Facades\Event;
+
 use Illuminate\Auth\Events\Registered;
 use App\Listeners\SendPaymentNotification;
+use App\Models\Events;
 use Illuminate\Auth\Listeners\SendEmailVerificationNotification;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
@@ -35,5 +38,6 @@ class EventServiceProvider extends ServiceProvider
     public function boot()
     {
         Bookings::observe(BookingObserver::class);
+        Events::observe(EventObserver::class);
     }
 }

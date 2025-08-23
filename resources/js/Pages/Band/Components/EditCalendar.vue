@@ -161,16 +161,42 @@
           >
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Email Address
+                Select User
               </label>
-              <input
+              <select
                 :value="calendarAccess.email"
-                type="email"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                placeholder="user@example.com"
                 required
-                @input="updateAccessEmail"
+                @change="updateAccessUserId"
               >
+                <option value="">
+                  Select a band member or owner...
+                </option>
+                <optgroup
+                  v-if="bandOwnersAndMembers.owners.length > 0"
+                  label="Band Owners"
+                >
+                  <option
+                    v-for="owner in bandOwnersAndMembers.owners"
+                    :key="`owner-${owner.id}`"
+                    :value="owner.id"
+                  >
+                    {{ owner.name }} ({{ owner.email }}) - Owner
+                  </option>
+                </optgroup>
+                <optgroup
+                  v-if="bandOwnersAndMembers.members.length > 0"
+                  label="Band Members"
+                >
+                  <option
+                    v-for="member in bandOwnersAndMembers.members"
+                    :key="`member-${member.id}`"
+                    :value="member.id"
+                  >
+                    {{ member.name }} ({{ member.email }}) - Member
+                  </option>
+                </optgroup>
+              </select>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -199,7 +225,7 @@
               <select
                 :value="calendarAccess.calendarType"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                @change="updateAccessCalendarType"
+                @change="updateAccessCalendarId"
               >
                 <option value="all">
                   All Calendars
@@ -207,7 +233,7 @@
                 <option
                   v-for="calType in calendarTypes"
                   :key="calType.value"
-                  :value="calType.value"
+                  :value="getDBCalendarId(calType.value)"
                   :disabled="!getCalendarStatus(calType.value)"
                 >
                   {{ calType.label }}
@@ -219,6 +245,7 @@
                 label="Grant Access"
                 icon="pi pi-check"
                 :loading="grantingAccessLoading"
+                :disabled="!calendarAccess.user_id"
                 @click="grantCalendarAccess"
               />
               <Button
@@ -233,7 +260,6 @@
           </div>
         </transition>
       </div>
-
       <!-- Sync All Band Members -->
       <div class="pt-6">
         <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
@@ -285,6 +311,8 @@
 </template>
 
 <script>
+import { update } from 'lodash';
+
 export default {
   name: 'EditCalendar',
   props: {
@@ -350,6 +378,35 @@ export default {
     },
     anyCalendarExists() {
       return Object.values(this.calendarStatuses).some(status => status);
+    },
+    bandOwnersAndMembers() {
+      const owners = this.band.owners || [];
+      const members = this.band.members || [];
+      
+      return {
+        owners: owners
+          .map(owner => {
+            // Try user_data first, then user as fallback
+            const userData = owner.user_data || owner.user;
+            return userData ? {
+              id: userData.id,
+              name: userData.name,
+              email: userData.email
+            } : null;
+          })
+          .filter(owner => owner && owner.email),
+        members: members
+          .map(member => {
+            // Try user_data first, then user as fallback
+            const userData = member.user_data || member.user;
+            return userData ? {
+              id: userData.id,
+              name: userData.name,
+              email: userData.email
+            } : null;
+          })
+          .filter(member => member && member.email)
+      };
     }
   },
   methods: {
@@ -360,6 +417,13 @@ export default {
       if (this.band.calendars && Array.isArray(this.band.calendars)) {
         const calendar = this.band.calendars.find(cal => cal.type === type);
         return calendar ? calendar.calendar_id : null;
+      }
+      return null;
+    },
+    getDBCalendarId(type) {
+      if (this.band.calendars && Array.isArray(this.band.calendars)) {
+        const calendar = this.band.calendars.find(cal => cal.type === type);
+        return calendar ? calendar.id : null;
       }
       return null;
     },
@@ -387,14 +451,14 @@ export default {
     syncAllBandMembers() {
       this.$emit('sync-all-band-members');
     },
-    updateAccessEmail(event) {
-      this.$emit('update-calendar-access', 'email', event.target.value);
+    updateAccessUserId(event) {
+      this.$emit('update-calendar-access', 'user_id', event.target.value);
     },
     updateAccessRole(event) {
       this.$emit('update-calendar-access', 'role', event.target.value);
     },
-    updateAccessCalendarType(event) {
-      this.$emit('update-calendar-access', 'calendarType', event.target.value);
+    updateAccessCalendarId(event) {
+      this.$emit('update-calendar-access', 'calendar_id', event.target.value);
     }
   }
 }
