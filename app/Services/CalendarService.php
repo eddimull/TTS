@@ -308,7 +308,7 @@ public function writeBookingToCalendar($booking)
 
         $google_id = $calendarEvent->save();
         $booking->google_calendar_event_id = $google_id->id;
-        $booking->save();
+        $booking->saveQuietly();
     
 }
 
@@ -423,7 +423,7 @@ public function deleteBookingFromCalendar($booking)
         $google_id = $calendarEvent->save();  
         Log::info('Saved calendar event with ID: ' . $google_id->id . ' for band: ' . $this->band->name);
         $event->google_calendar_id = $google_id->id;
-        $event->save();
+        $event->saveQuietly();
     }
    }
 
