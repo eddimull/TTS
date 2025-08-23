@@ -142,9 +142,9 @@ export default {
       grantingAccessLoading: false,
       syncingMembers: false,
       calendarAccess: {
-        email: '',
+        user_id: '',
         role: 'writer',
-        calendarType: 'all'
+        calendar_id: 'all'
       },
       calendarTypes: [
         { 
@@ -267,12 +267,8 @@ export default {
         })
     },
     uploadLogo(event) {
-      this.$inertia.post('./uploadLogo', { 'logo': event.files }, {
-        forceFormData: true,
-        onSuccess: () => {
-          this.$swal.fire("logo uploaded", "(no need to update)", "success");
-        }
-      });
+      console.log(event.files);
+      this.$inertia.post(route('bands.uploadLogo', this.band), { 'logo': event.files[0] });
     },
     syncCalendar() {
       this.syncing = true;
@@ -427,15 +423,11 @@ export default {
     },
     grantCalendarAccess() {
       this.grantingAccessLoading = true;
-      this.$inertia.post(`/bands/${this.band.id}/grantCalendarAccess`, {
-        email: this.calendarAccess.email,
+      this.$inertia.post(route('bands.grantCalendarAccess', this.band.id), {
+        user_id: this.calendarAccess.user_id,
         role: this.calendarAccess.role,
-        calendarType: this.calendarAccess.calendarType
+        calendar_id: this.calendarAccess.calendar_id
       }, {
-        onSuccess: () => {
-          this.$swal.fire("Access Granted", `Calendar access granted to ${this.calendarAccess.email}`, "success");
-          this.cancelGrantAccess();
-        },
         onError: () => {
           this.grantingAccessLoading = false;
         },
@@ -446,9 +438,9 @@ export default {
     },
     cancelGrantAccess() {
       this.grantingAccess = false;
-      this.calendarAccess.email = '';
+      this.calendarAccess.user_id = '';
       this.calendarAccess.role = 'writer';
-      this.calendarAccess.calendarType = 'all';
+      this.calendarAccess.calendar_id = '';
     },
     syncAllBandMembers() {
       this.syncingMembers = true;

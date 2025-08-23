@@ -128,8 +128,8 @@ class EventsController extends Controller
         $event = BandEvents::create($eventData);
 
         $band = Bands::findOrFail($event->band_id);
-        $this->writeEventToCalendar($band, $event);
-        $this->notifyBandMembers($band, $event);
+        // $this->writeEventToCalendar($band, $event);
+        // $this->notifyBandMembers($band, $event);
 
         return redirect()->route('events')->with('successMessage', 'Event was successfully added');
     }
@@ -235,12 +235,12 @@ class EventsController extends Controller
 
         $band = Bands::findOrFail($event->band_id);
 
-        if ($band->calendar_id)
-        {
-            $this->updateGoogleCalendarEvent($event, $band);
-        }
+        // if ($band->calendar_id)
+        // {
+        //     $this->updateGoogleCalendarEvent($event, $band);
+        // }
 
-        $this->notifyBandMembers($band, $event, 'updated');
+        // $this->notifyBandMembers($band, $event, 'updated');
 
         return redirect()->route('events')->with('successMessage', "{$request->event_name} was successfully updated");
     }

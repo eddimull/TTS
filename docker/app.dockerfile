@@ -3,7 +3,8 @@ FROM php:8.3-fpm AS php-build
 RUN apt-get update && apt-get install -y  \
     libzip-dev git libmagickwand-dev libzip-dev \
     --no-install-recommends \
-    && docker-php-ext-install pdo_mysql zip exif && \
+    && docker-php-ext-configure gd --with-jpeg \
+    && docker-php-ext-install pdo_mysql zip exif gd && \
     git clone https://github.com/Imagick/imagick.git --depth 1 /tmp/imagick && \
     cd /tmp/imagick && \
     git fetch origin master && \

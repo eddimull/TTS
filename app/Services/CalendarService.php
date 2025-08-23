@@ -3,10 +3,13 @@
 namespace App\Services;
 
 use Google\Client;
+use App\Models\User;
+use App\Models\Bands;
 use App\Models\BandEvents;
 use App\Mail\WeeklyAdvance;
 use Google\Service\Calendar;
 use App\Models\BandCalendars;
+use App\Models\CalendarAccess;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -15,46 +18,60 @@ use Spatie\GoogleCalendar\GoogleCalendar;
 use Spatie\GoogleCalendar\GoogleCalendarFactory;
 use Spatie\GoogleCalendar\Event as CalendarEvent;
 
-class CalendarService{
-
+class CalendarService
+{
     protected $band;
+    protected $bandCalendar;
     protected $googleCalendar;
     protected $calendarType = null;
     protected $googleClient;
+    protected $googleCalendarFactory;
 
-   public function __construct($band, $calendarType = null)
-   {
-       $this->band = $band;
-       $this->calendarType = $calendarType;
-       $this->setGoogleCalendar();
-       $this->setGoogleClient();
-   }
+    public function __construct(
+        Bands $band, 
+        $calendarType = null, 
+        BandCalendars $bandCalendar = null,
+        $googleCalendarFactory = null
+    ) {
+        $this->band = $band;
+        $this->calendarType = $calendarType;
+        $this->bandCalendar = $bandCalendar;
+        $this->googleCalendarFactory = $googleCalendarFactory ?: new GoogleCalendarFactory();
+        $this->setGoogleCalendar();
+        $this->setGoogleClient();
+    }
 
-   private function setGoogleClient()
-   {
+    private function setGoogleClient()
+    {
         $credentialsPath = config('google-calendar.auth_profiles.service_account.credentials_json');
         if (!file_exists($credentialsPath)) {
             Log::error('Google Calendar credentials file not found at: ' . $credentialsPath);
             return null;
         }
 
-        $client = new Client();
+        $client = $this->createGoogleClient();
         $client->setAuthConfig($credentialsPath);
         $client->addScope(Calendar::CALENDAR);
         
         $this->googleClient = $client;
-   }
+    }
 
-   private function setGoogleCalendar()
-   {
-       $calendarId = $this->getCalendarId();
-       if ($calendarId) {
-           Config::set('google-calendar.calendar_id', $calendarId);
-           $this->googleCalendar = GoogleCalendarFactory::createForCalendarId($calendarId);
-       }
-   }
+    // Make this method protected so we can override it in tests
+    protected function createGoogleClient()
+    {
+        return new Client();
+    }
 
-   /**
+    private function setGoogleCalendar()
+    {
+        $calendarId = $this->getCalendarId();
+        if ($calendarId) {
+            Config::set('google-calendar.calendar_id', $calendarId);
+            $this->googleCalendar = $this->googleCalendarFactory::createForCalendarId($calendarId);
+        }
+    }
+
+    /**
     * Get calendar ID based on type
     */
    private function getCalendarId()
@@ -73,7 +90,7 @@ class CalendarService{
     */
    public function createAllBandCalendars()
    {
-       $types = ['booking', 'events', 'public'];
+       $types = ['booking', 'event', 'public'];
        $results = [];
        
        foreach ($types as $type) {
@@ -146,7 +163,7 @@ class CalendarService{
        }
    }
 
-   private function getCalendarNameByType($type)
+   public function getCalendarNameByType($type)
    {
        switch ($type) {
            case 'booking':
@@ -160,7 +177,7 @@ class CalendarService{
        }
    }
 
-   private function getCalendarDescriptionByType($type)
+   public function getCalendarDescriptionByType($type)
    {
        switch ($type) {
            case 'booking':
@@ -298,7 +315,7 @@ public function writeBookingToCalendar($booking)
 /**
  * Get Google Calendar color code based on booking status
  */
-private function getBookingStatusColor($status)
+public function getBookingStatusColor($status)
 {
     switch($status) {
         case 'draft':
@@ -315,7 +332,7 @@ private function getBookingStatusColor($status)
 /**
  * Build description for booking calendar event
  */
-private function buildBookingDescription($booking)
+public function buildBookingDescription($booking)
 {
     $description = "Status: " . ucfirst($booking->status) . "\n\n";
     $description .= "Venue: " . $booking->venue_name . "\n";
@@ -328,7 +345,7 @@ private function buildBookingDescription($booking)
         $description .= "Price: $" . number_format($booking->price, 2) . "\n";
     }
 
-    $description .= "Duration: " . (Carbon::parse($booking->start_time)->diffInHours(Carbon::parse($booking->end_time))) . " hours\n";
+    $description .= "Duration: " . $booking->duration . " hours\n";
 
     if($booking->notes) {
         $description .= "\nNotes: " . strip_tags($booking->notes) . "\n";
@@ -380,30 +397,32 @@ public function deleteBookingFromCalendar($booking)
 
    public function writeEventToCalendar($event)
    {
-    if($this->band->calendar_id !== '' && $this->band->calendar_id !== null)
+    Log::info('Writing event to calendar: ' . $event->title . ' for band: ' . $this->band->name);
+    Log::info('Band calendar ID: ' . $this->band->eventCalendar);
+    if(!empty($this->band->eventCalendar))
     {
-        if($event->google_calendar_event_id !== null)
+
+        if(!empty($event->google_calendar_event_id))
         {
-            $calendarEvent = CalendarEvent::find($event->google_calendar_event_id, $this->band->calendar_id);
+            Log::info('Updating existing calendar event for ID: ' . $event->google_calendar_event_id);
+            $calendarEvent = CalendarEvent::find($event->google_calendar_event_id, $this->bandCalendar);
         }
         else
         {
             $calendarEvent = new CalendarEvent;
+            Log::info('Creating new calendar event for band: ' . $this->band->name);
         }
-        $calendarEvent->name = $event->event_name;
 
-        $startTime = Carbon::parse($event->event_time);
-        $endDateTimeFixed = date('Y-m-d',strtotime($event->event_time)) . ' ' . date('H:i:s', strtotime($event->end_time));
-        if($endDateTimeFixed < $startTime)//when events end after midnight
-        {
-            $endDateTimeFixed = date('Y-m-d',strtotime($event->event_time . ' +1 day')) . ' ' . date('H:i:s', strtotime($event->end_time));
-        }
-        $endTime = Carbon::parse($endDateTimeFixed);
+        $calendarEvent->name = $event->title;
+
+        $startTime = Carbon::parse($event->startDateTime);
+        $endTime = Carbon::parse($event->endDateTime);
         $calendarEvent->startDateTime = $startTime;
         $calendarEvent->endDateTime = $endTime;   
-        $calendarEvent->description =  $event->event_type->name . "\n\n" . $event->venue_name . "\n\n" . $event->address_street . "\n\n" . $event->zip . "\n\n" . $event->city . "\n\n" . $event->advanceURL();
+        $calendarEvent->description =  $event->type->name . "\n\n" . $event->eventable->venue_name . "\n\n" . $event->eventable->venue_address . "\n\n" . $event->advanceURL();
         $google_id = $calendarEvent->save();  
-        $event->google_calendar_event_id = $google_id->id;
+        Log::info('Saved calendar event with ID: ' . $google_id->id . ' for band: ' . $this->band->name);
+        $event->google_calendar_id = $google_id->id;
         $event->save();
     }
    }
@@ -515,7 +534,7 @@ public function deleteBookingFromCalendar($booking)
     /**
      * Grant calendar access to a specific user
      */
-    public function grantUserAccess($user = null, $role = 'writer')
+    public function grantUserAccess(User $user = null, $role = 'writer')
     {
         try {
             if (is_null($this->googleCalendar)) {
@@ -550,6 +569,7 @@ public function deleteBookingFromCalendar($booking)
             $service->acl->insert($this->getCalendarId(), $rule);
 
             Log::info("Granted {$role} access to {$user->email} for calendar {$this->band->calendar_id}");
+
             return true;
 
         } catch (\Exception $e) {
@@ -561,7 +581,7 @@ public function deleteBookingFromCalendar($booking)
     /**
      * Map application roles to Google Calendar ACL roles
      */
-    private function mapRoleToAclRole($role)
+    public function mapRoleToAclRole($role)
     {
         switch ($role) {
             case 'owner':
@@ -594,5 +614,139 @@ public function deleteBookingFromCalendar($booking)
             Log::error("Calendar validation failed for band {$this->band->name}: " . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Check if a user has access to the band's calendar of the current type
+     */
+    public function userHasAccess($user, $role = null)
+    {
+        if (!$user || !$this->band || !$this->calendarType) {
+            return false;
+        }
+
+        // Get the specific calendar for this type
+        if (!$this->bandCalendar) {
+            return false;
+        }
+
+        // Check explicit calendar access permissions
+        $accessQuery = $this->bandCalendar->userAccess->where('user_id', $user->id);
+
+        if ($role) {
+            $accessQuery = $accessQuery->where('role', $role);
+        }
+        
+        return $accessQuery->exists();
+    }
+
+    /**
+     * Check if a user has access to a specific calendar type
+     */
+    public function userHasAccessToCalendarType($user, $calendarType, $role = null)
+    {
+        if (!$user || !$this->band) {
+            return false;
+        }
+
+        // Get the specific calendar for this type
+        $calendar = $this->band->calendars()->where('type', $calendarType)->first();
+        if (!$calendar) {
+            return false;
+        }
+
+        // Check explicit calendar access permissions
+        $accessQuery = CalendarAccess::where('user_id', $user->id)
+            ->where('band_calendar_id', $calendar->id);
+        
+        if ($role) {
+            $accessQuery = $accessQuery->where('role', $role);
+        }
+        
+        return $accessQuery->exists();
+    }
+
+    /**
+     * Get all calendar types a user has access to for this band
+     */
+    public function getUserCalendarAccess($user)
+    {
+        if (!$user || !$this->band) {
+            return [];
+        }
+
+        $access = [];
+        $calendars = $this->band->calendars;
+        
+        foreach ($calendars as $calendar) {
+            $hasAccess = CalendarAccess::where('user_id', $user->id)
+                ->where('band_calendar_id', $calendar->id)
+                ->exists();
+                
+            if ($hasAccess) {
+                $access[] = $calendar->type;
+            }
+        }
+        
+        return $access;
+    }
+
+    /**
+     * Check if user has minimum required role for calendar access
+     */
+    public function userHasMinimumRole($user, $requiredRole)
+    {
+        if (!$user || !$this->band || !$this->calendarType) {
+            return false;
+        }
+
+        $roleHierarchy = [
+            'reader' => 1,
+            'writer' => 2,
+            'owner' => 3
+        ];
+        
+        if (!isset($roleHierarchy[$requiredRole])) {
+            return false;
+        }
+
+        // Get the specific calendar for this type
+        $calendar = $this->band->calendars()->where('type', $this->calendarType)->first();
+        if (!$calendar) {
+            return false;
+        }
+
+        // Check explicit calendar permissions
+        $userAccess = CalendarAccess::where('user_id', $user->id)
+            ->where('band_calendar_id', $calendar->id)
+            ->first();
+        
+        if ($userAccess && isset($roleHierarchy[$userAccess->role])) {
+            return $roleHierarchy[$userAccess->role] >= $roleHierarchy[$requiredRole];
+        }
+        
+        return false;
+    }
+
+    /**
+     * Get user's specific role for the current calendar type
+     */
+    public function getUserRole($user)
+    {
+        if (!$user || !$this->band || !$this->calendarType) {
+            return null;
+        }
+
+        // Get the specific calendar for this type
+        $calendar = $this->band->calendars()->where('type', $this->calendarType)->first();
+        if (!$calendar) {
+            return null;
+        }
+
+        $userAccess = CalendarAccess::where('user_id', $user->id)
+            ->where('band_calendar_id', $calendar->id)
+            ->first();
+        
+        return $userAccess ? $userAccess->role : null;
     }
 }

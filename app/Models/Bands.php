@@ -16,7 +16,7 @@ class Bands extends Model
         return 'id';
     }
 
-    protected $fillable = ['name', 'site_name', 'calendar_id'];
+    protected $fillable = ['name', 'site_name'];
 
     public function owner()
     {
@@ -146,5 +146,34 @@ class Bands extends Model
     public function bookingCalendar()
     {
         return $this->hasOne(BandCalendars::class, 'band_id')->where('type', 'booking');
+    }
+
+    /**
+     * Check if a user has access to any of this band's calendars
+     */
+    public function userHasCalendarAccess($user)
+    {
+        // Only check explicit calendar access
+        return CalendarAccess::whereIn('band_calendar_id', $this->calendars->pluck('id'))
+            ->where('user_id', $user->id)
+            ->exists();
+    }
+
+    /**
+     * Get user's role for a specific calendar type
+     */
+    public function getUserCalendarRole($user, $calendarType)
+    {
+        // Get explicit calendar access only
+        $calendar = $this->calendars()->where('type', $calendarType)->first();
+        if ($calendar) {
+            $access = CalendarAccess::where('user_id', $user->id)
+                ->where('band_calendar_id', $calendar->id)
+                ->first();
+            
+            return $access ? $access->role : null;
+        }
+        
+        return null;
     }
 }
