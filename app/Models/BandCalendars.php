@@ -9,6 +9,11 @@ class BandCalendars extends Model
 {
     use HasFactory;
 
+    public function getRouteKeyName()
+    {
+        return 'calendar_id';
+    }
+
     protected $fillable = [
         'band_id',
         'calendar_id',
@@ -37,5 +42,15 @@ class BandCalendars extends Model
     {
         return $this->userAccess()->where('user_id', $user->id)->delete();
     }
+
+    public function create(): BandCalendars
+    {
+        $calendar = $googleCalendarService->createCalendarForBand($this);
+        $this->calendar_id = $calendar->id;
+        $this->save();
+
+        return $this;
+    }
+    
 
 }

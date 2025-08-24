@@ -76,7 +76,9 @@ class EventsToGoogleCalendarTest extends TestCase
     public function test_returns_google_calendar_description(): void
     {
         $this->event->notes = 'Test Description';
-        $this->assertEquals('Test Description', $this->event->getGoogleCalendarDescription());
+        $this->assertStringContainsString('Test Description', $this->event->getGoogleCalendarDescription());
+        $this->assertStringContainsString('Venue:', $this->event->getGoogleCalendarDescription());
+        $this->assertStringContainsString('Advance URL:', $this->event->getGoogleCalendarDescription());
     }
 
     public function test_returns_google_calendar_start_time(): void

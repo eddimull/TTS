@@ -620,6 +620,14 @@ CREATE TABLE `proposal_phases` (
   `icon` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `proposal_phases` (`id`, `name`, `created_at`, `updated_at`, `icon`) VALUES 
+(1, 'Draft', NOW(), NOW(), 'fas fa-star'),
+(2, 'Finalized', NOW(), NOW(), 'fas fa-phone'),
+(3, 'proposal sent', NOW(), NOW(), 'fas fa-calendar-alt'),
+(4, 'Approved', NOW(), NOW(), 'fas fa-file-contract'),
+(5, 'contract sent', NOW(), NOW(), 'fas fa-redo'),
+(6, 'contract signed', NOW(), NOW(), 'fas fa-handshake');
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `proposals`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;

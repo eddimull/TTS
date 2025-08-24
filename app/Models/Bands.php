@@ -81,12 +81,42 @@ class Bands extends Model
 
     public function events()
     {
-        return $this->hasMany(BandEvents::class, 'band_id');
+        return $this->hasManyThrough(
+        Events::class,
+        Bookings::class,
+        'band_id',     // Foreign key on bookings table
+        'eventable_id', // Foreign key on events table
+        'id',          // Local key on bands table
+        'id'           // Local key on bookings table
+        )
+        ->select(['events.*'])
+        ->addSelect(DB::raw('NULL as notes'))
+        ->orderBy('events.date', 'desc')
+        ->where('eventable_type', Bookings::class);
     }
 
     public function futureEvents()
     {
-        return $this->events()->where('event_time', '>=', now());
+        return $this->events()->where('events.date', '>=', now());
+    }
+
+    public function publicEvents()
+    {
+        return $this->hasManyThrough(
+            Events::class,
+            Bookings::class,
+            'band_id',     // Foreign key on bookings table
+            'eventable_id', // Foreign key on events table
+            'id',          // Local key on bands table
+            'id'           // Local key on bookings table
+        )
+        ->where('eventable_type', Bookings::class)
+        ->whereRaw("JSON_EXTRACT(events.additional_data, '$.public') IN (1, true, '1', 'true')");
+    }
+
+    public function futurePublicEvents()
+    {
+        return $this->publicEvents()->where('events.date', '>=', now());
     }
 
     public function colorways()
@@ -110,7 +140,7 @@ class Bands extends Model
 
     public function bookings()
     {
-        return $this->hasMany(Bookings::class, 'band_id');
+        return $this->hasMany(Bookings::class, 'band_id')->orderBy('date', 'desc');
     }
 
     public function getUnpaidBookings()

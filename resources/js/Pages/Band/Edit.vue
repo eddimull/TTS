@@ -369,11 +369,8 @@ export default {
     },
     syncCalendarByType(type) {
       this.syncingCalendars[type] = true;
-      this.$inertia.post(`/bands/${this.band.id}/syncCalendar/${type}`, {}, {
-        onSuccess: () => {
-          this.syncingCalendars[type] = false;
-          this.$swal.fire("Calendar Synced", `${this.getCalendarTypeLabel(type)} has been synced`, "success");
-        },
+      
+      this.$inertia.post(`/syncCalendar/${this.getCalendarIdFromType(type)}`, {}, {
         onError: () => {
           this.syncingCalendars[type] = false;
         }
@@ -455,7 +452,12 @@ export default {
     },
     getCalendarTypeLabel(type) {
       const calType = this.calendarTypes.find(ct => ct.value === type);
+      console.log(calType)
       return calType ? calType.label : type;
+    },
+    getCalendarIdFromType(type) {
+      const calendar = this.band.calendars.find(cal => cal.type === type);
+      return calendar ? calendar.calendar_id : null;
     }
   }
 }
