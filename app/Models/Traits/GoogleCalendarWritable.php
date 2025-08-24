@@ -52,7 +52,7 @@ trait GoogleCalendarWritable
         $event->setDescription($this->getGoogleCalendarDescription());
         $event->setStart($this->getGoogleCalendarStartTime());
         $event->setEnd($this->getGoogleCalendarEndTime());
-        \Log::debug('Event Data: ' . json_encode($event));
+        
         return $event;
     }
 

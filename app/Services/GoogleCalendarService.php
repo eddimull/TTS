@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Google\Client;
 use Google\Service\Calendar;
+use Google\Service\Calendar\Calendar as CC;
 use Google\Service\Calendar\Event as GoogleEvent;
 
 class GoogleCalendarService
@@ -36,5 +37,10 @@ class GoogleCalendarService
     public function getEvent(string $calendarId, string $eventId): GoogleEvent
     {
         return $this->calendarService->events->get($calendarId, $eventId);
+    }
+
+    public function createCalendar(CC $calendar): CC
+    {
+        return $this->calendarService->calendars->insert($calendar);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use App\Casts\TimeCast;
+use App\Formatters\CalendarEventFormatter;
 use Ramsey\Uuid\Type\Time;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Interfaces\GoogleCalenderable;
@@ -67,13 +68,26 @@ class Events extends Model implements GoogleCalenderable
         // Assuming $this->time is in 'HH:mm:ss' format after TimeCast
         $time = $this->time;
 
-        return Carbon::parse("{$date} {$time}")->isoFormat('YYYY-MM-DDThh:mm:ss.sss');
+        return Carbon::parse("{$date} {$time}")->isoFormat('YYYY-MM-DDTHH:mm:ss.sss');
     }
 
     public function getEndDateTimeAttribute()
     {
-        $endTime = collect($this->additional_data->times)->max('time');
-        return Carbon::parse($endTime)->isoFormat('YYYY-MM-DDThh:mm:ss.sss');
+
+        $endDateTime = Carbon::parse($this->startDateTime)->addHour()->isoFormat('YYYY-MM-DDTHH:mm:ss.sss');
+        try{   
+            $endTime = collect($this->additional_data->times)->max('time');
+            $endDateTime = Carbon::parse($endTime)->isoFormat('YYYY-MM-DDTHH:mm:ss.sss');
+        } catch (\Exception $e) {
+            // Handle the exception if needed
+            \Log::error('Error parsing end time for event ID ' . $this->id . ': ' . $e->getMessage());
+        }
+        return $endDateTime;
+    }
+
+    public function scopePublic($query)
+    {
+        return $query->whereRaw("JSON_EXTRACT(additional_data, '$.public') IN (1, true, '1', 'true')");
     }
 
 
@@ -112,7 +126,7 @@ class Events extends Model implements GoogleCalenderable
 
     public function getGoogleCalendarDescription(): string|null
     {
-        return $this->buildGoogleCalendarDescription();
+        return CalendarEventFormatter::formatEventDescription($this);
     }
 
     public function getGoogleCalendarStartTime(): \Google\Service\Calendar\EventDateTime
@@ -127,8 +141,8 @@ class Events extends Model implements GoogleCalenderable
 
     public function getGoogleCalendarLocation(): string|null
     {
-        if ($this->eventable && property_exists($this->eventable, 'venue_address')) {
-            return $this->eventable->venue_address;
+        if ($this->eventable) {
+            return $this->eventable->venue_name . ($this->eventable->venue_address ? ', ' . $this->eventable->venue_address : '');
         }
         return null;
     }
@@ -136,72 +150,6 @@ class Events extends Model implements GoogleCalenderable
     public function getGoogleCalendarColor(): string|null
     {
         return null;
-    }
-
-    public function buildGoogleCalendarDescription(): string
-    {
-        $elements = [];
-        
-        // Event Type
-        if ($this->type) {
-            $elements['Event Type'] = $this->type->name;
-        }
-        
-        // Venue information
-        if ($this->eventable) {
-            if ($this->eventable->venue_name) {
-                $elements['Venue'] = $this->eventable->venue_name;
-            }
-            if ($this->eventable->venue_address) {
-                $elements['Address'] = $this->eventable->venue_address;
-            }
-        }
-        
-        // Notes (strip HTML tags)
-        if ($this->notes) {
-            $elements['Notes'] = strip_tags($this->notes);
-        }
-        
-        // Timeline - format the times array
-        if (isset($this->additional_data->times) && is_array($this->additional_data->times)) {
-            $timeline = collect($this->additional_data->times)
-                ->sortBy('time')
-                ->map(function ($timeEntry) {
-                    $time = Carbon::parse($timeEntry->time)->format('g:i A');
-                    return "  {$time} - {$timeEntry->title}";
-                })
-                ->implode("\n");
-            
-            if ($timeline) {
-                $elements['Timeline'] = "\n" . $timeline;
-            }
-        }
-        
-        // Attire (strip HTML tags)
-        if (isset($this->additional_data->attire) && !empty($this->additional_data->attire)) {
-            $elements['Attire'] = strip_tags($this->additional_data->attire);
-        }
-        
-        // Additional conditions
-        if (isset($this->additional_data->outside) && $this->additional_data->outside) {
-            $elements['Conditions'] = 'Outside event';
-        }
-        
-        if (isset($this->additional_data->backline_provided) && $this->additional_data->backline_provided) {
-            $elements['Backline'] = 'Provided';
-        }
-        
-        if (isset($this->additional_data->production_needed) && $this->additional_data->production_needed) {
-            $elements['Production'] = 'Required';
-        }
-        
-        // Advance URL
-        $elements['Advance URL'] = $this->advanceURL();
-        
-        return collect($elements)
-            ->filter() // Remove empty values
-            ->map(fn($value, $key) => "{$key}: {$value}")
-            ->implode("\n\n");
     }
 
 }

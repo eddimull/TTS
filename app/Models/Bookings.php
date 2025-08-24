@@ -6,6 +6,7 @@ use App\Casts\Price;
 use App\Models\Contracts;
 use Laravel\Scout\Searchable;
 use App\Casts\BookingDateTime;
+use App\Formatters\CalendarEventFormatter;
 use App\Http\Traits\BookingTraits;
 use App\Models\Interfaces\Contractable;
 use App\Models\Interfaces\GoogleCalenderable;
@@ -272,9 +273,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
 
     public function getGoogleCalendarDescription(): ?string
     {
-        $cs = new CalendarService($this->band);
-
-        return $cs->buildBookingDescription($this);
+        return CalendarEventFormatter::formatBookingDescription($this);
     }
 
     public function getGoogleCalendarColor(): string|null
