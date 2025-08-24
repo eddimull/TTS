@@ -27,19 +27,24 @@ class ProcessBookingUpdated implements ShouldQueue
 
     public function handle()
     {
+        Log::info('Processing booking update for booking ID: ' . $this->booking->id);
         // Update calendar event
+        $this->writeToGoogleCalendar($this->booking->band->bookingCalendar);
+        $this->SendNotification();
+    }
+
+    public function writeToGoogleCalendar($calendar)
+    {
         try {
-            if($this->booking->band->bookingCalendar === null) {
-                Log::info('No calendar ID found for band, skipping calendar update for booking ID: ' . $this->booking->id);
-            } else {
-                $calendarService = new CalendarService($this->booking->band, 'booking');
-                Log::info('Updating calendar for booking ID: ' . $this->booking->id);
-                $calendarService->writeBookingToCalendar($this->booking);
-            }
+            $event = $this->booking->writeToGoogleCalendar($calendar);
+            $this->booking->storeGoogleEventId($calendar, $event->id);
         } catch (\Exception $e) {
             Log::error('Failed to update booking in calendar: ' . $e->getMessage());
         }
+    }
 
+    public function SendNotification()
+    {
         // Handle status change notifications
         $oldStatus = $this->originalData['status'] ?? null;
         $newStatus = $this->booking->status;

@@ -26,13 +26,8 @@ class ProcessBookingDeleted
     public function handle()
     {
         try {
-            if ($this->booking->band->bookingCalendar === null) {
-                Log::info('No calendar ID found for band!, skipping calendar deletion for booking ID: ' . $this->booking->id);
-                return;
-            }
-
-            $calendarService = new CalendarService($this->booking->band, 'booking');
-            $calendarService->deleteBookingFromCalendar($this->booking);
+            $this->booking->deleteFromGoogleCalendar($this->booking->band->bookingCalendar);
+            Log::info('Deleted booking from calendar in observer for booking ID: ' . $this->booking->id);
         } catch (\Exception $e) {
             Log::error('Failed to delete booking from calendar in observer: ' . $e->getMessage());
         }

@@ -30,19 +30,29 @@ class ProcessEventUpdated implements ShouldQueue
 
     public function handle()
     {
-        // Update calendar event
+        $this->writeToGoogleCalendar($this->event->eventable->band->eventCalendar);
+
+        if ($this->event->additional_data->public) {
+            Log::info('Event is public, writing to public calendar for event ID: ' . $this->event->id);
+            $this->writeToGoogleCalendar($this->event->eventable->band->publicCalendar);
+        }
+
+        $this->SendNotification();
+
+    }
+
+    public function writeToGoogleCalendar($calendar)
+    {
         try {
-            if($this->event->eventable->band->eventCalendar === null) {
-                Log::info('No calendar ID found for eventable, skipping calendar update for event ID: ' . $this->event->id);
-            } else {
-                $calendarService = new CalendarService($this->event->eventable->band, 'event');
-                Log::info('Updating calendar for event ID: ' . $this->event->id);
-                $calendarService->writeEventToCalendar($this->event);
-            }
+            $event = $this->event->writeToGoogleCalendar($calendar);
+            $this->event->storeGoogleEventId($calendar, $event->id);
         } catch (\Exception $e) {
             Log::error('Failed to update event in calendar: ' . $e->getMessage());
         }
+    }
 
+    public function SendNotification()
+    {   
         // Handle status change notifications
         $oldStatus = $this->originalData['status'] ?? null;
         $newStatus = $this->event->status;
@@ -78,4 +88,5 @@ class ProcessEventUpdated implements ShouldQueue
             }
         }
     }
+
 }

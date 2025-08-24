@@ -25,12 +25,15 @@ class ProcessEventCreated implements ShouldQueue
     public function handle()
     {
         try {
-            if($this->event->eventable->band->eventCalendar === null) {
-                Log::info('No calendar ID found for band, skipping calendar update for event ID: ' . $this->event->id);
-                return;
+            $event = $this->event->writeToGoogleCalendar($this->event->eventable->band->eventCalendar);
+            $this->event->storeGoogleEventId($this->event->eventable->band->eventCalendar, $event->id);
+
+            if($this->event->additional_data->public)
+            {
+                Log::info('Event is public, writing to public calendar for event ID: ' . $this->event->id);
+                $publicEvent = $this->event->writeToGoogleCalendar($this->event->eventable->band->publicCalendar);
+                $this->event->storeGoogleEventId($this->event->eventable->band->publicCalendar, $publicEvent->id);
             }
-            $calendarService = new CalendarService($this->event->eventable->band,'event', $this->event->eventable->band->eventCalendar);
-            $calendarService->writeEventToCalendar($this->event);
         } catch (\Exception $e) {
             Log::error('Failed to update event in calendar: ' . $e->getMessage());
         }

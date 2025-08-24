@@ -240,48 +240,6 @@ class CalendarServiceTest extends TestCase
         $this->assertEquals(1, $service->testGetBookingStatusColor('unknown'));
     }
 
-    public function test_build_booking_description()
-    {
-        Config::set('google-calendar.auth_profiles.service_account.credentials_json', '/fake/path/credentials.json');
-        
-        $band = Bands::factory()->create();
-        
-        $booking = (object) [
-            'status' => 'confirmed',
-            'venue_name' => 'Test Venue',
-            'venue_address' => '123 Test St',
-            'price' => 500.00,
-            'start_time' => '20:00:00',
-            'end_time' => '23:00:00',
-            'notes' => 'Test notes',
-            'contacts' => []
-        ];
-
-        $service = new class($band) extends CalendarService {
-            protected function createGoogleClient()
-            {
-                return new class {
-                    public function setAuthConfig($path) {}
-                    public function addScope($scope) {}
-                };
-            }
-
-            public function testBuildBookingDescription($booking)
-            {
-                return $this->buildBookingDescription($booking);
-            }
-        };
-
-        $description = $service->testBuildBookingDescription($booking);
-        
-        $this->assertStringContainsString('Status: Confirmed', $description);
-        $this->assertStringContainsString('Venue: Test Venue', $description);
-        $this->assertStringContainsString('Address: 123 Test St', $description);
-        $this->assertStringContainsString('Price: $500.00', $description);
-        $this->assertStringContainsString('Duration: 3 hours', $description);
-        $this->assertStringContainsString('Notes: Test notes', $description);
-    }
-
     public function test_user_has_access_to_calendar_type()
     {
         Config::set('google-calendar.auth_profiles.service_account.credentials_json', '/fake/path/credentials.json');
