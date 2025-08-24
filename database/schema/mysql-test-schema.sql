@@ -381,6 +381,17 @@ CREATE TABLE `event_types` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `event_types` (`id`, `name`, `created_at`, `updated_at`) VALUES 
+(1, 'Wedding', NOW(), NOW()),
+(2, 'Bar Gig', NOW(), NOW()),
+(3, 'Casino', NOW(), NOW()),
+(4, 'Special Event', NOW(), NOW()),
+(5, 'Charity', NOW(), NOW()),
+(6, 'Festival', NOW(), NOW()),
+(7, 'Private Party', NOW(), NOW()),
+(8, 'Mardi Gras Ball', NOW(), NOW()),
+(9, 'Other', NOW(), NOW());
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `events`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
