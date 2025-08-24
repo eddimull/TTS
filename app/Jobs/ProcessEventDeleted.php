@@ -26,13 +26,14 @@ class ProcessEventDeleted
     public function handle()
     {
         try {
-            if ($this->event->eventable->band->eventCalendar === null) {
-                Log::info('No calendar ID found for band!, skipping calendar deletion for event ID: ' . $this->event->id);
-                return;
+            $this->event->deleteFromGoogleCalendar($this->event->eventable->band->eventCalendar);
+            Log::info('Deleted event from calendar in observer for event ID: ' . $this->event->id);
+            if($this->event->additional_data->public)
+            {
+                Log::info('Event is public, deleting from public calendar for event ID: ' . $this->event->id);
+                $this->event->deleteFromGoogleCalendar($this->event->eventable->band->publicCalendar);
+                Log::info('Deleted public event from calendar in observer for event ID: ' . $this->event->id);
             }
-
-            $calendarService = new CalendarService($this->event->eventable->band, 'event');
-            $calendarService->deleteEventFromCalendar($this->event);
         } catch (\Exception $e) {
             Log::error('Failed to delete event from calendar in observer: ' . $e->getMessage());
         }

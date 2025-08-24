@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Bookings;
+use App\Models\GoogleEvents;
 use App\Services\CalendarService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Queue\SerializesModels;
@@ -25,12 +26,11 @@ class ProcessBookingCreated implements ShouldQueue
     public function handle()
     {
         try {
-            if($this->booking->band->bookingCalendar === null) {
-                Log::info('No calendar ID found for band, skipping calendar update for booking ID: ' . $this->booking->id);
-                return;
-            }
-            $calendarService = new CalendarService($this->booking->band,'booking', $this->booking->band->bookingCalendar);
-            $calendarService->writeBookingToCalendar($this->booking);
+            Log::info('Processing booking creation for booking ID: ' . $this->booking->id);
+            $event = $this->booking->writeToGoogleCalendar($this->booking->band->bookingCalendar);
+            Log::info('Created Google Calendar event with ID: ' . $event->id);
+            $this->booking->storeGoogleEventId($this->booking->band->bookingCalendar, $event->id);
+            Log::info('Created Google Events record for booking ID: ' . $this->booking->id);
         } catch (\Exception $e) {
             Log::error('Failed to update booking in calendar: ' . $e->getMessage());
         }
