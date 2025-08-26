@@ -188,6 +188,20 @@ class BookingsControllerTest extends TestCase
         $this->assertDatabaseMissing('bookings', ['id' => $this->booking->id]);
     }
 
+    public function test_owner_can_delete_booking_with_contacts()
+    {
+        $contact = Contacts::factory()->create();
+        $this->booking->contacts()->attach($contact);
+
+        $response = $this->actingAs($this->owner)->delete(route('bands.booking.destroy', [$this->band, $this->booking]));
+
+        $response->assertRedirect(route('Bookings Home'));
+        $this->assertDatabaseMissing('bookings', ['id' => $this->booking->id]);
+        $this->assertDatabaseMissing('booking_contacts', ['booking_id' => $this->booking->id, 'contact_id' => $contact->id]);
+        $this->assertDatabaseHas('contacts', ['id' => $contact->id]); // Ensure the contact itself is not deleted
+
+    }
+
     public function test_owner_can_view_booking_details()
     {
         $response = $this->actingAs($this->owner)->get(route('Booking Details', [$this->band, $this->booking]));
