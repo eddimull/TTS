@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Services\GoogleCalendarService;
+use Google\Service\Calendar\Calendar;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class BandCalendars extends Model
 {
@@ -43,13 +45,9 @@ class BandCalendars extends Model
         return $this->userAccess()->where('user_id', $user->id)->delete();
     }
 
-    public function create(): BandCalendars
+    public function getGoogleCalendarAttribute(): Calendar
     {
-        $calendar = $googleCalendarService->createCalendarForBand($this);
-        $this->calendar_id = $calendar->id;
-        $this->save();
-
-        return $this;
+        return app(GoogleCalendarService::class)->getCalendar($this->calendar_id);
     }
     
 
