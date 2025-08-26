@@ -275,6 +275,7 @@ class BookingsController extends Controller
     public function destroy(Bands $band, Bookings $booking)
     {
         $booking->contacts()->detach();
+        $booking->events()->delete();
         $booking->delete();
         
         return redirect()->route('Bookings Home')->with('successMessage', "{$booking->name} has been deleted.");

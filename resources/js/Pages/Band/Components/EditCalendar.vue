@@ -136,146 +136,19 @@
       </div>
     </div>
 
-    <!-- Calendar Access Management (only show if calendars exist) -->
+    <!-- Calendar Access Management Component -->
     <div
       v-if="anyCalendarExists"
       class="border-t border-gray-200 dark:border-gray-600 pt-6"
     >
-      <!-- Grant Access Form -->
-      <div class="border-b border-gray-200 dark:border-gray-600 pb-6">
-        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-          Grant Calendar Access
-        </h3>
-        <div v-if="!grantingAccess">
-          <Button
-            label="Grant Access to User"
-            icon="pi pi-calendar-plus"
-            @click="startGrantingAccess"
-          />
-        </div>
-        
-        <transition name="slide-down">
-          <div
-            v-if="grantingAccess"
-            class="space-y-4"
-          >
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Select User
-              </label>
-              <select
-                :value="calendarAccess.email"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                required
-                @change="updateAccessUserId"
-              >
-                <option value="">
-                  Select a band member or owner...
-                </option>
-                <optgroup
-                  v-if="bandOwnersAndMembers.owners.length > 0"
-                  label="Band Owners"
-                >
-                  <option
-                    v-for="owner in bandOwnersAndMembers.owners"
-                    :key="`owner-${owner.id}`"
-                    :value="owner.id"
-                  >
-                    {{ owner.name }} ({{ owner.email }}) - Owner
-                  </option>
-                </optgroup>
-                <optgroup
-                  v-if="bandOwnersAndMembers.members.length > 0"
-                  label="Band Members"
-                >
-                  <option
-                    v-for="member in bandOwnersAndMembers.members"
-                    :key="`member-${member.id}`"
-                    :value="member.id"
-                  >
-                    {{ member.name }} ({{ member.email }}) - Member
-                  </option>
-                </optgroup>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Access Level
-              </label>
-              <select
-                :value="calendarAccess.role"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                @change="updateAccessRole"
-              >
-                <option value="reader">
-                  Reader (view only)
-                </option>
-                <option value="writer">
-                  Writer (can edit events)
-                </option>
-                <option value="owner">
-                  Owner (full access)
-                </option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Calendar Type
-              </label>
-              <select
-                :value="calendarAccess.calendarType"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                @change="updateAccessCalendarId"
-              >
-                <option value="all">
-                  All Calendars
-                </option>
-                <option
-                  v-for="calType in calendarTypes"
-                  :key="calType.value"
-                  :value="getDBCalendarId(calType.value)"
-                  :disabled="!getCalendarStatus(calType.value)"
-                >
-                  {{ calType.label }}
-                </option>
-              </select>
-            </div>
-            <div class="flex items-center gap-3">
-              <Button
-                label="Grant Access"
-                icon="pi pi-check"
-                :loading="grantingAccessLoading"
-                :disabled="!calendarAccess.user_id"
-                @click="grantCalendarAccess"
-              />
-              <Button
-                label="Cancel"
-                icon="pi pi-times"
-                severity="secondary"
-                text
-                size="small"
-                @click="cancelGrantAccess"
-              />
-            </div>
-          </div>
-        </transition>
-      </div>
-      <!-- Sync All Band Members -->
-      <div class="pt-6">
-        <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
-          Sync Band Members
-        </h3>
-        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-          Grant calendar access to all current band members and owners automatically.
-        </p>
-        <Button
-          label="Sync All Band Members"
-          icon="pi pi-sync"
-          severity="info"
-          :loading="syncingMembers"
-          @click="syncAllBandMembers"
-        />
-      </div>
+      <EditCalendarAccess
+        :band="band"
+        :calendar-types="calendarTypes"
+        :calendar-statuses="calendarStatuses"
+        :syncing-members="syncingMembers"
+        @sync-all-band-members="syncAllBandMembers"
+        @update-calendar-access-for-user="updateCalendarAccessForUser"
+      />
     </div>
 
     <!-- No Calendars Message -->
@@ -311,10 +184,13 @@
 </template>
 
 <script>
-import { update } from 'lodash';
+import EditCalendarAccess from './EditCalendarAccess.vue'
 
 export default {
   name: 'EditCalendar',
+  components: {
+    EditCalendarAccess
+  },
   props: {
     band: {
       type: Object,
@@ -340,21 +216,9 @@ export default {
       type: Boolean,
       default: false
     },
-    grantingAccess: {
-      type: Boolean,
-      default: false
-    },
-    grantingAccessLoading: {
-      type: Boolean,
-      default: false
-    },
     syncingMembers: {
       type: Boolean,
       default: false
-    },
-    calendarAccess: {
-      type: Object,
-      required: true
     },
     calendarStatuses: {
       type: Object,
@@ -366,11 +230,8 @@ export default {
     'sync-calendar-by-type', 
     'create-all-calendars',
     'sync-all-calendars',
-    'grant-calendar-access',
-    'cancel-grant-access',
     'sync-all-band-members',
-    'update-granting-access',
-    'update-calendar-access'
+    'update-calendar-access-for-user'
   ],
   computed: {
     allCalendarsExist() {
@@ -378,35 +239,6 @@ export default {
     },
     anyCalendarExists() {
       return Object.values(this.calendarStatuses).some(status => status);
-    },
-    bandOwnersAndMembers() {
-      const owners = this.band.owners || [];
-      const members = this.band.members || [];
-      
-      return {
-        owners: owners
-          .map(owner => {
-            // Try user_data first, then user as fallback
-            const userData = owner.user_data || owner.user;
-            return userData ? {
-              id: userData.id,
-              name: userData.name,
-              email: userData.email
-            } : null;
-          })
-          .filter(owner => owner && owner.email),
-        members: members
-          .map(member => {
-            // Try user_data first, then user as fallback
-            const userData = member.user_data || member.user;
-            return userData ? {
-              id: userData.id,
-              name: userData.name,
-              email: userData.email
-            } : null;
-          })
-          .filter(member => member && member.email)
-      };
     }
   },
   methods: {
@@ -417,13 +249,6 @@ export default {
       if (this.band.calendars && Array.isArray(this.band.calendars)) {
         const calendar = this.band.calendars.find(cal => cal.type === type);
         return calendar ? calendar.calendar_id : null;
-      }
-      return null;
-    },
-    getDBCalendarId(type) {
-      if (this.band.calendars && Array.isArray(this.band.calendars)) {
-        const calendar = this.band.calendars.find(cal => cal.type === type);
-        return calendar ? calendar.id : null;
       }
       return null;
     },
@@ -439,26 +264,11 @@ export default {
     syncAllCalendars() {
       this.$emit('sync-all-calendars');
     },
-    startGrantingAccess() {
-      this.$emit('update-granting-access', true);
-    },
-    grantCalendarAccess() {
-      this.$emit('grant-calendar-access');
-    },
-    cancelGrantAccess() {
-      this.$emit('cancel-grant-access');
-    },
     syncAllBandMembers() {
       this.$emit('sync-all-band-members');
     },
-    updateAccessUserId(event) {
-      this.$emit('update-calendar-access', 'user_id', event.target.value);
-    },
-    updateAccessRole(event) {
-      this.$emit('update-calendar-access', 'role', event.target.value);
-    },
-    updateAccessCalendarId(event) {
-      this.$emit('update-calendar-access', 'calendar_id', event.target.value);
+    updateCalendarAccessForUser(data) {
+      this.$emit('update-calendar-access-for-user', data);
     }
   }
 }

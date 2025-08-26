@@ -128,4 +128,60 @@ class EventsToGoogleCalendarTest extends TestCase
         $this->assertInstanceOf(GoogleEvent::class, $this->event->writeToGoogleCalendar($this->event->eventable->band->publicCalendar));
     }
 
+    public function test_deletes_from_google_calendar(): void
+    {
+        BandCalendars::factory()->create([
+            'band_id' => $this->event->eventable->band->id,
+            'type' => 'event'
+        ]);
+        $googleEvent = GoogleEvents::create([
+            'google_event_id' => \Str::uuid(),
+            'google_eventable_id' => $this->event->id,
+            'google_eventable_type' => get_class($this->event),
+            'band_calendar_id' => $this->event->eventable->band->eventCalendar->id
+        ]);
+        $mockService = $this->mock(GoogleCalendarService::class);
+        $mockService->shouldReceive('deleteEvent')
+        ->once()
+        ->andReturn(true);
+        $this->assertTrue($this->event->deleteFromGoogleCalendar($this->event->eventable->band->eventCalendar));
+        $this->assertDatabaseMissing('google_events', ['id' => $googleEvent->id]);
+    }
+
+    public function test_deletes_from_google_calendar_when_no_event_exists(): void
+    {
+        BandCalendars::factory()->create([
+            'band_id' => $this->event->eventable->band->id,
+            'type' => 'event'
+        ]);
+        $mockService = $this->mock(GoogleCalendarService::class);
+        $mockService->shouldNotReceive('deleteEvent');
+        $this->assertFalse($this->event->deleteFromGoogleCalendar($this->event->eventable->band->eventCalendar));
+    }
+
+    public function test_edge_case_deletes_when_calendar_changed(): void
+    {
+        BandCalendars::factory()->create([
+            'band_id' => $this->event->eventable->band->id,
+            'type' => 'event'
+        ]);
+        $bandCalendar = $this->event->eventable->band->eventCalendar;
+        $googleEvent = GoogleEvents::create([
+            'google_event_id' => \Str::uuid(),
+            'google_eventable_id' => $this->event->id,
+            'google_eventable_type' => get_class($this->event),
+            'band_calendar_id' => $bandCalendar->id
+        ]);
+        $newBandCalendar = BandCalendars::factory()->create([
+            'band_id' => $this->event->eventable->band->id,
+            'type' => 'public'
+        ]);
+        $mockService = $this->mock(GoogleCalendarService::class);
+        $mockService->shouldReceive('deleteEvent')
+        ->once()
+        ->andReturn(true);
+        $this->assertTrue($this->event->deleteFromGoogleCalendar($bandCalendar));
+        $this->assertDatabaseMissing('google_events', ['id' => $googleEvent->id]);
+    }
+
 }

@@ -281,7 +281,7 @@ export default {
     },
     createCalendar() {
       this.creatingCalendar = true;
-      this.$inertia.post('/bands/' + this.band.id + '/createCalendar', {}, {
+      this.$inertia.post(this.band.id + '/createCalendar', {}, {
         onSuccess: (page) => {
           this.creatingCalendar = false;
           if (page.props.band && page.props.band.calendar_id) {
@@ -357,7 +357,7 @@ export default {
     // Calendar methods
     createCalendarByType(type) {
       this.creatingCalendars[type] = true;
-      this.$inertia.post(`/bands/${this.band.id}/createCalendar/${type}`, {}, {
+      this.$inertia.post(route('bands.createCalendar', { band: this.band.id, type }), {}, {
         onSuccess: (page) => {
           this.creatingCalendars[type] = false;
           this.$swal.fire("Calendar Created", `${this.getCalendarTypeLabel(type)} has been created successfully`, "success");
@@ -417,6 +417,18 @@ export default {
     },
     updateCalendarAccess(field, value) {
       this.calendarAccess[field] = value;
+    },
+
+    updateCalendarAccessForUser(data) {
+      this.grantingAccessLoading = true;
+      this.$inertia.post(route('bands.grantCalendarAccess', this.band.id), data, {
+        onError: () => {
+          this.grantingAccessLoading = false;
+        },
+        onFinish: () => {
+          this.grantingAccessLoading = false;
+        }
+      });
     },
     grantCalendarAccess() {
       this.grantingAccessLoading = true;

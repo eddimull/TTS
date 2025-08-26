@@ -4,8 +4,10 @@ namespace App\Services;
 
 use Google\Client;
 use Google\Service\Calendar;
+use Google\Service\Calendar\AclRule;
 use Google\Service\Calendar\Calendar as CC;
 use Google\Service\Calendar\Event as GoogleEvent;
+use Google\Service\Calendar\Resource\Acl;
 
 class GoogleCalendarService
 {
@@ -31,7 +33,15 @@ class GoogleCalendarService
 
     public function deleteEvent(string $calendarId, string $eventId): bool
     {
-        return $this->calendarService->events->delete($calendarId, $eventId);
+        try {
+            if($this->getEvent($calendarId, $eventId)) {
+                $this->calendarService->events->delete($calendarId, $eventId);
+                return true;
+            }
+            return false;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 
     public function getEvent(string $calendarId, string $eventId): GoogleEvent
@@ -42,5 +52,31 @@ class GoogleCalendarService
     public function createCalendar(CC $calendar): CC
     {
         return $this->calendarService->calendars->insert($calendar);
+    }
+
+    public function getCalendar(string $calendarId): CC
+    {
+        return $this->calendarService->calendars->get($calendarId);
+    }
+
+    public function addAccess(CC $calendar, AclRule $rule)
+    {
+        return $this->calendarService->acl->insert($calendar->getId(), $rule);
+    }
+
+    public function findAccess(CC $calendar, string $email): AclRule
+    {
+        $rules = $this->calendarService->acl->listAcl($calendar->getId());
+        foreach ($rules->getItems() as $rule) {
+            if ($rule->getScope()->getValue() === $email) {
+                return $rule;
+            }
+        }
+        throw new \Exception("Access not found");
+    }
+
+    public function revokeAccess(CC $calendar, AclRule $acl)
+    {
+        return $this->calendarService->acl->delete($calendar->getId(), $acl->getId());
     }
 }

@@ -1,10 +1,11 @@
 <?php
 
-use App\Http\Controllers\BandCalendarController;
+use App\Models\BandCalendars;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BandsController;
 use App\Http\Controllers\InvitationsController;
-use App\Models\BandCalendars;
+use App\Http\Controllers\BandCalendarController;
+use App\Http\Controllers\CalendarAccessController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('bands')->group(function () {
@@ -19,11 +20,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/{band}/members/{user}', [BandsController::class, 'deleteMember'])->middleware(['owner'])->name('bands.deleteMember');
         Route::post('/{band}/uploadLogo', [BandsController::class, 'uploadLogo'])->middleware(['owner'])->name('bands.uploadLogo');
         Route::get('/{band}/setupStripe', [BandsController::class, 'setupStripe'])->middleware(['owner'])->name('bands.setupStripe');
-        Route::post('/{band}/createCalendar/{type}', [BandsController::class, 'createCalendar'])->middleware(['owner'])->name('bands.createCalendar');
-        Route::post('/{band}/grantCalendarAccess', [BandsController::class, 'grantCalendarAccess'])->middleware(['owner'])->name('bands.grantCalendarAccess');
         Route::post('/{band}/syncBandCalendarAccess', [BandsController::class, 'syncBandCalendarAccess'])->middleware(['owner'])->name('bands.syncBandCalendarAccess');
-
+        
     });
+    
+    Route::post('/grantCalendarAccess/{calendar_id}', [CalendarAccessController::class, 'create'])->middleware(['CalendarOwner'])->name('bands.grantCalendarAccess');
+    Route::delete('/revokeCalendarAccess/{calendar_id}/{user}', [CalendarAccessController::class, 'destroy'])->middleware(['CalendarOwner'])->name('bands.revokeCalendarAccess');
+    Route::post('/createCalendar/{band}/{type}', [BandCalendarController::class, 'create'])->middleware(['owner'])->name('bands.createCalendar')->whereIn('type', ['booking','event','public']);
     //this is an odd place for this route
     Route::post('/syncCalendar/{calendar_id}', [BandCalendarController::class, 'syncCalendar'])->middleware(['CalendarOwner'])->name('bands.syncCalendar');
     

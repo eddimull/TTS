@@ -10,12 +10,14 @@ use Illuminate\Support\Str;
 use Google\Service\Calendar;
 use App\Models\BandCalendars;
 use App\Services\CalendarService;
+use App\Services\GoogleCalendarService;
 use Illuminate\Http\UploadedFile;
 use Google\Service\Calendar\AclRule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Testing\FileFactory;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\GoogleCalendar\GoogleCalendar;
 
 class BandsControllerTest extends TestCase
 {
@@ -73,12 +75,14 @@ class BandsControllerTest extends TestCase
 
     public function test_user_can_be_granted_access_to_calendar(): void
     {
+        $mockService = $this->mock(GoogleCalendarService::class);
+        $mockService->shouldReceive('addAccess')->once();
+        $mockService->shouldReceive('getCalendar')->once();
         $calendar = BandCalendars::factory()->create(['band_id' => $this->band->id]);
 
 
-        $response = $this->actingAs($this->owner)->post(route('bands.grantCalendarAccess', [$this->band, $calendar]), [
+        $response = $this->actingAs($this->owner)->post(route('bands.grantCalendarAccess', [$calendar]), [
             'user_id' => $this->member->id,
-            'calendar_id' => $calendar->id,
             'role' => 'owner',
         ]);
 
@@ -89,6 +93,30 @@ class BandsControllerTest extends TestCase
             'user_id' => $this->member->id,
             'band_calendar_id' => $calendar->id,
             'role' => 'owner',
+        ]);
+
+        Mockery::close();
+    }
+
+    public function test_user_access_can_be_revoked(): void
+    {
+        $mockService = $this->mock(GoogleCalendarService::class);
+        $mockService->shouldReceive('revokeAccess')->once();
+        $mockService->shouldReceive('getCalendar')->once();
+        $calendar = BandCalendars::factory()->create(['band_id' => $this->band->id]);
+        $calendarAccess = $calendar->access()->create([
+            'user_id' => $this->member->id,
+            'role' => 'writer',
+        ]);
+
+        $response = $this->actingAs($this->owner)->delete(route('bands.revokeCalendarAccess', [$calendar, $this->member]));
+
+        $response->assertStatus(302);
+        $response->assertSessionHas('successMessage');
+
+        $this->assertDatabaseMissing('calendar_access', [
+            'user_id' => $this->member->id,
+            'band_calendar_id' => $calendar->id,
         ]);
 
         Mockery::close();

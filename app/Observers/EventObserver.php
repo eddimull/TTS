@@ -23,6 +23,7 @@ class EventObserver
 
     public function deleted(Events $event)
     {
+        \Log::info('Event deleted observer triggered for event ID: ' . $event->id);
         ProcessEventDeleted::dispatch($event);
     }
 }

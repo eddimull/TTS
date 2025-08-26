@@ -6,14 +6,15 @@ use Carbon\Carbon;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Bands;
+use App\Models\Events;
 use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\Payments;
 use App\Models\userPermissions;
 use Illuminate\Http\UploadedFile;
+use Spatie\Browsershot\Browsershot;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
-use Spatie\Browsershot\Browsershot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class BookingsControllerTest extends TestCase
@@ -199,7 +200,21 @@ class BookingsControllerTest extends TestCase
         $this->assertDatabaseMissing('bookings', ['id' => $this->booking->id]);
         $this->assertDatabaseMissing('booking_contacts', ['booking_id' => $this->booking->id, 'contact_id' => $contact->id]);
         $this->assertDatabaseHas('contacts', ['id' => $contact->id]); // Ensure the contact itself is not deleted
+    }
 
+    public function test_owner_can_delete_booking_with_events()
+    {
+        $event = Events::factory()->create([
+            'eventable_type' => 'App\Models\Bookings',
+            'eventable_id' => $this->booking->id
+        ]);
+        
+
+        $response = $this->actingAs($this->owner)->delete(route('bands.booking.destroy', [$this->band, $this->booking]));
+
+        $response->assertRedirect(route('Bookings Home'));
+        $this->assertDatabaseMissing('bookings', ['id' => $this->booking->id]);
+        $this->assertDatabaseMissing('events', ['eventable_type'=> 'App\Models\Bookings', 'eventable_id' => $this->booking->id]);
     }
 
     public function test_owner_can_view_booking_details()

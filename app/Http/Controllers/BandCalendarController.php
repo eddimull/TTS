@@ -19,18 +19,16 @@ class BandCalendarController extends Controller
         $this->googleCalendarService = $googleCalendarService;
     }
 
-    public function create(Bands $band, Request $request)
+    public function create(Bands $band, string $type)
     {   
-        $validated = $request->validate([
-            'type' => 'required|in:booking,event,public',
-        ]);
-        $formattedCalendar = CalendarFormatter::formatCalendar($band, $validated['type']);
+        
+        $formattedCalendar = CalendarFormatter::formatCalendar($band, $type);
         $googleCalendar = $this->googleCalendarService->createCalendar($formattedCalendar);
 
         BandCalendars::create([
             'band_id' => $band->id,
             'calendar_id' => $googleCalendar->id,
-            'type' => $validated['type'],
+            'type' => $type,
         ]);
 
         return redirect()->back()->with('successMessage', 'Calendar created successfully');

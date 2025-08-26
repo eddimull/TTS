@@ -118,4 +118,24 @@ class BookingsToGoogleCalendarTest extends TestCase
         ->andReturn(new GoogleEvent());
         $this->assertInstanceOf(GoogleEvent::class, $this->booking->writeToGoogleCalendar($this->booking->band->bookingCalendar));
     }
+
+    public function test_deletes_from_google_calendar(): void
+    {
+        BandCalendars::factory()->create([
+            'band_id' => $this->booking->band->id,
+            'type' => 'booking'
+        ]);
+        $googleEvent = LocalGoogleEvents::create([
+            'google_event_id' => \Str::uuid(),
+            'google_eventable_id' => $this->booking->id,
+            'google_eventable_type' => get_class($this->booking),
+            'band_calendar_id' => $this->booking->band->bookingCalendar->id
+        ]);
+        $mockService = $this->mock(GoogleCalendarService::class);
+        $mockService->shouldReceive('deleteEvent')
+        ->once()
+        ->andReturn(true);
+        $this->assertTrue($this->booking->deleteFromGoogleCalendar($this->booking->band->bookingCalendar));
+        $this->assertDatabaseMissing('google_events', ['id' => $googleEvent->id]);
+    }
 }

@@ -34,7 +34,17 @@ trait GoogleCalendarWritable
 
         $googleCalendarService = app(GoogleCalendarService::class);
 
-        return $googleCalendarService->deleteEvent($bandCalendar->calendar_id, $this->getGoogleEvent($bandCalendar)->google_event_id);
+        $googleEventId = $this->getGoogleEvent($bandCalendar)->google_event_id;
+
+        $deleted = $googleCalendarService->deleteEvent($bandCalendar->calendar_id, $googleEventId);
+
+        if($deleted)
+        {
+            $this->removeGoogleEventId($bandCalendar, $googleEventId);
+        }
+
+
+        return $deleted;
     }
 
     protected function existsInGoogleCalendar(BandCalendars $bandCalendar): bool
@@ -66,5 +76,18 @@ trait GoogleCalendarWritable
             ],
             ['google_event_id' => $googleEventId]
         );
+    }
+
+    public function removeGoogleEventId(BandCalendars $bandCalendar): bool
+    {
+        $googleEvent = GoogleEvents::where('google_eventable_id', $this->id)
+            ->where('google_eventable_type', get_class($this))
+            ->where('band_calendar_id', $bandCalendar->id)
+            ->first();
+
+        if ($googleEvent) {
+            return $googleEvent->delete();
+        }
+        return false;
     }
 }
