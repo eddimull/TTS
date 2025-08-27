@@ -154,19 +154,24 @@
         />
       </div>
       <div class="flex justify-end space-x-4">
-        <button
+        <Button
+          v-if="props.booking.status !== 'confirmed'"
+          label="Delete Booking"
+          severity="danger"
+          @click="deleteBooking"
+        />
+        <Button
+          v-if="props.booking.status === 'confirmed'"
           type="button"
+          label="Cancel Booking"
+          severity="danger"
           @click="cancelBooking"
-          class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 active:bg-red-900 focus:outline-none focus:border-red-900 focus:ring ring-red-300 disabled:opacity-25 transition ease-in-out duration-150"
-        >
-          Cancel Booking
-        </button>
-        <button
+        />
+        <Button
+          label="Update Booking"
           type="submit"
-          class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:border-indigo-900 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150"
-        >
-          Update Booking
-        </button>
+          severity="success"
+        />
       </div>
     </form>
   </Container>
@@ -216,6 +221,15 @@
       preserveScroll: true,
       preserveState: true,
     })
+  }
+
+  const deleteBooking = () => {
+    if (confirm('Are you sure you want to delete this booking? This action cannot be undone.')) {
+      form.delete(route('bands.booking.destroy', [props.band, props.booking]), {
+        preserveScroll: true,
+        preserveState: false,
+      })
+    }
   }
 
   const cancelBooking = () => {

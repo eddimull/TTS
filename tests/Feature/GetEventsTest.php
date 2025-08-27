@@ -15,7 +15,7 @@ use Tests\TestCase;
 
 class GetEventsTest extends TestCase
 {
-    use WithFaker;
+    use RefreshDatabase, WithFaker;
     /**
      * A basic feature test example.
      *

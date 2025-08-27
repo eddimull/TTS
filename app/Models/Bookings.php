@@ -6,19 +6,24 @@ use App\Casts\Price;
 use App\Models\Contracts;
 use Laravel\Scout\Searchable;
 use App\Casts\BookingDateTime;
+use App\Formatters\CalendarEventFormatter;
 use App\Http\Traits\BookingTraits;
 use App\Models\Interfaces\Contractable;
+use App\Models\Interfaces\GoogleCalenderable;
+use App\Models\Traits\GoogleCalendarWritable;
+use App\Services\CalendarService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class Bookings extends Model implements Contractable
+class Bookings extends Model implements Contractable, GoogleCalenderable
 {
     use HasFactory;
     use BookingTraits;
     use Searchable;
+    use GoogleCalendarWritable;
 
     protected $fillable = [
         'band_id',
@@ -241,6 +246,68 @@ class Bookings extends Model implements Contractable
     {
         // Only index bookings that are not cancelled or deleted
         return !in_array($this->status, ['cancelled', 'deleted']);
+    }
+
+    public function googleEvent(): MorphOne
+    {
+        return $this->morphOne(GoogleEvents::class, 'google_eventable');
+    }
+
+    public function getGoogleEvent(BandCalendars $bandCalendar = null): GoogleEvents|null
+    {
+        if (!$bandCalendar) {
+            return $this->googleEvent;
+        }
+        return $this->googleEvent()->where('band_calendar_id', $bandCalendar->id)->first();
+    }
+
+    public function getGoogleCalendar(): BandCalendars|null
+    {
+        return $this->band->bookingCalendar;
+    }
+
+    public function getGoogleCalendarSummary(): ?string
+    {
+        return $this->name . ' (' . ucfirst($this->status) . ')';
+    }
+
+    public function getGoogleCalendarDescription(): ?string
+    {
+        return CalendarEventFormatter::formatBookingDescription($this);
+    }
+
+    public function getGoogleCalendarColor(): string|null
+    {
+        switch ($this->status) {
+            case 'confirmed':
+                return '10'; // Green
+            case 'pending':
+                return '5'; // Yellow
+            case 'cancelled':
+                return '11'; // Red
+            case 'draft':
+                return '9'; // Blueberry
+            default:
+                return null;
+        }
+    }
+
+    public function getGoogleCalendarLocation(): string|null
+    {
+       if($this->venue_name && $this->venue_name !== 'TBD') {
+           return $this->venue_name . ($this->venue_address ? ', ' . $this->venue_address : '');
+       }
+       return null;
+    }
+
+    public function getGoogleCalendarStartTime(): \Google\Service\Calendar\EventDateTime
+    {
+        return new \Google\Service\Calendar\EventDateTime(['dateTime' => $this->startDateTime, 'timeZone' => config('app.timezone')]);
+    }
+
+    public function getGoogleCalendarEndTime(): \Google\Service\Calendar\EventDateTime
+    {
+        return new \Google\Service\Calendar\EventDateTime(['dateTime' => $this->endDateTime, 'timeZone' => config('app.timezone')]);
     }
 
 }
