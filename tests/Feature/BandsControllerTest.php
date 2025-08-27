@@ -9,15 +9,16 @@ use App\Models\Bands;
 use Illuminate\Support\Str;
 use Google\Service\Calendar;
 use App\Models\BandCalendars;
+use App\Models\CalendarAccess;
 use App\Services\CalendarService;
-use App\Services\GoogleCalendarService;
 use Illuminate\Http\UploadedFile;
 use Google\Service\Calendar\AclRule;
+use App\Services\GoogleCalendarService;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Testing\FileFactory;
+use Spatie\GoogleCalendar\GoogleCalendar;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Spatie\GoogleCalendar\GoogleCalendar;
 
 class BandsControllerTest extends TestCase
 {
@@ -46,7 +47,7 @@ class BandsControllerTest extends TestCase
     public function test_can_upload_logo(): void
     {
         Storage::fake('s3');
-        
+
         $logo = UploadedFile::fake()->image('logo.png');
         $response = $this->actingAs($this->owner)->post(route('bands.uploadLogo', $this->band), [
             'logo' => $logo,
@@ -102,9 +103,11 @@ class BandsControllerTest extends TestCase
     {
         $mockService = $this->mock(GoogleCalendarService::class);
         $mockService->shouldReceive('revokeAccess')->once();
+        $mockService->shouldReceive('findAccess')->once();
         $mockService->shouldReceive('getCalendar')->once();
         $calendar = BandCalendars::factory()->create(['band_id' => $this->band->id]);
-        $calendarAccess = $calendar->access()->create([
+        CalendarAccess::create([
+            'band_calendar_id' => $calendar->id,
             'user_id' => $this->member->id,
             'role' => 'writer',
         ]);
