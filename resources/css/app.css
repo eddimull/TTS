@@ -19,3 +19,285 @@
         @apply bg-white dark:bg-slate-700 border-b border-gray-200;
     }
 }
+
+/* SweetAlert2 Dark Mode & PrimeVue Compatibility - Move outside @layer to increase specificity */
+.swal2-popup {
+    background-color: white !important;
+    border: none !important;
+    border-radius: 12px !important;
+    font-family: inherit !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+}
+
+.swal2-popup.swal2-show{
+    display: grid !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    .swal2-popup {
+        background-color: rgb(30, 41, 59) !important;
+    }
+}
+
+.dark .swal2-popup {
+    background-color: rgb(30, 41, 59) !important;
+}
+
+.swal2-title {
+    color: rgb(17, 24, 39) !important;
+    font-weight: 600 !important;
+    font-size: 1.5rem !important;
+    margin: 0 0 1rem 0 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    .swal2-title {
+        color: rgb(243, 244, 246) !important;
+    }
+}
+
+.dark .swal2-title {
+    color: rgb(243, 244, 246) !important;
+}
+
+.swal2-content,
+.swal2-html-container {
+    color: rgb(55, 65, 81) !important;
+    font-size: 1rem !important;
+    line-height: 1.5 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    .swal2-content,
+    .swal2-html-container {
+        color: rgb(209, 213, 219) !important;
+    }
+}
+
+.dark .swal2-content,
+.dark .swal2-html-container {
+    color: rgb(209, 213, 219) !important;
+}
+
+.swal2-actions {
+    gap: 0.75rem !important;
+    margin: 1.5rem 0 0 0 !important;
+}
+
+.swal2-confirm {
+    background-color: rgb(37, 99, 235) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 0.5rem !important;
+    padding: 0.625rem 1.5rem !important;
+    font-weight: 500 !important;
+    transition: background-color 0.2s !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+}
+
+.swal2-confirm:hover {
+    background-color: rgb(29, 78, 216) !important;
+}
+
+.swal2-cancel {
+    background-color: rgb(220, 38, 38) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 0.5rem !important;
+    padding: 0.625rem 1.5rem !important;
+    font-weight: 500 !important;
+    transition: background-color 0.2s !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+}
+
+.swal2-cancel:hover {
+    background-color: rgb(185, 28, 28) !important;
+}
+
+.swal2-deny {
+    background-color: rgb(107, 114, 128) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 0.5rem !important;
+    padding: 0.625rem 1.5rem !important;
+    font-weight: 500 !important;
+    transition: background-color 0.2s !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+}
+
+.swal2-deny:hover {
+    background-color: rgb(75, 85, 99) !important;
+}
+
+.swal2-backdrop {
+    background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+.swal2-icon {
+    border: none !important;
+    margin: 1rem auto 1.5rem auto !important;
+}
+
+.swal2-icon.swal2-success {
+    border-color: rgb(34, 197, 94) !important;
+}
+
+.swal2-icon.swal2-error {
+    border-color: rgb(239, 68, 68) !important;
+}
+
+.swal2-icon.swal2-warning {
+    border-color: rgb(245, 158, 11) !important;
+}
+
+.swal2-icon.swal2-info {
+    border-color: rgb(59, 130, 246) !important;
+}
+
+/* Fix PrimeVue z-index conflicts */
+.swal2-container {
+    z-index: 9999 !important;
+}
+
+/* Input styling for SweetAlert2 inputs */
+.swal2-input {
+    background-color: white !important;
+    border: 1px solid rgb(209, 213, 219) !important;
+    color: rgb(17, 24, 39) !important;
+    border-radius: 0.5rem !important;
+    padding: 0.5rem 0.75rem !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    .swal2-input {
+        background-color: rgb(51, 65, 85) !important;
+        border-color: rgb(71, 85, 105) !important;
+        color: rgb(243, 244, 246) !important;
+    }
+}
+
+.dark .swal2-input {
+    background-color: rgb(51, 65, 85) !important;
+    border-color: rgb(71, 85, 105) !important;
+    color: rgb(243, 244, 246) !important;
+}
+
+.swal2-input:focus {
+    border-color: rgb(59, 130, 246) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+}
+
+/* Textarea styling */
+.swal2-textarea {
+    background-color: white !important;
+    border: 1px solid rgb(209, 213, 219) !important;
+    color: rgb(17, 24, 39) !important;
+    border-radius: 0.5rem !important;
+    padding: 0.5rem 0.75rem !important;
+    resize: vertical !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    .swal2-textarea {
+        background-color: rgb(51, 65, 85) !important;
+        border-color: rgb(71, 85, 105) !important;
+        color: rgb(243, 244, 246) !important;
+    }
+}
+
+.dark .swal2-textarea {
+    background-color: rgb(51, 65, 85) !important;
+    border-color: rgb(71, 85, 105) !important;
+    color: rgb(243, 244, 246) !important;
+}
+
+.swal2-textarea:focus {
+    border-color: rgb(59, 130, 246) !important;
+    outline: none !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+}
+
+/* Select styling */
+.swal2-select {
+    background-color: white !important;
+    border: 1px solid rgb(209, 213, 219) !important;
+    color: rgb(17, 24, 39) !important;
+    border-radius: 0.5rem !important;
+    padding: 0.5rem 0.75rem !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    .swal2-select {
+        background-color: rgb(51, 65, 85) !important;
+        border-color: rgb(71, 85, 105) !important;
+        color: rgb(243, 244, 246) !important;
+    }
+}
+
+.dark .swal2-select {
+    background-color: rgb(51, 65, 85) !important;
+    border-color: rgb(71, 85, 105) !important;
+    color: rgb(243, 244, 246) !important;
+}
+
+/* Checkbox and radio styling */
+.swal2-checkbox,
+.swal2-radio {
+    color: rgb(55, 65, 81) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    .swal2-checkbox,
+    .swal2-radio {
+        color: rgb(209, 213, 219) !important;
+    }
+}
+
+.dark .swal2-checkbox,
+.dark .swal2-radio {
+    color: rgb(209, 213, 219) !important;
+}
+
+/* Close button */
+.swal2-close {
+    color: rgb(156, 163, 175) !important;
+    font-size: 2rem !important;
+    right: 1rem !important;
+    top: 1rem !important;
+}
+
+.swal2-close:hover {
+    color: rgb(75, 85, 99) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    .swal2-close {
+        color: rgb(107, 114, 128) !important;
+    }
+    
+    .swal2-close:hover {
+        color: rgb(209, 213, 219) !important;
+    }
+}
+
+.dark .swal2-close {
+    color: rgb(107, 114, 128) !important;
+}
+
+.dark .swal2-close:hover {
+    color: rgb(209, 213, 219) !important;
+}
+
+/* Progress bar for timers */
+.swal2-timer-progress-bar {
+    background-color: rgb(37, 99, 235) !important;
+}
+
+/* Loading spinner */
+.swal2-loader {
+    border-color: rgb(37, 99, 235) transparent rgb(37, 99, 235) transparent !important;
+}
