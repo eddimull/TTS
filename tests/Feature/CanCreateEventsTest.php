@@ -9,7 +9,7 @@ use App\Models\Bands;
 
 class CanCreateEventsTest extends TestCase
 {
-    // use RefreshDatabase;
+    use RefreshDatabase;
     /**
      * A basic feature test example.
      *
@@ -58,7 +58,7 @@ class CanCreateEventsTest extends TestCase
         ]);
 
         $this->withoutExceptionHandling();
-        // dd($response);
+        
         $response->assertStatus(302);
         $this->assertDatabaseHas('band_events',[
             'event_name'=>$testEventName
