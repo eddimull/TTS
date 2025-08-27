@@ -5,8 +5,10 @@ namespace App\Providers;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
 use App\Models\QuestionnaireComponents;
+use App\Services\GoogleCalendarService;
 use Illuminate\Support\ServiceProvider;
 use App\Observers\QuestionnaireComponentObserver;
+use Google\Client;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -17,7 +19,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        $this->app->bind(GoogleCalendarService::class, function ($app) {
+            return new GoogleCalendarService(new Client());
+        });
     }
 
     /**

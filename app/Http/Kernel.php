@@ -64,6 +64,7 @@ class Kernel extends HttpKernel
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'owner' => \App\Http\Middleware\Owner::class,
+        'CalendarOwner' => \App\Http\Middleware\CalendarOwner::class,
         'userInBand' => \App\Http\Middleware\userInBand::class,
         'charts.read' => \App\Http\Middleware\CanReadCharts::class,
         'charts.write' => \App\Http\Middleware\CanWriteCharts::class,

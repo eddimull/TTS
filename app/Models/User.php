@@ -282,4 +282,9 @@ class User extends Authenticatable
             return $event;
         });
     }
+
+    public function calendarAccess()
+    {
+        return $this->hasMany(CalendarAccess::class);
+    }
 }

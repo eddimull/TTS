@@ -2,8 +2,10 @@ FROM php:8.3-fpm AS php-build
 
 RUN apt-get update && apt-get install -y  \
     libzip-dev git libmagickwand-dev libzip-dev \
+    default-mysql-client \
     --no-install-recommends \
-    && docker-php-ext-install pdo_mysql zip exif && \
+    && docker-php-ext-configure gd --with-jpeg \
+    && docker-php-ext-install pdo_mysql zip exif gd && \
     git clone https://github.com/Imagick/imagick.git --depth 1 /tmp/imagick && \
     cd /tmp/imagick && \
     git fetch origin master && \
@@ -26,11 +28,14 @@ COPY --from=php-build /usr/local/etc/php/conf.d/ /usr/local/etc/php/conf.d/
 
 # Copy custom PHP configuration
 COPY ./docker/uploads.ini /usr/local/etc/php/conf.d/
+# Copy mysql client configuration
+COPY ./docker/mysql-client.cnf /etc/mysql/conf.d/
 
 # Install needed libraries and tools
 RUN apt-get update && apt-get install -y \
     libmagickwand-dev \
     libzip-dev \
+    default-mysql-client \
     --no-install-recommends \
     && docker-php-ext-enable imagick pcov \
     && rm -rf /var/lib/apt/lists/*

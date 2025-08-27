@@ -16,8 +16,7 @@ class Bands extends Model
         return 'id';
     }
 
-    protected $fillable = ['name', 'site_name', 'calendar_id'];
-    // protected $with = ['proposals'];
+    protected $fillable = ['name', 'site_name'];
 
     public function owner()
     {
@@ -82,12 +81,42 @@ class Bands extends Model
 
     public function events()
     {
-        return $this->hasMany(BandEvents::class, 'band_id');
+        return $this->hasManyThrough(
+        Events::class,
+        Bookings::class,
+        'band_id',     // Foreign key on bookings table
+        'eventable_id', // Foreign key on events table
+        'id',          // Local key on bands table
+        'id'           // Local key on bookings table
+        )
+        ->select(['events.*'])
+        ->addSelect(DB::raw('NULL as notes'))
+        ->orderBy('events.date', 'desc')
+        ->where('eventable_type', Bookings::class);
     }
 
     public function futureEvents()
     {
-        return $this->events()->where('event_time', '>=', now());
+        return $this->events()->where('events.date', '>=', now());
+    }
+
+    public function publicEvents()
+    {
+        return $this->hasManyThrough(
+            Events::class,
+            Bookings::class,
+            'band_id',     // Foreign key on bookings table
+            'eventable_id', // Foreign key on events table
+            'id',          // Local key on bands table
+            'id'           // Local key on bookings table
+        )
+        ->where('eventable_type', Bookings::class)
+        ->whereRaw("JSON_EXTRACT(events.additional_data, '$.public') IN (1, true, '1', 'true')");
+    }
+
+    public function futurePublicEvents()
+    {
+        return $this->publicEvents()->where('events.date', '>=', now());
     }
 
     public function colorways()
@@ -111,7 +140,7 @@ class Bands extends Model
 
     public function bookings()
     {
-        return $this->hasMany(Bookings::class, 'band_id');
+        return $this->hasMany(Bookings::class, 'band_id')->orderBy('date', 'desc');
     }
 
     public function getUnpaidBookings()
@@ -127,5 +156,54 @@ class Bands extends Model
     public function contacts()
     {
         return $this->hasMany(Contacts::class, 'band_id')->orderBy('name', 'asc');
+    }
+
+    public function calendars()
+    {
+        return $this->hasMany(BandCalendars::class, 'band_id');
+    }
+
+    public function eventCalendar()
+    {
+        return $this->hasOne(BandCalendars::class, 'band_id')->where('type', 'event');
+    }
+
+    public function publicCalendar()
+    {
+        return $this->hasOne(BandCalendars::class, 'band_id')->where('type', 'public');
+    }
+
+    public function bookingCalendar()
+    {
+        return $this->hasOne(BandCalendars::class, 'band_id')->where('type', 'booking');
+    }
+
+    /**
+     * Check if a user has access to any of this band's calendars
+     */
+    public function userHasCalendarAccess($user)
+    {
+        // Only check explicit calendar access
+        return CalendarAccess::whereIn('band_calendar_id', $this->calendars->pluck('id'))
+            ->where('user_id', $user->id)
+            ->exists();
+    }
+
+    /**
+     * Get user's role for a specific calendar type
+     */
+    public function getUserCalendarRole($user, $calendarType)
+    {
+        // Get explicit calendar access only
+        $calendar = $this->calendars()->where('type', $calendarType)->first();
+        if ($calendar) {
+            $access = CalendarAccess::where('user_id', $user->id)
+                ->where('band_calendar_id', $calendar->id)
+                ->first();
+            
+            return $access ? $access->role : null;
+        }
+        
+        return null;
     }
 }
