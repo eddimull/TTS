@@ -46,7 +46,7 @@ class ContractsController extends Controller
     {
         $filePath = \urldecode($contract->asset_url); // Adjust this based on your actual model structure
         $filePath = Str::replace('https://bandapp.s3.us-east-2.amazonaws.com/', '', $filePath);
-        // dd($filePath);
+        
         // Check if the file exists
         if (!Storage::disk('s3')->exists($filePath))
         {
