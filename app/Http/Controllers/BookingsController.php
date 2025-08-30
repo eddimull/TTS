@@ -130,7 +130,7 @@ class BookingsController extends Controller
                 ['title' => 'money_dance', 'data' => 'TBD',],
                 ['title' => 'bouquet_garter', 'data' => 'TBD']
             ];
-            $event['additional_data']['times'][] = ['title' => 'Ceremony', 'time' => Carbon::parse($booking->time)->format('Y-m-d H:i')];
+            $event['additional_data']['times'][] = ['title' => 'Ceremony', 'time' => $booking->start_date_time->copy()->format('Y-m-d H:i')];
             $event['additional_data']['onsite'] = true;
             $event['additional_data']['public'] = false;
         }
@@ -252,7 +252,6 @@ class BookingsController extends Controller
 
     public function downloadContract(Bands $band, Bookings $booking)
     {
-        // return view('pdf.bookingContract', ['booking' => $booking]);
         $contractPDF = $booking->getContractPdf();
         if ($contractPDF === null)
         {
