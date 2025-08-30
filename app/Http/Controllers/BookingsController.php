@@ -2,9 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\InvoiceServices;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Bands;
 use App\Models\Events;
@@ -12,9 +10,12 @@ use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\EventTypes;
 use Illuminate\Support\Str;
+use Illuminate\Http\Request;
 use App\Models\BookingContacts;
+use App\Services\InvoiceServices;
 use App\Events\PaymentWasReceived;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Response;
 use App\Http\Requests\StoreBookingsRequest;
 use App\Http\Requests\UpdateBookingsRequest;
@@ -91,6 +92,7 @@ class BookingsController extends Controller
 
         $booking->contract()->create([
             'author_id' => Auth::id(),
+            'custom_terms' => Storage::disk('local')->json('contract/InitialTerms.json'),
         ]);
         // TODO need to refactor this outside of the controller
         $event = [
