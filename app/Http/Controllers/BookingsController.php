@@ -2,9 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\InvoiceServices;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 use App\Models\Bands;
 use App\Models\Events;
@@ -12,9 +10,12 @@ use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\EventTypes;
 use Illuminate\Support\Str;
+use Illuminate\Http\Request;
 use App\Models\BookingContacts;
+use App\Services\InvoiceServices;
 use App\Events\PaymentWasReceived;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Response;
 use App\Http\Requests\StoreBookingsRequest;
 use App\Http\Requests\UpdateBookingsRequest;
@@ -91,6 +92,7 @@ class BookingsController extends Controller
 
         $booking->contract()->create([
             'author_id' => Auth::id(),
+            'custom_terms' => Storage::disk('local')->json('contract/InitialTerms.json'),
         ]);
         // TODO need to refactor this outside of the controller
         $event = [
@@ -130,7 +132,7 @@ class BookingsController extends Controller
                 ['title' => 'money_dance', 'data' => 'TBD',],
                 ['title' => 'bouquet_garter', 'data' => 'TBD']
             ];
-            $event['additional_data']['times'][] = ['title' => 'Ceremony', 'time' => Carbon::parse($booking->time)->format('Y-m-d H:i')];
+            $event['additional_data']['times'][] = ['title' => 'Ceremony', 'time' => $booking->start_date_time->copy()->format('Y-m-d H:i')];
             $event['additional_data']['onsite'] = true;
             $event['additional_data']['public'] = false;
         }
@@ -252,7 +254,6 @@ class BookingsController extends Controller
 
     public function downloadContract(Bands $band, Bookings $booking)
     {
-        // return view('pdf.bookingContract', ['booking' => $booking]);
         $contractPDF = $booking->getContractPdf();
         if ($contractPDF === null)
         {
