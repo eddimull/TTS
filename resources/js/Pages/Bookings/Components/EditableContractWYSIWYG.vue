@@ -57,7 +57,7 @@
           Details of engagement:
         </h2>
         <ul class="list-disc pl-5">
-          <li><span class="font-bold">Date:</span> {{ new Date(booking.date).toLocaleDateString() }}</li>
+          <li><span class="font-bold">Date:</span> {{ formattedDate }}</li>
           <li><span class="font-bold">Performance Length:</span> {{ booking.duration }} hours</li>
           <li><span class="font-bold">Sound Check Time:</span> at least 1 hour before performance</li>
           <li><span class="font-bold">Venue:</span> {{ booking.venue_name }}</li>
@@ -87,13 +87,13 @@
           shall be in form of <strong>check, money order, Venmo, cashier's check, invoice, or credit card
             (additional fees may apply)</strong>. If the Buyer pays the Deposit by check, which should be mailed to:
         </p>
-        <p class="mb-2">
+        <div class="mb-2">
           <ul>
             <li>{{ band.name }}</li>
             <li>200 St Michael St</li>
             <li>Lafayette, LA 70508</li>
           </ul>
-        </p>
+        </div>
         <p class="mb-2">
           Buyer shall pay the remaining gross compensation of <span class="font-bold">${{ (booking.price / 2).toFixed(2) }}</span> at least ten (10) days before Performance. <strong>If Buyer elects to pay via check, money order, or cashier's check,
             payment shall be made to Three Thirty Seven and must be received at least ten (10) days prior to Performance. If Buyer elects to pay via Invoice, Venmo, or credit card,
@@ -163,22 +163,39 @@
         class="mt-4"
         @click="addSection"
       />
-      <div v-if="booking.event_type_id === 1" class="my-3">
-            <p class="text-lg font-bold my-2 uppercase">SPECIAL INSTRUCTIONS</p>
-            <p class="mb-3"><span class="underline">Song/Artist Request</span>: TBD Buyer must provide song suggestions and/or specic requests via questionnaire sent prior to the event. Suggested song lists shall be provided no later than 30 days
-                prior to the Performance. Specific Artist Request lists shall be provided no later than 60 days prior to
-                Performance.
-            </p>
-            <p class="mb-3"><span class="underline">Break Music</span>: Artist provides break music</p>
-            <p class="mb-3"><span class="underline">Attire</span>: Artist shall dress in SEMI-FORMAL. Please ask if there are any questions.</p>
-            <p class="mb-3"><span class="underline">Stage, Performance Area, and Size of Event:</span> <br />Artist shall NOT be required to provide a stage on which to perform, unless otherwise agreed to in writing by
-                Artist and Buyer. Additional fees may be incurred if Artist provides a stage.</p>
-            <p class="mb-3"><span class="underline">Hospitality</span>:Vendor meals will be provided for Artist at discretion of buyer. TBD Guest(s) of Artist(s) are
-                permitted.
-            </p>
-            <p class="mb-3"><span class="underline">Dances</span>: <span class="font-bold underline"> Exact versions must be provided by buyer no later than 30 days prior to the performance.
-                </span> FIRST DANCE, FATHER BRIDE, MOTHER GROOM, MONEY DANCE, GARTER</p>
-            <p class="mb-3 underline font-bold">-All special dances will be determined by Buyer no later than 30 days prior to performance.</p>
+      <div
+        v-if="booking.event_type_id === 1"
+        class="my-3"
+      >
+        <p class="text-lg font-bold my-2 uppercase">
+          SPECIAL INSTRUCTIONS
+        </p>
+        <p class="mb-3">
+          <span class="underline">Song/Artist Request</span>: TBD Buyer must provide song suggestions and/or specic requests via questionnaire sent prior to the event. Suggested song lists shall be provided no later than 30 days
+          prior to the Performance. Specific Artist Request lists shall be provided no later than 60 days prior to
+          Performance.
+        </p>
+        <p class="mb-3">
+          <span class="underline">Break Music</span>: Artist provides break music
+        </p>
+        <p class="mb-3">
+          <span class="underline">Attire</span>: Artist shall dress in SEMI-FORMAL. Please ask if there are any questions.
+        </p>
+        <p class="mb-3">
+          <span class="underline">Stage, Performance Area, and Size of Event:</span> <br>Artist shall NOT be required to provide a stage on which to perform, unless otherwise agreed to in writing by
+          Artist and Buyer. Additional fees may be incurred if Artist provides a stage.
+        </p>
+        <p class="mb-3">
+          <span class="underline">Hospitality</span>:Vendor meals will be provided for Artist at discretion of buyer. TBD Guest(s) of Artist(s) are
+          permitted.
+        </p>
+        <p class="mb-3">
+          <span class="underline">Dances</span>: <span class="font-bold underline"> Exact versions must be provided by buyer no later than 30 days prior to the performance.
+          </span> FIRST DANCE, FATHER BRIDE, MOTHER GROOM, MONEY DANCE, GARTER
+        </p>
+        <p class="mb-3 underline font-bold">
+          -All special dances will be determined by Buyer no later than 30 days prior to performance.
+        </p>
       </div>
       <div class="mt-8">
         <p class="font-bold">
@@ -197,13 +214,14 @@
 </template>
 
   <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import draggable from 'vuedraggable';
 import Button from 'primevue/button';
 import Toolbar from 'primevue/toolbar';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
 import { DateTime } from 'luxon';
+
 
   const props = defineProps({
     initialTerms: {
@@ -224,6 +242,10 @@ import { DateTime } from 'luxon';
 
   const termsLocal = ref([]);
   const editMode = ref(false);
+
+  const formattedDate = computed(() => {
+    return DateTime.fromISO(props.booking.date).toFormat('MM/dd/yyyy');
+  });
 
   onMounted(() => {
     termsLocal.value = props.initialTerms.map((term, index) => ({
