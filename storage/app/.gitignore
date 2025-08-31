@@ -1,3 +1,4 @@
 *
 !public/
+!contract/InitialTerms.json
 !.gitignore
