@@ -139,12 +139,13 @@ class GetEventsTest extends TestCase
 
     public function test_ISO_event_Date()
     {
+        $staticDate = Carbon::now();
         $event = Events::factory()->create([
-            'date' => Carbon::now(),
-            'time' => Carbon::now()
+            'date' => $staticDate,
+            'time' => $staticDate
         ]);
 
-        $this->assertEquals(Carbon::now()->isoFormat('YYYY-MM-DD Thh:mm:ss.sss'), $event->ISODate);
+        $this->assertEquals($staticDate->copy()->isoFormat('YYYY-MM-DD Thh:mm:ss.sss'), $event->ISODate);
     }
 
     public function test_old_event()

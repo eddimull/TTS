@@ -60,4 +60,9 @@ class Contracts extends Model
         $this->asset_url = $pdf->store('contracts', 'public');
         $this->save();
     }
+
+    public function getCustomTermsAttribute($value)
+    {
+        return $value ? json_decode($value, true) : [];
+    }
 }

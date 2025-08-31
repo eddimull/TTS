@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Contracts;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class ContractsFactory extends Factory
@@ -16,10 +17,7 @@ class ContractsFactory extends Factory
             'author_id' => \App\Models\User::factory(),
             'status' => 'pending',
             'asset_url' => $this->faker->url,
-            'custom_terms' => [
-                ['title' => 'Term 1', 'content' => 'Content 1'],
-                ['title' => 'Term 2', 'content' => 'Content 2'],
-            ],
+            'custom_terms' => Storage::disk('local')->json('contract/InitialTerms.json'),
         ];
     }
 }

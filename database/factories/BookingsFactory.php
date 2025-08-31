@@ -96,7 +96,7 @@ class BookingsFactory extends Factory
             $endDate = $startDate->copy()->addHours($hours);
 
             return [
-                'end_time' => $endDate->format('H:i:s'),
+                'end_time' => $endDate->format('H:i'),
             ];
         });
     }
