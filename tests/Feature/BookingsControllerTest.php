@@ -120,16 +120,14 @@ class BookingsControllerTest extends TestCase
 
     public function test_member_can_create_booking()
     {
-        $this->markTestIncomplete('Flaky test');
         $duration = 2;
-
+        \Illuminate\Support\Facades\DB::beginTransaction();
         userPermissions::create([
             'user_id' => $this->member->id,
             'band_id' => $this->band->id,
             'read_bookings' => true,
             'write_bookings' => true,
         ]);
-
 
 
         $bookingData = Bookings::factory()->duration($duration)->make(['band_id' => $this->band->id])->toArray();
@@ -141,6 +139,10 @@ class BookingsControllerTest extends TestCase
 
         $response->assertStatus(302); // Assert that a redirect occurred
 
+
+        unset($bookingData['start_time']);
+        unset($bookingData['end_time']);
+        unset($bookingData['status']);
         unset($bookingData['duration']);
         unset($bookingData['author_id']); // sometimes an owner or member can create a booking, which results in a different author_id
         $bookingData['author_id'] = $this->member->id;
@@ -152,7 +154,10 @@ class BookingsControllerTest extends TestCase
 
         $this->assertNotNull($booking, 'Booking was not created');
 
+        $this->assertNotNull($booking->contract->custom_terms);
+
         $response->assertRedirect(route('Booking Details', ['band' => $this->band, 'booking' => $booking]));
+        \Illuminate\Support\Facades\DB::rollBack();
     }
 
     public function test_non_member_cannot_create_booking()
@@ -392,6 +397,32 @@ class BookingsControllerTest extends TestCase
         $this->booking->contract()->create([
             'author_id' => $this->owner->id,
             'custom_terms' => [['title' => 'Test Term', 'content' => 'Test Content']],
+        ]);
+
+        $response = $this->actingAs($this->owner)->get(route('Download Booking Contract', [$this->band, $this->booking]));
+
+        $response->assertStatus(200);
+        $response->assertHeader('Content-Type', 'application/pdf');
+    }
+
+    public function test_contract_download_succeeds_without_custom_terms()
+    {
+        $this->mockBrowsershotForTest();
+
+        // Mock Storage for S3 operations
+        Storage::fake('s3');
+
+        // Create a fake logo file
+        Storage::disk('s3')->put('default.png', 'fake image content');
+
+        $this->band->logo = '/images/default.png';
+        $this->band->save();
+
+        $contacts = Contacts::factory()->count(2)->create();
+        $this->booking->contacts()->attach($contacts, ['role' => 'Test Role']);
+        $this->booking->contract()->create([
+            'author_id' => $this->owner->id,
+            'custom_terms' => null,
         ]);
 
         $response = $this->actingAs($this->owner)->get(route('Download Booking Contract', [$this->band, $this->booking]));
