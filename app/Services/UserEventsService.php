@@ -12,7 +12,7 @@ class UserEventsService
     public function getEvents()
     {
         $afterDate = Carbon::now()->subHours(72);
-        $events = Auth::user()->getEventsAttribute($afterDate); //why isn't the laravel magic happening where I can just specify 'events'
+        $events = Auth::user()->getEventsAttribute($afterDate, true); //why isn't the laravel magic happening where I can just specify 'events'
         return $events;
     }
 }
