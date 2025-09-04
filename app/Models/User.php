@@ -225,7 +225,7 @@ class User extends Authenticatable
     }
 
 
-    public function getEventsAttribute($afterDate = null)
+    public function getEventsAttribute($afterDate = null, $includeNotes = false)
     {
         $bandIds = $this->bands()->pluck('id')->toArray();
         
@@ -254,6 +254,10 @@ class User extends Authenticatable
                 'bookings.venue_address'
             ])
             ->join('event_types', 'events.event_type_id', '=', 'event_types.id');
+
+        if ($includeNotes) {
+            $query->addSelect('events.notes');
+        }
         
         // Apply date filter if provided
         if ($afterDate) {
