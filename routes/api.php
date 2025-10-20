@@ -8,6 +8,7 @@ use App\Http\Controllers\ContractsController;
 use App\Http\Controllers\EventTypeController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\Api\SearchController;
+use App\Http\Controllers\ChartsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -32,6 +33,7 @@ Route::get('/getAllEventTypes', [EventTypeController::class, 'getAllEventTypes']
 Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/bands/{band}/contacts', [BandsController::class, 'contacts']);
     Route::get('/search', [SearchController::class, 'search']);
+    Route::get('/charts', [ChartsController::class, 'getChartsForUser']);
 });
 
 Route::post('/searchLocations', [LocationController::class, 'searchLocations'])->name('searchLocations');

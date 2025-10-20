@@ -125,4 +125,16 @@ class ChartsController extends Controller
         $chart->delete();
         return redirect('/charts/')->with('successMessage', $chart->title . ' has been deleted');
     }
+
+    /**
+     * Get charts for the authenticated user (API endpoint)
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function getChartsForUser()
+    {
+        $user = Auth::user();
+        $charts = $user->charts();
+        return response()->json($charts);
+    }
 }

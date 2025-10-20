@@ -57,6 +57,12 @@ class UpdateBookingEventRequest extends FormRequest
             'additional_data.wedding.dances' => 'nullable|array',
             'additional_data.wedding.dances.*.title' => 'required|string',
             'additional_data.wedding.dances.*.data' => 'nullable|string',
+            'additional_data.rehearsal' => 'nullable|array',
+            'additional_data.rehearsal.notes' => 'nullable|string',
+            'additional_data.rehearsal.songs' => 'nullable|array',
+            'additional_data.rehearsal.songs.*.title' => 'nullable|string',
+            'additional_data.rehearsal.songs.*.url' => 'nullable|url',
+            'additional_data.rehearsal.charts' => 'nullable|array',
         ];
     }
 
@@ -92,6 +98,19 @@ class UpdateBookingEventRequest extends FormRequest
                 true
             );
             $this->merge(['additional_data' => array_merge($this->input('additional_data'), ['attire' => $processedAttire])]);
+        }
+
+        // Process rehearsal notes field if it contains base64 images
+        if ($this->has('additional_data.rehearsal.notes'))
+        {
+            $processedRehearsalNotes = $this->imageProcessor->processContent(
+                $this->input('additional_data.rehearsal.notes'),
+                $this->route('band')->site_name . '/event_uploads',
+                true
+            );
+            $currentAdditionalData = $this->input('additional_data');
+            $currentAdditionalData['rehearsal']['notes'] = $processedRehearsalNotes;
+            $this->merge(['additional_data' => $currentAdditionalData]);
         }
     }
 
