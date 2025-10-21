@@ -74,14 +74,14 @@
         <LodgingSection v-model="event" />
       </SectionCard>
 
-      <!-- Rehearsal Section -->
+      <!-- Performance Section -->
       <SectionCard
-        title="Rehearsal Notes"
-        icon="rehearsal"
-        :is-open="openSections.rehearsal"
-        @toggle="toggleSection('rehearsal')"
+        title="Performance Notes"
+        icon="performance"
+        :is-open="openSections.performance"
+        @toggle="toggleSection('performance')"
       >
-        <RehearsalSection v-model="event" />
+        <PerformanceSection v-model="event" />
       </SectionCard>
 
       <!-- Wedding Section -->
@@ -114,7 +114,7 @@ import AttireSection from "./EventEditor/AttireSection.vue";
 import AdditionalData from "./EventEditor/AdditionalData.vue";
 import LodgingSection from "./EventEditor/LodgingSection.vue";
 import WeddingSection from "./EventEditor/WeddingSection.vue";
-import RehearsalSection from "./EventEditor/RehearsalSection.vue";
+import PerformanceSection from "./EventEditor/PerformanceSection.vue";
 import ActionButtons from "./EventEditor/ActionButtons.vue";
 import SectionCard from "./EventEditor/SectionCard.vue";
 
@@ -139,7 +139,7 @@ const openSections = reactive({
     attire: false,
     additionalData: false,
     lodging: false,
-    rehearsal: false,
+    performance: false,
     wedding: false,
 });
 

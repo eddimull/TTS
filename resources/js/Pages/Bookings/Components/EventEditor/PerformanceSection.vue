@@ -3,10 +3,10 @@
     <!-- Rich text notes -->
     <div>
       <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-        Rehearsal Notes
+        Performance Notes
       </label>
       <Editor
-        v-model="rehearsalNotes"
+        v-model="performanceNotes"
         class="w-full p-2 border rounded"
         editor-style="height: 200px"
       />
@@ -290,8 +290,8 @@ const props = defineProps({
 
 const emit = defineEmits(['update:modelValue']);
 
-// Rehearsal notes data
-const rehearsalNotes = ref('');
+// Performance notes data
+const performanceNotes = ref('');
 const songLinks = ref([]);
 const selectedCharts = ref([]);
 
@@ -303,10 +303,10 @@ const filteredCharts = ref([]);
 
 // Initialize from modelValue
 onMounted(() => {
-    if (props.modelValue.additional_data?.rehearsal) {
-        rehearsalNotes.value = props.modelValue.additional_data.rehearsal.notes || '';
-        songLinks.value = props.modelValue.additional_data.rehearsal.songs || [];
-        selectedCharts.value = props.modelValue.additional_data.rehearsal.charts || [];
+    if (props.modelValue.additional_data?.performance) {
+        performanceNotes.value = props.modelValue.additional_data.performance.notes || '';
+        songLinks.value = props.modelValue.additional_data.performance.songs || [];
+        selectedCharts.value = props.modelValue.additional_data.performance.charts || [];
     }
     
     // Load available charts from the server
@@ -518,8 +518,8 @@ const updateModelValue = () => {
         ...props.modelValue,
         additional_data: {
             ...props.modelValue.additional_data,
-            rehearsal: {
-                notes: rehearsalNotes.value,
+            performance: {
+                notes: performanceNotes.value,
                 songs: songLinks.value,
                 charts: selectedCharts.value,
             },
@@ -529,7 +529,7 @@ const updateModelValue = () => {
 };
 
 // Watch for changes
-watch([rehearsalNotes, songLinks, selectedCharts], () => {
+watch([performanceNotes, songLinks, selectedCharts], () => {
     updateModelValue();
 }, { deep: true });
 
