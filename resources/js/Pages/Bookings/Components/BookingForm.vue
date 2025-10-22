@@ -153,25 +153,35 @@
           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm dark:bg-slate-700 dark:text-gray-50 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
         />
       </div>
-      <div class="flex justify-end space-x-4">
+      <div class="flex justify-between space-x-4">
         <Button
-          v-if="props.booking.status !== 'confirmed'"
-          label="Delete Booking"
-          severity="danger"
-          @click="deleteBooking"
-        />
-        <Button
-          v-if="props.booking.status === 'confirmed'"
           type="button"
-          label="Cancel Booking"
-          severity="danger"
-          @click="cancelBooking"
+          label="Back to View"
+          icon="pi pi-arrow-left"
+          severity="secondary"
+          outlined
+          @click="backToView"
         />
-        <Button
-          label="Update Booking"
-          type="submit"
-          severity="success"
-        />
+        <div class="flex space-x-4">
+          <Button
+            v-if="props.booking.status !== 'confirmed'"
+            label="Delete Booking"
+            severity="danger"
+            @click="deleteBooking"
+          />
+          <Button
+            v-if="props.booking.status === 'confirmed'"
+            type="button"
+            label="Cancel Booking"
+            severity="danger"
+            @click="cancelBooking"
+          />
+          <Button
+            label="Update Booking"
+            type="submit"
+            severity="success"
+          />
+        </div>
       </div>
     </form>
   </Container>
@@ -179,7 +189,7 @@
   
   <script setup>
   import { computed } from 'vue'
-  import { useForm } from '@inertiajs/vue3'
+  import { useForm, router } from '@inertiajs/vue3'
   import Container from '@/Components/Container.vue'
   import { useStore } from 'vuex';
   import LocationAutocomplete from '@/Components/LocationAutocomplete.vue';
@@ -221,6 +231,10 @@
       preserveScroll: true,
       preserveState: true,
     })
+  }
+
+  const backToView = () => {
+    router.visit(route('Booking Details', [props.band.id, props.booking.id]))
   }
 
   const deleteBooking = () => {

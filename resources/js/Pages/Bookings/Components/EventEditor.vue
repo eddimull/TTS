@@ -1,5 +1,6 @@
 <template>
   <div
+    ref="editorContainer"
     class="mt-4 p-6 bg-white dark:bg-slate-800 dark:text-gray-50 rounded-xl shadow-lg"
   >
     <h2 class="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-50 border-b pb-4 dark:border-slate-600">
@@ -101,12 +102,14 @@
       @save="save"
       @cancel="cancel"
       @remove-event="removeEvent"
+      @view-on-dashboard="viewOnDashboard"
     />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, reactive } from "vue";
+import { ref, computed, reactive, onMounted, nextTick } from "vue";
+import { router } from '@inertiajs/vue3';
 import Timeline from "./Timeline.vue";
 import BasicInfo from "./EventEditor/BasicInfo.vue";
 import NotesSection from "./EventEditor/NotesSection.vue";
@@ -128,6 +131,7 @@ const props = defineProps({
 const emit = defineEmits(["save", "cancel", "removeEvent"]);
 
 const event = ref(JSON.parse(JSON.stringify(props.initialEvent)));
+const editorContainer = ref(null);
 
 const isWedding = computed(() => event.value.event_type_id === 1);
 
@@ -135,7 +139,7 @@ const isWedding = computed(() => event.value.event_type_id === 1);
 const openSections = reactive({
     basicInfo: true,
     notes: false,
-    timeline: false,
+    timeline: true, // Default open so timeline can auto-scroll
     attire: false,
     additionalData: false,
     lodging: false,
@@ -146,6 +150,22 @@ const openSections = reactive({
 const toggleSection = (section) => {
     openSections[section] = !openSections[section];
 };
+
+// Scroll to the editor on mount
+onMounted(() => {
+    nextTick(() => {
+        if (editorContainer.value) {
+            const headerOffset = 80; // Adjust for any fixed headers
+            const elementPosition = editorContainer.value.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+            
+            window.scrollTo({
+                top: offsetPosition,
+                behavior: 'smooth'
+            });
+        }
+    });
+});
 
 const updateTimes = (newTimes) => {
     event.value.additional_data.times = newTimes;
@@ -161,6 +181,12 @@ const cancel = () => {
 
 const removeEvent = () => {
     emit("removeEvent", event.value.id);
+};
+
+const viewOnDashboard = () => {
+    // Use the event ID or key for the hash, same logic as Dashboard component
+    const identifier = event.value.id || event.value.key;
+    router.visit(route('dashboard') + '#event_' + identifier);
 };
 </script>
 

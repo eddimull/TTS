@@ -188,17 +188,32 @@ const dragStartPos = ref({ x: 0, y: 0 });
 
 onMounted(() => {
     if (timelineContainer.value) {
-        const eventEntry = timeEntries.value.find(e => e.isEventTime);
-        if (eventEntry) {
-            const style = getEntryStyle(eventEntry);
-            if (style.top) {
-                const topPosition = parseFloat(style.top);
-                const containerHeight = timelineContainer.value.clientHeight;
-                // Scroll to center the event in the container
-                const scrollTo = topPosition - (containerHeight / 2) + (HOUR_HEIGHT / 2);
-                timelineContainer.value.scrollTop = Math.max(0, scrollTo);
+        // Use setTimeout to ensure the DOM is fully rendered
+        setTimeout(() => {
+            const eventEntry = timeEntries.value.find(e => e.isEventTime);
+            if (eventEntry) {
+                // Parse the event time to calculate scroll position
+                const timePart = eventEntry.time.indexOf('T') > -1 
+                    ? eventEntry.time.split('T')[1] 
+                    : eventEntry.time.split(' ')[1];
+                
+                if (timePart) {
+                    const [hours, minutes] = timePart.split(':').map(Number);
+                    
+                    // Calculate the top position of the event (same logic as getEntryStyle)
+                    const topPosition = (hours * HOUR_HEIGHT) + (minutes / 60 * HOUR_HEIGHT);
+                    
+                    // Get container height
+                    const containerHeight = timelineContainer.value.clientHeight;
+                    
+                    // Scroll to position the event time in the upper portion of the view
+                    // (about 1/3 from the top so there's room to see earlier times)
+                    const scrollTo = topPosition - (containerHeight / 3);
+                    
+                    timelineContainer.value.scrollTop = Math.max(0, scrollTo);
+                }
             }
-        }
+        }, 100);
     }
 });
 

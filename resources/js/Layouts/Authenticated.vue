@@ -34,7 +34,7 @@
                 Bands
               </breeze-nav-link>
               <breeze-nav-link
-                v-if="navigation && navigation.Bookings"
+                v-if="navigation && navigation.Bookings && navigation.Bookings.read"
                 :href="route('Bookings Home')"
                 :active="
                   route().current().indexOf('Booking') > -1
@@ -43,14 +43,21 @@
                 Booking
               </breeze-nav-link>
               <breeze-nav-link
-                v-if="navigation && navigation.Events"
+                v-if="navigation && navigation.Events && navigation.Events.read"
                 :href="route('events')"
                 :active="route().current('events')"
               >
                 Events
               </breeze-nav-link>
               <breeze-nav-link
-                v-if="navigation && navigation.Invoices"
+                v-if="navigation && navigation.Rehearsals && navigation.Rehearsals.read"
+                :href="route('rehearsal-schedules.index')"
+                :active="route().current().includes('rehearsal')"
+              >
+                Rehearsals
+              </breeze-nav-link>
+              <breeze-nav-link
+                v-if="navigation && navigation.Invoices && navigation.Invoices.read"
                 :href="route('finances')"
                 :active="
                   route().current('finances') ||
@@ -60,7 +67,7 @@
                 Finances
               </breeze-nav-link>
               <breeze-nav-link
-                v-if="navigation && navigation.Charts"
+                v-if="navigation && navigation.Charts && navigation.Charts.read"
                 :href="route('charts')"
                 :active="route().current('charts')"
               >
@@ -434,21 +441,28 @@
             Bands
           </breeze-responsive-nav-link>
           <breeze-responsive-nav-link
-            v-if="navigation && navigation.Events"
+            v-if="navigation && navigation.Events && navigation.Events.read"
             :href="route('events')"
             :active="route().current('events')"
           >
             Events
           </breeze-responsive-nav-link>
           <breeze-responsive-nav-link
-            v-if="navigation && navigation.Bookings"
+            v-if="navigation && navigation.Rehearsals && navigation.Rehearsals.read"
+            :href="route('rehearsal-schedules.index')"
+            :active="route().current().includes('rehearsal')"
+          >
+            Rehearsals
+          </breeze-responsive-nav-link>
+          <breeze-responsive-nav-link
+            v-if="navigation && navigation.Bookings && navigation.Bookings.read"
             :href="route('Bookings Home')"
             :active="route().current('Bookings Home')"
           >
             Booking
           </breeze-responsive-nav-link>
           <breeze-responsive-nav-link
-            v-if="navigation && navigation.Invoices"
+            v-if="navigation && navigation.Invoices && navigation.Invoices.read"
             :href="route('finances')"
             :active="route().current('finances')"
           >
@@ -456,7 +470,7 @@
           </breeze-responsive-nav-link>
 
           <breeze-responsive-nav-link
-            v-if="navigation && navigation.Charts"
+            v-if="navigation && navigation.Charts && navigation.Charts.read"
             :href="route('charts')"
             :active="route().current('charts')"
           >
@@ -604,6 +618,9 @@ export default {
             // Fall back to route-based title
             return route().current().charAt(0).toUpperCase() +
                    route().current().slice(1).replace(".", " - ");
+        },
+        firstBandId() {
+            return this.$page.props.auth?.user?.bands?.[0]?.id || null;
         }
     },
     onUpdated() {
@@ -619,7 +636,6 @@ export default {
     },
     created: async function () {
         this.fetchUserData();
-        this.fetchEventTypes();
     },
     methods: {
         ...mapActions("user", [
@@ -629,7 +645,6 @@ export default {
             "markNotificationAsRead",
             "markNotificationsAsSeen",
         ]),
-        ...mapActions("eventTypes", ["fetchEventTypes"]),
 
         fetchUserData() {
             this.fetchNavigation();

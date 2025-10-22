@@ -43,26 +43,45 @@ const parseDate = (date) => {
 
 const isReserved = (date) => {
   const jsDate = parseDate(date);
-  return Object.values(props.events).some(event => 
-    DateTime.fromFormat(event.date, 'yyyy-MM-dd').equals(jsDate)
-  );
+  return Object.values(props.events).some(event => {
+    if (!event.date) return false;
+    try {
+      return DateTime.fromFormat(event.date, 'yyyy-MM-dd').equals(jsDate);
+    } catch (e) {
+      return false;
+    }
+  });
 };
 
 const getEventName = (date) => {
   const jsDate = parseDate(date);
-  const event = Object.values(props.events).find(event => 
-    DateTime.fromFormat(event.date, 'yyyy-MM-dd').equals(jsDate)
-  );
+  const event = Object.values(props.events).find(event => {
+    if (!event.date) return false;
+    try {
+      return DateTime.fromFormat(event.date, 'yyyy-MM-dd').equals(jsDate);
+    } catch (e) {
+      return false;
+    }
+  });
   return event ? event.event_name : '';
 };
 
 const setEventId = (date) => {
   const jsDate = parseDate(date);
-  const event = Object.values(props.events).find(event => 
-    DateTime.fromFormat(event.date, 'yyyy-MM-dd').equals(jsDate)
-  );
+  const event = Object.values(props.events).find(event => {
+    if (!event.date) return false;
+    try {
+      return DateTime.fromFormat(event.date, 'yyyy-MM-dd').equals(jsDate);
+    } catch (e) {
+      return false;
+    }
+  });
   if (event) {
-    emit('date', event.id);
+    // Use event.id if available, otherwise use event.key for virtual rehearsals
+    const identifier = event.id || event.key;
+    if (identifier) {
+      emit('date', identifier);
+    }
   }
 };
 </script>

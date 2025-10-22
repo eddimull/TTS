@@ -1,5 +1,8 @@
 <template>
-  <div class="sticky bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-600 py-4 px-6 -mx-6 -mb-6 rounded-b-xl">
+  <div 
+    class="sticky bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-600 py-4 px-6 -mx-6 -mb-6 rounded-b-xl"
+    style="z-index: 9999;"
+  >
     <div class="flex justify-between items-center">
       <button
         class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2 shadow-sm hover:shadow"
@@ -20,6 +23,20 @@
         Remove Event
       </button>
       <div class="flex gap-3">
+        <button
+          class="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2 shadow-sm hover:shadow"
+          @click="$emit('viewOnDashboard')"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
+          </svg>
+          View on Dashboard
+        </button>
         <button
           class="px-6 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-slate-600 dark:hover:bg-slate-500 text-gray-800 dark:text-gray-50 rounded-lg font-medium transition-colors shadow-sm hover:shadow"
           @click="$emit('cancel')"
@@ -46,5 +63,5 @@
 </template>
 
 <script setup>
-defineEmits(["save", "cancel", "removeEvent"]);
+defineEmits(["save", "cancel", "removeEvent", "viewOnDashboard"]);
 </script>
