@@ -51,6 +51,23 @@ class ChartsController extends Controller
     }
 
     /**
+     * Display the specified resource.
+     *
+     * @param  \App\Models\Charts  $chart
+     * @return \Illuminate\Http\Response
+     */
+    public function show(Charts $chart)
+    {
+        $user = Auth::user();
+        $canEdit = $user->canWrite('charts', $chart->band_id);
+        
+        return Inertia::render('Charts/Show', [
+            'chart' => $chart,
+            'canEdit' => $canEdit
+        ]);
+    }
+
+    /**
      * Show the form for editing the specified resource.
      *
      * @param  \App\Models\Charts  $charts

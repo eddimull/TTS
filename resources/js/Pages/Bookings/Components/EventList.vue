@@ -1,47 +1,62 @@
 <template>
+  <div
+    class="p-4 bg-white dark:bg-slate-700 dark:text-gray-50 shadow rounded-lg"
+  >
     <div
-        class="p-4 bg-white dark:bg-slate-700 dark:text-gray-50 shadow rounded-lg"
+      v-for="event in events"
+      :key="event.id"
+      class="mb-4 p-4 border rounded"
     >
-        <div
-            v-for="event in events"
-            :key="event.id"
-            class="mb-4 p-4 border rounded"
-        >
-            <h2 class="text-xl font-semibold">
-                {{ event.title }}
-            </h2>
-            <p>Date: {{ formatDate(event.date) }}</p>
-            <p>Time: {{ formatTime(event.time) }}</p>
-            <div class="mt-2">
-                <button
-                    class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 mr-2"
-                    @click="editEvent(event)"
-                >
-                    Edit
-                </button>
-            </div>
-        </div>
-
+      <h2 class="text-xl font-semibold">
+        {{ event.title }}
+      </h2>
+      <p>Date: {{ formatDate(event.date) }}</p>
+      <p>Time: {{ formatTime(event.time) }}</p>
+      <div class="mt-2">
         <button
-            v-if="!isAddingEvent && !editingEvent"
-            class="mt-4 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-            @click="addNewEvent"
+          class="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 mr-2"
+          @click="viewEvent(event)"
         >
-            Add New Event
+          View
         </button>
-
-        <EventEditor
-            v-if="editingEvent"
-            :initial-event="editingEvent"
-            @removeEvent="removeEvent"
-            @save="saveEvent"
-            @cancel="cancelEdit"
-        />
+        <button
+          class="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600"
+          @click="editEvent(event)"
+        >
+          Edit
+        </button>
+      </div>
     </div>
+
+    <button
+      v-if="!isAddingEvent && !editingEvent && !viewingEvent"
+      class="mt-4 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+      @click="addNewEvent"
+    >
+      Add New Event
+    </button>
+
+    <EventDetails
+      v-if="viewingEvent && !editingEvent"
+      :event="viewingEvent"
+      @edit="editEvent"
+      @cancel="cancelView"
+      @remove-event="removeEvent"
+    />
+
+    <EventEditor
+      v-if="editingEvent"
+      :initial-event="editingEvent"
+      @removeEvent="removeEvent"
+      @save="saveEvent"
+      @cancel="cancelEdit"
+    />
+  </div>
 </template>
 <script setup>
 import { ref, computed } from "vue";
 import EventEditor from "./EventEditor.vue";
+import EventDetails from "./EventDetails.vue";
 import { router } from "@inertiajs/vue3";
 import { DateTime } from "luxon";
 
@@ -58,6 +73,7 @@ const props = defineProps({
 
 const events = ref(props.initialEvents);
 const editingEvent = ref(null);
+const viewingEvent = ref(null);
 const isAddingEvent = ref(false);
 
 const formatDate = (dateString) => {
@@ -70,8 +86,18 @@ const formatTime = (timeString) => {
     });
 };
 
+const viewEvent = (event) => {
+    viewingEvent.value = JSON.parse(JSON.stringify(event));
+    editingEvent.value = null;
+};
+
 const editEvent = (event) => {
     editingEvent.value = JSON.parse(JSON.stringify(event));
+    viewingEvent.value = null;
+};
+
+const cancelView = () => {
+    viewingEvent.value = null;
 };
 
 const saveEvent = (updatedEvent) => {

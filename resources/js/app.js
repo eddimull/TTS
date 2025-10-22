@@ -107,11 +107,10 @@ createInertiaApp({
         app.config.globalProperties.$qs = qs;
         app.config.globalProperties.$route = route;
 
-        return (() => {
-            return store.dispatch('eventTypes/fetchEventTypes')
-        })().then(() => {
-            return app.mount(el);
-        })
+        // Initialize event types from Inertia shared data
+        store.dispatch('eventTypes/initializeEventTypes', props.initialPage.props.eventTypes);
+
+        return app.mount(el);
 
 
     }

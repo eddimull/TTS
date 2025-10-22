@@ -178,6 +178,16 @@ class Bands extends Model
         return $this->hasOne(BandCalendars::class, 'band_id')->where('type', 'booking');
     }
 
+    public function rehearsalSchedules()
+    {
+        return $this->hasMany(RehearsalSchedule::class, 'band_id')->orderBy('name', 'asc');
+    }
+
+    public function activeRehearsalSchedules()
+    {
+        return $this->rehearsalSchedules()->where('active', true);
+    }
+
     /**
      * Check if a user has access to any of this band's calendars
      */

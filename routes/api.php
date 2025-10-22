@@ -9,6 +9,7 @@ use App\Http\Controllers\EventTypeController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\ChartsController;
+use App\Http\Controllers\RehearsalController;
 
 /*
 |--------------------------------------------------------------------------
@@ -34,6 +35,8 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/bands/{band}/contacts', [BandsController::class, 'contacts']);
     Route::get('/search', [SearchController::class, 'search']);
     Route::get('/charts', [ChartsController::class, 'getChartsForUser']);
+    Route::get('/rehearsal/{rehearsal_id}', [RehearsalController::class, 'getRehearsalData'])->name('api.rehearsal.get');
+    Route::get('/rehearsal-schedule/{rehearsal_schedule_id}/band/{band_id}', [RehearsalController::class, 'getRehearsalScheduleData'])->name('api.rehearsal-schedule.get');
 });
 
 Route::post('/searchLocations', [LocationController::class, 'searchLocations'])->name('searchLocations');
