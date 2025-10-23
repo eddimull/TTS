@@ -399,16 +399,28 @@ export default {
             this.upload(event, 1);
         },
         upload(event, type) {
-            // console.log(event);
-            this.$inertia
-                .post(this.chartData.id + "/upload", {
-                    type_id: type,
-                    band_id: this.chartData.band_id,
-                    "files[]": event.files,
-                })
-                .then(() => {
-                    window.location.reload();
-                });
+            const formData = new FormData();
+            formData.append('type_id', type);
+            formData.append('band_id', this.chartData.band_id);
+            
+            // Append files properly
+            event.files.forEach((file, index) => {
+                formData.append(`files[${index}]`, file);
+            });
+
+            this.$inertia.post(
+                route('charts.upload', this.chartData.id),
+                formData,
+                {
+                    forceFormData: true,
+                    onSuccess: () => {
+                        window.location.reload();
+                    },
+                    onError: (errors) => {
+                        console.error('Upload failed:', errors);
+                    }
+                }
+            );
         },
         updateChart() {
             this.$inertia.post(
