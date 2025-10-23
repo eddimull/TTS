@@ -51,6 +51,23 @@ class ChartsController extends Controller
     }
 
     /**
+     * Display the specified resource.
+     *
+     * @param  \App\Models\Charts  $chart
+     * @return \Illuminate\Http\Response
+     */
+    public function show(Charts $chart)
+    {
+        $user = Auth::user();
+        $canEdit = $user->canWrite('charts', $chart->band_id);
+        
+        return Inertia::render('Charts/Show', [
+            'chart' => $chart,
+            'canEdit' => $canEdit
+        ]);
+    }
+
+    /**
      * Show the form for editing the specified resource.
      *
      * @param  \App\Models\Charts  $charts
@@ -124,5 +141,17 @@ class ChartsController extends Controller
     {
         $chart->delete();
         return redirect('/charts/')->with('successMessage', $chart->title . ' has been deleted');
+    }
+
+    /**
+     * Get charts for the authenticated user (API endpoint)
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function getChartsForUser()
+    {
+        $user = Auth::user();
+        $charts = $user->charts();
+        return response()->json($charts);
     }
 }
