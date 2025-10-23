@@ -38,6 +38,7 @@ RUN apt-get update && apt-get install -y \
     default-mysql-client \
     --no-install-recommends \
     && docker-php-ext-enable imagick pcov \
+    && mkdir -p /etc/mysql/conf.d \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
@@ -56,8 +57,8 @@ RUN apt-get update && apt-get install -y \
 # Check architecture and install appropriate browser
 RUN case $(uname -m) in \
     x86_64) \
-    wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - && \
-    echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list && \
+    wget -q -O /usr/share/keyrings/google-chrome-keyring.gpg https://dl-ssl.google.com/linux/linux_signing_key.pub && \
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
     apt-get update && \
     apt-get install -y google-chrome-stable \
     ;; \

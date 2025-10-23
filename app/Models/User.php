@@ -85,6 +85,36 @@ class User extends Authenticatable
         }
     }
 
+    /**
+     * Check if user can read a specific resource type
+     */
+    public function canRead($resource, $bandId)
+    {
+        if ($this->ownsBand($bandId)) {
+            return true;
+        }
+
+        $permissions = $this->permissionsForBand($bandId);
+        $permissionKey = 'read_' . $resource;
+
+        return (bool)($permissions->{$permissionKey} ?? false);
+    }
+
+    /**
+     * Check if user can write a specific resource type
+     */
+    public function canWrite($resource, $bandId)
+    {
+        if ($this->ownsBand($bandId)) {
+            return true;
+        }
+
+        $permissions = $this->permissionsForBand($bandId);
+        $permissionKey = 'write_' . $resource;
+
+        return (bool)($permissions->{$permissionKey} ?? false);
+    }
+
     public function charts()
     {
         // return $this->hasManyThrough(Charts::class,Bands::class,'band_members','user_id','band_id');
@@ -135,24 +165,26 @@ class User extends Authenticatable
     public function getNav()
     {
         $availableNav = [
-            'Events' => false,
-            'Proposals' => false,
-            'Invoices' => false,
-            'Colors' => false,
-            'Charts' => false,
-            'Bookings' => false
+            'Events' => ['read' => false, 'write' => false],
+            'Proposals' => ['read' => false, 'write' => false],
+            'Invoices' => ['read' => false, 'write' => false],
+            'Colors' => ['read' => false, 'write' => false],
+            'Charts' => ['read' => false, 'write' => false],
+            'Bookings' => ['read' => false, 'write' => false],
+            'Rehearsals' => ['read' => false, 'write' => false]
         ];
 
 
         if (count($this->bandOwner) > 0) //no need to check anything else. They should have access to all the stuff for their band
         {
             return [
-                'Events' => true,
-                'Proposals' => true,
-                'Invoices' => true,
-                'Colors' => true,
-                'Charts' => true,
-                'Bookings' => true
+                'Events' => ['read' => true, 'write' => true],
+                'Proposals' => ['read' => true, 'write' => true],
+                'Invoices' => ['read' => true, 'write' => true],
+                'Colors' => ['read' => true, 'write' => true],
+                'Charts' => ['read' => true, 'write' => true],
+                'Bookings' => ['read' => true, 'write' => true],
+                'Rehearsals' => ['read' => true, 'write' => true]
             ];
         }
         $bands = $this->bandMember;
@@ -163,12 +195,18 @@ class User extends Authenticatable
 
             foreach ($availableNav as $key => $navItem)
             {
-                if (!$navItem)
+                $resourceKey = strtolower($key);
+                
+                // Check read permission
+                if (!$navItem['read'] && $permissions['read_' . $resourceKey])
                 {
-                    if ($permissions['read_' . strtolower($key)])
-                    {
-                        $availableNav[$key] = true;
-                    }
+                    $availableNav[$key]['read'] = true;
+                }
+                
+                // Check write permission
+                if (!$navItem['write'] && $permissions['write_' . $resourceKey])
+                {
+                    $availableNav[$key]['write'] = true;
                 }
             }
         }
@@ -233,8 +271,8 @@ class User extends Authenticatable
             return collect();
         }
         
-        // Build the main events query
-        $query = Events::join('bookings', 'events.eventable_id', '=', 'bookings.id')
+        // Build the main booking events query
+        $bookingQuery = Events::join('bookings', 'events.eventable_id', '=', 'bookings.id')
             ->whereIn('bookings.band_id', $bandIds)
             ->where('events.eventable_type', 'App\\Models\\Bookings') 
             ->select([
@@ -247,42 +285,154 @@ class User extends Authenticatable
                 'events.time',
                 'events.key',
                 'events.additional_data',
+                'events.eventable_id',
+                'events.eventable_type',
                 'bookings.band_id',
                 'bookings.name as booking_name',
                 'bookings.id as booking_id',
                 'bookings.venue_name',
-                'bookings.venue_address'
+                'bookings.venue_address',
+                \DB::raw("'booking' as event_source"),
+                \DB::raw('NULL as is_cancelled'),
+                \DB::raw('FALSE as is_virtual')
             ])
             ->join('event_types', 'events.event_type_id', '=', 'event_types.id');
 
         if ($includeNotes) {
-            $query->addSelect('events.notes');
+            $bookingQuery->addSelect('events.notes');
         }
         
         // Apply date filter if provided
         if ($afterDate) {
-            $query->where('events.date', '>', $afterDate);
+            $bookingQuery->where('events.date', '>=', $afterDate->toDateString());
         }
         
-        // Get events
-        $events = $query->orderBy('events.date')->get();
+        // Build the rehearsal events query
+        $rehearsalQuery = Events::join('rehearsals', 'events.eventable_id', '=', 'rehearsals.id')
+            ->join('rehearsal_schedules', 'rehearsals.rehearsal_schedule_id', '=', 'rehearsal_schedules.id')
+            ->whereIn('rehearsal_schedules.band_id', $bandIds)
+            ->where('events.eventable_type', 'App\\Models\\Rehearsal')
+            ->whereNull('rehearsals.deleted_at')
+            ->select([
+                'events.event_type_id',
+                'event_types.name as event_type_name',
+                'events.id',
+                'events.title',
+                'events.date',
+                'events.time',
+                'events.key',
+                'events.additional_data',
+                'events.eventable_id',
+                'events.eventable_type',
+                'rehearsal_schedules.band_id',
+                \DB::raw("CONCAT('Rehearsal: ', rehearsal_schedules.name) as booking_name"),
+                \DB::raw('NULL as booking_id'),
+                \DB::raw('COALESCE(rehearsals.venue_name, rehearsal_schedules.location_name) as venue_name'),
+                \DB::raw('COALESCE(rehearsals.venue_address, rehearsal_schedules.location_address) as venue_address'),
+                \DB::raw("'rehearsal' as event_source"),
+                'rehearsals.is_cancelled',
+                \DB::raw('FALSE as is_virtual'),
+                'rehearsals.rehearsal_schedule_id',
+                'rehearsal_schedules.name as rehearsal_schedule_name'
+            ])
+            ->join('event_types', 'events.event_type_id', '=', 'event_types.id');
+
+        if ($includeNotes) {
+            $rehearsalQuery->addSelect('events.notes');
+        }
+        
+        // Apply date filter if provided
+        if ($afterDate) {
+            $rehearsalQuery->where('events.date', '>=', $afterDate->toDateString());
+        }
+        
+        // Get both result sets and merge them
+        $bookingEvents = $bookingQuery->get();
+        $rehearsalEvents = $rehearsalQuery->get();
+        
+        // Merge and sort by date
+        $events = $bookingEvents->merge($rehearsalEvents)->sortBy('date');
         
         if ($events->isEmpty()) {
             return collect();
         }
         
-        // Get all booking IDs from the events
-        $bookingIds = $events->pluck('booking_id')->unique()->toArray();
+        // Get all booking IDs from the events (excluding rehearsals which have null booking_id)
+        $bookingIds = $events->whereNotNull('booking_id')->pluck('booking_id')->unique()->toArray();
         
         // Load all contacts for these bookings in one query
-        $contacts = \DB::table('booking_contacts') // Adjust table name as needed
-            ->whereIn('booking_id', $bookingIds)
-            ->get()
-            ->groupBy('booking_id');
+        $contacts = collect();
+        if (!empty($bookingIds)) {
+            $contacts = \DB::table('booking_contacts')
+                ->join('contacts', 'booking_contacts.contact_id', '=', 'contacts.id')
+                ->whereIn('booking_id', $bookingIds)
+                ->select('booking_contacts.booking_id', 'contacts.id', 'contacts.name', 'contacts.phone', 'contacts.email')
+                ->get()
+                ->groupBy('booking_id');
+        }
+        
+        // Get rehearsal IDs and load their associations with booking events
+        $rehearsalEventIds = $events->where('eventable_type', 'App\\Models\\Rehearsal')
+            ->whereNotNull('eventable_id')
+            ->pluck('eventable_id')
+            ->unique()
+            ->toArray();
+        
+        $rehearsalData = collect();
+        if (!empty($rehearsalEventIds)) {
+            // Load rehearsals with their event associations (not booking associations)
+            $rehearsals = \App\Models\Rehearsal::with(['associations' => function($query) {
+                $query->where('associable_type', 'App\\Models\\Events');
+            }, 'associations.associable'])
+                ->whereIn('id', $rehearsalEventIds)
+                ->get()
+                ->keyBy('id');
+            
+            // Process additional_data to ensure charts have their uploads loaded
+            foreach ($rehearsals as $rehearsal) {
+                if (isset($rehearsal->additional_data->charts) && is_array($rehearsal->additional_data->charts)) {
+                    $chartIds = collect($rehearsal->additional_data->charts)->pluck('id')->filter()->toArray();
+                    if (!empty($chartIds)) {
+                        $chartsWithUploads = \App\Models\Charts::with('uploads')
+                            ->whereIn('id', $chartIds)
+                            ->get()
+                            ->keyBy('id');
+                        
+                        // Replace chart data with full chart objects including uploads
+                        $rehearsal->additional_data = (object) array_merge(
+                            (array) $rehearsal->additional_data,
+                            [
+                                'charts' => collect($rehearsal->additional_data->charts)
+                                    ->map(function ($chart) use ($chartsWithUploads) {
+                                        $fullChart = $chartsWithUploads->get($chart->id ?? $chart['id'] ?? null);
+                                        return $fullChart ? $fullChart : $chart;
+                                    })
+                                    ->toArray()
+                            ]
+                        );
+                    }
+                }
+            }
+            
+            $rehearsalData = $rehearsals;
+        }
         
         // Attach contacts to events
-        return $events->map(function ($event) use ($contacts) {
-            $event->contacts = $contacts->get($event->booking_id, collect());
+        return $events->map(function ($event) use ($contacts, $rehearsalData) {
+            if ($event->booking_id) {
+                $event->contacts = $contacts->get($event->booking_id, collect());
+            } else {
+                $event->contacts = collect();
+            }
+            
+            // Attach rehearsal data with associations if this is a rehearsal event
+            if ($event->eventable_type === 'App\\Models\\Rehearsal' && $event->eventable_id) {
+                $rehearsal = $rehearsalData->get($event->eventable_id);
+                if ($rehearsal) {
+                    $event->eventable = $rehearsal;
+                }
+            }
+            
             return $event;
         });
     }

@@ -24,7 +24,11 @@ Route::post('new',[ChartsController::class,'store'])
     ->middleware(['auth','verified','charts.write'])
     ->name('charts.write');
 
-Route::get('{chart:id}',[ChartsController::class,'edit'])
+Route::get('{chart:id}',[ChartsController::class,'show'])
+    ->middleware(['auth','charts.read'])
+    ->name('charts.show');
+
+Route::get('{chart:id}/edit',[ChartsController::class,'edit'])
     ->middleware(['auth','charts.read'])
     ->name('charts.edit');
 

@@ -1,5 +1,4 @@
 # For more information: https://laravel.com/docs/sail
-version: '3'
 services:
     app:
         build:
@@ -9,8 +8,8 @@ services:
             PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: true
             PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
             CHROME_CONFIG_HOME: '/tmp/.config'
-            XDG_CONFIG_HOME: "$WORKSPACE@tmp/.chromium"
-            XDG_CACHE_HOME: "$WORKSPACE@tmp/.chromium"
+            XDG_CONFIG_HOME: "/var/www/@tmp/.chromium"
+            XDG_CACHE_HOME: "/var/www/@tmp/.chromium"
         working_dir: /var/www
         volumes:
             - ./:/var/www

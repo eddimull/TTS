@@ -68,6 +68,11 @@ class CalendarService
         if ($calendarId) {
             Config::set('google-calendar.calendar_id', $calendarId);
             $this->googleCalendar = $this->googleCalendarFactory::createForCalendarId($calendarId);
+            
+            // Set bandCalendar if not already set and we have a calendar type
+            if (!$this->bandCalendar && $this->calendarType) {
+                $this->bandCalendar = $this->band->calendars()->where('type', $this->calendarType)->first();
+            }
         }
     }
 
@@ -398,14 +403,24 @@ public function deleteBookingFromCalendar($booking)
    public function writeEventToCalendar($event)
    {
     Log::info('Writing event to calendar: ' . $event->title . ' for band: ' . $this->band->name);
-    Log::info('Band calendar ID: ' . $this->band->eventCalendar);
-    if(!empty($this->band->eventCalendar))
+    
+    // Get the calendar ID - either from bandCalendar or eventCalendar relationship
+    $calendarId = null;
+    if ($this->bandCalendar) {
+        $calendarId = $this->bandCalendar->calendar_id;
+    } elseif ($this->band->eventCalendar) {
+        $calendarId = $this->band->eventCalendar->calendar_id;
+    }
+    
+    Log::info('Band calendar ID: ' . $calendarId);
+    
+    if(!empty($calendarId))
     {
 
         if(!empty($event->google_calendar_event_id))
         {
             Log::info('Updating existing calendar event for ID: ' . $event->google_calendar_event_id);
-            $calendarEvent = CalendarEvent::find($event->google_calendar_event_id, $this->bandCalendar);
+            $calendarEvent = CalendarEvent::find($event->google_calendar_event_id, $calendarId);
         }
         else
         {
@@ -466,6 +481,9 @@ public function deleteBookingFromCalendar($booking)
        try {
            // Create a default GoogleCalendar instance to get the service
            $defaultCalendarId = config('google-calendar.calendar_id');
+           if (!$defaultCalendarId) {
+               throw new \Exception('No default calendar ID configured');
+           }
            $googleCalendar = GoogleCalendarFactory::createForCalendarId($defaultCalendarId);
            $service = $googleCalendar->getService();
 

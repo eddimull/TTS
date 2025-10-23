@@ -5,6 +5,7 @@ namespace App\Formatters;
 use Carbon\Carbon;
 use App\Models\Events;
 use App\Models\Bookings;
+use App\Models\Rehearsal;
 
 class CalendarEventFormatter
 {
@@ -106,6 +107,77 @@ class CalendarEventFormatter
         }
         
         return $description;
+    }
+
+    public static function formatRehearsalDescription(Rehearsal $rehearsal)
+    {
+        $elements = [];
+        
+        // Rehearsal Schedule info
+        if ($rehearsal->rehearsalSchedule) {
+            $elements['Rehearsal Schedule'] = $rehearsal->rehearsalSchedule->name;
+            
+            if ($rehearsal->rehearsalSchedule->frequency) {
+                $elements['Frequency'] = ucfirst($rehearsal->rehearsalSchedule->frequency);
+            }
+        }
+        
+        // Venue information
+        if ($rehearsal->venue_name) {
+            $elements['Venue'] = $rehearsal->venue_name;
+        } elseif ($rehearsal->rehearsalSchedule && $rehearsal->rehearsalSchedule->location_name) {
+            $elements['Venue'] = $rehearsal->rehearsalSchedule->location_name;
+        }
+        
+        if ($rehearsal->venue_address) {
+            $elements['Address'] = $rehearsal->venue_address;
+        } elseif ($rehearsal->rehearsalSchedule && $rehearsal->rehearsalSchedule->location_address) {
+            $elements['Address'] = $rehearsal->rehearsalSchedule->location_address;
+        }
+        
+        // Notes (strip HTML tags)
+        if ($rehearsal->notes) {
+            $elements['Notes'] = strip_tags($rehearsal->notes);
+        }
+        
+        // Schedule notes
+        if ($rehearsal->rehearsalSchedule && $rehearsal->rehearsalSchedule->notes) {
+            $elements['Schedule Notes'] = strip_tags($rehearsal->rehearsalSchedule->notes);
+        }
+        
+        // Associated bookings/events
+        $associations = $rehearsal->associations()->with('associable')->get();
+        if ($associations->count() > 0) {
+            $assocList = $associations->map(function ($assoc) {
+                if ($assoc->associable_type === 'App\\Models\\Bookings') {
+                    return "Booking: " . $assoc->associable->name;
+                } elseif ($assoc->associable_type === 'App\\Models\\Events') {
+                    return "Event: " . $assoc->associable->title;
+                }
+                return null;
+            })->filter()->implode("\n  ");
+            
+            if ($assocList) {
+                $elements['Preparing For'] = "\n  " . $assocList;
+            }
+        }
+        
+        // Additional data from JSON field
+        if (isset($rehearsal->additional_data->setlist) && !empty($rehearsal->additional_data->setlist)) {
+            $elements['Setlist'] = strip_tags($rehearsal->additional_data->setlist);
+        }
+        
+        if (isset($rehearsal->additional_data->attendees) && is_array($rehearsal->additional_data->attendees)) {
+            $attendees = implode(', ', $rehearsal->additional_data->attendees);
+            if ($attendees) {
+                $elements['Expected Attendees'] = $attendees;
+            }
+        }
+        
+        return collect($elements)
+            ->filter() // Remove empty values
+            ->map(fn($value, $key) => "{$key}: {$value}")
+            ->implode("\n\n");
     }
 
     public static function formatCalendar($calendar)

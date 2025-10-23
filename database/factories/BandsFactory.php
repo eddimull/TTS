@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\BandMembers;
 use App\Models\BandOwners;
 use App\Models\Bands;
 use App\Models\User;
@@ -36,6 +37,54 @@ class BandsFactory extends Factory
         return $this->afterCreating(function (Bands $band)
         {
             $band->owners()->create(['user_id' => User::factory()->create()->id]);
+        });
+    }
+
+    public function hasOwner()
+    {
+        return $this->afterCreating(function (Bands $band)
+        {
+            BandOwners::factory()->create([
+                'band_id' => $band->id,
+                'user_id' => User::factory()->create()->id
+            ]);
+        });
+    }
+
+    public function hasOwners($count = 1)
+    {
+        return $this->afterCreating(function (Bands $band) use ($count)
+        {
+            for ($i = 0; $i < $count; $i++) {
+                BandOwners::factory()->create([
+                    'band_id' => $band->id,
+                    'user_id' => User::factory()->create()->id
+                ]);
+            }
+        });
+    }
+
+    public function hasMember()
+    {
+        return $this->afterCreating(function (Bands $band)
+        {
+            BandMembers::factory()->create([
+                'band_id' => $band->id,
+                'user_id' => User::factory()->create()->id
+            ]);
+        });
+    }
+
+    public function hasMembers($count = 1)
+    {
+        return $this->afterCreating(function (Bands $band) use ($count)
+        {
+            for ($i = 0; $i < $count; $i++) {
+                BandMembers::factory()->create([
+                    'band_id' => $band->id,
+                    'user_id' => User::factory()->create()->id
+                ]);
+            }
         });
     }
 }

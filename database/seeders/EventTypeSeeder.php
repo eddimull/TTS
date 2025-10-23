@@ -42,6 +42,9 @@ class EventTypeSeeder extends Seeder
         ],        
         [
             'name'=>'Other'
+        ],
+        [
+            'name'=>'Rehearsal'
         ]
         ];
         
