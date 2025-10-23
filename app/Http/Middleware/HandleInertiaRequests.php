@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -43,6 +44,9 @@ class HandleInertiaRequests extends Middleware
                     'notifications' => $request->user()->notifications,
                 ] : null,
             ],
+            'eventTypes' => Cache::remember('event_types', 3600, function () {
+                return \App\Models\EventTypes::all();
+            }),
         ]);
     }
 }
