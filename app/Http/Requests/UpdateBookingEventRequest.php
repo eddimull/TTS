@@ -57,6 +57,12 @@ class UpdateBookingEventRequest extends FormRequest
             'additional_data.wedding.dances' => 'nullable|array',
             'additional_data.wedding.dances.*.title' => 'required|string',
             'additional_data.wedding.dances.*.data' => 'nullable|string',
+            'additional_data.performance' => 'nullable|array',
+            'additional_data.performance.notes' => 'nullable|string',
+            'additional_data.performance.songs' => 'nullable|array',
+            'additional_data.performance.songs.*.title' => 'nullable|string',
+            'additional_data.performance.songs.*.url' => 'nullable|url',
+            'additional_data.performance.charts' => 'nullable|array',
         ];
     }
 
@@ -92,6 +98,19 @@ class UpdateBookingEventRequest extends FormRequest
                 true
             );
             $this->merge(['additional_data' => array_merge($this->input('additional_data'), ['attire' => $processedAttire])]);
+        }
+
+        // Process performance notes field if it contains base64 images
+        if ($this->has('additional_data.performance.notes'))
+        {
+            $processedperformanceNotes = $this->imageProcessor->processContent(
+                $this->input('additional_data.performance.notes'),
+                $this->route('band')->site_name . '/event_uploads',
+                true
+            );
+            $currentAdditionalData = $this->input('additional_data');
+            $currentAdditionalData['performance']['notes'] = $processedperformanceNotes;
+            $this->merge(['additional_data' => $currentAdditionalData]);
         }
     }
 

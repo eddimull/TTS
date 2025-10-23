@@ -21,13 +21,12 @@ class BookingLinkTest extends TestCase
         $response = $this->actingAs($owner)
             ->get('/dashboard');
 
-
-
         $response->assertInertia(function (Assert $assert)
         {
             $assert->has('auth.user.navigation', function (Assert $assert)
             {
-                $assert->where('Bookings', true)
+                $assert->where('Bookings.read', true)
+                    ->where('Bookings.write', true)
                     ->etc();
             });
         });
@@ -51,7 +50,8 @@ class BookingLinkTest extends TestCase
         {
             $assert->has('auth.user.navigation', function (Assert $assert)
             {
-                $assert->where('Bookings', true)
+                $assert->where('Bookings.read', true)
+                    ->where('Bookings.write', false)
                     ->etc();
             });
         });
@@ -59,6 +59,7 @@ class BookingLinkTest extends TestCase
 
     public function test_non_band_user_cannot_see_booking_link()
     {
+        /** @var User $user */
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
@@ -68,7 +69,8 @@ class BookingLinkTest extends TestCase
         {
             $assert->has('auth.user.navigation', function (Assert $assert)
             {
-                $assert->where('Bookings', false)
+                $assert->where('Bookings.read', false)
+                    ->where('Bookings.write', false)
                     ->etc();
             });
         });

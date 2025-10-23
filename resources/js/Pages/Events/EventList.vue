@@ -45,7 +45,7 @@
         <!-- Upcoming Events Sidebar -->
         <div class="xl:col-span-1">
           <div class="bg-white dark:bg-slate-700 rounded-lg shadow-sm p-4 sticky top-4">
-            <Upcoming :events="events" />
+            <Upcoming :events="eventsArray" />
           </div>
         </div>
 
@@ -316,8 +316,20 @@ export default {
         };
     },
     computed: {
+        eventsArray() {
+            // Ensure events is always an array
+            if (!this.events) return [];
+            if (Array.isArray(this.events)) return this.events;
+            // Handle if it's an object with a 'data' property (pagination)
+            if (this.events.data && Array.isArray(this.events.data)) return this.events.data;
+            // If it's an object (hash map), convert values to array
+            if (typeof this.events === 'object') {
+                return Object.values(this.events);
+            }
+            return [];
+        },
         eventsWithDates() {
-            return this.events.map(event => {
+            return this.eventsArray.map(event => {
                 return {
                     ...event,
                     dateObject: new Date(event.date)
@@ -326,7 +338,7 @@ export default {
         },
         gigs() {
             const now = DateTime.now();
-            let upcomingEvents = this.events.filter((o) => {
+            let upcomingEvents = this.eventsArray.filter((o) => {
                 const eventDate = DateTime.fromISO(o.date);
                 return Interval.fromDateTimes(
                     now.minus({ months: 6 }),
@@ -375,19 +387,19 @@ export default {
         },
         // Computed properties for dropdown options
         bookingOptions() {
-            const bookings = [...new Set(this.events.map(event => event.booking_name))];
+            const bookings = [...new Set(this.eventsArray.map(event => event.booking_name))];
             return bookings.filter(Boolean).map(booking => ({ label: booking, value: booking }));
         },
         venueOptions() {
-            const venues = [...new Set(this.events.map(event => event.venue_name))];
+            const venues = [...new Set(this.eventsArray.map(event => event.venue_name))];
             return venues.filter(Boolean).sort((a, b) => a.localeCompare(b)).map(venue => ({ label: venue, value: venue }));
         },
         titleOptions() {
-            const titles = [...new Set(this.events.map(event => event.title))];
+            const titles = [...new Set(this.eventsArray.map(event => event.title))];
             return titles.filter(Boolean).sort((a, b) => a.localeCompare(b)).map(title => ({ label: title, value: title }));
         },
         eventTypeOptions() {
-            const eventTypes = [...new Set(this.events.map(event => event.event_type_name))];
+            const eventTypes = [...new Set(this.eventsArray.map(event => event.event_type_name))];
             return eventTypes.filter(Boolean).map(eventType => ({ label: eventType, value: eventType }));
         }
     },

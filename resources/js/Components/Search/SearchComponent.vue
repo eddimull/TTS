@@ -566,7 +566,7 @@ const selectContact = (contact) => {
 
 const selectChart = (chart) => {
   // closeSearch()
-  router.visit(route('charts.edit', chart.id))
+  router.visit(route('charts.show', chart.id))
 }
 
 const handleEscape = () => {
