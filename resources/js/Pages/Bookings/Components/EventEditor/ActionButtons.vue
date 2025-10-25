@@ -1,6 +1,6 @@
 <template>
   <div
-    class="sticky bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-600 py-4 px-6 -mx-6 -mb-6 rounded-b-xl"
+    class="sticky bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-600 py-4 px-3 md:px-6 -mx-3 md:-mx-6 -mb-6 rounded-b-xl"
     style="z-index: 9999;"
   >
     <!-- Mobile layout (xs and sm screens) -->
