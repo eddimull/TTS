@@ -2,7 +2,7 @@
   <div class="border border-gray-200 dark:border-slate-600 rounded-lg overflow-hidden bg-white dark:bg-slate-700 shadow-sm hover:shadow-md transition-shadow">
     <button
       type="button"
-      class="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors"
+      class="w-full px-3 md:px-6 py-4 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors"
       @click="$emit('toggle')"
     >
       <div class="flex items-center gap-3">
@@ -35,7 +35,7 @@
         />
       </svg>
     </button>
-    
+
     <transition
       enter-active-class="transition-all duration-200 ease-out"
       enter-from-class="max-h-0 opacity-0"
@@ -48,7 +48,7 @@
         v-show="isOpen"
         class="border-t border-gray-200 dark:border-slate-600"
       >
-        <div class="p-6">
+        <div class="p-3 md:p-6">
           <slot />
         </div>
       </div>
@@ -142,7 +142,7 @@ const iconComponent = computed(() => {
             `
         },
     };
-    
+
     return icons[props.icon] || icons.info;
 });
 </script>
