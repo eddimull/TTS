@@ -1,12 +1,12 @@
 <template>
   <div
     ref="editorContainer"
-    class="mt-4 p-6 bg-white dark:bg-slate-800 dark:text-gray-50 rounded-xl shadow-lg"
+    class="mt-4 p-2 md:p-6 bg-white dark:bg-slate-800 dark:text-gray-50 rounded-xl shadow-lg"
   >
     <h2 class="text-3xl font-bold mb-6 text-gray-800 dark:text-gray-50 border-b pb-4 dark:border-slate-600">
       Edit Event: {{ event.title }}
     </h2>
-    
+
     <div class="space-y-4">
       <!-- Basic Information Section -->
       <SectionCard
@@ -158,7 +158,7 @@ onMounted(() => {
             const headerOffset = 80; // Adjust for any fixed headers
             const elementPosition = editorContainer.value.getBoundingClientRect().top;
             const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-            
+
             window.scrollTo({
                 top: offsetPosition,
                 behavior: 'smooth'

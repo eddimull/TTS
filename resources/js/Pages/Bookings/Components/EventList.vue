@@ -1,6 +1,6 @@
 <template>
   <div
-    class="p-4 bg-white dark:bg-slate-700 dark:text-gray-50 shadow rounded-lg"
+    class="p-0 sm:p-2 md:p-4 bg-white dark:bg-slate-700 dark:text-gray-50 shadow rounded-lg"
   >
     <div
       v-for="event in events"
