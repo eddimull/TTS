@@ -201,9 +201,44 @@
               >
                 <template #header>
                   <div
-                    class="bg-gradient-to-br from-red-50 to-orange-100 dark:from-gray-700 dark:to-gray-800 h-32 flex items-center justify-center"
+                    class="bg-gradient-to-br from-red-50 to-orange-100 dark:from-gray-700 dark:to-gray-800 h-32 flex items-center justify-center overflow-hidden"
                   >
+                    <!-- Image Preview -->
+                    <img
+                      v-if="
+                        upload.fileType &&
+                          upload.fileType.indexOf('image') !== -1
+                      "
+                      :src="
+                        chartData.id +
+                          '/chartDownload/' +
+                          upload.name
+                      "
+                      :alt="upload.displayName"
+                      class="w-full h-full object-cover"
+                    >
+                    <!-- PDF Preview -->
+                    <div
+                      v-else-if="
+                        upload.fileType &&
+                          upload.fileType.indexOf('pdf') !== -1
+                      "
+                      class="w-full h-full flex items-center justify-center bg-white"
+                    >
+                      <pdf
+                        :src="
+                          chartData.id +
+                            '/chartDownload/' +
+                            upload.name
+                        "
+                        :page="1"
+                        class="max-w-full max-h-full"
+                        style="transform: scale(0.3); transform-origin: center;"
+                      />
+                    </div>
+                    <!-- Fallback Icon -->
                     <i
+                      v-else
                       class="pi pi-file-pdf text-5xl text-red-600 dark:text-red-400"
                     />
                   </div>
@@ -259,22 +294,51 @@
               >
                 <template #header>
                   <div
-                    class="bg-gradient-to-br from-purple-50 to-pink-100 dark:from-gray-700 dark:to-gray-800 h-32 flex items-center justify-center"
+                    class="bg-gradient-to-br from-purple-50 to-pink-100 dark:from-gray-700 dark:to-gray-800 h-32 flex items-center justify-center overflow-hidden relative"
                   >
-                    <i
+                    <!-- Audio Waveform Preview -->
+                    <div
                       v-if="
                         upload.fileType &&
                           upload.fileType.indexOf('audio') !== -1
                       "
-                      class="pi pi-volume-up text-5xl text-purple-600 dark:text-purple-400"
-                    />
-                    <i
+                      class="w-full h-full flex flex-col items-center justify-center"
+                    >
+                      <i class="pi pi-volume-up text-3xl text-purple-600 dark:text-purple-400 mb-2" />
+                      <div class="text-xs text-purple-600 dark:text-purple-400 text-center px-2">
+                        Audio File
+                      </div>
+                    </div>
+                    <!-- Video Thumbnail -->
+                    <video
                       v-else-if="
                         upload.fileType &&
                           upload.fileType.indexOf('video') !== -1
                       "
-                      class="pi pi-video text-5xl text-pink-600 dark:text-pink-400"
+                      :src="
+                        chartData.id +
+                          '/chartDownload/' +
+                          upload.name
+                      "
+                      class="w-full h-full object-cover"
+                      muted
+                      preload="metadata"
                     />
+                    <!-- Image Preview -->
+                    <img
+                      v-else-if="
+                        upload.fileType &&
+                          upload.fileType.indexOf('image') !== -1
+                      "
+                      :src="
+                        chartData.id +
+                          '/chartDownload/' +
+                          upload.name
+                      "
+                      :alt="upload.displayName"
+                      class="w-full h-full object-cover"
+                    >
+                    <!-- Fallback Icon -->
                     <i
                       v-else
                       class="pi pi-file text-5xl text-purple-600 dark:text-purple-400"

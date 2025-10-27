@@ -47,9 +47,10 @@
                     ) !== -1
                   "
                   :src="
-                    selectedUpload.chart_id +
-                      '/chartDownload/' +
-                      selectedUpload.name
+                    route('charts.download', {
+                      chart: selectedUpload.chart_id,
+                      upload: selectedUpload.name
+                    })
                   "
                   :alt="selectedUpload.name"
                   preview
@@ -62,9 +63,10 @@
                     ) !== -1
                   "
                   :src="
-                    selectedUpload.chart_id +
-                      '/chartDownload/' +
-                      selectedUpload.name
+                    route('charts.download', {
+                      chart: selectedUpload.chart_id,
+                      upload: selectedUpload.name
+                    })
                   "
                   class="w-full"
                 />
@@ -76,9 +78,10 @@
                     ) !== -1
                   "
                   :audio-src="
-                    selectedUpload.chart_id +
-                      '/chartDownload/' +
-                      selectedUpload.name
+                    route('charts.download', {
+                      chart: selectedUpload.chart_id,
+                      upload: selectedUpload.name
+                    })
                   "
                 />
 
@@ -92,9 +95,10 @@
                 >
                   <source
                     :src="
-                      selectedUpload.chart_id +
-                        '/chartDownload/' +
-                        selectedUpload.name
+                      route('charts.download', {
+                        chart: selectedUpload.chart_id,
+                        upload: selectedUpload.name
+                      })
                     "
                   >
                 </video>
@@ -109,9 +113,10 @@
           <div class="flex justify-center py-4">
             <a
               :href="
-                selectedUpload.chart_id +
-                  '/chartDownload/' +
-                  selectedUpload.name
+                route('charts.download', {
+                  chart: selectedUpload.chart_id,
+                  upload: selectedUpload.name
+                })
               "
               download
               class="inline-flex items-center px-4 py-2 font-bold text-gray-800 bg-gray-200 rounded hover:bg-gray-300"
@@ -271,8 +276,10 @@
                   name="sheetMusic[]"
                   :multiple="true"
                   :custom-upload="true"
+                  :auto="true"
                   class="w-full"
                   @uploader="uploadChart"
+                  @select="onSheetMusicSelect"
                 >
                   <template #empty>
                     <p
@@ -323,8 +330,10 @@
                   :url="chart.id + '/upload'"
                   :multiple="true"
                   :custom-upload="true"
+                  :auto="true"
                   class="w-full"
                   @uploader="uploadMusic"
+                  @select="onRecordingsSelect"
                 >
                   <template #empty>
                     <p
@@ -365,32 +374,38 @@ export default {
     },
     data() {
         return {
-            chartData: this.chart,
-            sheetMusic: [],
-            recordings: [],
+            chartData: { ...this.chart }, // Create a copy to avoid prop mutation
             showUploadModal: false,
             selectedUpload: false,
         };
     },
+    computed: {
+        sheetMusic() {
+            return this.chartData.uploads ? this.chartData.uploads.filter((upload) => {
+                return upload.upload_type_id === 3;
+            }) : [];
+        },
+        recordings() {
+            return this.chartData.uploads ? this.chartData.uploads.filter((upload) => {
+                return upload.upload_type_id === 1 || upload.upload_type_id === 2;
+            }) : [];
+        },
+    },
     created() {
-        this.sheetMusic = this.chart.uploads.filter((upload) => {
-            if (upload.upload_type_id === 3) {
-                return upload;
-            }
-        });
-
-        this.recordings = this.chart.uploads.filter((upload) => {
-            if (upload.upload_type_id === 1 || upload.upload_type_id === 2) {
-                return upload;
-            }
-        });
-
         this.chartData.public = this.chartData.public === 1;
     },
     methods: {
         selectUpload(upload) {
             this.selectedUpload = upload.data;
             this.showUploadModal = true;
+        },
+        onSheetMusicSelect(event) {
+            // Auto-upload when files are selected
+            this.uploadChart(event);
+        },
+        onRecordingsSelect(event) {
+            // Auto-upload when files are selected
+            this.uploadMusic(event);
         },
         uploadChart(event) {
             this.upload(event, 3);
@@ -403,18 +418,36 @@ export default {
             formData.append('type_id', type);
             formData.append('band_id', this.chartData.band_id);
             
-            // Append files properly
+            console.log('Files to upload:', event.files);
+            console.log('Upload type:', type);
+            
+            // Append files as array
             event.files.forEach((file, index) => {
-                formData.append(`files[${index}]`, file);
+                console.log(`Appending file ${index}:`, file.name, file.type, file.size);
+                formData.append('files[]', file);
             });
+
+            // Log all FormData entries
+            for (let [key, value] of formData.entries()) {
+                console.log(key, value);
+            }
 
             this.$inertia.post(
                 route('charts.upload', this.chartData.id),
                 formData,
                 {
                     forceFormData: true,
-                    onSuccess: () => {
-                        window.location.reload();
+                    preserveState: true,
+                    preserveScroll: true,
+                    onSuccess: (page) => {
+                        console.log('Upload success, page data:', page);
+                        // Update local chart data with new uploads from server response
+                        if (page.props && page.props.chart && page.props.chart.uploads) {
+                            // Update the uploads array in chartData
+                            this.chartData.uploads = page.props.chart.uploads;
+                        }
+                        // Clear the file upload component
+                        event.files = [];
                     },
                     onError: (errors) => {
                         console.error('Upload failed:', errors);
@@ -424,7 +457,7 @@ export default {
         },
         updateChart() {
             this.$inertia.post(
-                this.chartData.id,
+                route('charts.update', this.chartData.id),
                 {
                     title: this.chartData.title,
                     composer: this.chartData.composer,
@@ -439,11 +472,14 @@ export default {
             );
         },
         deleteChart() {
-            this.$inertia.delete(this.chartData.id);
+            this.$inertia.delete(route('charts.destroy', this.chartData.id));
         },
         updateUpload() {
             this.$inertia.post(
-                this.chartData.id + "/chartDownload/" + this.selectedUpload.id,
+                route('charts.updateResource', {
+                    chart: this.chartData.id,
+                    upload: this.selectedUpload.id
+                }),
                 {
                     displayName: this.selectedUpload.displayName,
                     notes: this.selectedUpload.notes
@@ -454,10 +490,18 @@ export default {
         },
         deleteUpload() {
             this.$inertia.delete(
-                this.chartData.id + "/chartDownload/" + this.selectedUpload.id,
+                route('charts.deleteResource', {
+                    chart: this.chartData.id,
+                    upload: this.selectedUpload.id
+                }),
                 {
-                    onSuccess: () => {
-                        window.location.reload();
+                    preserveState: true,
+                    preserveScroll: true,
+                    onSuccess: (page) => {
+                        // Update local chart data with new uploads from server response
+                        if (page.props && page.props.chart && page.props.chart.uploads) {
+                            this.chartData.uploads = page.props.chart.uploads;
+                        }
                         this.showUploadModal = false;
                     },
                 }
