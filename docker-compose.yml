@@ -5,9 +5,9 @@ services:
             context: .
             dockerfile: ./docker/app.dockerfile
         environment:
-            PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: true
-            PUPPETEER_EXECUTABLE_PATH: /usr/bin/google-chrome
-            CHROME_CONFIG_HOME: '/tmp/.config'
+            PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
+            PUPPETEER_EXECUTABLE_PATH: "/usr/bin/google-chrome"
+            CHROME_CONFIG_HOME: "/tmp/.config"
             XDG_CONFIG_HOME: "/var/www/@tmp/.chromium"
             XDG_CACHE_HOME: "/var/www/@tmp/.chromium"
         working_dir: /var/www
