@@ -1,6 +1,5 @@
 <template>
-  <div>
-    <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Notes</label>
+  <div class="mt-4">
     <Editor
       v-model="modelValue.notes"
       class="w-full p-2 border rounded"
