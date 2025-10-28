@@ -3,6 +3,7 @@
     v-if="!isEditMode"
     :booking="booking"
     :band="band"
+    :recent-activities="recentActivities"
   />
   <BookingForm
     v-else
@@ -30,6 +31,10 @@ const props = defineProps({
   band: {
     type: Object,
     required: true,
+  },
+  recentActivities: {
+    type: Array,
+    default: () => [],
   },
 })
 

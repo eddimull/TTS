@@ -17,6 +17,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Bookings extends Model implements Contractable, GoogleCalenderable
 {
@@ -24,6 +26,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
     use BookingTraits;
     use Searchable;
     use GoogleCalendarWritable;
+    use LogsActivity;
 
     protected $fillable = [
         'band_id',
@@ -308,6 +311,33 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
     public function getGoogleCalendarEndTime(): \Google\Service\Calendar\EventDateTime
     {
         return new \Google\Service\Calendar\EventDateTime(['dateTime' => $this->endDateTime, 'timeZone' => config('app.timezone')]);
+    }
+
+    /**
+     * Configure activity logging options
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'band_id',
+                'name',
+                'event_type_id',
+                'date',
+                'start_time',
+                'end_time',
+                'venue_name',
+                'venue_address',
+                'price',
+                'status',
+                'contract_option',
+                'author_id',
+                'notes',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('bookings')
+            ->setDescriptionForEvent(fn(string $eventName) => "Booking has been {$eventName}");
     }
 
 }

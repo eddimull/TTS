@@ -1,7 +1,7 @@
 <template>
   <div>
     <nav
-      class="fixed z-50 w-full bg-white dark:bg-slate-700 border-b border-gray-100"
+      class="fixed z-[999] w-full bg-white dark:bg-slate-700 border-b border-gray-100"
     >
       <!-- Primary Navigation Menu -->
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
