@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Models\Events;
-use App\Services\CalendarService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
