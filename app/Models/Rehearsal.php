@@ -3,8 +3,6 @@
 namespace App\Models;
 
 use App\Formatters\CalendarEventFormatter;
-use App\Models\Interfaces\GoogleCalenderable;
-use App\Models\Traits\GoogleCalendarWritable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -13,9 +11,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 
-class Rehearsal extends Model implements GoogleCalenderable
+class Rehearsal extends Model
 {
-    use HasFactory, SoftDeletes, GoogleCalendarWritable;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'rehearsal_schedule_id',
@@ -85,31 +83,7 @@ class Rehearsal extends Model implements GoogleCalenderable
         )->wherePivot('associable_type', Bookings::class);
     }
 
-    /**
-     * Google Calendar Integration Methods
-     */
-    public function googleEvents(): MorphOne
-    {
-        return $this->morphOne(GoogleEvents::class, 'google_eventable');
-    }
 
-    public function getGoogleEvent(BandCalendars $bandCalendar = null): GoogleEvents|null
-    {
-        if (!$bandCalendar) {
-            return $this->googleEvents()->first();
-        }
-        return $this->googleEvents()->where('band_calendar_id', $bandCalendar->id)->first();
-    }
-
-    public function getGoogleCalendar(): BandCalendars|null
-    {
-        return $this->band->eventCalendar;
-    }
-
-    public function getPublicGoogleCalendar(): BandCalendars|null
-    {
-        return $this->band->publicCalendar;
-    }
 
     public function getGoogleCalendarSummary(): string|null
     {
