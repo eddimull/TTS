@@ -417,10 +417,14 @@ public function deleteBookingFromCalendar($booking)
     if(!empty($calendarId))
     {
 
-        if(!empty($event->google_calendar_event_id))
+        // Check if event already exists in Google Calendar using the GoogleEvents relationship
+        $bandCalendar = $this->bandCalendar ?: $this->band->eventCalendar;
+        $existingGoogleEvent = $event->getGoogleEvent($bandCalendar);
+        
+        if($existingGoogleEvent)
         {
-            Log::info('Updating existing calendar event for ID: ' . $event->google_calendar_event_id);
-            $calendarEvent = CalendarEvent::find($event->google_calendar_event_id, $calendarId);
+            Log::info('Updating existing calendar event for ID: ' . $existingGoogleEvent->google_event_id);
+            $calendarEvent = CalendarEvent::find($existingGoogleEvent->google_event_id, $calendarId);
         }
         else
         {
@@ -437,8 +441,9 @@ public function deleteBookingFromCalendar($booking)
         $calendarEvent->description =  $event->type->name . "\n\n" . $event->eventable->venue_name . "\n\n" . $event->eventable->venue_address . "\n\n" . $event->advanceURL();
         $google_id = $calendarEvent->save();  
         Log::info('Saved calendar event with ID: ' . $google_id->id . ' for band: ' . $this->band->name);
-        $event->google_calendar_id = $google_id->id;
-        $event->saveQuietly();
+        
+        // Use the proper GoogleEvents polymorphic relationship instead of google_calendar_id
+        $event->storeGoogleEventId($this->bandCalendar ?: $this->band->eventCalendar, $google_id->id);
     }
    }
 
