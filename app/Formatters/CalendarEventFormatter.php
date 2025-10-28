@@ -135,9 +135,37 @@ class CalendarEventFormatter
             $elements['Address'] = $rehearsal->rehearsalSchedule->location_address;
         }
         
-        // Notes (strip HTML tags)
+        // Notes (strip HTML tags) - for rehearsals, this is typically songs to work on
         if ($rehearsal->notes) {
-            $elements['Notes'] = strip_tags($rehearsal->notes);
+            $elements['Songs to Work On'] = strip_tags($rehearsal->notes);
+        }
+        
+        // Structured song playlists from additional_data
+        if (isset($rehearsal->additional_data->songs) && is_array($rehearsal->additional_data->songs)) {
+            $songPlaylists = collect($rehearsal->additional_data->songs)
+                ->map(function ($playlist) {
+                    return "  {$playlist->title}: {$playlist->url}";
+                })
+                ->implode("\n");
+            
+            if ($songPlaylists) {
+                $elements['Spotify Playlists'] = "\n" . $songPlaylists;
+            }
+        }
+        
+        // Charts from additional_data
+        if (isset($rehearsal->additional_data->charts) && is_array($rehearsal->additional_data->charts)) {
+            $chartsList = collect($rehearsal->additional_data->charts)
+                ->map(function ($chart) {
+                    $composer = isset($chart->composer) ? " by {$chart->composer}" : '';
+                    $arranger = isset($chart->arranger) ? " (arr. {$chart->arranger})" : '';
+                    return "  {$chart->title}{$composer}{$arranger}";
+                })
+                ->implode("\n");
+            
+            if ($chartsList) {
+                $elements['Charts to Practice'] = "\n" . $chartsList;
+            }
         }
         
         // Schedule notes

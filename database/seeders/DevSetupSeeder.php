@@ -2,13 +2,14 @@
 
 namespace Database\Seeders;
 
-use App\Models\BandEvents;
-use App\Models\Proposals;
-use App\Models\RehearsalSchedule;
-use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\Bands;
+use App\Models\Bookings;
+use App\Models\Proposals;
+use App\Models\BandEvents;
 use App\Models\BandOwners;
+use Illuminate\Database\Seeder;
+use App\Models\RehearsalSchedule;
 
 class DevSetupSeeder extends Seeder
 {
@@ -34,8 +35,10 @@ class DevSetupSeeder extends Seeder
             'user_id'=>$user->id,
             'band_id'=>$band->id
         ]);
-        Proposals::factory(300)->create(['band_id' => $band->id]);
-        BandEvents::factory(50)->create(['band_id' => $band->id]);
+        Bookings::factory()->count(10)->create([
+            'band_id'=>$band->id
+        ]);
+        $this->command->info('Created Test Band with 10 bookings');
 
         // Create rehearsal schedules
         RehearsalSchedule::create([

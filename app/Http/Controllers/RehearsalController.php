@@ -7,7 +7,6 @@ use App\Models\Events;
 use App\Models\Rehearsal;
 use App\Models\EventTypes;
 use App\Models\RehearsalSchedule;
-use App\Services\CalendarService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -149,10 +148,12 @@ class RehearsalController extends Controller
             }
         }
 
-        // Write to Google Calendar
+        // Write to Google Calendar using the proper GoogleCalendarWritable trait
         try {
-            $calendarService = new CalendarService($band, 'event');
-            $calendarService->writeEventToCalendar($event);
+            $bandCalendar = $band->eventCalendar;
+            if ($bandCalendar) {
+                $rehearsal->writeToGoogleCalendar($bandCalendar);
+            }
         } catch (\Exception $e) {
             \Log::error('Error writing rehearsal to calendar: ' . $e->getMessage());
         }
@@ -298,10 +299,12 @@ class RehearsalController extends Controller
             }
         }
 
-        // Write to Google Calendar
+        // Write to Google Calendar using the proper GoogleCalendarWritable trait
         try {
-            $calendarService = new CalendarService($band, 'event');
-            $calendarService->writeEventToCalendar($event);
+            $bandCalendar = $band->eventCalendar;
+            if ($bandCalendar) {
+                $rehearsal->writeToGoogleCalendar($bandCalendar);
+            }
         } catch (\Exception $e) {
             \Log::error('Error updating rehearsal in calendar: ' . $e->getMessage());
         }
@@ -322,13 +325,12 @@ class RehearsalController extends Controller
             abort(403, 'Unauthorized to delete rehearsal');
         }
 
-        // Delete from Google Calendar before deleting rehearsal
+                // Delete from Google Calendar before deleting rehearsal
         try {
-            $event = $rehearsal->events()->first();
-            if ($event && $event->google_calendar_id) {
-                // The event will be cleaned up via GoogleCalendarWritable trait
-                // or you can manually delete if needed
-                \Log::info('Deleting rehearsal event from calendar: ' . $event->google_calendar_id);
+            $bandCalendar = $band->eventCalendar;
+            if ($bandCalendar && $rehearsal->getGoogleEvent($bandCalendar)) {
+                $rehearsal->deleteFromGoogleCalendar($bandCalendar);
+                \Log::info('Deleted rehearsal from Google Calendar for rehearsal ID: ' . $rehearsal->id);
             }
         } catch (\Exception $e) {
             \Log::error('Error deleting rehearsal from calendar: ' . $e->getMessage());
@@ -357,10 +359,9 @@ class RehearsalController extends Controller
 
         // Update Google Calendar event with cancelled status
         try {
-            $event = $rehearsal->events()->first();
-            if ($event) {
-                $calendarService = new CalendarService($band, 'event');
-                $calendarService->writeEventToCalendar($event);
+            $bandCalendar = $band->eventCalendar;
+            if ($bandCalendar) {
+                $rehearsal->writeToGoogleCalendar($bandCalendar);
             }
         } catch (\Exception $e) {
             \Log::error('Error updating cancelled status in calendar: ' . $e->getMessage());

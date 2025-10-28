@@ -1,14 +1,10 @@
 <template>
-  <div>
-    <h3 class="text-xl font-semibold mb-4">
-      Timeline
-    </h3>
-    
+  <div class="mt-6 mb-2">
     <!-- Timeline Grid -->
     <div class="border rounded-lg bg-white dark:bg-slate-800 overflow-hidden">
       <!-- Time Grid Header -->
       <div class="flex border-b dark:border-slate-600">
-        <div class="w-20 flex-shrink-0 p-2 text-sm font-medium bg-gray-50 dark:bg-slate-700 border-r dark:border-slate-600">
+        <div class="w-16 flex-shrink-0 p-2 text-sm font-medium bg-gray-50 dark:bg-slate-700 border-r dark:border-slate-600">
           Time
         </div>
         <div class="flex-1 p-2 text-sm font-medium bg-gray-50 dark:bg-slate-700">
@@ -30,7 +26,7 @@
             class="flex border-b border-gray-200 dark:border-slate-700"
             :style="{ height: `${HOUR_HEIGHT}px` }"
           >
-            <div class="w-20 flex-shrink-0 p-2 text-xs text-gray-600 dark:text-gray-400 border-r dark:border-slate-600">
+            <div class="w-16 flex-shrink-0 p-2 text-xs text-gray-600 dark:text-gray-400 border-r dark:border-slate-600">
               {{ hour.label }}
             </div>
             <div class="flex-1 relative">
@@ -46,22 +42,25 @@
         </div>
         
         <!-- Draggable Time Entries -->
-        <div class="absolute inset-0 left-20">
+        <div class="absolute inset-0 left-16">
           <div
             v-for="entry in timeEntries"
             :key="entry.id"
-            class="absolute left-2 right-2 rounded-lg shadow-md cursor-move"
             :class="{
+              'absolute left-2 right-2 rounded-lg shadow-md cursor-move': !expandedEntries.has(entry.id),
+              'fixed rounded-lg shadow-lg cursor-move': expandedEntries.has(entry.id),
+              'overflow-visible': expandedEntries.has(entry.id),
               'bg-blue-500 dark:bg-blue-600 border-2 border-blue-600 dark:border-blue-700 cursor-auto': entry.isEventTime,
               'bg-green-500 dark:bg-green-600 border-2 border-green-600 dark:border-green-700 hover:shadow-lg': !entry.isEventTime,
               'ring-2 ring-blue-300 dark:ring-blue-400': draggedEntry?.id === entry.id,
               'transition-all duration-200': draggedEntry?.id !== entry.id
             }"
             
-            :style="getEntryStyle(entry)"
+            :style="expandedEntries.has(entry.id) ? getExpandedEntryStyle(entry) : getEntryStyle(entry)"
             @mousedown="startDrag($event, entry)"
+            @touchstart="startDrag($event, entry)"
           >
-            <div class="p-2 text-white select-none">
+            <div class="p-1.5 text-white select-none">
               <div class="flex items-center justify-between">
                 <div class="flex-1 min-w-0">
                   <div class="font-semibold text-sm truncate">
@@ -98,7 +97,7 @@
             <Transition name="expand">
               <div 
                 v-if="expandedEntries.has(entry.id)"
-                class="border-t border-white/30 bg-white/10 p-3"
+                class="border-t border-white/30 bg-white/10 p-2"
                 @click.stop
               >
                 <div class="space-y-2">
@@ -129,7 +128,7 @@
       </div>
     </div>
     
-    <div class="mt-4">
+    <div class="mt-4 px-2">
       <button
         class="w-full sm:w-auto px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors shadow-sm hover:shadow-md flex items-center justify-center space-x-2"
         @click="addTimeEntry"
@@ -251,17 +250,20 @@ const timeSlots = computed(() => {
         const dayLabel = hour >= 24 ? ' (+1)' : '';
         slots.push({
             value: hour,
-            label: `${hour12}:00 ${period}${dayLabel}`
+            label: `${hour12} ${period}${dayLabel}`
         });
     }
     return slots;
 });
 
-// Toggle entry expansion
+// Toggle entry expansion (only one entry can be expanded at a time)
 const toggleEntry = (id) => {
     if (expandedEntries.value.has(id)) {
+        // If clicking on the currently expanded entry, close it
         expandedEntries.value.delete(id);
     } else {
+        // Close any currently expanded entries and open the new one
+        expandedEntries.value.clear();
         expandedEntries.value.add(id);
     }
 };
@@ -276,12 +278,17 @@ const formatTime = (dateTimeString) => {
     const [hours, minutes] = timePart.split(':').map(Number);
     if (isNaN(hours) || isNaN(minutes)) return 'Invalid time';
     
-    // Convert to 12-hour format
+    // Convert to 12-hour format (compact for mobile)
     const period = hours >= 12 ? 'PM' : 'AM';
     const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
-    const displayMinutes = minutes.toString().padStart(2, '0');
     
-    return `${displayHour}:${displayMinutes} ${period}`;
+    // Only show minutes if they're not 00
+    if (minutes === 0) {
+        return `${displayHour} ${period}`;
+    } else {
+        const displayMinutes = minutes.toString().padStart(2, '0');
+        return `${displayHour}:${displayMinutes} ${period}`;
+    }
 };
 
 const getEntryStyle = (entry) => {
@@ -316,17 +323,55 @@ const getEntryStyle = (entry) => {
     const { column, totalColumns } = getEntryColumn(entry, topPosition, height);
     
     const isDraggingThis = draggedEntry.value?.id === entry.id;
+    const isExpanded = expandedEntries.value.has(entry.id);
     
     // Calculate width and left position based on column
     const widthPercent = isDraggingThis ? 100 : (100 / totalColumns);
     const leftPercent = isDraggingThis ? 0 : (column * widthPercent);
 
+    // Z-index priority: dragging > expanded > event time > normal
+    let zIndex = 1;
+    if (isDraggingThis) {
+        zIndex = 9999;
+    } else if (isExpanded) {
+        zIndex = 999;
+    } else if (entry.isEventTime) {
+        zIndex = 50;
+    }
+
     return {
         top: `${topPosition}px`,
         height: `${height}px`,
-        zIndex: isDraggingThis ? 1000 : entry.isEventTime ? 10 : 1,
+        zIndex: zIndex,
         width: `${widthPercent}%`,
         left: `${leftPercent}%`
+    };
+};
+
+// Get style for expanded entries using fixed positioning
+const getExpandedEntryStyle = (entry) => {
+    if (!entry.time || !timelineContainer.value) return {};
+    
+    // Get the regular position first
+    const regularStyle = getEntryStyle(entry);
+    
+    // Get container position and scroll
+    const containerRect = timelineContainer.value.getBoundingClientRect();
+    const scrollTop = timelineContainer.value.scrollTop;
+    
+    // Calculate fixed position based on container position
+    const topInContainer = parseFloat(regularStyle.top) || 0;
+    const fixedTop = containerRect.top + topInContainer - scrollTop;
+    const fixedLeft = containerRect.left + 64 + 8; // 64px for time column + 8px margin
+    const fixedWidth = containerRect.width - 64 - 16; // subtract time column and margins
+    
+    return {
+        top: `${fixedTop}px`,
+        left: `${fixedLeft}px`,
+        width: `${fixedWidth}px`,
+        height: 'auto', // Let it expand naturally
+        zIndex: 9999,
+        minHeight: `${HOUR_HEIGHT}px`
     };
 };
 
@@ -459,14 +504,19 @@ const startDrag = (event, entry) => {
     event.preventDefault();
     draggedEntry.value = entry;
     isDragging.value = false;
-    dragStartPos.value = { x: event.clientX, y: event.clientY };
+    
+    // Handle both mouse and touch events
+    const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+    const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+    
+    dragStartPos.value = { x: clientX, y: clientY };
     
     // Get the container position
     const containerRect = timelineContainer.value.getBoundingClientRect();
     const scrollTop = timelineContainer.value.scrollTop;
     
     // Calculate where we clicked in container coordinates
-    const clickYInContainer = event.clientY - containerRect.top + scrollTop;
+    const clickYInContainer = clientY - containerRect.top + scrollTop;
     
     // Get the entry's current position from its style
     const entryStyle = getEntryStyle(entry);
@@ -477,17 +527,29 @@ const startDrag = (event, entry) => {
         y: clickYInContainer - entryTopInContainer
     };
     
+    // Add both mouse and touch event listeners
     document.addEventListener('mousemove', onDrag);
     document.addEventListener('mouseup', stopDrag);
+    document.addEventListener('touchmove', onDrag, { passive: false });
+    document.addEventListener('touchend', stopDrag);
 };
 
 // Handle dragging
 const onDrag = (event) => {
     if (!draggedEntry.value || !timelineContainer.value) return;
     
-    // Check if mouse has moved significantly (more than 5 pixels)
-    const deltaX = Math.abs(event.clientX - dragStartPos.value.x);
-    const deltaY = Math.abs(event.clientY - dragStartPos.value.y);
+    // Prevent scrolling during touch drag
+    if (event.touches) {
+        event.preventDefault();
+    }
+    
+    // Handle both mouse and touch events
+    const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+    const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+    
+    // Check if mouse/touch has moved significantly (more than 5 pixels)
+    const deltaX = Math.abs(clientX - dragStartPos.value.x);
+    const deltaY = Math.abs(clientY - dragStartPos.value.y);
     
     if (deltaX > 5 || deltaY > 5) {
         isDragging.value = true;
@@ -500,7 +562,7 @@ const onDrag = (event) => {
     const scrollTop = timelineContainer.value.scrollTop;
     
     // Calculate the position within the timeline container
-    const mouseYInContainer = event.clientY - containerRect.top + scrollTop;
+    const mouseYInContainer = clientY - containerRect.top + scrollTop;
     const relativeY = mouseYInContainer - dragOffset.value.y;
     
     // Convert Y position to time
@@ -547,8 +609,11 @@ const stopDrag = () => {
     draggedEntry.value = null;
     isDragging.value = false;
     
+    // Remove both mouse and touch event listeners
     document.removeEventListener('mousemove', onDrag);
     document.removeEventListener('mouseup', stopDrag);
+    document.removeEventListener('touchmove', onDrag);
+    document.removeEventListener('touchend', stopDrag);
     
     // If it was a click (not a drag), toggle the entry
     if (wasNotDragging && entryThatWasClicked) {
@@ -619,8 +684,11 @@ const emitUpdate = () => {
 
 // Cleanup on unmount
 onUnmounted(() => {
+    // Remove both mouse and touch event listeners
     document.removeEventListener('mousemove', onDrag);
     document.removeEventListener('mouseup', stopDrag);
+    document.removeEventListener('touchmove', onDrag);
+    document.removeEventListener('touchend', stopDrag);
 });
 </script>
 

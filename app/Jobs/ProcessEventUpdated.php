@@ -5,7 +5,6 @@ namespace App\Jobs;
 use App\Models\Bookings;
 use App\Models\BandEvents;
 use App\Models\Events;
-use App\Services\CalendarService;
 use Illuminate\Support\Facades\Log;
 use App\Notifications\TTSNotification;
 use Illuminate\Queue\SerializesModels;
