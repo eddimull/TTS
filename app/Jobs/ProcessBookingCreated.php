@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use App\Models\Bookings;
 use App\Models\GoogleEvents;
-use App\Services\CalendarService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;

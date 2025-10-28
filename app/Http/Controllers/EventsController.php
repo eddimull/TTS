@@ -13,7 +13,6 @@ use App\Models\EventTypes;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\EventContacts;
-use App\Services\CalendarService;
 use App\Http\Requests\EventRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
@@ -153,11 +152,7 @@ class EventsController extends Controller
         return $eventData;
     }
 
-    private function writeEventToCalendar(Bands $band, BandEvents $event): void
-    {
-        $calService = new CalendarService($band);
-        $calService->writeEventToCalendar($event);
-    }
+
 
     private function notifyBandMembers(Bands $band, BandEvents $event): void
     {
