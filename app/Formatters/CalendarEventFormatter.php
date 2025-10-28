@@ -135,9 +135,28 @@ class CalendarEventFormatter
             $elements['Address'] = $rehearsal->rehearsalSchedule->location_address;
         }
         
-        // Notes (strip HTML tags) - for rehearsals, this is typically songs to work on
+        // Notes (convert HTML to properly formatted text) - for rehearsals, this is typically songs to work on
         if ($rehearsal->notes) {
-            $elements['Songs to Work On'] = strip_tags($rehearsal->notes);
+            // Convert HTML to text while preserving structure
+            $cleanNotes = $rehearsal->notes;
+            
+            // Convert HTML paragraphs to line breaks
+            $cleanNotes = preg_replace('/<\/p>\s*<p>/', "\n\n", $cleanNotes);
+            $cleanNotes = preg_replace('/<p[^>]*>/', '', $cleanNotes);
+            $cleanNotes = str_replace('</p>', '', $cleanNotes);
+            
+            // Convert HTML list items to bullet points
+            $cleanNotes = preg_replace('/<li[^>]*>/', "\n  • ", $cleanNotes);
+            $cleanNotes = str_replace('</li>', '', $cleanNotes);
+            
+            // Remove remaining HTML tags
+            $cleanNotes = strip_tags($cleanNotes);
+            
+            // Clean up extra whitespace and normalize line breaks
+            $cleanNotes = preg_replace('/\n\s*\n\s*\n/', "\n\n", $cleanNotes);
+            $cleanNotes = trim($cleanNotes);
+            
+            $elements['Songs to Work On'] = $cleanNotes;
         }
         
         // Structured song playlists from additional_data
