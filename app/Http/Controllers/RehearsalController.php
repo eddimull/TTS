@@ -148,15 +148,7 @@ class RehearsalController extends Controller
             }
         }
 
-        // Write to Google Calendar using the proper GoogleCalendarWritable trait
-        try {
-            $bandCalendar = $band->eventCalendar;
-            if ($bandCalendar) {
-                $rehearsal->writeToGoogleCalendar($bandCalendar);
-            }
-        } catch (\Exception $e) {
-            \Log::error('Error writing rehearsal to calendar: ' . $e->getMessage());
-        }
+        // Google Calendar sync is handled automatically by EventObserver
 
         return redirect()
             ->route('dashboard')
@@ -299,15 +291,7 @@ class RehearsalController extends Controller
             }
         }
 
-        // Write to Google Calendar using the proper GoogleCalendarWritable trait
-        try {
-            $bandCalendar = $band->eventCalendar;
-            if ($bandCalendar) {
-                $rehearsal->writeToGoogleCalendar($bandCalendar);
-            }
-        } catch (\Exception $e) {
-            \Log::error('Error updating rehearsal in calendar: ' . $e->getMessage());
-        }
+        // Google Calendar sync is handled automatically by EventObserver
 
         return redirect()
             ->route('dashboard')
@@ -325,18 +309,8 @@ class RehearsalController extends Controller
             abort(403, 'Unauthorized to delete rehearsal');
         }
 
-                // Delete from Google Calendar before deleting rehearsal
-        try {
-            $bandCalendar = $band->eventCalendar;
-            if ($bandCalendar && $rehearsal->getGoogleEvent($bandCalendar)) {
-                $rehearsal->deleteFromGoogleCalendar($bandCalendar);
-                \Log::info('Deleted rehearsal from Google Calendar for rehearsal ID: ' . $rehearsal->id);
-            }
-        } catch (\Exception $e) {
-            \Log::error('Error deleting rehearsal from calendar: ' . $e->getMessage());
-        }
-
-        $rehearsal->delete();
+                // Google Calendar deletion is handled automatically by EventObserver when events are deleted
+        $rehearsal->delete(); // This will cascade delete the events, triggering the observer
 
         return redirect()
             ->route('dashboard')
@@ -357,15 +331,7 @@ class RehearsalController extends Controller
         $rehearsal->is_cancelled = !$rehearsal->is_cancelled;
         $rehearsal->save();
 
-        // Update Google Calendar event with cancelled status
-        try {
-            $bandCalendar = $band->eventCalendar;
-            if ($bandCalendar) {
-                $rehearsal->writeToGoogleCalendar($bandCalendar);
-            }
-        } catch (\Exception $e) {
-            \Log::error('Error updating cancelled status in calendar: ' . $e->getMessage());
-        }
+        // Google Calendar sync is handled automatically by EventObserver when event is updated
 
         $status = $rehearsal->is_cancelled ? 'cancelled' : 'reactivated';
         
