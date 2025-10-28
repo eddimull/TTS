@@ -19,6 +19,7 @@ class Rehearsal extends Model implements GoogleCalenderable
 
     protected $fillable = [
         'rehearsal_schedule_id',
+        'band_id',
         'venue_name',
         'venue_address',
         'notes',
@@ -32,6 +33,14 @@ class Rehearsal extends Model implements GoogleCalenderable
     ];
 
     /**
+     * Get the band that owns this rehearsal (direct relationship)
+     */
+    public function band(): BelongsTo
+    {
+        return $this->belongsTo(Bands::class);
+    }
+
+    /**
      * Get the rehearsal schedule that owns this rehearsal
      */
     public function rehearsalSchedule(): BelongsTo
@@ -40,19 +49,12 @@ class Rehearsal extends Model implements GoogleCalenderable
     }
 
     /**
-     * Get the band through the rehearsal schedule
-     */
-    public function band(): BelongsTo
-    {
-        return $this->belongsTo(Bands::class, 'band_id');
-    }
-
-    /**
-     * Helper to get band via rehearsal_schedule
+     * Helper to get band via rehearsal_schedule (deprecated - use direct band() relationship)
+     * Kept for backward compatibility
      */
     public function getBandAttribute()
     {
-        return $this->rehearsalSchedule->band;
+        return $this->band;
     }
 
     /**
@@ -109,7 +111,7 @@ class Rehearsal extends Model implements GoogleCalenderable
      */
     public function getGoogleCalendar(): BandCalendars|null
     {
-        return $this->rehearsalSchedule->band->eventCalendar;
+        return $this->band->eventCalendar;
     }
 
     public function getGoogleCalendarSummary(): string|null
