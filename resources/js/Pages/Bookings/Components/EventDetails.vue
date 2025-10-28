@@ -3,17 +3,33 @@
     ref="detailsContainer"
     class="mt-4 p-6 bg-white dark:bg-slate-800 dark:text-gray-50 rounded-xl shadow-lg"
   >
+    <!-- Activity History Modal -->
+    <ActivityHistoryModal
+      v-model:visible="showHistoryModal"
+      :event-key="event.key"
+      :event-title="event.title"
+    />
+
     <!-- Header -->
     <div class="flex justify-between items-start mb-6 pb-4 border-b dark:border-slate-600">
       <h2 class="text-3xl font-bold text-gray-800 dark:text-gray-50">
         {{ event.title }}
       </h2>
-      <Button
-        label="Edit Event"
-        icon="pi pi-pencil"
-        severity="secondary"
-        @click="editEvent"
-      />
+      <div class="flex gap-2">
+        <Button
+          label="History"
+          icon="pi pi-history"
+          severity="secondary"
+          outlined
+          @click="viewHistory"
+        />
+        <Button
+          label="Edit Event"
+          icon="pi pi-pencil"
+          severity="secondary"
+          @click="editEvent"
+        />
+      </div>
     </div>
     
     <div class="space-y-6">
@@ -392,6 +408,7 @@ import { ref, computed, reactive, onMounted, nextTick } from "vue";
 import { router } from '@inertiajs/vue3';
 import Button from 'primevue/button';
 import SectionCard from "./EventEditor/SectionCard.vue";
+import ActivityHistoryModal from "@/Components/ActivityHistoryModal.vue";
 import { DateTime } from 'luxon';
 
 const props = defineProps({
@@ -405,6 +422,7 @@ const emit = defineEmits(["edit", "cancel", "removeEvent"]);
 
 const isWedding = computed(() => props.event.event_type_id === 1);
 const detailsContainer = ref(null);
+const showHistoryModal = ref(false);
 
 // Track which sections are open
 const openSections = reactive({
@@ -548,12 +566,16 @@ const editEvent = () => {
     emit("edit", props.event);
 };
 
+const viewHistory = () => {
+    showHistoryModal.value = true;
+};
+
 const cancel = () => {
     emit("cancel");
 };
 
 const removeEvent = () => {
-    if (confirm('Are you sure you want to remove this event?')) {
+    if (confirm(`Are you sure you want to remove "${props.event.title}"? This action cannot be undone.`)) {
         emit("removeEvent", props.event.id);
     }
 };

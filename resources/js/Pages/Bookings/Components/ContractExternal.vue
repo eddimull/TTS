@@ -52,7 +52,7 @@
           </button>
         </div>
         <iframe
-          :src="existingContract"
+          :src="existingContractUrl"
           width="100%"
           height="600px"
           class="border"
@@ -139,7 +139,19 @@ const props = defineProps({
   booking: Object,
 })
 
-const existingContract = computed(() => props.booking.contract && props.booking.contract.asset_url)
+// Compute the contract URL to use the Laravel route for viewing
+const existingContractUrl = computed(() => {
+  if (props.booking.contract && props.booking.contract.asset_url) {
+    // Use Laravel route to serve the contract instead of direct S3 URL
+    return route('View Booking Contract', {
+      band: props.booking.band_id,
+      booking: props.booking.id
+    })
+  }
+  return null
+})
+
+const existingContract = computed(() => !!existingContractUrl.value)
 const showUploadForm = ref(!existingContract.value)
 const selectedFile = ref(null)
 const newPreviewUrl = ref(null)

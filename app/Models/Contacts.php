@@ -8,12 +8,15 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Scout\Searchable;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Contacts extends Model
 {
     use HasFactory;
     use Notifiable;
     use Searchable;
+    use LogsActivity;
 
     protected $fillable = [
         'band_id',
@@ -76,5 +79,23 @@ class Contacts extends Model
         })->toArray();
         
         return $searchableArray;
+    }
+
+    /**
+     * Configure activity logging options
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'band_id',
+                'name',
+                'email',
+                'phone',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('contacts')
+            ->setDescriptionForEvent(fn(string $eventName) => "Contact has been {$eventName}");
     }
 }

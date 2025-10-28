@@ -12,10 +12,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Rehearsal extends Model implements GoogleCalenderable
 {
-    use HasFactory, SoftDeletes, GoogleCalendarWritable;
+    use HasFactory, SoftDeletes, GoogleCalendarWritable, LogsActivity;
 
     protected $fillable = [
         'rehearsal_schedule_id',
@@ -169,5 +171,26 @@ class Rehearsal extends Model implements GoogleCalenderable
         // You can customize the color for rehearsal events
         // Google Calendar color IDs: 1-11
         return '5'; // Yellow for rehearsals
+    }
+
+    /**
+     * Configure activity logging options
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'rehearsal_schedule_id',
+                'band_id',
+                'venue_name',
+                'venue_address',
+                'notes',
+                'additional_data',
+                'is_cancelled',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('rehearsals')
+            ->setDescriptionForEvent(fn(string $eventName) => "Rehearsal has been {$eventName}");
     }
 }
