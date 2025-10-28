@@ -17,6 +17,10 @@ Route::get('/dashboard', 'DashboardController@index')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+// Public contract viewing route (for PandaDoc and external access with token)
+Route::get('/contracts/{contractId}/public', [App\Http\Controllers\ContractsController::class, 'publicView'])
+    ->name('contracts.public.view');
+
 // Include all route files
 require __DIR__ . '/account.php';
 require __DIR__ . '/auth.php';

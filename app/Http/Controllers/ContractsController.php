@@ -96,6 +96,86 @@ class ContractsController extends Controller
         dd($contract);
     }
 
+    /**
+     * View the booking contract inline (for iframe display)
+     *
+     * @param  Bands  $band
+     * @param  Bookings  $booking
+     * @return \Illuminate\Http\Response
+     */
+    public function viewBookingContract(Bands $band, Bookings $booking)
+    {
+        $contract = $booking->contract;
+
+        if (!$contract || !$contract->asset_url) {
+            abort(404, 'Contract not found');
+        }
+
+        // Get the file path using the contract method
+        $filePath = $contract->getFilePath();
+
+        // Check if the file exists
+        if (!Storage::disk('s3')->exists($filePath)) {
+            abort(404, 'Contract file not found on storage');
+        }
+
+        // Stream the file from S3
+        $stream = Storage::disk('s3')->readStream($filePath);
+
+        return response()->stream(
+            function () use ($stream) {
+                fpassthru($stream);
+            },
+            200,
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . basename($filePath) . '"',
+            ]
+        );
+    }
+
+    /**
+     * Public contract viewing (for PandaDoc and external access)
+     * Requires a valid access token
+     *
+     * @param  int  $contractId
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\Response
+     */
+    public function publicView($contractId, Request $request)
+    {
+        $contract = Contracts::findOrFail($contractId);
+        
+        // Verify the access token
+        $token = $request->query('token');
+        if (!$token || !$contract->verifyAccessToken($token)) {
+            abort(403, 'Invalid or missing access token');
+        }
+
+        // Get the file path
+        $filePath = $contract->getFilePath();
+
+        // Check if the file exists
+        if (!Storage::disk('s3')->exists($filePath)) {
+            abort(404, 'Contract file not found on storage');
+        }
+
+        // Stream the file from S3
+        $stream = Storage::disk('s3')->readStream($filePath);
+
+        return response()->stream(
+            function () use ($stream) {
+                fpassthru($stream);
+            },
+            200,
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . basename($filePath) . '"',
+                'Cache-Control' => 'public, max-age=3600',
+            ]
+        );
+    }
+
 
     /**
      * Update the specified resource in storage.
