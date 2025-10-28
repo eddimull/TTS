@@ -35,7 +35,7 @@
         :is-open="openSections.timeline"
         @toggle="toggleSection('timeline')"
       >
-        <div class="p-4">
+        <div class="p-0 md:p-4">
           <Timeline
             :event-date="event.date"
             :event-time="event.time"
