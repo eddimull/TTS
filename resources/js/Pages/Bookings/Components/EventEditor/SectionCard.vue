@@ -48,7 +48,7 @@
         v-show="isOpen"
         class="border-t border-gray-200 dark:border-slate-600"
       >
-        <div class="p-3 md:p-6">
+        <div class="p-0 md:p-3">
           <slot />
         </div>
       </div>
