@@ -29,15 +29,35 @@ class ProcessEventUpdated implements ShouldQueue
 
     public function handle()
     {
-        $this->writeToGoogleCalendar($this->event->eventable->band->eventCalendar);
+        // For rehearsals, sync the rehearsal itself, not the event
+        if ($this->event->eventable_type === 'App\\Models\\Rehearsal') {
+            $this->syncRehearsalToGoogleCalendar();
+        } else {
+            // For bookings and band events, sync the event
+            $this->writeToGoogleCalendar($this->event->eventable->band->eventCalendar);
 
-        if ($this->event->additional_data->public) {
-            Log::info('Event is public, writing to public calendar for event ID: ' . $this->event->id);
-            $this->writeToGoogleCalendar($this->event->eventable->band->publicCalendar);
+            if ($this->event->additional_data->public) {
+                Log::info('Event is public, writing to public calendar for event ID: ' . $this->event->id);
+                $this->writeToGoogleCalendar($this->event->eventable->band->publicCalendar);
+            }
         }
 
         $this->SendNotification();
+    }
 
+    private function syncRehearsalToGoogleCalendar()
+    {
+        try {
+            $rehearsal = $this->event->eventable;
+            $band = $rehearsal->rehearsalSchedule->band;
+            
+            if ($band->eventCalendar) {
+                $googleEvent = $rehearsal->writeToGoogleCalendar($band->eventCalendar);
+                $rehearsal->storeGoogleEventId($band->eventCalendar, $googleEvent->id);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to sync rehearsal to calendar: ' . $e->getMessage());
+        }
     }
 
     public function writeToGoogleCalendar($calendar)
