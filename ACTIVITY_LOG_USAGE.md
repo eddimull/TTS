@@ -219,6 +219,30 @@ public function history(Events $event)
 }
 ```
 
+**✅ IMPLEMENTED:** The `EventsController::history()` method has been fully implemented with:
+- Proper activity retrieval with causer relationships
+- Field name formatting for better display
+- Value formatting for dates, times, event types, and JSON data
+- Complete integration with Inertia.js for frontend rendering
+- Available at route: `events.history` (GET `/events/{key}/history`)
+
+### Viewing Event History in the Application
+
+Users can now view the complete activity history of any event through multiple access points:
+
+1. **From Event Details Page**: Click the "History" button in the event details header
+2. **From Events List**: Click the history icon (clock) in the actions column
+3. **Direct URL**: Visit `/events/{event-key}/history`
+
+The history page displays:
+- Event metadata (title, date, time, band, event type)
+- Activity statistics (total activities, created count, updates count)
+- Interactive timeline with:
+  - User who performed each action
+  - Timestamp (both absolute and relative)
+  - Detailed change information showing old vs. new values
+  - Visual indicators for different activity types (created, updated, deleted)
+
 Example controller method to get booking history:
 ```php
 public function bookingHistory(Bookings $booking)
