@@ -82,7 +82,7 @@ defineProps({
     },
 });
 
-const exclusions = ["times", "attire", "lodging", "wedding", "rehearsal", "onsite"];
+const exclusions = ["times", "attire", "lodging", "wedding", "rehearsal", "onsite", "performance"];
 
 const formatLabel = (key) => {
     return key

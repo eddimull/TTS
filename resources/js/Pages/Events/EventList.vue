@@ -253,6 +253,27 @@
                   />
                 </template>
               </Column>
+              
+              <!-- Actions Column -->
+              <Column
+                header="Actions"
+                :exportable="false"
+                style="min-width: 8rem"
+              >
+                <template #body="slotProps">
+                  <div class="flex gap-2">
+                    <Button
+                      icon="pi pi-history"
+                      severity="secondary"
+                      text
+                      rounded
+                      title="View History"
+                      @click.stop="viewHistory(slotProps.data)"
+                    />
+                  </div>
+                </template>
+              </Column>
+              
               <template #paginatorcontainer="{ first, last, page, pageCount, prevPageCallback, nextPageCallback, totalRecords }">
                 <div class="flex items-center gap-4 border border-primary bg-transparent rounded-full w-full py-1 px-2 justify-between">
                   <Button
@@ -452,6 +473,9 @@ export default {
                     booking: event.data.booking_id,
                 })
             );
+        },
+        viewHistory(event) {
+            this.$inertia.visit(route('events.history', event.key));
         },
         clearFilters() {
             this.initFilters();

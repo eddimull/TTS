@@ -10,6 +10,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/', [EventsController::class, 'store'])->name('events.store');
         Route::get('/{key}/edit', [EventsController::class, 'edit'])->name('events.edit');
         Route::get('/{key}/advance', [EventsController::class, 'advance'])->name('events.advance');
+        Route::get('/{key}/history', [EventsController::class, 'history'])->name('events.history');
+        Route::get('/{key}/history-json', [EventsController::class, 'historyJson'])->name('events.historyJson');
         Route::patch('/{key}', [EventsController::class, 'update'])->name('events.update');
         Route::delete('/{key}', [EventsController::class, 'destroy'])->name('events.destroy');
         Route::get('/createAdvance/{id}', [EventsController::class, 'createPDF']);

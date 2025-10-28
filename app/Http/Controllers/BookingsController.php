@@ -315,9 +315,28 @@ class BookingsController extends Controller
 
     public function events(Bands $band, Bookings $booking)
     {
+        // Get events with last updated user info from activity log
+        $events = $booking->events->map(function ($event) {
+            // Get the last update activity
+            $lastActivity = $event->activities()
+                ->where('description', 'updated')
+                ->latest()
+                ->first();
+            
+            // Add last updated user info if available
+            if ($lastActivity && $lastActivity->causer) {
+                $event->last_updated_by = [
+                    'id' => $lastActivity->causer->id,
+                    'name' => $lastActivity->causer->name,
+                ];
+            }
+            
+            return $event;
+        });
+        
         return Inertia::render('Bookings/Events', [
             'booking' => $booking,
-            'events' => $booking->events
+            'events' => $events
         ]);
     }
 

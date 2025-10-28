@@ -192,7 +192,11 @@ class EventsController extends Controller
     {
         $event = Events::where('key', $key)->first();
 
-        return redirect()->route('Booking Events', ['band' => $event->eventable->band->id, 'booking' => $event->eventable->id]);
+        return redirect()->route('Booking Events', [
+            'band' => $event->eventable->band->id, 
+            'booking' => $event->eventable->id,
+            'edit' => $key  // Pass the event key to auto-open editor
+        ]);
 
         $eventTypes = EventTypes::orderBy('name')->get();
         $event = BandEvents::where('event_key', $key)->first();
@@ -383,5 +387,317 @@ class EventsController extends Controller
     {
         $contact->delete();
         return back()->with('successMessage', 'Removed Contact');
+    }
+
+    /**
+     * Display the activity history for an event
+     *
+     * @param  string  $key
+     * @return \Inertia\Response
+     */
+    public function history($key)
+    {
+        $event = Events::where('key', $key)->firstOrFail();
+        
+        $activities = $this->getFormattedActivities($event);
+        
+        // Load event with necessary relationships
+        $event->load('eventable.band', 'type');
+        
+        return Inertia::render('Events/History', [
+            'event' => [
+                'id' => $event->id,
+                'key' => $event->key,
+                'title' => $event->title,
+                'date' => $event->date->format('Y-m-d'),
+                'time' => $event->time,
+                'band_name' => $event->eventable->band->name ?? 'Unknown',
+                'event_type' => $event->type->name ?? 'Unknown',
+            ],
+            'activities' => $activities,
+        ]);
+    }
+
+    /**
+     * Get activity history for an event (JSON API endpoint)
+     *
+     * @param  string  $key
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function historyJson($key)
+    {
+        $event = Events::where('key', $key)->firstOrFail();
+        
+        $activities = $this->getFormattedActivities($event);
+        
+        return response()->json([
+            'activities' => $activities,
+        ]);
+    }
+
+    /**
+     * Get formatted activities for an event
+     *
+     * @param  Events  $event
+     * @return \Illuminate\Support\Collection
+     */
+    private function getFormattedActivities(Events $event)
+    {
+        return $event->activities()
+            ->with('causer')
+            ->latest()
+            ->get()
+            ->map(function ($activity) {
+                $changes = $activity->changes();
+                
+                // Format changes for better display
+                $formattedChanges = [];
+                if (isset($changes['attributes'])) {
+                    foreach ($changes['attributes'] as $key => $newValue) {
+                        $oldValue = $changes['old'][$key] ?? null;
+                        
+                        // Format field name for display
+                        $fieldName = $this->formatFieldName($key);
+                        
+                        // Format values for display
+                        $formattedChanges[] = [
+                            'field' => $fieldName,
+                            'old' => $this->formatValue($key, $oldValue),
+                            'new' => $this->formatValue($key, $newValue),
+                        ];
+                    }
+                }
+                
+                return [
+                    'id' => $activity->id,
+                    'description' => $activity->description,
+                    'event_type' => $activity->event,
+                    'causer' => $activity->causer ? [
+                        'id' => $activity->causer->id,
+                        'name' => $activity->causer->name,
+                        'email' => $activity->causer->email,
+                    ] : null,
+                    'changes' => $formattedChanges,
+                    'created_at' => $activity->created_at->format('Y-m-d H:i:s'),
+                    'created_at_human' => $activity->created_at->diffForHumans(),
+                ];
+            });
+    }
+
+    /**
+     * Format field name for display
+     *
+     * @param  string  $field
+     * @return string
+     */
+    private function formatFieldName($field)
+    {
+        $fieldMap = [
+            'event_type_id' => 'Event Type',
+            'eventable_type' => 'Event Source Type',
+            'eventable_id' => 'Event Source ID',
+            'additional_data' => 'Additional Data',
+        ];
+        
+        if (isset($fieldMap[$field])) {
+            return $fieldMap[$field];
+        }
+        
+        // Convert snake_case to Title Case
+        return ucwords(str_replace('_', ' ', $field));
+    }
+
+    /**
+     * Format value for display
+     *
+     * @param  string  $field
+     * @param  mixed  $value
+     * @return string|array
+     */
+    private function formatValue($field, $value)
+    {
+        if (is_null($value)) {
+            return '(empty)';
+        }
+        
+        // Format dates
+        if ($field === 'date' && $value) {
+            try {
+                return Carbon::parse($value)->format('F j, Y');
+            } catch (\Exception $e) {
+                return $value;
+            }
+        }
+        
+        // Format times
+        if ($field === 'time' && $value) {
+            try {
+                return Carbon::parse($value)->format('g:i A');
+            } catch (\Exception $e) {
+                return $value;
+            }
+        }
+        
+        // Format event type ID
+        if ($field === 'event_type_id' && $value) {
+            $eventType = EventTypes::find($value);
+            return $eventType ? $eventType->name : "ID: {$value}";
+        }
+        
+        // Format notes (strip HTML and preview)
+        if ($field === 'notes' && is_string($value)) {
+            return $this->formatNotesForDisplay($value);
+        }
+        
+        // Format additional_data (JSON) - return structured data for detailed comparison
+        if ($field === 'additional_data' && (is_array($value) || is_object($value))) {
+            return $this->formatAdditionalData($value);
+        }
+        
+        // Convert boolean values
+        if (is_bool($value)) {
+            return $value ? 'Yes' : 'No';
+        }
+        
+        return (string) $value;
+    }
+
+    /**
+     * Format notes field for display (strip HTML and create preview)
+     *
+     * @param  string  $html
+     * @return string
+     */
+    private function formatNotesForDisplay($html)
+    {
+        // Strip all HTML tags
+        $text = strip_tags($html);
+        
+        // Decode HTML entities
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        
+        // Remove excessive whitespace and normalize line breaks
+        $text = preg_replace('/\s+/', ' ', $text);
+        $text = trim($text);
+        
+        // Return empty indicator if no content
+        if (empty($text)) {
+            return '(empty)';
+        }
+        
+        // Create a preview with word count if it's long
+        $maxLength = 200;
+        if (strlen($text) > $maxLength) {
+            $text = substr($text, 0, $maxLength);
+            // Try to break at last space to avoid cutting words
+            $lastSpace = strrpos($text, ' ');
+            if ($lastSpace !== false && $lastSpace > $maxLength - 50) {
+                $text = substr($text, 0, $lastSpace);
+            }
+            $text .= '...';
+        }
+        
+        return $text;
+    }
+
+    /**
+     * Format additional_data for detailed display
+     *
+     * @param  mixed  $data
+     * @return string
+     */
+    private function formatAdditionalData($data)
+    {
+        $data = is_object($data) ? (array) $data : $data;
+        
+        $formatted = [];
+        
+        // Format times/timeline
+        if (isset($data['times']) && is_array($data['times'])) {
+            $timesList = [];
+            foreach ($data['times'] as $time) {
+                $timeData = is_object($time) ? (array) $time : $time;
+                if (isset($timeData['title']) && isset($timeData['time'])) {
+                    try {
+                        $formattedTime = Carbon::parse($timeData['time'])->format('g:i A');
+                        $timesList[] = "  • {$timeData['title']}: {$formattedTime}";
+                    } catch (\Exception $e) {
+                        $timesList[] = "  • {$timeData['title']}: {$timeData['time']}";
+                    }
+                }
+            }
+            if (!empty($timesList)) {
+                $formatted[] = "Timeline:\n" . implode("\n", $timesList);
+            }
+        }
+        
+        // Format attire
+        if (isset($data['attire'])) {
+            $attireText = strip_tags($data['attire']);
+            $attireText = trim(preg_replace('/\s+/', ' ', $attireText));
+            if (!empty($attireText)) {
+                $preview = strlen($attireText) > 100 ? substr($attireText, 0, 100) . '...' : $attireText;
+                $formatted[] = "Attire: {$preview}";
+            }
+        }
+        
+        // Format boolean fields - group them together
+        $booleanFields = [
+            'public' => 'Public',
+            'outside' => 'Outside',
+            'backline_provided' => 'Backline Provided',
+            'production_needed' => 'Production Needed',
+        ];
+        
+        $booleanValues = [];
+        foreach ($booleanFields as $key => $label) {
+            if (isset($data[$key])) {
+                $booleanValues[] = "{$label}: " . ($data[$key] ? 'Yes' : 'No');
+            }
+        }
+        if (!empty($booleanValues)) {
+            $formatted[] = "Event Settings:\n  • " . implode("\n  • ", $booleanValues);
+        }
+        
+        // Format lodging
+        if (isset($data['lodging']) && is_array($data['lodging']) && !empty($data['lodging'])) {
+            $lodgingCount = count($data['lodging']);
+            $formatted[] = "Lodging: {$lodgingCount} " . ($lodgingCount === 1 ? 'entry' : 'entries');
+        }
+        
+        // Format performance data
+        $performanceParts = [];
+        if (isset($data['performance']) && is_array($data['performance'])) {
+            $perf = $data['performance'];
+            if (isset($perf['songs']) && is_array($perf['songs']) && !empty($perf['songs'])) {
+                $songCount = count($perf['songs']);
+                $performanceParts[] = "{$songCount} " . ($songCount === 1 ? 'song' : 'songs');
+            }
+            if (isset($perf['charts']) && is_array($perf['charts']) && !empty($perf['charts'])) {
+                $chartCount = count($perf['charts']);
+                $performanceParts[] = "{$chartCount} " . ($chartCount === 1 ? 'chart' : 'charts');
+            }
+        }
+        if (!empty($performanceParts)) {
+            $formatted[] = "Performance: " . implode(", ", $performanceParts);
+        }
+        
+        // Format wedding data
+        $weddingParts = [];
+        if (isset($data['wedding']) && is_array($data['wedding'])) {
+            $wedding = $data['wedding'];
+            if (isset($wedding['onsite'])) {
+                $weddingParts[] = "Onsite Ceremony: " . ($wedding['onsite'] ? 'Yes' : 'No');
+            }
+            if (isset($wedding['dances']) && is_array($wedding['dances']) && !empty($wedding['dances'])) {
+                $danceCount = count($wedding['dances']);
+                $weddingParts[] = "{$danceCount} " . ($danceCount === 1 ? 'dance' : 'dances');
+            }
+        }
+        if (!empty($weddingParts)) {
+            $formatted[] = "Wedding: " . implode(", ", $weddingParts);
+        }
+        
+        return !empty($formatted) ? implode("\n\n", $formatted) : 'Modified';
     }
 }
