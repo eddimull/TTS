@@ -23,6 +23,7 @@ use App\Http\Requests\UpdateBookingEventRequest;
 use App\Http\Requests\StoreBookingPaymentRequest;
 use App\Http\Requests\UploadBookingContractRequest;
 use App\Http\Requests\BookingContact as BookingContactRequest;
+use App\Services\BookingActivityService;
 
 class BookingsController extends Controller
 {
@@ -144,8 +145,40 @@ class BookingsController extends Controller
 
     public function show(Bands $band, Bookings $booking)
     {
-        $booking->load('band');
-        return Inertia::render('Bookings/Show', ['booking' => $booking, 'band' => $band]);
+        // Load all necessary relationships for a comprehensive view
+        $booking->load([
+            'band',
+            'eventType',
+            'contacts' => function ($query) {
+                $query->orderBy('is_primary', 'desc');
+            },
+            'payments' => function ($query) {
+                $query->orderBy('date', 'desc');
+            },
+            'payments.invoice',
+            'contract',
+            'events' => function ($query) {
+                $query->orderBy('date', 'desc');
+            },
+        ]);
+        
+        // Calculate financial totals
+        $booking->amountPaid = $booking->amountPaid;
+        $booking->amountLeft = $booking->amountLeft;
+        
+        // Get recent activity history
+        $activityService = new \App\Services\BookingActivityService();
+        $recentActivities = $activityService->getBookingTimeline($booking)->take(10);
+        
+        return Inertia::render('Bookings/Show', [
+            'booking' => $booking,
+            'band' => $band,
+            'contacts' => $booking->contacts,
+            'payments' => $booking->payments,
+            'events' => $booking->events,
+            'contract' => $booking->contract,
+            'recentActivities' => $recentActivities,
+        ]);
     }
 
     public function update(UpdateBookingsRequest $request, Bands $band, Bookings $booking)
@@ -376,5 +409,57 @@ class BookingsController extends Controller
             'convenienceFee' => 'required|bool',
         ]);
         (new InvoiceServices())->createInvoice($booking, $data['amount'], $data['contactId'], $data['convenienceFee']);
+    }
+
+    /**
+     * Display the activity history for a booking
+     *
+     * @param  Bands  $band
+     * @param  Bookings  $booking
+     * @return \Inertia\Response
+     */
+    public function history(Bands $band, Bookings $booking)
+    {
+        $activityService = new BookingActivityService();
+        $activities = $activityService->getBookingTimeline($booking);
+        
+        // Load booking with necessary relationships
+        $booking->load('band', 'eventType', 'contacts');
+        
+        return Inertia::render('Bookings/History', [
+            'booking' => [
+                'id' => $booking->id,
+                'name' => $booking->name,
+                'date' => $booking->date->format('Y-m-d'),
+                'start_time' => $booking->start_time->format('H:i'),
+                'end_time' => $booking->end_time->format('H:i'),
+                'venue_name' => $booking->venue_name,
+                'status' => $booking->status,
+                'price' => $booking->price,
+                'band_name' => $booking->band->name,
+                'event_type' => $booking->eventType->name ?? 'Unknown',
+                'contacts_count' => $booking->contacts->count(),
+                'amount_paid' => $booking->amount_paid,
+            ],
+            'band' => $band,
+            'activities' => $activities,
+        ]);
+    }
+
+    /**
+     * Get activity history for a booking (JSON API endpoint)
+     *
+     * @param  Bands  $band
+     * @param  Bookings  $booking
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function historyJson(Bands $band, Bookings $booking)
+    {
+        $activityService = new BookingActivityService();
+        $activities = $activityService->getBookingTimeline($booking);
+        
+        return response()->json([
+            'activities' => $activities,
+        ]);
     }
 }

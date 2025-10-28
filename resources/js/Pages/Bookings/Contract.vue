@@ -32,7 +32,7 @@
           <h2 class="text-lg font-semibold bg-gray-100 dark:bg-slate-700 px-4 py-2 border-b">Contract Preview</h2>
           <iframe
             v-if="booking.contract?.asset_url"
-            :src="booking.contract.asset_url"
+            :src="route('View Booking Contract', { band: booking.band_id, booking: booking.id })"
             width="100%"
             height="800px"
             class="border-0"
