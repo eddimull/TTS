@@ -76,8 +76,11 @@ class Events extends Model implements GoogleCalenderable
 
         $endDateTime = Carbon::parse($this->startDateTime)->addHour()->isoFormat('YYYY-MM-DDTHH:mm:ss.sss');
         try{   
-            $endTime = collect($this->additional_data->times)->max('time');
-            $endDateTime = Carbon::parse($endTime)->isoFormat('YYYY-MM-DDTHH:mm:ss.sss');
+            // Check if additional_data exists and has times property
+            if ($this->additional_data && isset($this->additional_data->times) && $this->additional_data->times) {
+                $endTime = collect($this->additional_data->times)->max('time');
+                $endDateTime = Carbon::parse($endTime)->isoFormat('YYYY-MM-DDTHH:mm:ss.sss');
+            }
         } catch (\Exception $e) {
             // Handle the exception if needed
             \Log::error('Error parsing end time for event ID ' . $this->id . ': ' . $e->getMessage());
