@@ -8,14 +8,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Carbon\Carbon;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Payments extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $table = 'payments';
 
-    protected $fillable = ['name', 'amount', 'date', 'band_id', 'user_id', 'status', 'invoices_id'];
+    protected $fillable = ['name', 'amount', 'date', 'band_id', 'user_id', 'status', 'invoices_id', 'payable_type', 'payable_id'];
 
     protected $casts = [
         'amount' => Price::class,
@@ -45,5 +47,28 @@ class Payments extends Model
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoices::class, 'invoices_id');
+    }
+
+    /**
+     * Configure activity logging options
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'name',
+                'amount',
+                'date',
+                'band_id',
+                'user_id',
+                'status',
+                'invoices_id',
+                'payable_type',
+                'payable_id',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('payments')
+            ->setDescriptionForEvent(fn(string $eventName) => "Payment has been {$eventName}");
     }
 }
