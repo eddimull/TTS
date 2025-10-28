@@ -49,15 +49,6 @@ class Rehearsal extends Model implements GoogleCalenderable
     }
 
     /**
-     * Helper to get band via rehearsal_schedule (deprecated - use direct band() relationship)
-     * Kept for backward compatibility
-     */
-    public function getBandAttribute()
-    {
-        return $this->band;
-    }
-
-    /**
      * Get all events for this rehearsal (polymorphic relationship)
      */
     public function events(): MorphMany
