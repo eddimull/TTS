@@ -120,6 +120,7 @@ class RehearsalController extends Controller
 
         // Create the event first
         $rehearsal = $rehearsalSchedule->rehearsals()->create([
+            'band_id' => $band->id,
             'venue_name' => $validated['venue_name'] ?? null,
             'venue_address' => $validated['venue_address'] ?? null,
             'notes' => $validated['notes'] ?? null,

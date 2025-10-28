@@ -25,38 +25,23 @@ class ProcessEventDeleted
     public function handle()
     {
         try {
-            // For rehearsals, delete from rehearsal's perspective
-            if ($this->event->eventable_type === 'App\\Models\\Rehearsal') {
-                $this->deleteRehearsalFromGoogleCalendar();
-            } else {
-                // For bookings and band events, delete the event
-                $this->event->deleteFromGoogleCalendar($this->event->eventable->band->eventCalendar);
+            $eventCalendar = $this->event->getGoogleCalendar();
+            if ($eventCalendar) {
+                $this->event->deleteFromGoogleCalendar($eventCalendar);
                 Log::info('Deleted event from calendar in observer for event ID: ' . $this->event->id);
-                
-                if($this->event->additional_data->public)
-                {
-                    Log::info('Event is public, deleting from public calendar for event ID: ' . $this->event->id);
-                    $this->event->deleteFromGoogleCalendar($this->event->eventable->band->publicCalendar);
+            }
+            
+            if($this->event->additional_data && $this->event->additional_data->public)
+            {
+                Log::info('Event is public, deleting from public calendar for event ID: ' . $this->event->id);
+                $publicCalendar = $this->event->getPublicGoogleCalendar();
+                if ($publicCalendar) {
+                    $this->event->deleteFromGoogleCalendar($publicCalendar);
                     Log::info('Deleted public event from calendar in observer for event ID: ' . $this->event->id);
                 }
             }
         } catch (\Exception $e) {
             Log::error('Failed to delete event from calendar in observer: ' . $e->getMessage());
-        }
-    }
-
-    private function deleteRehearsalFromGoogleCalendar()
-    {
-        try {
-            $rehearsal = $this->event->eventable;
-            $band = $rehearsal->rehearsalSchedule->band;
-            
-            if ($band->eventCalendar) {
-                $rehearsal->deleteFromGoogleCalendar($band->eventCalendar);
-                Log::info('Deleted rehearsal from calendar for event ID: ' . $this->event->id);
-            }
-        } catch (\Exception $e) {
-            Log::error('Failed to delete rehearsal from calendar: ' . $e->getMessage());
         }
     }
 }
