@@ -1,9 +1,5 @@
 <template>
-  <div>
-    <h3 class="text-xl font-semibold mb-4">
-      Timeline
-    </h3>
-    
+  <div class="mt-6 mb-2">
     <!-- Timeline Grid -->
     <div class="border rounded-lg bg-white dark:bg-slate-800 overflow-hidden">
       <!-- Time Grid Header -->
@@ -132,7 +128,7 @@
       </div>
     </div>
     
-    <div class="mt-4">
+    <div class="mt-4 px-2">
       <button
         class="w-full sm:w-auto px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors shadow-sm hover:shadow-md flex items-center justify-center space-x-2"
         @click="addTimeEntry"

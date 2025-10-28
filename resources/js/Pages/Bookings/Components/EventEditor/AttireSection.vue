@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="mt-4">
     <Editor
       v-model="modelValue.additional_data.attire"
       class="w-full p-2 border rounded"
