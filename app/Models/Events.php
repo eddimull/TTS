@@ -114,12 +114,12 @@ class Events extends Model implements GoogleCalenderable
 
     public function getGoogleCalendar(): BandCalendars|null
     {
-        return $this->eventable->band->eventCalendar;
+        return $this->eventable->band->eventCalendar ?? null;
     }
 
     public function getPublicGoogleCalendar(): BandCalendars|null
     {
-        return $this->eventable->band->publicCalendar;
+        return $this->eventable->band->publicCalendar ?? null;
     }
 
     public function getGoogleCalendarSummary(): string|null
@@ -157,6 +157,11 @@ class Events extends Model implements GoogleCalenderable
 
     public function getGoogleCalendarColor(): string|null
     {
+        // Use yellow color for rehearsals
+        if ($this->eventable_type === 'App\\Models\\Rehearsal') {
+            return '5'; // Yellow for rehearsals
+        }
+        
         return null;
     }
 
