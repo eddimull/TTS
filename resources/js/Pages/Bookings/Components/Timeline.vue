@@ -60,6 +60,7 @@
             
             :style="getEntryStyle(entry)"
             @mousedown="startDrag($event, entry)"
+            @touchstart="startDrag($event, entry)"
           >
             <div class="p-2 text-white select-none">
               <div class="flex items-center justify-between">
@@ -459,14 +460,19 @@ const startDrag = (event, entry) => {
     event.preventDefault();
     draggedEntry.value = entry;
     isDragging.value = false;
-    dragStartPos.value = { x: event.clientX, y: event.clientY };
+    
+    // Handle both mouse and touch events
+    const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+    const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+    
+    dragStartPos.value = { x: clientX, y: clientY };
     
     // Get the container position
     const containerRect = timelineContainer.value.getBoundingClientRect();
     const scrollTop = timelineContainer.value.scrollTop;
     
     // Calculate where we clicked in container coordinates
-    const clickYInContainer = event.clientY - containerRect.top + scrollTop;
+    const clickYInContainer = clientY - containerRect.top + scrollTop;
     
     // Get the entry's current position from its style
     const entryStyle = getEntryStyle(entry);
@@ -477,17 +483,29 @@ const startDrag = (event, entry) => {
         y: clickYInContainer - entryTopInContainer
     };
     
+    // Add both mouse and touch event listeners
     document.addEventListener('mousemove', onDrag);
     document.addEventListener('mouseup', stopDrag);
+    document.addEventListener('touchmove', onDrag, { passive: false });
+    document.addEventListener('touchend', stopDrag);
 };
 
 // Handle dragging
 const onDrag = (event) => {
     if (!draggedEntry.value || !timelineContainer.value) return;
     
-    // Check if mouse has moved significantly (more than 5 pixels)
-    const deltaX = Math.abs(event.clientX - dragStartPos.value.x);
-    const deltaY = Math.abs(event.clientY - dragStartPos.value.y);
+    // Prevent scrolling during touch drag
+    if (event.touches) {
+        event.preventDefault();
+    }
+    
+    // Handle both mouse and touch events
+    const clientX = event.touches ? event.touches[0].clientX : event.clientX;
+    const clientY = event.touches ? event.touches[0].clientY : event.clientY;
+    
+    // Check if mouse/touch has moved significantly (more than 5 pixels)
+    const deltaX = Math.abs(clientX - dragStartPos.value.x);
+    const deltaY = Math.abs(clientY - dragStartPos.value.y);
     
     if (deltaX > 5 || deltaY > 5) {
         isDragging.value = true;
@@ -500,7 +518,7 @@ const onDrag = (event) => {
     const scrollTop = timelineContainer.value.scrollTop;
     
     // Calculate the position within the timeline container
-    const mouseYInContainer = event.clientY - containerRect.top + scrollTop;
+    const mouseYInContainer = clientY - containerRect.top + scrollTop;
     const relativeY = mouseYInContainer - dragOffset.value.y;
     
     // Convert Y position to time
@@ -547,8 +565,11 @@ const stopDrag = () => {
     draggedEntry.value = null;
     isDragging.value = false;
     
+    // Remove both mouse and touch event listeners
     document.removeEventListener('mousemove', onDrag);
     document.removeEventListener('mouseup', stopDrag);
+    document.removeEventListener('touchmove', onDrag);
+    document.removeEventListener('touchend', stopDrag);
     
     // If it was a click (not a drag), toggle the entry
     if (wasNotDragging && entryThatWasClicked) {
@@ -619,8 +640,11 @@ const emitUpdate = () => {
 
 // Cleanup on unmount
 onUnmounted(() => {
+    // Remove both mouse and touch event listeners
     document.removeEventListener('mousemove', onDrag);
     document.removeEventListener('mouseup', stopDrag);
+    document.removeEventListener('touchmove', onDrag);
+    document.removeEventListener('touchend', stopDrag);
 });
 </script>
 
