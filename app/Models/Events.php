@@ -129,6 +129,11 @@ class Events extends Model implements GoogleCalenderable
 
     public function getGoogleCalendarDescription(): string|null
     {
+        // If this event belongs to a rehearsal, use the rehearsal formatter
+        if ($this->eventable_type === 'App\\Models\\Rehearsal') {
+            return CalendarEventFormatter::formatRehearsalDescription($this->eventable);
+        }
+        
         return CalendarEventFormatter::formatEventDescription($this);
     }
 
