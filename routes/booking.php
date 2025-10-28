@@ -62,6 +62,10 @@ Route::middleware(['auth', 'verified'])->group(function ()
         ->name('Upload Booking Contract')
         ->middleware('booking.access');
 
+    Route::get('bands/{band}/booking/{booking}/contract/view', [ContractsController::class, 'viewBookingContract'])
+        ->name('View Booking Contract')
+        ->middleware('booking.access');
+
     Route::post('bands/{band}/booking/{booking}/contract/save', [ContractsController::class, 'update'])
         ->name('Update Booking Contract')
         ->middleware('booking.access');
@@ -88,6 +92,14 @@ Route::middleware(['auth', 'verified'])->group(function ()
 
     Route::delete('bands/{band}/booking/{booking}/events/{event}', [BookingsController::class, 'deleteEvent'])
         ->name('Delete Booking Event')
+        ->middleware('booking.access');
+
+    Route::get('bands/{band}/booking/{booking}/history', [BookingsController::class, 'history'])
+        ->name('bookings.history')
+        ->middleware('booking.access');
+
+    Route::get('bands/{band}/booking/{booking}/history/json', [BookingsController::class, 'historyJson'])
+        ->name('bookings.historyJson')
         ->middleware('booking.access');
 });
 Route::get('{booking}/downloadReceiptPDF', [BookingsController::class, 'paymentPDF'])->name('bookingpaymentpdf');

@@ -11,10 +11,12 @@ use App\Models\Interfaces\GoogleCalenderable;
 use App\Models\Traits\GoogleCalendarWritable;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Events extends Model implements GoogleCalenderable
 {
-    use HasFactory, GoogleCalendarWritable;
+    use HasFactory, GoogleCalendarWritable, LogsActivity;
 
     protected $fillable = [
         'additional_data',
@@ -163,6 +165,28 @@ class Events extends Model implements GoogleCalenderable
         }
         
         return null;
+    }
+
+    /**
+     * Configure activity logging options
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'title',
+                'date',
+                'time',
+                'notes',
+                'event_type_id',
+                'eventable_type',
+                'eventable_id',
+                'additional_data',
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('events')
+            ->setDescriptionForEvent(fn(string $eventName) => "Event has been {$eventName}");
     }
 
 }

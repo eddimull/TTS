@@ -1,7 +1,7 @@
 <template>
-  <div class="booking-layout">
-    <div class="booking-header dark:bg-slate-700 p-4 border-b grid">
-      <h1 class="text-3xl font-semibold text-gray-700 py-2">
+  <div class="booking-layout overflow-x-hidden">
+    <div class="booking-header dark:bg-slate-700 p-4 border-b grid max-w-full">
+      <h1 class="text-3xl font-semibold text-gray-700 py-2 truncate">
         <span class="text-black dark:text-white">{{
           booking.name
         }}</span>
@@ -15,7 +15,7 @@
     </div>
     <TabMenu
       :model="items"
-      class="pb-2 border-b md:flex md:flex-row flex-col w-full"
+      class="pb-2 border-b md:flex md:flex-row flex-col w-full overflow-x-auto"
       :active-index="
         items.findIndex((item) => item.href === $page.url) || 0
       "
@@ -76,10 +76,5 @@ const items = computed(() => {
     display: flex;
     flex-direction: column;
     /* min-height: 100vh; */
-}
-
-.booking-header {
-    margin-left: -1rem;
-    margin-right: -1rem;
 }
 </style>
