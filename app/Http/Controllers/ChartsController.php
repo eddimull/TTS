@@ -75,27 +75,146 @@ class ChartsController extends Controller
      */
     public function edit(Charts $chart)
     {
-        $chartData = $chart;
+        // Force fresh data by reloading the chart with uploads
+        $chartData = $chart->fresh()->load('uploads.type');
 
-        // dd($chartData);
         return Inertia::render('Charts/Edit', ['chart' => $chartData]);
     }
 
     public function uploadChartData(Charts $chart, Request $request)
     {
-        // dd($request->type_id);
+        // Validate the request with comprehensive rules
+        $request->validate([
+            'type_id' => 'required|integer|in:1,2,3', // 1=audio, 2=video, 3=sheet music
+            'band_id' => 'required|integer|exists:bands,id',
+            'files.*' => [
+                'required',
+                'file',
+                'max:50240', // 50MB max per file
+                function ($attribute, $value, $fail) use ($request) {
+                    $typeId = $request->input('type_id');
+                    $mimeType = $value->getMimeType();
+                    
+                    // Validate file types based on upload type
+                    switch ($typeId) {
+                        case 1: // Audio files
+                            $allowedAudioTypes = ['audio/mpeg', 'audio/wav', 'audio/mp3', 'audio/mp4', 'audio/x-m4a'];
+                            if (!in_array($mimeType, $allowedAudioTypes)) {
+                                $fail('Audio files must be MP3, WAV, or M4A format.');
+                            }
+                            break;
+                        
+                        case 2: // Video files
+                            $allowedVideoTypes = ['video/mp4', 'video/avi', 'video/mov', 'video/wmv', 'video/quicktime'];
+                            if (!in_array($mimeType, $allowedVideoTypes)) {
+                                $fail('Video files must be MP4, AVI, MOV, or WMV format.');
+                            }
+                            break;
+                        
+                        case 3: // Sheet music/documents
+                            $allowedDocTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 
+                                              'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+                            if (!in_array($mimeType, $allowedDocTypes)) {
+                                $fail('Sheet music must be PDF, image files (JPG, PNG, GIF), or Word documents.');
+                            }
+                            break;
+                    }
+                    
+                    // Check file size limits based on type
+                    $maxSizes = [
+                        1 => 20480, // 20MB for audio
+                        2 => 50240, // 50MB for video
+                        3 => 10240  // 10MB for documents
+                    ];
+                    
+                    if ($value->getSize() > ($maxSizes[$typeId] * 1024)) {
+                        $fail('File size exceeds the maximum allowed for this file type.');
+                    }
+                }
+            ]
+        ]);
 
-        $chartService = new ChartsServices();
-        $chartService->uploadData($chart, $request);
+        // Check if user has permission to upload to this chart's band
+        $user = Auth::user();
+        if (!$user->canWrite('charts', $chart->band_id)) {
+            return Redirect::back()->with('errorMessage', 'You do not have permission to upload files to this chart.');
+        }
 
-        return Redirect::back()->with('successMessage', 'Files Uploaded');
+        // Debug: Log what we received
+        \Log::info('Upload request received', [
+            'all_files' => array_keys($request->allFiles()),
+            'request_data' => $request->except(['files']),
+            'has_files' => !empty($request->allFiles())
+        ]);
+
+        // Check if any files were uploaded
+        $hasFiles = false;
+        foreach ($request->allFiles() as $key => $file) {
+            if (strpos($key, 'files') === 0) {
+                $hasFiles = true;
+                break;
+            }
+        }
+
+        if (!$hasFiles) {
+            \Log::warning('No files found in request', [
+                'all_files' => array_keys($request->allFiles()),
+                'request_keys' => array_keys($request->all())
+            ]);
+            return Redirect::back()->with('errorMessage', 'No files were uploaded');
+        }
+
+        try {
+            $chartService = new ChartsServices();
+            $uploadCount = $chartService->uploadData($chart, $request);
+
+            \Log::info('Chart upload successful', [
+                'chart_id' => $chart->id,
+                'uploads_created' => $uploadCount,
+                'total_uploads' => $chart->fresh()->uploads()->count()
+            ]);
+
+            // Explicitly redirect to the edit page with fresh data
+            return redirect()->route('charts.edit', $chart->id)->with('successMessage', 'Files uploaded successfully');
+        } catch (\Exception $e) {
+            \Log::error('Chart upload error: ' . $e->getMessage(), [
+                'chart_id' => $chart->id,
+                'user_id' => Auth::id(),
+                'request_files' => array_keys($request->allFiles()),
+                'request_data' => $request->except(['files']),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return Redirect::back()->with('errorMessage', 'Upload failed: ' . $e->getMessage());
+        }
     }
 
     public function getResource(Charts $chart, ChartUploads $upload)
     {
-        $contents = Storage::disk('s3')->get($upload->url);
-        $mimeType = Storage::mimeType($upload->url);
-        return response($contents, 200)->header('Content-Type', $mimeType);
+        try {
+            if (!Storage::disk('s3')->exists($upload->url)) {
+                abort(404, 'File not found');
+            }
+
+            $contents = Storage::disk('s3')->get($upload->url);
+            
+            // Use the stored fileType from database instead of trying to detect it
+            $mimeType = $upload->fileType ?: 'application/octet-stream';
+            
+            // Set appropriate headers for download
+            return response($contents, 200)
+                ->header('Content-Type', $mimeType)
+                ->header('Content-Disposition', 'inline; filename="' . $upload->displayName . '"')
+                ->header('Cache-Control', 'no-cache, must-revalidate');
+                
+        } catch (\Exception $e) {
+            \Log::error('File download error', [
+                'upload_id' => $upload->id,
+                'url' => $upload->url,
+                'error' => $e->getMessage()
+            ]);
+            abort(500, 'Unable to download file');
+        }
     }
 
     public function updateResource(Charts $chart, ChartUploads $upload, Request $request)

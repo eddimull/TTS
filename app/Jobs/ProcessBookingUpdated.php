@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Models\Bookings;
-use App\Services\CalendarService;
 use App\Notifications\TTSNotification;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
