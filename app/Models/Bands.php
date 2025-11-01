@@ -188,6 +188,21 @@ class Bands extends Model
         return $this->rehearsalSchedules()->where('active', true);
     }
 
+    public function payoutConfigs()
+    {
+        return $this->hasMany(BandPayoutConfig::class, 'band_id')->orderBy('is_active', 'desc')->orderBy('created_at', 'desc');
+    }
+
+    public function activePayoutConfig()
+    {
+        return $this->hasOne(BandPayoutConfig::class, 'band_id')->where('is_active', true);
+    }
+
+    public function paymentGroups()
+    {
+        return $this->hasMany(BandPaymentGroup::class, 'band_id')->where('is_active', true)->orderBy('display_order');
+    }
+
     /**
      * Check if a user has access to any of this band's calendars
      */
