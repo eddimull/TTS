@@ -143,14 +143,30 @@ class Bands extends Model
         return $this->hasMany(Bookings::class, 'band_id')->orderBy('date', 'desc');
     }
 
-    public function getUnpaidBookings()
+    public function getUnpaidBookings($snapshotDate = null)
     {
-        return $this->bookings()->unpaid();
+        $unpaidBookings = $this->bookings()->unpaid();
+
+        if ($snapshotDate) {
+            return $unpaidBookings->filter(function ($booking) use ($snapshotDate) {
+                return $booking->created_at <= $snapshotDate;
+            })->values();
+        }
+
+        return $unpaidBookings;
     }
 
-    public function getPaidBookings()
+    public function getPaidBookings($snapshotDate = null)
     {
-        return $this->bookings()->paid();
+        $paidBookings = $this->bookings()->paid();
+
+        if ($snapshotDate) {
+            return $paidBookings->filter(function ($booking) use ($snapshotDate) {
+                return $booking->created_at <= $snapshotDate;
+            })->values();
+        }
+
+        return $paidBookings;
     }
 
     public function contacts()
