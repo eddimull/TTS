@@ -8,6 +8,7 @@ use App\Models\Bookings;
 use App\Models\Proposals;
 use App\Models\BandEvents;
 use App\Models\BandOwners;
+use App\Models\Payments;
 use Illuminate\Database\Seeder;
 use App\Models\RehearsalSchedule;
 
@@ -20,6 +21,11 @@ class DevSetupSeeder extends Seeder
      */
     public function run()
     {
+        // Seed event types first if they don't exist
+        if (\App\Models\EventTypes::count() === 0) {
+            $this->call(EventTypeSeeder::class);
+        }
+
         $user = User::create([
             'name' => 'Admin',
             'email'=>'admin@example.com',
@@ -35,10 +41,83 @@ class DevSetupSeeder extends Seeder
             'user_id'=>$user->id,
             'band_id'=>$band->id
         ]);
-        Bookings::factory()->count(10)->create([
-            'band_id'=>$band->id
-        ]);
-        $this->command->info('Created Test Band with 10 bookings');
+
+        // Create bookings with varied created_at dates for time travel testing
+        $allBookings = [];
+
+        // 3 bookings from 12 months ago (2 paid, 1 unpaid)
+        for ($i = 0; $i < 3; $i++) {
+            $booking = Bookings::factory()->create([
+                'band_id' => $band->id,
+                'author_id' => $user->id,
+                'created_at' => now()->subMonths(12)->addDays($i * 5),
+                'updated_at' => now()->subMonths(12)->addDays($i * 5),
+            ]);
+            $allBookings[] = ['booking' => $booking, 'paid' => $i < 2];
+        }
+
+        // 3 bookings from 6 months ago (2 paid, 1 unpaid)
+        for ($i = 0; $i < 3; $i++) {
+            $booking = Bookings::factory()->create([
+                'band_id' => $band->id,
+                'author_id' => $user->id,
+                'created_at' => now()->subMonths(6)->addDays($i * 5),
+                'updated_at' => now()->subMonths(6)->addDays($i * 5),
+            ]);
+            $allBookings[] = ['booking' => $booking, 'paid' => $i < 2];
+        }
+
+        // 2 bookings from 3 months ago (1 paid, 1 unpaid)
+        for ($i = 0; $i < 2; $i++) {
+            $booking = Bookings::factory()->create([
+                'band_id' => $band->id,
+                'author_id' => $user->id,
+                'created_at' => now()->subMonths(3)->addDays($i * 5),
+                'updated_at' => now()->subMonths(3)->addDays($i * 5),
+            ]);
+            $allBookings[] = ['booking' => $booking, 'paid' => $i < 1];
+        }
+
+        // 2 bookings from 1 month ago (1 paid, 1 unpaid)
+        for ($i = 0; $i < 2; $i++) {
+            $booking = Bookings::factory()->create([
+                'band_id' => $band->id,
+                'author_id' => $user->id,
+                'created_at' => now()->subMonth()->addDays($i * 5),
+                'updated_at' => now()->subMonth()->addDays($i * 5),
+            ]);
+            $allBookings[] = ['booking' => $booking, 'paid' => $i < 1];
+        }
+
+        // 5 bookings from the past 2 weeks (recent - mix of paid/unpaid)
+        for ($i = 0; $i < 5; $i++) {
+            $booking = Bookings::factory()->create([
+                'band_id' => $band->id,
+                'author_id' => $user->id,
+                'created_at' => now()->subDays($i * 2),
+                'updated_at' => now()->subDays($i * 2),
+            ]);
+            $allBookings[] = ['booking' => $booking, 'paid' => $i < 2];
+        }
+
+        // Add payments to the paid bookings
+        foreach ($allBookings as $item) {
+            if ($item['paid']) {
+                Payments::create([
+                    'band_id' => $band->id,
+                    'payable_type' => Bookings::class,
+                    'payable_id' => $item['booking']->id,
+                    'amount' => $item['booking']->price,
+                    'status' => 'paid',
+                    'name' => 'Full Payment',
+                    'date' => $item['booking']->created_at->addDays(7),
+                    'created_at' => $item['booking']->created_at->addDays(7),
+                    'updated_at' => $item['booking']->created_at->addDays(7),
+                ]);
+            }
+        }
+
+        $this->command->info('Created Test Band with 15 bookings spread over the past year (8 paid, 7 unpaid)');
 
         // Create rehearsal schedules
         RehearsalSchedule::create([
@@ -58,7 +137,7 @@ class DevSetupSeeder extends Seeder
             'band_id' => $band->id,
             'name' => 'Thursday Jam',
             'description' => 'Casual jam sessions',
-            'frequency' => 'biweekly',
+            'frequency' => 'weekly',
             'day_of_week' => 'thursday',
             'default_time' => '20:00:00',
             'location_name' => 'Studio B',

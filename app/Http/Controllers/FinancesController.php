@@ -23,15 +23,24 @@ class FinancesController extends Controller
         // return Inertia::render('Finances/Index', $financialData);
     }
 
-    public function paidUnpaid()
+    public function paidUnpaid(Request $request)
     {
         $user = Auth::user();
-        $bands = $user->bandOwner;
+
+        $compareWithCurrent = filter_var($request->input('compare_with_current', false), FILTER_VALIDATE_BOOLEAN);
 
         $financeServices = new FinanceServices();
-        $paidUnpaid = $financeServices->getPaidUnpaid($bands);
 
-        return Inertia::render('Finances/PaidUnpaid', ['paidUnpaid' => $paidUnpaid]);
+        // Always get ALL bookings (no snapshot filtering on backend)
+        $bands = $user->bandOwner()->get();
+        $allBookings = $financeServices->getPaidUnpaid($bands, null);
+
+        return Inertia::render('Finances/PaidUnpaid', [
+            'allBookings' => $allBookings,
+            'snapshotDate' => $request->input('snapshot_date'),
+            'compareWithCurrent' => $compareWithCurrent,
+            'selectedYear' => $request->input('year')
+        ]);
     }
 
     public function revenue()
