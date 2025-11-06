@@ -844,7 +844,7 @@ watch(snapshotDate, (newVal) => {
     }
 });
 
-onMounted(() => {
+onMounted(async () => {
     console.log('Component mounted with props:', {
         allBookings: props.allBookings.length + ' bands',
         snapshotDate: props.snapshotDate,
@@ -871,8 +871,31 @@ onMounted(() => {
 
     // Initialize chart structure, then populate with data
     initializeChartData();
-    updateChartData();
     updateChartOptions();
+    
+    // Wait for Chart component to be fully initialized
+    await nextTick();
+    
+    // Retry updateChartData until chart is ready (with max retries)
+    let retries = 0;
+    const maxRetries = 10;
+    const retryInterval = 50; // ms
+    
+    const tryUpdate = async () => {
+        const chart = chartRef.value?.chart;
+        if (chart) {
+            console.log('Chart ready, updating data');
+            updateChartData();
+        } else if (retries < maxRetries) {
+            retries++;
+            console.log(`Chart not ready, retry ${retries}/${maxRetries}`);
+            setTimeout(tryUpdate, retryInterval);
+        } else {
+            console.error('Chart failed to initialize after', maxRetries, 'retries');
+        }
+    };
+    
+    tryUpdate();
 });
 </script>
 

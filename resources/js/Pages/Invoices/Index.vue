@@ -1,142 +1,145 @@
 <template>
-    <breeze-authenticated-layout>
-        <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Finances
-            </h2>
-        </template>
+  <breeze-authenticated-layout>
+    <template #header>
+      <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        Finances
+      </h2>
+    </template>
 
-        <div class="md:container md:mx-auto">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div
-                    class="bg-white dark:bg-slate-700 overflow-hidden shadow-sm sm:rounded-lg pt-4"
-                >
-                    <DataTable
-                        v-model:filters="filters1"
-                        :value="bookings"
-                        responsive-layout="scroll"
-                        selection-mode="single"
-                        :paginator="true"
-                        :rows="10"
-                        :rows-per-page-options="[10, 20, 50]"
-                        :global-filter-fields="['name', 'date', 'band.name']"
-                        filter-display="menu"
-                        @rowSelect="selectProposal"
-                    >
-                        <template #header>
-                            <div class="p-d-flex p-jc-between">
-                                <Button
-                                    type="button"
-                                    icon="pi pi-filter-slash"
-                                    label="Clear"
-                                    class="p-button-outlined"
-                                    @click="clearFilter1()"
-                                />
-                                <span class="p-input-icon-left">
-                                    <i class="pi pi-search" />
-                                    <InputText
-                                        v-model="filters1['global'].value"
-                                        placeholder="Keyword Search"
-                                    />
-                                </span>
-                            </div>
-                        </template>
-                        <template #empty> No Completed Proposals. </template>
-                        <Column
-                            field="name"
-                            filter-field="name"
-                            header="Name"
-                            :sortable="true"
-                        />
-                        <Column
-                            field="date"
-                            filter-field="date"
-                            header="Date"
-                            :sortable="true"
-                        />
-                        <Column
-                            field="band.name"
-                            filter-field="band.name"
-                            header="Band"
-                            :sortable="true"
-                        />
-                        <Column>
-                            <template #body="slotProps">
-                                <Button
-                                    icon="pi pi-dollar"
-                                    label="Create Invoice"
-                                    @click="
-                                        alert(
-                                            'This is deprected. Go to the finances section on the booking'
-                                        )
+    <div class="md:container md:mx-auto">
+      <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div
+          class="bg-white dark:bg-slate-700 overflow-hidden shadow-sm sm:rounded-lg pt-4"
+        >
+          <DataTable
+            v-model:filters="filters1"
+            :value="bookings"
+            responsive-layout="scroll"
+            selection-mode="single"
+            :paginator="true"
+            :rows="10"
+            :rows-per-page-options="[10, 20, 50]"
+            :global-filter-fields="['name', 'date', 'band.name']"
+            filter-display="menu"
+            @rowSelect="deprecatedWarning()"
+          >
+            <template #header>
+              <div class="p-d-flex p-jc-between">
+                <Button
+                  type="button"
+                  icon="pi pi-filter-slash"
+                  label="Clear"
+                  class="p-button-outlined"
+                  @click="clearFilter1()"
+                />
+                <span class="p-input-icon-left">
+                  <i class="pi pi-search" />
+                  <InputText
+                    v-model="filters1['global'].value"
+                    placeholder="Keyword Search"
+                  />
+                </span>
+              </div>
+            </template>
+            <template #empty>
+              No Completed Proposals.
+            </template>
+            <Column
+              field="name"
+              filter-field="name"
+              header="Name"
+              :sortable="true"
+            />
+            <Column
+              field="date"
+              filter-field="date"
+              header="Date"
+              :sortable="true"
+            />
+            <Column
+              field="band.name"
+              filter-field="band.name"
+              header="Band"
+              :sortable="true"
+            />
+            <Column>
+              <template #body="slotProps">
+                <Button
+                  icon="pi pi-dollar"
+                  label="Create Invoice"
+                  @click="
+                                        
                                     "
-                                />
-                            </template>
-                        </Column>
-                    </DataTable>
-                </div>
-            </div>
+                />
+              </template>
+            </Column>
+          </DataTable>
         </div>
+      </div>
+    </div>
 
-        <card-modal
-            v-if="showModal"
-            ref="proposalModal"
-            :show-save="false"
-            @closing="toggleModal()"
+    <card-modal
+      v-if="showModal"
+      ref="proposalModal"
+      :show-save="false"
+      @closing="toggleModal()"
+    >
+      <template #header>
+        <h1>{{ activeProposal.name }}</h1>
+      </template>
+      <template #body>
+        <div>
+          This is deprecated. To send an invoice, send it from the
+          bookings section.
+        </div>
+      </template>
+      <template #footerBody>
+        <div
+          v-if="false"
+          class="flex-auto"
         >
-            <template #header>
-                <h1>{{ activeProposal.name }}</h1>
-            </template>
-            <template #body>
-                <div>
-                    This is deprecated. To send an invoice, send it from the
-                    bookings section.
-                </div>
-            </template>
-            <template #footerBody>
-                <div v-if="false" class="flex-auto">
-                    <button
-                        v-show="!activeProposal.event_id"
-                        type="button"
-                        class="mx-2 bg-green-500 hover:bg-green-600 px-4 py-2 rounded text-white focus:outline-none"
-                        @click="writeToCalendar()"
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="inline h-6 w-6"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                        >
-                            <path
-                                fill-rule="evenodd"
-                                d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
-                                clip-rule="evenodd"
-                            />
-                        </svg>
-                        Write to calendar
-                    </button>
-                </div>
-            </template>
-        </card-modal>
-        <card-modal
-            v-if="showInvoiceModal"
-            ref="proposalCreateInvoice"
-            :save-text="'Create Invoice'"
-            :show-save="parseFloat(activeProposal.amountLeft) >= 0"
-            @save="sendInvoice"
-            @closing="toggleInvoiceModal()"
-        >
-            <template #header>
-                <h1>New Invoice</h1>
-            </template>
-            <template #body>
-                <div>
-                    This is deprecated. To create an invoice, go to the finances
-                    for the booking and create an invoice from there.
-                </div>
-            </template>
-        </card-modal>
-    </breeze-authenticated-layout>
+          <button
+            v-show="!activeProposal.event_id"
+            type="button"
+            class="mx-2 bg-green-500 hover:bg-green-600 px-4 py-2 rounded text-white focus:outline-none"
+            @click="writeToCalendar()"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="inline h-6 w-6"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            Write to calendar
+          </button>
+        </div>
+      </template>
+    </card-modal>
+    <card-modal
+      v-if="showInvoiceModal"
+      ref="proposalCreateInvoice"
+      :save-text="'Create Invoice'"
+      :show-save="parseFloat(activeProposal.amountLeft) >= 0"
+      @save="sendInvoice"
+      @closing="toggleInvoiceModal()"
+    >
+      <template #header>
+        <h1>New Invoice</h1>
+      </template>
+      <template #body>
+        <div>
+          This is deprecated. To create an invoice, go to the finances
+          for the booking and create an invoice from there.
+        </div>
+      </template>
+    </card-modal>
+  </breeze-authenticated-layout>
 </template>
 
 <script>
@@ -260,6 +263,15 @@ export default {
         this.initFilters1();
     },
     methods: {
+        deprecatedWarning() {
+            this.$toast.add({
+                severity: "warn",
+                summary: "Deprecated",
+                detail:
+                    "This feature is deprecated. Please create invoices from the bookings section.",
+                life: 5000,
+            });
+        },
         formatMoney(amount) {
             const withoutCommas = amount.toString().replace(/,/g, "");
             const formatter = new Intl.NumberFormat("en-US", {
