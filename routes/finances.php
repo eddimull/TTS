@@ -13,6 +13,18 @@ Route::middleware(['auth', 'verified'])->prefix('finances')->group(function () {
     Route::get('/payments', [FinancesController::class, 'payments'])->name('Payments');
     Route::get('/invoices', [InvoicesController::class, 'index'])->name('Invoices');
     Route::post('/invoices/{proposal:key}/send', [InvoicesController::class, 'create'])->name('Create Invoice');
+    Route::get('/payout-calculator', [FinancesController::class, 'payoutCalculator'])->name('Payout Calculator');
+    Route::post('/payout-config/{bandId}', [FinancesController::class, 'storePayoutConfig'])->name('finances.payout.store');
+    Route::put('/payout-config/{bandId}/{configId}', [FinancesController::class, 'updatePayoutConfig'])->name('finances.payout.update');
+    Route::delete('/payout-config/{bandId}/{configId}', [FinancesController::class, 'deletePayoutConfig'])->name('finances.payout.delete');
+    
+    // Payment Groups
+    Route::post('/payment-group/{bandId}', [FinancesController::class, 'storePaymentGroup'])->name('finances.paymentGroup.store');
+    Route::put('/payment-group/{bandId}/{groupId}', [FinancesController::class, 'updatePaymentGroup'])->name('finances.paymentGroup.update');
+    Route::delete('/payment-group/{bandId}/{groupId}', [FinancesController::class, 'deletePaymentGroup'])->name('finances.paymentGroup.delete');
+    Route::post('/payment-group/{bandId}/{groupId}/user', [FinancesController::class, 'addUserToPaymentGroup'])->name('finances.paymentGroup.addUser');
+    Route::delete('/payment-group/{bandId}/{groupId}/user/{userId}', [FinancesController::class, 'removeUserFromPaymentGroup'])->name('finances.paymentGroup.removeUser');
+    Route::put('/payment-group/{bandId}/{groupId}/user/{userId}', [FinancesController::class, 'updateUserInPaymentGroup'])->name('finances.paymentGroup.updateUser');
 });
 
 

@@ -40,12 +40,12 @@ class FinanceServices
         return $bands;
     }
 
-    function getPaidUnpaid($bands)
+    function getPaidUnpaid($bands, $snapshotDate = null)
     {
         foreach ($bands as $band)
         {
-            $band->paidBookings = $band->getPaidBookings();
-            $band->unpaidBookings = $band->getUnpaidBookings();
+            $band->paidBookings = $band->getPaidBookings($snapshotDate);
+            $band->unpaidBookings = $band->getUnpaidBookings($snapshotDate);
         }
 
         return $bands;

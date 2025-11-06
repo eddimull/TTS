@@ -380,7 +380,7 @@ export default {
             submitted: false,
             chartDialog: false,
             chartFilter: "",
-            viewMode: "grid", // 'grid' or 'table'
+            viewMode: "table", // 'grid' or 'table'
         };
     },
     computed: {},
