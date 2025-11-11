@@ -24,6 +24,7 @@ use App\Http\Requests\StoreBookingPaymentRequest;
 use App\Http\Requests\UploadBookingContractRequest;
 use App\Http\Requests\BookingContact as BookingContactRequest;
 use App\Services\BookingActivityService;
+use App\Notifications\ContactPortalAccessGranted;
 
 class BookingsController extends Controller
 {
@@ -408,7 +409,7 @@ class BookingsController extends Controller
             'contactId' => 'required|exists:contacts,id',
             'convenienceFee' => 'required|bool',
         ]);
-        (new InvoiceServices())->createInvoice($booking, $data['amount'], $data['contactId'], $data['convenienceFee']);
+        app(InvoiceServices::class)->createInvoice($booking, $data['amount'], $data['contactId'], $data['convenienceFee']);
     }
 
     /**
@@ -444,6 +445,96 @@ class BookingsController extends Controller
             'band' => $band,
             'activities' => $activities,
         ]);
+    }
+
+    /**
+     * Enable portal access for a contact
+     *
+     * @param  Bands  $band
+     * @param  Bookings  $booking
+     * @param  Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function enableContactPortalAccess(Bands $band, Bookings $booking, Request $request)
+    {
+        $data = $request->validate([
+            'contact_id' => 'required|exists:contacts,id',
+        ]);
+
+        $contact = Contacts::findOrFail($data['contact_id']);
+        
+        // Verify contact belongs to this booking
+        if (!$booking->contacts->contains($contact->id)) {
+            abort(403, 'Contact not associated with this booking.');
+        }
+
+        // Check if contact already has portal access
+        if ($contact->can_login) {
+            return redirect()->back()->with([
+                'warningMessage' => $contact->name . ' already has portal access enabled.',
+            ]);
+        }
+
+        // Generate a temporary password
+        $temporaryPassword = \Str::random(16);
+        
+        // Update contact with login access
+        $contact->update([
+            'password' => \Hash::make($temporaryPassword),
+            'can_login' => true,
+        ]);
+
+        // Send email notification with credentials
+        try {
+            $contact->notify(new ContactPortalAccessGranted(
+                $temporaryPassword,
+                $booking->name,
+                $band->name
+            ));
+            
+            return redirect()->back()->with([
+                'successMessage' => 'Portal access enabled for ' . $contact->name . '. An email with login instructions has been sent.',
+            ]);
+        } catch (\Exception $e) {
+            // Log the error but still consider it a success
+            \Log::error('Failed to send portal access email', [
+                'contact_id' => $contact->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return redirect()->back()->with([
+                'warningMessage' => 'Portal access enabled for ' . $contact->name . ', but the email could not be sent. Please contact them directly.',
+            ]);
+        }
+    }
+
+    /**
+     * Disable portal access for a contact
+     *
+     * @param  Bands  $band
+     * @param  Bookings  $booking
+     * @param  Request  $request
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function disableContactPortalAccess(Bands $band, Bookings $booking, Request $request)
+    {
+        $data = $request->validate([
+            'contact_id' => 'required|exists:contacts,id',
+        ]);
+
+        $contact = Contacts::findOrFail($data['contact_id']);
+        
+        // Verify contact belongs to this booking
+        if (!$booking->contacts->contains($contact->id)) {
+            abort(403, 'Contact not associated with this booking.');
+        }
+
+        // Disable login access
+        $contact->update([
+            'can_login' => false,
+        ]);
+
+        return redirect()->back()->with('successMessage', 'Portal access disabled for ' . $contact->name);
     }
 
     /**

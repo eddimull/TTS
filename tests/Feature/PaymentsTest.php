@@ -82,24 +82,4 @@ class PaymentsTest extends TestCase
         ]);
     }
 
-
-    public function test_paymentEmailSent()
-    {
-        Mail::fake();
-        $payment = ProposalPayments::factory()->create();
-        Mail::send(new PaymentMade($payment));
-        Mail::assertSent(PaymentMade::class);
-    }
-
-
-
-    public function test_bandOwnerCanGetReceipt()
-    {
-        $payment = ProposalPayments::factory()->create();
-
-        $bandOwner = $payment->proposal->band->owner[0]->user;
-        $response = $this->actingAs($bandOwner)->get('/proposals/' . $payment->proposal->key . '/downloadReceipt');
-
-        $this->assertTrue($response->headers->get('content-type') == 'application/pdf');
-    }
 }

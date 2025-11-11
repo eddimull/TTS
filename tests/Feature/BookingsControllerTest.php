@@ -50,21 +50,27 @@ class BookingsControllerTest extends TestCase
 
     private function mockBrowsershotForTest()
     {
-        $mock = \Mockery::mock(Browsershot::class);
+        // Use 'overload:' to mock static method calls (only affects current test)
+        $mock = \Mockery::mock('overload:' . Browsershot::class);
         
         $mock->shouldReceive('html')
+            ->with(\Mockery::type('string'))
             ->andReturnSelf();
         
         $mock->shouldReceive('setNodeBinary')
+            ->with(\Mockery::any())
             ->andReturnSelf();
             
         $mock->shouldReceive('setNpmBinary')
+            ->with(\Mockery::any())
             ->andReturnSelf();
             
         $mock->shouldReceive('setOption')
+            ->with(\Mockery::any(), \Mockery::any())
             ->andReturnSelf();
             
         $mock->shouldReceive('format')
+            ->with(\Mockery::any())
             ->andReturnSelf();
             
         $mock->shouldReceive('showBackground')
@@ -74,18 +80,11 @@ class BookingsControllerTest extends TestCase
             ->andReturnSelf();
             
         $mock->shouldReceive('savePdf')
+            ->with(\Mockery::type('string'))
             ->andReturnUsing(function ($path) {
                 file_put_contents($path, '%PDF-1.4 fake pdf content');
                 return true;
             });
-
-        // Bind the mock to the service container
-        $this->app->instance(Browsershot::class, $mock);
-        
-        // Mock the static html method
-        $this->app->bind('browsershot.html', function () use ($mock) {
-            return $mock;
-        });
     }
 
     public function test_owner_can_view_bookings_index()
@@ -145,6 +144,10 @@ class BookingsControllerTest extends TestCase
         unset($bookingData['status']);
         unset($bookingData['duration']);
         unset($bookingData['author_id']); // sometimes an owner or member can create a booking, which results in a different author_id
+        unset($bookingData['amount_paid']); 
+        unset($bookingData['is_paid']);
+        unset($bookingData['amount_due']);
+        
         $bookingData['author_id'] = $this->member->id;
         $bookingData['price'] = $bookingData['price'] * 100;
 
@@ -163,6 +166,10 @@ class BookingsControllerTest extends TestCase
     public function test_non_member_cannot_create_booking()
     {
         $bookingData = Bookings::factory()->make(['band_id' => $this->band->id])->toArray();
+        unset($bookingData['author_id']);
+        unset($bookingData['amount_paid']); 
+        unset($bookingData['is_paid']);
+        unset($bookingData['amount_due']);
 
         $response = $this->actingAs($this->nonMember)->post(route('bands.booking.store', $this->band), $bookingData);
 
@@ -180,6 +187,9 @@ class BookingsControllerTest extends TestCase
 
         //this is two fold. The request excludes the author_id, so this checks that the author_id is not updated and the result exists
         unset($updatedData['author_id']);
+        unset($updatedData['amount_paid']); 
+        unset($updatedData['is_paid']);
+        unset($updatedData['amount_due']);
         $updatedData['price'] = $updatedData['price'] * 100;
 
         $response->assertSessionHas('successMessage', "$updatedName has been updated.");
@@ -301,6 +311,9 @@ class BookingsControllerTest extends TestCase
         $contact = Contacts::factory()->create();
         $this->booking->contacts()->attach($contact);
 
+        // Get the BookingContacts pivot record that was created
+        $bookingContact = $this->booking->contacts()->where('contact_id', $contact->id)->first()->pivot;
+
         $updatedData = [
             'name' => 'Jane Doe',
             'email' => 'jane@example.com',
@@ -309,7 +322,7 @@ class BookingsControllerTest extends TestCase
             'is_primary' => false,
         ];
 
-        $response = $this->actingAs($this->owner)->put(route('Update Booking Contact', [$this->band, $this->booking, $contact]), $updatedData);
+        $response = $this->actingAs($this->owner)->put(route('Update Booking Contact', [$this->band, $this->booking, $bookingContact]), $updatedData);
 
         $response->assertRedirect();
         $response->assertSessionHas('successMessage');
@@ -322,7 +335,10 @@ class BookingsControllerTest extends TestCase
         $contact = Contacts::factory()->create();
         $this->booking->contacts()->attach($contact);
 
-        $response = $this->actingAs($this->owner)->delete(route('Delete Booking Contact', [$this->band, $this->booking, $contact]));
+        // Get the BookingContacts pivot record that was created
+        $bookingContact = $this->booking->contacts()->where('contact_id', $contact->id)->first()->pivot;
+
+        $response = $this->actingAs($this->owner)->delete(route('Delete Booking Contact', [$this->band, $this->booking, $bookingContact]));
 
         $response->assertRedirect();
         $response->assertSessionHas('successMessage');

@@ -50,9 +50,12 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         'start_time' => 'datetime:H:i',
         'end_time' => 'datetime:H:i',
         'price' => Price::class,
-        'amountDue' => Price::class,
-        'amountLeft' => Price::class,
-        'amountPaid' => Price::class,
+    ];
+
+    protected $appends = [
+        'amount_paid',
+        'amount_due',
+        'is_paid',
     ];
 
     public function band()
@@ -108,8 +111,9 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
 
     public function getIsPaidAttribute()
     {
-        $totalPayments = $this->payments()->sum('amount');
-        return $totalPayments >= $this->price;
+        $totalPayments = $this->payments()->where('status', 'paid')->sum('amount');
+        // Convert cents to dollars for comparison (price is already cast to dollars)
+        return ($totalPayments / 100) >= $this->price;
     }
 
     public function eventType()
@@ -136,12 +140,15 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
 
     public function getAmountPaidAttribute()
     {
-        return $this->payments()->where('status', 'paid')->sum('amount') / 100;
+        $total = $this->payments()->where('status', 'paid')->sum('amount') / 100;
+        return number_format($total, 2, '.', '');
     }
 
     public function getAmountDueAttribute()
     {
-        return $this->price - $this->amount_paid;
+        $price = is_string($this->price) ? floatval($this->price) : $this->price;
+        $amountPaid = is_string($this->amount_paid) ? floatval($this->amount_paid) : $this->amount_paid;
+        return number_format($price - $amountPaid, 2, '.', '');
     }
 
     public function getAmountLeftAttribute()
