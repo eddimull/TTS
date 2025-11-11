@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Contracts\StripeClientInterface;
+use App\Services\Stripe\StripeClientWrapper;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
 use App\Models\QuestionnaireComponents;
@@ -21,6 +23,10 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(GoogleCalendarService::class, function ($app) {
             return new GoogleCalendarService(new Client());
+        });
+
+        $this->app->bind(StripeClientInterface::class, function ($app) {
+            return new StripeClientWrapper(); 
         });
     }
 
