@@ -101,5 +101,13 @@ Route::middleware(['auth', 'verified'])->group(function ()
     Route::get('bands/{band}/booking/{booking}/history/json', [BookingsController::class, 'historyJson'])
         ->name('bookings.historyJson')
         ->middleware('booking.access');
+
+    Route::post('bands/{band}/booking/{booking}/contacts/enable-portal', [BookingsController::class, 'enableContactPortalAccess'])
+        ->name('booking.contact.enablePortal')
+        ->middleware('booking.access');
+
+    Route::post('bands/{band}/booking/{booking}/contacts/disable-portal', [BookingsController::class, 'disableContactPortalAccess'])
+        ->name('booking.contact.disablePortal')
+        ->middleware('booking.access');
 });
 Route::get('{booking}/downloadReceiptPDF', [BookingsController::class, 'paymentPDF'])->name('bookingpaymentpdf');

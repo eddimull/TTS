@@ -6,15 +6,16 @@ use Mockery;
 use Stripe\Event;
 use Tests\TestCase;
 use App\Models\Bookings;
+use App\Models\Contacts;
 use App\Models\Invoices;
 use App\Models\Payments;
 use Stripe\PaymentIntent;
+use App\Enums\PaymentType;
 use Illuminate\Http\Request;
 use App\Services\FinanceServices;
 use App\Services\InvoiceServices;
 use Illuminate\Support\Facades\Config;
 use App\Http\Controllers\StripeWebhookController;
-use App\Models\Contacts;
 
 class StripeWebhookControllerTest extends TestCase
 {
@@ -86,6 +87,7 @@ class StripeWebhookControllerTest extends TestCase
             'invoices_id' => $localInvoice->id,
             'name' => $booking->name . ', invoice ' . $localInvoice->id,
             'band_id' => $booking->band_id,
+            'payment_type' => PaymentType::Invoice->value,
             'user_id' => 1,
         ]);
         // Mock Invoice with convenience fee

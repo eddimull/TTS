@@ -4,6 +4,8 @@ namespace App\Http\Requests;
 
 use App\Models\Bookings;
 use Illuminate\Foundation\Http\FormRequest;
+use App\Enums\PaymentType;
+use Illuminate\Validation\Rule;
 
 class StoreBookingPaymentRequest extends FormRequest
 {
@@ -29,6 +31,9 @@ class StoreBookingPaymentRequest extends FormRequest
             'user_id' => 'required|exists:users,id',
             'amount' => 'required|numeric|min:1',
             'date' => 'required|date',
+            'payer_type' => 'nullable|string',
+            'payer_id' => 'nullable|integer',
+            'payment_type' => ['required',Rule::enum(PaymentType::class)],
         ];
     }
 
