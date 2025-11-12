@@ -3,8 +3,18 @@
     <div class="w-full md:w-4/6 lg:w-6/12 px-4 mb-0 md:mb-0">
       <div class="flex -mx-4 flex-wrap items-center">
         <div class="px-4">
-          <h3 class="mb-2 text-xl font-bold font-heading">
+          <h3 class="mb-2 text-xl font-bold font-heading flex items-center gap-2">
             {{ payment.name || "Unnamed payment" }}
+            <span
+              v-if="payment.payment_type"
+              :class="`inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-${getPaymentTypeColor(payment.payment_type)}-100 text-${getPaymentTypeColor(payment.payment_type)}-800 dark:bg-${getPaymentTypeColor(payment.payment_type)}-900 dark:text-${getPaymentTypeColor(payment.payment_type)}-200`"
+            >
+              <i
+                :class="getPaymentTypeIcon(payment.payment_type)"
+                class="mr-1"
+              />
+              {{ getPaymentTypeLabel(payment.payment_type) }}
+            </span>
             <span v-if="payment.invoices_id">
               <a
                 :href="
@@ -20,6 +30,12 @@
               </a>
             </span>
           </h3>
+          <p
+            v-if="payment.payer"
+            class="text-sm text-gray-600 dark:text-gray-400"
+          >
+            Made by: {{ payment.payer.name }}
+          </p>
           <p
             class="md:hidden text-lg text-blue-500 font-bold font-heading"
           >
@@ -79,6 +95,30 @@ const formattedPaymentDateTime = props.payment.date
 
 const config = usePage().props.config;
 const invoiceUrl = config.StripeInvoiceURL;
+
+const paymentTypeMap = {
+    cash: { label: 'Cash', icon: 'pi pi-money-bill', color: 'green' },
+    check: { label: 'Check', icon: 'pi pi-file', color: 'blue' },
+    portal: { label: 'Client Portal', icon: 'pi pi-globe', color: 'purple' },
+    venmo: { label: 'Venmo', icon: 'pi pi-mobile', color: 'cyan' },
+    zelle: { label: 'Zelle', icon: 'pi pi-mobile', color: 'indigo' },
+    invoice: { label: 'Invoice', icon: 'pi pi-file-edit', color: 'orange' },
+    wire: { label: 'Wire Transfer', icon: 'pi pi-building', color: 'teal' },
+    credit_card: { label: 'Credit Card', icon: 'pi pi-credit-card', color: 'pink' },
+    other: { label: 'Other', icon: 'pi pi-question-circle', color: 'gray' },
+};
+
+const getPaymentTypeLabel = (type) => {
+    return paymentTypeMap[type]?.label || type;
+};
+
+const getPaymentTypeIcon = (type) => {
+    return paymentTypeMap[type]?.icon || 'pi pi-question-circle';
+};
+
+const getPaymentTypeColor = (type) => {
+    return paymentTypeMap[type]?.color || 'gray';
+};
 
 const deletePayment = (payment) => {
     console.log("Deleting payment", payment);

@@ -9,14 +9,15 @@ use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\Invoices;
 use App\Models\Payments;
+use App\Enums\PaymentType;
 use App\Models\BandOwners;
 use App\Models\BandMembers;
 use App\Models\StripeAccounts;
-use App\Notifications\BandPaymentReceived;
-use App\Notifications\PaymentReceived;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Event;
+use App\Notifications\PaymentReceived;
+use App\Notifications\BandPaymentReceived;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class PaymentNotificationsTest extends TestCase
 {
@@ -54,6 +55,7 @@ class PaymentNotificationsTest extends TestCase
                 'amount' => 500,
                 'status' => 'paid',
                 'band_id' => $band->id,
+                'payment_type' => PaymentType::Cash->value,
             ]
         );
 
@@ -89,6 +91,7 @@ class PaymentNotificationsTest extends TestCase
                 'date' => now(),
                 'amount' => 500,
                 'status' => 'paid',
+                'payment_type' => PaymentType::Cash->value,
                 'band_id' => $band->id,
             ]
         );
@@ -204,6 +207,7 @@ class PaymentNotificationsTest extends TestCase
                 'date' => now(),
                 'amount' => 300,
                 'status' => 'paid',
+                'payment_type' => PaymentType::Cash->value,
                 'band_id' => $band->id,
             ]
         );
@@ -216,6 +220,7 @@ class PaymentNotificationsTest extends TestCase
                 'date' => now(),
                 'amount' => 400,
                 'status' => 'paid',
+                'payment_type' => PaymentType::Venmo->value,
                 'band_id' => $band->id,
             ]
         );
@@ -228,6 +233,7 @@ class PaymentNotificationsTest extends TestCase
                 'date' => now(),
                 'amount' => 300,
                 'status' => 'paid',
+                'payment_type' => PaymentType::Cash->value,
                 'band_id' => $band->id,
             ]
         );
@@ -258,6 +264,7 @@ class PaymentNotificationsTest extends TestCase
                 'date' => now(),
                 'amount' => 500,
                 'status' => 'paid',
+                'payment_type' => PaymentType::Check->value,
                 'band_id' => $band->id,
             ]
         );

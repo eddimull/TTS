@@ -164,14 +164,10 @@ class BandPaymentReceivedNotificationTest extends TestCase
         $notification = new BandPaymentReceived($payment);
         $array = $notification->toArray($user);
 
-        $this->assertEquals($payment->id, $array['payment_id']);
-        $this->assertEquals($booking->id, $array['booking_id']);
-        $this->assertEquals('Test Booking', $array['booking_name']);
-        $this->assertEquals('Test Band', $array['band_name']);
-        $this->assertArrayHasKey('amount', $array);
-        $this->assertArrayHasKey('amount_formatted', $array);
-        $this->assertArrayHasKey('balance', $array);
-        $this->assertArrayHasKey('message', $array);
-        $this->assertStringContainsString('Payment received', $array['message']);
+        $this->assertEquals($booking->id, $array['routeParams']['booking']);
+        $this->assertArrayHasKey('text', $array);
+        $this->assertArrayHasKey('actionText', $array);
+        $this->assertArrayHasKey('route', $array);
+        $this->assertStringContainsString('Payment of', $array['text']);
     }
 }

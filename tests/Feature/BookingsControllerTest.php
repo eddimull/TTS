@@ -10,9 +10,10 @@ use App\Models\Events;
 use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\Payments;
+use App\Enums\PaymentType;
 use App\Models\userPermissions;
+use App\Services\PdfGeneratorService;
 use Illuminate\Http\UploadedFile;
-use Spatie\Browsershot\Browsershot;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -48,43 +49,20 @@ class BookingsControllerTest extends TestCase
         parent::tearDown();
     }
 
-    private function mockBrowsershotForTest()
+    private function mockPdfGeneratorForTest()
     {
-        // Use 'overload:' to mock static method calls (only affects current test)
-        $mock = \Mockery::mock('overload:' . Browsershot::class);
-        
-        $mock->shouldReceive('html')
-            ->with(\Mockery::type('string'))
+        $mock = \Mockery::mock(PdfGeneratorService::class);
+
+        $mock->shouldReceive('generateFromHtml')
+            ->andReturn('%PDF-1.4 fake pdf content');
+
+        $mock->shouldReceive('fromUrl')
             ->andReturnSelf();
-        
-        $mock->shouldReceive('setNodeBinary')
-            ->with(\Mockery::any())
-            ->andReturnSelf();
-            
-        $mock->shouldReceive('setNpmBinary')
-            ->with(\Mockery::any())
-            ->andReturnSelf();
-            
-        $mock->shouldReceive('setOption')
-            ->with(\Mockery::any(), \Mockery::any())
-            ->andReturnSelf();
-            
-        $mock->shouldReceive('format')
-            ->with(\Mockery::any())
-            ->andReturnSelf();
-            
-        $mock->shouldReceive('showBackground')
-            ->andReturnSelf();
-            
-        $mock->shouldReceive('taggedPdf')
-            ->andReturnSelf();
-            
-        $mock->shouldReceive('savePdf')
-            ->with(\Mockery::type('string'))
-            ->andReturnUsing(function ($path) {
-                file_put_contents($path, '%PDF-1.4 fake pdf content');
-                return true;
-            });
+
+        $mock->shouldReceive('pdf')
+            ->andReturn('%PDF-1.4 fake pdf content');
+
+        $this->app->instance(PdfGeneratorService::class, $mock);
     }
 
     public function test_owner_can_view_bookings_index()
@@ -361,10 +339,12 @@ class BookingsControllerTest extends TestCase
 
     public function test_owner_can_add_booking_payment()
     {
+        $paymentType = PaymentType::CreditCard;
         $paymentData = [
             'name' => 'Deposit',
             'amount' => 500,
             'date' => now()->format('Y-m-d'),
+            'payment_type' => $paymentType->value,
         ];
 
         $response = $this->actingAs($this->owner)->post(route('Store Booking Payment', [$this->band, $this->booking]), $paymentData);
@@ -387,8 +367,8 @@ class BookingsControllerTest extends TestCase
 
     public function test_owner_can_download_booking_receipt()
     {
-        $this->mockBrowsershotForTest();
-        
+        $this->mockPdfGeneratorForTest();
+
         $response = $this->actingAs($this->owner)->get(route('Booking Receipt', [$this->band, $this->booking]));
 
         $response->assertStatus(200);
@@ -397,14 +377,14 @@ class BookingsControllerTest extends TestCase
 
     public function test_owner_can_download_booking_contract()
     {
-        $this->mockBrowsershotForTest();
-        
+        $this->mockPdfGeneratorForTest();
+
         // Mock Storage for S3 operations
         Storage::fake('s3');
-        
+
         // Create a fake logo file
         Storage::disk('s3')->put('default.png', 'fake image content');
-        
+
         $this->band->logo = '/images/default.png';
         $this->band->save();
 

@@ -339,11 +339,22 @@ class ContactPaymentService
             return;
         }
 
+        // Get the contact who made the payment
+        $contact = Contacts::find($contactId);
+        if (!$contact) {
+            Log::error('Contact not found for payment', [
+                'contact_id' => $contactId,
+                'booking_id' => $bookingId,
+            ]);
+            return;
+        }
+
         // Check if a payment with the exact same amount was already created in the last 5 minutes
         // This prevents duplicate payments from multiple webhook events
         $recentDuplicate = $booking->payments()
             ->where('amount', $paymentAmount / 100)
-            ->where('name', $booking->name . ' - Contact Payment')
+            ->where('payer_type', 'App\\Models\\Contacts')
+            ->where('payer_id', $contactId)
             ->where('created_at', '>', now()->subMinutes(5))
             ->first();
 
@@ -356,14 +367,17 @@ class ContactPaymentService
             return;
         }
 
-        // Create payment record
+        // Create payment record with portal payment type
         $payment = $booking->payments()->create([
             'amount' => $paymentAmount / 100, // Convert from cents, Price cast will handle it
             'status' => 'paid',
             'date' => now(),
-            'name' => $booking->name . ' - Contact Payment',
+            'name' => $booking->name . ' - Portal Payment',
             'band_id' => $booking->band_id,
             'user_id' => null, // No user_id for contact payments
+            'payer_type' => 'App\\Models\\Contacts',
+            'payer_id' => $contactId,
+            'payment_type' => 'portal',
         ]);
 
         // Fire payment received event to trigger notifications
@@ -373,6 +387,7 @@ class ContactPaymentService
             'payment_id' => $payment->id,
             'booking_id' => $bookingId,
             'contact_id' => $contactId,
+            'contact_name' => $contact->name,
             'amount' => $paymentAmount,
         ]);
     }
