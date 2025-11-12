@@ -240,7 +240,8 @@ class BookingsController extends Controller
         return Inertia::render('Bookings/Finances', [
             'booking' => $booking,
             'band' => $band,
-            'payments' => $booking->payments
+            'payments' => $booking->payments,
+            'paymentTypes' => \App\Enums\PaymentType::options()
         ]);
     }
 
