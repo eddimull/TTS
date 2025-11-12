@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Contracts\StripeClientInterface;
+use App\Events\PaymentWasReceived;
 use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\StripeAccounts;
@@ -364,6 +365,9 @@ class ContactPaymentService
             'band_id' => $booking->band_id,
             'user_id' => null, // No user_id for contact payments
         ]);
+
+        // Fire payment received event to trigger notifications
+        event(new PaymentWasReceived($payment));
 
         Log::info('Contact payment recorded', [
             'payment_id' => $payment->id,
