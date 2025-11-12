@@ -403,7 +403,7 @@ class BookingsControllerTest extends TestCase
 
     public function test_contract_download_succeeds_without_custom_terms()
     {
-        $this->mockBrowsershotForTest();
+        $this->mockPdfGeneratorForTest();
 
         // Mock Storage for S3 operations
         Storage::fake('s3');
