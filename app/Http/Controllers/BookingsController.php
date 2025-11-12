@@ -157,6 +157,7 @@ class BookingsController extends Controller
                 $query->orderBy('date', 'desc');
             },
             'payments.invoice',
+            'payments.payer',
             'contract',
             'events' => function ($query) {
                 $query->orderBy('date', 'desc');
@@ -232,7 +233,7 @@ class BookingsController extends Controller
 
     public function finances(Bands $band, Bookings $booking)
     {
-        $booking->load(['contacts', 'payments.invoice', 'contract']);
+        $booking->load(['contacts', 'payments.invoice', 'payments.payer', 'contract']);
         $booking->amountPaid = $booking->amountPaid;
         $booking->amountLeft = $booking->amountLeft;
 
@@ -245,7 +246,13 @@ class BookingsController extends Controller
 
     public function storePayment(StoreBookingPaymentRequest $request, Bands $band, Bookings $booking)
     {
-        $payment = $booking->payments()->create($request->validated());
+        $paymentData = $request->validated();
+        
+        // Set the payer to the authenticated user
+        $paymentData['payer_type'] = 'App\\Models\\User';
+        $paymentData['payer_id'] = Auth::id();
+        
+        $payment = $booking->payments()->create($paymentData);
         event(new PaymentWasReceived($payment));
         return redirect()->back()->with('successMessage', 'Payment has been added.');
     }

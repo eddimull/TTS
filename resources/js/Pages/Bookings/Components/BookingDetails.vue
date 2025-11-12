@@ -203,11 +203,27 @@
               class="border border-gray-200 dark:border-slate-600 rounded p-2 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors"
             >
               <div class="flex-1 min-w-0">
-                <div class="font-medium text-gray-900 dark:text-gray-50 text-sm truncate">
+                <div class="font-medium text-gray-900 dark:text-gray-50 text-sm truncate flex items-center gap-1">
                   {{ payment.name || 'Payment' }}
+                  <span
+                    v-if="payment.payment_type"
+                    class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-opacity-20"
+                    :class="`bg-${getPaymentTypeColor(payment.payment_type)}-200 text-${getPaymentTypeColor(payment.payment_type)}-800 dark:bg-${getPaymentTypeColor(payment.payment_type)}-900 dark:text-${getPaymentTypeColor(payment.payment_type)}-200`"
+                  >
+                    <i
+                      :class="getPaymentTypeIcon(payment.payment_type)"
+                      class="text-xs"
+                    />
+                  </span>
                 </div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">
                   {{ formatDateShort(payment.date) }}
+                  <span
+                    v-if="payment.payer"
+                    class="ml-1"
+                  >
+                    • by {{ payment.payer.name }}
+                  </span>
                 </div>
               </div>
               <div class="text-right ml-2">
@@ -493,6 +509,30 @@ const formatTime = (time) => {
 const formatPrice = (price) => {
   if (price === null || price === undefined) return '0.00'
   return parseFloat(price).toFixed(2)
+}
+
+const paymentTypeMap = {
+  cash: { label: 'Cash', icon: 'pi pi-money-bill', color: 'green' },
+  check: { label: 'Check', icon: 'pi pi-file', color: 'blue' },
+  portal: { label: 'Client Portal', icon: 'pi pi-globe', color: 'purple' },
+  venmo: { label: 'Venmo', icon: 'pi pi-mobile', color: 'cyan' },
+  zelle: { label: 'Zelle', icon: 'pi pi-mobile', color: 'indigo' },
+  invoice: { label: 'Invoice', icon: 'pi pi-file-edit', color: 'orange' },
+  wire: { label: 'Wire Transfer', icon: 'pi pi-building', color: 'teal' },
+  credit_card: { label: 'Credit Card', icon: 'pi pi-credit-card', color: 'pink' },
+  other: { label: 'Other', icon: 'pi pi-question-circle', color: 'gray' },
+}
+
+const getPaymentTypeLabel = (type) => {
+  return paymentTypeMap[type]?.label || type
+}
+
+const getPaymentTypeIcon = (type) => {
+  return paymentTypeMap[type]?.icon || 'pi pi-question-circle'
+}
+
+const getPaymentTypeColor = (type) => {
+  return paymentTypeMap[type]?.color || 'gray'
 }
 
 const editBooking = () => {

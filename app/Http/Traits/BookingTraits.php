@@ -4,8 +4,8 @@ namespace App\Http\Traits;
 
 use App\Models\Contacts;
 use App\Mail\PaymentMade;
+use App\Services\PdfGeneratorService;
 use Illuminate\Support\Facades\URL;
-use Spatie\Browsershot\Browsershot;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use App\Http\Requests\BookingContact;
@@ -25,17 +25,9 @@ trait BookingTraits
     public function getPaymentPdf()
     {
         $renderedView = view('pdf.bookingPayment', ['booking' => $this])->render();
-        $tempPath = storage_path('app/temp_pdf_' . uniqid() . '.pdf');
-        Browsershot::html($renderedView)
-            ->setNodeBinary(config('browsershot.node_binary'))
-            ->setNpmBinary(config('browsershot.npm_binary'))
-            ->setOption('args', ['--no-sandbox', '--disable-setuid-sandbox', '--headless'])
-            ->setOption('executablePath', config('browsershot.executablePath'))
-            ->format('Legal')
-            ->showBackground()
-            ->savePdf($tempPath);
+        $pdfService = app(PdfGeneratorService::class);
 
-        return file_get_contents($tempPath);
+        return $pdfService->generateFromHtml($renderedView, 'Legal');
     }
 
     public function getContractPdf(Contacts $contact = null): string
@@ -59,18 +51,9 @@ trait BookingTraits
             'signer' => $contact
         ])->render();
 
-        $tempPath = storage_path('app/temp_pdf_' . uniqid() . '.pdf');
+        $pdfService = app(PdfGeneratorService::class);
 
-        Browsershot::html($renderedView)
-            ->setNodeBinary(config('browsershot.node_binary'))
-            ->setNpmBinary(config('browsershot.npm_binary'))
-            ->setOption('args', ['--no-sandbox', '--disable-setuid-sandbox', '--headless'])
-            ->setOption('executablePath', config('browsershot.executablePath'))
-            ->showBackground()
-            ->taggedPdf()
-
-            ->savePdf($tempPath);
-        return file_get_contents($tempPath);
+        return $pdfService->generateFromHtml($renderedView, 'Legal', true);
     }
 
     public function storeContractPdf(string $contractPdf)
