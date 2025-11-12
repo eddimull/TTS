@@ -130,7 +130,7 @@ function addExistingContact() {
 
     form.name = foundContact.name;
     form.email = foundContact.email;
-    form.phone = foundContact.phone.toString();
+    form.phone = foundContact.phone?.toString();
 
     form.post(route('Store Booking Contact', [props.band.id, props.booking.id]), {
       preserveState: true,

@@ -10,23 +10,6 @@
             >
                 Dashboard
             </Link>
-
-            <template v-else>
-                <Link
-                    :href="route('login')"
-                    class="text-sm text-gray-700 dark:text-gray-50 underline"
-                >
-                    Log in
-                </Link>
-
-                <Link
-                    v-if="canRegister"
-                    :href="route('register')"
-                    class="ml-4 text-sm text-gray-700 dark:text-gray-50 underline"
-                >
-                    Register
-                </Link>
-            </template>
         </div>
 
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8">
@@ -41,6 +24,82 @@
                     />
                 </svg>
                 <h3 class="inline text-4xl align-middle">TTS</h3>
+            </div>
+
+            <!-- Login Options -->
+            <div v-if="!$page.props.auth.user" class="mt-8 mb-8">
+                <h2 class="text-3xl font-bold text-center text-gray-900 dark:text-white mb-6">
+                    Choose How to Sign In
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Band Member Login -->
+                    <Link
+                        :href="route('login')"
+                        class="group block p-8 bg-white dark:bg-gray-800 overflow-hidden shadow-lg rounded-lg hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-blue-500"
+                    >
+                        <div class="flex flex-col items-center text-center">
+                            <div class="w-16 h-16 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="w-8 h-8 text-blue-600 dark:text-blue-400"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                                    />
+                                </svg>
+                            </div>
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+                                Band Member
+                            </h3>
+                            <p class="text-gray-600 dark:text-gray-400 mb-4">
+                                Access your band's dashboard, manage bookings, contracts, finances, and schedule.
+                            </p>
+                            <div class="text-blue-600 dark:text-blue-400 font-semibold group-hover:underline">
+                                Sign In →
+                            </div>
+                        </div>
+                    </Link>
+
+                    <!-- Client Portal Login -->
+                    <Link
+                        :href="route('portal.login')"
+                        class="group block p-8 bg-white dark:bg-gray-800 overflow-hidden shadow-lg rounded-lg hover:shadow-xl transition-all duration-300 border-2 border-transparent hover:border-green-500"
+                    >
+                        <div class="flex flex-col items-center text-center">
+                            <div class="w-16 h-16 bg-green-100 dark:bg-green-900 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    class="w-8 h-8 text-green-600 dark:text-green-400"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                    />
+                                </svg>
+                            </div>
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+                                Client Portal
+                            </h3>
+                            <p class="text-gray-600 dark:text-gray-400 mb-4">
+                                View your event details, make payments, and access your booking information.
+                            </p>
+                            <div class="text-green-600 dark:text-green-400 font-semibold group-hover:underline">
+                                Sign In →
+                            </div>
+                        </div>
+                    </Link>
+                </div>
             </div>
 
             <div

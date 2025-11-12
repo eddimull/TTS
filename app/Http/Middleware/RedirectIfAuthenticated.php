@@ -22,6 +22,11 @@ class RedirectIfAuthenticated
         $guards = empty($guards) ? [null] : $guards;
         foreach ($guards as $guard) {
             if (Auth::guard($guard)->check()) {
+                // Redirect based on guard type
+                if ($guard === 'contact') {
+                    return redirect()->route('portal.dashboard');
+                }
+
                 return redirect(RouteServiceProvider::HOME);
             }
         }
