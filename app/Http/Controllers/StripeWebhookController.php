@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Carbon\Carbon;
+use App\Events\PaymentWasReceived;
 use App\Models\Invoices;
 use App\Models\Payments;
 use App\Services\ContactPaymentService;
@@ -80,6 +81,9 @@ class StripeWebhookController extends Controller
                     $payment->status = 'paid';
                     $payment->date = Carbon::now();
                     $payment->save();
+
+                    // Fire payment received event to trigger notifications
+                    event(new PaymentWasReceived($payment));
                 });
                 Log::info('Invoice marked as paid', ['invoice_id' => $ttsInvoice->id]);
                 break;
