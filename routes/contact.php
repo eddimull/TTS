@@ -13,6 +13,13 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+// Root portal route - redirect based on authentication status
+Route::get('/', function () {
+    return redirect()->route(
+        auth('contact')->check() ? 'portal.dashboard' : 'portal.login'
+    );
+})->name('portal.index');
+
 // Guest routes (not authenticated)
 Route::middleware('guest:contact')->group(function () {
     Route::get('/login', [ContactAuthController::class, 'showLogin'])->name('portal.login');
@@ -37,7 +44,13 @@ Route::middleware('auth:contact')->group(function () {
     // Payment history
     Route::get('/payment-history', [ContactPortalController::class, 'paymentHistory'])->name('portal.payment.history');
 
-    // Payment callback routes
+    // Invoices
+    Route::get('/invoices', [ContactPortalController::class, 'invoices'])->name('portal.invoices');
+
+    // Contract download
+    Route::get('/booking/{booking}/contract', [ContactPortalController::class, 'downloadContract'])->name('portal.booking.contract');
+
+    // Payment callbacks
     Route::get('/payment/success', [ContactPortalController::class, 'paymentSuccess'])->name('portal.payment.success');
     Route::get('/payment/cancelled', [ContactPortalController::class, 'paymentCancelled'])->name('portal.payment.cancelled');
 });

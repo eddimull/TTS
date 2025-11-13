@@ -28,6 +28,7 @@ class InvoicesFactory extends Factory
             'amount' => $booking->price,
             'status' => 'open',
             'stripe_id' => 'in_1234',
+            'stripe_url' => 'https://invoice.stripe.com/i/acct_test/invst_1234',
             'convenience_fee' => true
         ];
     }

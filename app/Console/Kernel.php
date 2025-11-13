@@ -5,7 +5,10 @@ namespace App\Console;
 use App\Mail\EventReminder;
 use App\Models\BandEvents;
 use App\Models\Bands;
+use App\Models\Bookings;
 use App\Models\ProposalContracts;
+use App\Notifications\DepositPaymentReminder;
+use App\Notifications\FinalPaymentReminder;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 use Illuminate\Support\Facades\Http;
@@ -16,6 +19,7 @@ use App\Services\ProposalServices;
 use Symfony\Component\ErrorHandler\Debug;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use App\Console\Commands\DevHelpers;
 
@@ -136,6 +140,118 @@ class Kernel extends ConsoleKernel
                 $reminder->searchAndSend();
             }
         })->weeklyOn(2, '23:00');
+
+        // Send deposit payment reminders (3 weeks after contract signed)
+        $schedule->call(function ()
+        {
+            $bookings = Bookings::with(['contract', 'contacts', 'band'])
+                ->whereHas('contract', function ($query) {
+                    $query->where('status', 'completed');
+                })
+                ->where('date', '>', Carbon::now()) // Only future events
+                ->get();
+
+            foreach ($bookings as $booking) {
+                if ($booking->needs_deposit_reminder) {
+                    $contacts = $booking->contacts;
+
+                    if ($contacts->isEmpty()) {
+                        Log::warning('No contacts found for booking needing deposit reminder', [
+                            'booking_id' => $booking->id,
+                            'booking_name' => $booking->name
+                        ]);
+                        continue;
+                    }
+
+                    foreach ($contacts as $contact) {
+                        try {
+                            $contact->notify(new DepositPaymentReminder($booking));
+
+                            Log::info('Deposit reminder sent', [
+                                'booking_id' => $booking->id,
+                                'booking_name' => $booking->name,
+                                'contact_id' => $contact->id,
+                                'contact_email' => $contact->email,
+                                'deposit_due' => $booking->deposit_due,
+                            ]);
+
+                            // Log activity on the booking
+                            activity()
+                                ->performedOn($booking)
+                                ->withProperties([
+                                    'contact_id' => $contact->id,
+                                    'contact_email' => $contact->email,
+                                    'deposit_due' => $booking->deposit_due,
+                                    'reminder_type' => 'deposit',
+                                ])
+                                ->log('Deposit payment reminder sent to contact');
+                        } catch (\Exception $e) {
+                            Log::error('Failed to send deposit reminder', [
+                                'booking_id' => $booking->id,
+                                'contact_id' => $contact->id,
+                                'error' => $e->getMessage()
+                            ]);
+                        }
+                    }
+                }
+            }
+        })->dailyAt('10:00')->name('send-deposit-reminders');
+
+        // Send final payment reminders (1 week before event)
+        $schedule->call(function ()
+        {
+            $bookings = Bookings::with(['contacts', 'band'])
+                ->where('date', '>', Carbon::now())
+                ->where('date', '<=', Carbon::now()->addDays(8)) // Within next 8 days
+                ->get();
+
+            foreach ($bookings as $booking) {
+                if ($booking->needs_final_payment_reminder) {
+                    $contacts = $booking->contacts;
+
+                    if ($contacts->isEmpty()) {
+                        Log::warning('No contacts found for booking needing final payment reminder', [
+                            'booking_id' => $booking->id,
+                            'booking_name' => $booking->name
+                        ]);
+                        continue;
+                    }
+
+                    foreach ($contacts as $contact) {
+                        try {
+                            $contact->notify(new FinalPaymentReminder($booking));
+
+                            Log::info('Final payment reminder sent', [
+                                'booking_id' => $booking->id,
+                                'booking_name' => $booking->name,
+                                'contact_id' => $contact->id,
+                                'contact_email' => $contact->email,
+                                'amount_due' => $booking->amount_due,
+                                'days_until_event' => now()->diffInDays($booking->date, false),
+                            ]);
+
+                            // Log activity on the booking
+                            activity()
+                                ->performedOn($booking)
+                                ->withProperties([
+                                    'contact_id' => $contact->id,
+                                    'contact_email' => $contact->email,
+                                    'amount_due' => $booking->amount_due,
+                                    'days_until_event' => now()->diffInDays($booking->date, false),
+                                    'reminder_type' => 'final_payment',
+                                ])
+                                ->log('Final payment reminder sent to contact');
+                        } catch (\Exception $e) {
+                            Log::error('Failed to send final payment reminder', [
+                                'booking_id' => $booking->id,
+                                'contact_id' => $contact->id,
+                                'error' => $e->getMessage()
+                            ]);
+                        }
+                    }
+                }
+            }
+        })->dailyAt('10:00')->name('send-final-payment-reminders');
     }
 
     /**

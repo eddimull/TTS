@@ -69,23 +69,69 @@ class StripeWebhookController extends Controller
         switch ($event->type)
         {
             case 'invoice.paid':
-                Log::info('Processing invoice.paid event', ['invoice_id' => $event->data->object->id]);
+            case 'invoice.payment_succeeded':
+            case 'invoice_payment.paid':
+                Log::info('Processing invoice payment event', [
+                    'event_type' => $event->type,
+                    'invoice_id' => $event->data->object->id
+                ]);
                 $stripeInvoice = $event->data->object; // contains a \Stripe\Invoice
                 $ttsInvoice = Invoices::where('stripe_id', $stripeInvoice->id)->firstOrFail();
                 $ttsInvoice->status = $stripeInvoice->status;
+                // Update stripe_url if available
+                if (isset($stripeInvoice->hosted_invoice_url)) {
+                    $ttsInvoice->stripe_url = $stripeInvoice->hosted_invoice_url;
+                }
                 $ttsInvoice->save();
 
+                // Find or create the contact who paid using customer_email from Stripe
+                $customerEmail = $stripeInvoice->customer_email ?? null;
+                $contact = null;
+                
+                if ($customerEmail) {
+                    $booking = $ttsInvoice->booking;
+                    if ($booking) {
+                        // Check if contact exists in booking's contacts
+                        $contact = $booking->contacts()->where('email', $customerEmail)->first();
+                        
+                        // If not found in booking contacts, find or create in band's contacts
+                        if (!$contact) {
+                            $contact = \App\Models\Contacts::firstOrCreate(
+                                ['email' => $customerEmail, 'band_id' => $booking->band_id],
+                                [
+                                    'name' => $stripeInvoice->customer_name ?? 'Unknown',
+                                    'phone' => $stripeInvoice->customer_phone ?? null,
+                                ]
+                            );
+                            
+                            // Attach contact to booking if newly created or found
+                            $booking->contacts()->syncWithoutDetaching([$contact->id => ['is_primary' => false]]);
+                        }
+                    }
+                }
+
                 // update any payment linked to this invoice
-                Payments::where('invoices_id', $ttsInvoice->id)->get()->each(function ($payment)
+                Payments::where('invoices_id', $ttsInvoice->id)->get()->each(function ($payment) use ($contact)
                 {
                     $payment->status = 'paid';
                     $payment->date = Carbon::now();
+                    
+                    // Set the payer to the contact if found
+                    if ($contact) {
+                        $payment->payer_type = get_class($contact);
+                        $payment->payer_id = $contact->id;
+                    }
+                    
                     $payment->save();
 
                     // Fire payment received event to trigger notifications
                     event(new PaymentWasReceived($payment));
                 });
-                Log::info('Invoice marked as paid', ['invoice_id' => $ttsInvoice->id]);
+                Log::info('Invoice marked as paid', [
+                    'invoice_id' => $ttsInvoice->id,
+                    'customer_email' => $customerEmail,
+                    'payer_id' => $contact?->id ?? null,
+                ]);
                 break;
             
             case 'checkout.session.completed':

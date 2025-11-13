@@ -20,6 +20,18 @@ class RedirectIfAuthenticated
     public function handle(Request $request, Closure $next, ...$guards)
     {
         $guards = empty($guards) ? [null] : $guards;
+
+        // Check if user is trying to access the wrong login portal
+        // If a contact is logged in and tries to access band member routes
+        if (Auth::guard('contact')->check() && !$request->is('portal/*')) {
+            return redirect()->route('portal.dashboard');
+        }
+
+        // If a band member is logged in and tries to access contact portal routes
+        if (Auth::guard('web')->check() && $request->is('portal/*')) {
+            return redirect()->route('dashboard');
+        }
+
         foreach ($guards as $guard) {
             if (Auth::guard($guard)->check()) {
                 // Redirect based on guard type
