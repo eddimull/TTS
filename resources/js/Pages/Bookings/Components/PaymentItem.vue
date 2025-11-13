@@ -11,16 +11,13 @@
             >
               <i
                 :class="getPaymentTypeIcon(payment.payment_type)"
-                class="mr-1"
+                class="pi mr-1"
               />
               {{ getPaymentTypeLabel(payment.payment_type) }}
             </span>
-            <span v-if="payment.invoices_id">
+            <span v-if="payment.invoices_id && payment.invoice">
               <a
-                :href="
-                  invoiceUrl +
-                    payment.invoice.stripe_id
-                "
+                :href="payment.invoice.stripe_url || (invoiceUrl + payment.invoice.stripe_id)"
                 target="_blank"
               >
                 <Button
@@ -35,6 +32,12 @@
             class="text-sm text-gray-600 dark:text-gray-400"
           >
             Made by: {{ payment.payer.name }}
+          </p>
+          <p
+            v-if="payment.invoice && payment.user"
+            class="text-xs text-gray-500 dark:text-gray-500"
+          >
+            Invoice sent {{ formatDateShort(payment.invoice.created_at) }} by {{ payment.user.name }}
           </p>
           <p
             class="md:hidden text-lg text-blue-500 font-bold font-heading"
@@ -95,6 +98,11 @@ const formattedPaymentDateTime = props.payment.date
 
 const config = usePage().props.config;
 const invoiceUrl = config.StripeInvoiceURL;
+
+const formatDateShort = (date) => {
+    if (!date) return '';
+    return DateTime.fromISO(date).toFormat('MMM d, yyyy');
+};
 
 const paymentTypeMap = {
     cash: { label: 'Cash', icon: 'pi pi-money-bill', color: 'green' },

@@ -158,6 +158,7 @@ class BookingsController extends Controller
             },
             'payments.invoice',
             'payments.payer',
+            'payments.user',
             'contract',
             'events' => function ($query) {
                 $query->orderBy('date', 'desc');
@@ -233,14 +234,15 @@ class BookingsController extends Controller
 
     public function finances(Bands $band, Bookings $booking)
     {
-        $booking->load(['contacts', 'payments.invoice', 'payments.payer', 'contract']);
+        $booking->load(['contacts', 'payments.invoice', 'payments.payer', 'payments.user', 'contract']);
         $booking->amountPaid = $booking->amountPaid;
         $booking->amountLeft = $booking->amountLeft;
 
         return Inertia::render('Bookings/Finances', [
             'booking' => $booking,
             'band' => $band,
-            'payments' => $booking->payments
+            'payments' => $booking->payments,
+            'paymentTypes' => \App\Enums\PaymentType::options()
         ]);
     }
 

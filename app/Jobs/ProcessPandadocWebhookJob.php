@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Bookings;
 use App\Models\Contracts;
+use App\Services\ContactPortalService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Spatie\WebhookClient\Jobs\ProcessWebhookJob as SpatieProcessWebhookJob;
@@ -92,6 +93,17 @@ class ProcessPandadocWebhookJob extends SpatieProcessWebhookJob
         {
             $contract->contractable->status = 'confirmed';
             $contract->contractable->save();
+
+            // Grant portal access to all contacts after contract completion
+            $portalService = new ContactPortalService();
+            try {
+                $portalService->grantPortalAccessAfterContractCompletion($contract->contractable);
+            } catch (\Exception $e) {
+                Log::error('Failed to grant portal access after contract completion', [
+                    'booking_id' => $contract->contractable->id,
+                    'error' => $e->getMessage()
+                ]);
+            }
         }
     }
 

@@ -15,6 +15,22 @@ class Authenticate extends Middleware
     protected function redirectTo($request)
     {
         if (! $request->expectsJson()) {
+            // Check if this is a contact portal route
+            if ($request->is('portal/*') || $request->is('portal')) {
+                // If a band member is authenticated but accessing portal routes,
+                // redirect them to their dashboard
+                if (auth('web')->check()) {
+                    return route('dashboard');
+                }
+                return route('portal.login');
+            }
+
+            // If a contact is authenticated but accessing band member routes,
+            // redirect them to portal dashboard
+            if (auth('contact')->check()) {
+                return route('portal.dashboard');
+            }
+
             return route('login');
         }
     }

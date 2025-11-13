@@ -41,7 +41,7 @@
           >
             <i
               :class="getPaymentTypeIcon(slotProps.value)"
-              class="mr-2"
+              class="pi mr-2"
             />
             <span>{{ getPaymentTypeLabel(slotProps.value) }}</span>
           </div>
@@ -51,7 +51,7 @@
           <div class="flex items-center">
             <i
               :class="slotProps.option.icon"
-              class="mr-2"
+              class="pi mr-2"
             />
             <span>{{ slotProps.option.label }}</span>
           </div>
@@ -114,33 +114,27 @@
 <script setup>
 import { ref, reactive, computed } from "vue";
 import { useForm } from "@inertiajs/inertia-vue3";
+import Select from "primevue/select";
 defineEmits("submitPayment");
 const props = defineProps({
     booking: {
         type: Object,
         required: true,
     },
+    paymentTypes: {
+        type: Array,
+        required: true,
+    },
 });
 const model = defineModel();
 
-const paymentTypes = [
-    { value: 'cash', label: 'Cash', icon: 'pi pi-money-bill' },
-    { value: 'check', label: 'Check', icon: 'pi pi-file' },
-    { value: 'venmo', label: 'Venmo', icon: 'pi pi-mobile' },
-    { value: 'zelle', label: 'Zelle', icon: 'pi pi-mobile' },
-    { value: 'credit_card', label: 'Credit Card', icon: 'pi pi-credit-card' },
-    { value: 'wire', label: 'Wire Transfer', icon: 'pi pi-building' },
-    { value: 'invoice', label: 'Invoice', icon: 'pi pi-file-edit' },
-    { value: 'other', label: 'Other', icon: 'pi pi-question-circle' },
-];
-
 const getPaymentTypeLabel = (value) => {
-    const type = paymentTypes.find(t => t.value === value);
+    const type = props.paymentTypes.find(t => t.value === value);
     return type ? type.label : value;
 };
 
 const getPaymentTypeIcon = (value) => {
-    const type = paymentTypes.find(t => t.value === value);
+    const type = props.paymentTypes.find(t => t.value === value);
     return type ? type.icon : 'pi pi-question-circle';
 };
 

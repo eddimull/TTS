@@ -225,6 +225,12 @@
                     • by {{ payment.payer.name }}
                   </span>
                 </div>
+                <div
+                  v-if="payment.invoice && payment.user"
+                  class="text-xs text-gray-500 dark:text-gray-500 mt-0.5"
+                >
+                  Invoice sent {{ formatDateShort(payment.invoice.created_at) }} by {{ payment.user.name }}
+                </div>
               </div>
               <div class="text-right ml-2">
                 <div class="text-sm font-semibold text-green-600 dark:text-green-400">

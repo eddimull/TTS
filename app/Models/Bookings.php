@@ -156,6 +156,97 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         return $this->getAmountDueAttribute();
     }
 
+    /**
+     * Get the expected deposit amount (50% of booking price)
+     * Returns amount in dollars as a formatted string
+     */
+    public function getExpectedDepositAmountAttribute(): string
+    {
+        $depositPercent = 0.50; // 50% deposit requirement
+        $price = is_string($this->price) ? floatval($this->price) : $this->price;
+        return number_format($price * $depositPercent, 2, '.', '');
+    }
+
+    /**
+     * Check if the deposit has been paid
+     */
+    public function getIsDepositPaidAttribute(): bool
+    {
+        $expectedDeposit = floatval($this->expected_deposit_amount);
+        $amountPaid = floatval($this->amount_paid);
+        return $amountPaid >= $expectedDeposit;
+    }
+
+    /**
+     * Get the amount of deposit still owed
+     * Returns amount in dollars as a formatted string
+     */
+    public function getDepositDueAttribute(): string
+    {
+        $expectedDeposit = floatval($this->expected_deposit_amount);
+        $amountPaid = floatval($this->amount_paid);
+        $amountDue = max(0, $expectedDeposit - $amountPaid);
+        return number_format($amountDue, 2, '.', '');
+    }
+
+    /**
+     * Get the date when the contract was signed (completed)
+     */
+    public function getContractSignedDateAttribute(): ?Carbon
+    {
+        if (!$this->contract || $this->contract->status !== 'completed') {
+            return null;
+        }
+        return $this->contract->updated_at;
+    }
+
+    /**
+     * Get the deposit due date (3 weeks after contract signed)
+     */
+    public function getDepositDueDateAttribute(): ?Carbon
+    {
+        if (!$this->contract_signed_date) {
+            return null;
+        }
+        return $this->contract_signed_date->copy()->addWeeks(3);
+    }
+
+    /**
+     * Check if booking needs a deposit payment reminder
+     * Should remind if:
+     * - Contract was signed exactly 3 weeks ago (±1 day window)
+     * - Deposit has not been paid
+     * - Event date is in the future
+     */
+    public function getNeedsDepositReminderAttribute(): bool
+    {
+        if (!$this->deposit_due_date || $this->is_deposit_paid || $this->date < now()) {
+            return false;
+        }
+
+        // Check if due date is today (±1 day for safety)
+        $dueDate = $this->deposit_due_date;
+        return $dueDate->isToday() ||
+               $dueDate->isYesterday() ||
+               $dueDate->isTomorrow();
+    }
+
+    /**
+     * Check if booking needs a final payment reminder
+     * Should remind if:
+     * - Event is 7 days away
+     * - Full payment has not been made
+     */
+    public function getNeedsFinalPaymentReminderAttribute(): bool
+    {
+        if ($this->is_paid || $this->date < now()) {
+            return false;
+        }
+
+        $daysUntilEvent = now()->diffInDays($this->date, false);
+        return $daysUntilEvent >= 6 && $daysUntilEvent <= 8; // 7 days ±1 day
+    }
+
     public function scopeUnpaid($query)
     {
         return $query->leftJoinSub(
