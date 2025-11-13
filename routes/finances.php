@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\FinancesController;
-use App\Http\Controllers\InvoicesController;
+// use App\Http\Controllers\InvoicesController; // Deprecated
 
 Route::middleware(['auth', 'verified'])->prefix('finances')->group(function () {
     Route::get('/', [FinancesController::class, 'index'])->name('finances');
@@ -11,8 +11,8 @@ Route::middleware(['auth', 'verified'])->prefix('finances')->group(function () {
     Route::get('/unpaidServices', [FinancesController::class, 'unpaidServices'])->name('Unpaid Services');
     Route::get('/paidContracts', [FinancesController::class, 'paidServices'])->name('Paid Services');
     Route::get('/payments', [FinancesController::class, 'payments'])->name('Payments');
-    Route::get('/invoices', [InvoicesController::class, 'index'])->name('Invoices');
-    // Removed - proposals system is deprecated
+    // Removed - invoices page is deprecated
+    // Route::get('/invoices', [InvoicesController::class, 'index'])->name('Invoices');
     // Route::post('/invoices/{proposal:key}/send', [InvoicesController::class, 'create'])->name('Create Invoice');
     Route::get('/payout-calculator', [FinancesController::class, 'payoutCalculator'])->name('Payout Calculator');
     Route::post('/payout-config/{bandId}', [FinancesController::class, 'storePayoutConfig'])->name('finances.payout.store');

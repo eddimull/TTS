@@ -1,53 +1,33 @@
 <template>
   <div class="booking-layout overflow-x-hidden">
-    <div class="booking-header dark:bg-slate-700 p-4 border-b grid max-w-full">
-      <h1 class="text-3xl font-semibold text-gray-700 py-2 truncate">
-        <span class="text-black dark:text-white">{{
-          booking.name
-        }}</span>
-      </h1>
-      <span class="mt-0 text-xs text-gray-500 dark:text-gray-50">{{
-        booking.date
-      }}</span>
-      <span
-        class="mt-0 text-xs text-gray-500 dark:text-gray-50"
-      >Status: {{ booking.status }}</span>
-    </div>
-    <TabMenu
-      :model="items"
-      class="pb-2 border-b md:flex md:flex-row flex-col w-full overflow-x-auto"
-      :active-index="
-        items.findIndex((item) => item.href === $page.url) || 0
-      "
+    <ResponsiveSubNav
+      :items="items"
+      :active-item-matcher="(item) => $page.url === item.href"
+      :preserve-scroll="true"
+      :preserve-state="true"
     >
-      <template #item="{ item }">
-        <div class="flex justify-evenly items-center p-2">
-          <Link
-            :href="item.href"
-            :active="$page.url === item.href"
-            custom
-            preserve-scroll
-            preserve-state
-          >
-            <a
-              role="menuitem"
-              class="p-menuitem-link"
-            >
-              <span class="p-menuitem-text">{{
-                item.label
-              }}</span>
-            </a>
-          </Link>
+      <template #header>
+        <div class="booking-header dark:bg-slate-700 p-4 border-b grid max-w-full">
+          <h1 class="text-3xl font-semibold text-gray-700 py-2 truncate">
+            <span class="text-black dark:text-white">{{
+              booking.name
+            }}</span>
+          </h1>
+          <span class="mt-0 text-xs text-gray-500 dark:text-gray-50">{{
+            booking.date
+          }}</span>
+          <span
+            class="mt-0 text-xs text-gray-500 dark:text-gray-50"
+          >Status: {{ booking.status }}</span>
         </div>
       </template>
-    </TabMenu>
+    </ResponsiveSubNav>
   </div>
 </template>
 
 <script setup>
 import { computed } from "vue";
-import TabMenu from "primevue/tabmenu";
-import Link from "@/Components/NavLink.vue";
+import ResponsiveSubNav from "@/Components/ResponsiveSubNav.vue";
 
 const props = defineProps({
     routes: {

@@ -1,13 +1,15 @@
 <template>
   <div class="flex flex-wrap items-center -mx-4 mb-0 md:mb-3">
-    <div class="w-full md:w-4/6 lg:w-6/12 px-4 mb-0 md:mb-0">
-      <div class="flex -mx-4 flex-wrap items-center">
-        <div class="px-4">
-          <h3 class="mb-2 text-xl font-bold font-heading flex items-center gap-2">
-            {{ payment.name || "Unnamed payment" }}
+    <div class="w-full md:w-4/6 lg:w-6/12 px-4 mb-0 md:mb-0 min-w-0">
+      <div class="flex -mx-4 flex-wrap items-center min-w-0">
+        <div class="px-4 min-w-0 flex-1">
+          <div class="mb-2 flex items-center gap-2 flex-wrap">
+            <h3 class="text-xl font-bold font-heading min-w-0 break-words">
+              {{ payment.name || "Unnamed payment" }}
+            </h3>
             <span
               v-if="payment.payment_type"
-              :class="`inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-${getPaymentTypeColor(payment.payment_type)}-100 text-${getPaymentTypeColor(payment.payment_type)}-800 dark:bg-${getPaymentTypeColor(payment.payment_type)}-900 dark:text-${getPaymentTypeColor(payment.payment_type)}-200`"
+              :class="`inline-flex items-center px-2 py-1 rounded text-xs font-medium whitespace-nowrap bg-${getPaymentTypeColor(payment.payment_type)}-100 text-${getPaymentTypeColor(payment.payment_type)}-800 dark:bg-${getPaymentTypeColor(payment.payment_type)}-900 dark:text-${getPaymentTypeColor(payment.payment_type)}-200`"
             >
               <i
                 :class="getPaymentTypeIcon(payment.payment_type)"
@@ -15,7 +17,10 @@
               />
               {{ getPaymentTypeLabel(payment.payment_type) }}
             </span>
-            <span v-if="payment.invoices_id && payment.invoice">
+            <span
+              v-if="payment.invoices_id && payment.invoice"
+              class="flex-shrink-0"
+            >
               <a
                 :href="payment.invoice.stripe_url || (invoiceUrl + payment.invoice.stripe_id)"
                 target="_blank"
@@ -26,43 +31,43 @@
                 />
               </a>
             </span>
-          </h3>
+          </div>
           <p
             v-if="payment.payer"
-            class="text-sm text-gray-600 dark:text-gray-400"
+            class="text-sm text-gray-600 dark:text-gray-400 truncate"
           >
             Made by: {{ payment.payer.name }}
           </p>
           <p
             v-if="payment.invoice && payment.user"
-            class="text-xs text-gray-500 dark:text-gray-500"
+            class="text-xs text-gray-500 dark:text-gray-500 truncate"
           >
             Invoice sent {{ formatDateShort(payment.invoice.created_at) }} by {{ payment.user.name }}
           </p>
           <p
-            class="md:hidden text-lg text-blue-500 font-bold font-heading"
+            class="md:hidden text-lg text-blue-500 font-bold font-heading mt-2"
           >
             ${{ typeof payment.amount === 'string' ? payment.amount : Number(payment.amount).toFixed(2) }}
           </p>
         </div>
       </div>
     </div>
-    <div class="hidden md:block lg:w-2/12 px-4">
-      <p class="text-lg text-blue-500 font-bold font-heading">
+    <div class="hidden md:block md:w-2/6 lg:w-2/12 px-4 flex-shrink-0">
+      <p class="text-lg text-blue-500 font-bold font-heading whitespace-nowrap">
         ${{ typeof payment.amount === 'string' ? payment.amount : Number(payment.amount).toFixed(2) }}
       </p>
     </div>
 
-    <div class="hidden lg:block lg:w-3/12 px-4">
+    <div class="hidden lg:block lg:w-3/12 px-4 flex-shrink-0">
       <p
         :title="formattedPaymentDateTime"
-        class="text-lg text-blue-500 font-bold font-heading"
+        class="text-lg text-blue-500 font-bold font-heading whitespace-nowrap"
       >
         {{ formattedPaymentDate }}
       </p>
     </div>
 
-    <div class="lg:w-1/12 px-4">
+    <div class="w-auto lg:w-1/12 px-4 flex-shrink-0">
       <p class="text-lg text-blue-500 font-bold font-heading">
         <Button
           v-if="payment.enableDelete"
