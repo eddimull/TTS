@@ -20,11 +20,12 @@ const props = defineProps({
   booking: Object
 })
 
-const excludeRoutes = ['Create Booking', 'Booking Receipt', 'Download Booking Contract', 'bookings.history', 'bookings.historyJson', 'View Booking Contract', 'portal.booking.payment']
+const excludeRoutes = ['Create Booking', 'Booking Receipt', 'Download Booking Contract', 'bookings.history', 'bookings.historyJson', 'View Booking Contract', 'portal']
 const filteredRoutes = computed(() => {
   return Object.entries(Ziggy.routes).reduce((acc, [name, route]) => {
     if (route.uri.includes('booking/') && 
     !excludeRoutes.includes(name) &&
+    !route.uri.includes('portal') &&
     route.methods.includes('GET')) {
       acc[name] = route
     }
