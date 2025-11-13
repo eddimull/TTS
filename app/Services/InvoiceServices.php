@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Contracts\StripeClientInterface;
 use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\Invoices;
@@ -9,24 +10,25 @@ use App\Models\StripeAccounts;
 use App\Models\StripeCustomers;
 use App\Models\StripeProducts;
 use Illuminate\Support\Facades\Auth;
-use Stripe\Customer;
 use Stripe\Exception\ApiErrorException;
-use Stripe\Invoice;
-use Stripe\InvoiceItem;
-use Stripe\Product;
-use Stripe\Stripe;
-use Stripe\StripeClient;
+use Stripe\StripeObject;
 
 
 class InvoiceServices
 {
+    private StripeClientInterface $stripeClient;
+
+    public function __construct(StripeClientInterface $stripeClient)
+    {
+        $this->stripeClient = $stripeClient;
+    }
 
     private function getStripeCustomer(int $contact_id, string $account_id): StripeCustomers
     {
         $customer = StripeCustomers::where('contact_id', $contact_id)->first();
         if (!$customer) {
             $contact = Contacts::find($contact_id);
-            $stripeCustomer = Customer::create([
+            $stripeCustomer = $this->stripeClient->createCustomer([
                 'email' => $contact->email,
                 'name' => $contact->name,
                 'phone' => $contact->phone,
@@ -49,12 +51,9 @@ class InvoiceServices
      */
     public function createInvoice(Bookings $booking, float $amount, int $contactId, bool $convenienceFee): void
     {
-        Stripe::setApiKey(config('services.stripe.key'));
-        $stripe = new StripeClient(config('services.stripe.key'));
-
         $connectedAccount = StripeAccounts::where('stripe_account_id', $booking->band->stripe_accounts->stripe_account_id)->first();
 
-        $product = $this->getStripeProduct($stripe, $booking->name, $booking->band_id);
+        $product = $this->getStripeProduct($booking->name, $booking->band_id);
 
         $customer = $this->getStripeCustomer($contactId, $connectedAccount->stripe_account_id);
 
@@ -72,7 +71,7 @@ class InvoiceServices
 
         $amount = round($amount, 0);
 
-        $invoice = Invoice::create([
+        $invoice = $this->stripeClient->createInvoice([
             'application_fee_amount' => $application_fee,
             'collection_method' => 'send_invoice',
             'days_until_due' => 30,
@@ -83,7 +82,7 @@ class InvoiceServices
             'on_behalf_of' => $connectedAccount->stripe_account_id,
         ]);
 
-        InvoiceItem::create([
+        $this->stripeClient->createInvoiceItem([
             'customer' => $customer->stripe_customer_id,
             'invoice' => $invoice->id,
             'price_data' => [
@@ -93,15 +92,17 @@ class InvoiceServices
             ],
         ]);
 
+        // Send the invoice first to get the hosted_invoice_url
+        $sentInvoice = $this->stripeClient->sendInvoice($invoice->id, []);
+
         $localInvoice = Invoices::create([
             'booking_id' => $booking->id,
             'amount' => $amount,
             'status' => 'open',
             'stripe_id' => $invoice->id,
+            'stripe_url' => $sentInvoice->hosted_invoice_url ?? null,
             'convenience_fee' => $convenienceFee,
         ]);
-
-        $stripe->invoices->sendInvoice($invoice->id, []);
 
         // create a payment record for the booking in pending state
         // this will be updated when the payment is received
@@ -112,12 +113,13 @@ class InvoiceServices
             'name' => $booking->name . ', invoice ' . $invoice->id,
             'band_id' => $booking->band_id,
             'user_id' => Auth::id(),
+            'payment_type' => 'invoice',
         ]);
     }
 
-    public function getStripeProduct(StripeClient $stripe, string $name, int $bandID): Product
+    public function getStripeProduct(string $name, int $bandID): StripeObject
     {
-        $results = $stripe->products->search([
+        $results = $this->stripeClient->searchProducts([
             'query' => "name:'" . addslashes($name) . "'",
             'limit' => 1,
         ]);
@@ -126,7 +128,7 @@ class InvoiceServices
         }
 
         // otherwise, create a new product and store it locally as well
-        $product = Product::create([
+        $product = $this->stripeClient->createProduct([
             'name' => $name,
         ]);
         StripeProducts::create([

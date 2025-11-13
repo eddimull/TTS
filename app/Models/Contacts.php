@@ -2,16 +2,18 @@
 
 namespace App\Models;
 
+use App\Notifications\ContactPasswordReset;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Scout\Searchable;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 
-class Contacts extends Model
+class Contacts extends Authenticatable
 {
     use HasFactory;
     use Notifiable;
@@ -22,8 +24,22 @@ class Contacts extends Model
         'band_id',
         'name',
         'email',
-        'phone'
+        'phone',
+        'password',
+        'can_login',
+        'email_verified_at',
     ];
+    
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'can_login' => 'boolean',
+    ];
+    
     // protected $appends = ['booking_history'];
 
     public function bookingContacts()
@@ -79,6 +95,17 @@ class Contacts extends Model
         })->toArray();
         
         return $searchableArray;
+    }
+
+    /**
+     * Send the password reset notification.
+     *
+     * @param  string  $token
+     * @return void
+     */
+    public function sendPasswordResetNotification($token)
+    {
+        $this->notify(new ContactPasswordReset($token));
     }
 
     /**

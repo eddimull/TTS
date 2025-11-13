@@ -116,10 +116,10 @@
             </div>
             <div>
               <div class="text-2xl font-bold text-gray-900 dark:text-gray-50">
-                ${{ (booking.amount_paid).toFixed(2) }}
+                ${{ booking.amount_paid }}
               </div>
               <div class="text-sm text-gray-600 dark:text-gray-400">
-                Paid of ${{ (booking.price / 100).toFixed(2) }}
+                Paid of ${{ booking.price }} 
               </div>
             </div>
           </div>

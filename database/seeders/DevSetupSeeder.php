@@ -9,6 +9,7 @@ use App\Models\Proposals;
 use App\Models\BandEvents;
 use App\Models\BandOwners;
 use App\Models\Payments;
+use App\Models\StripeAccounts;
 use Illuminate\Database\Seeder;
 use App\Models\RehearsalSchedule;
 
@@ -41,6 +42,32 @@ class DevSetupSeeder extends Seeder
             'user_id'=>$user->id,
             'band_id'=>$band->id
         ]);
+
+        // Create actual Stripe Connect account for the band
+        try {
+            \Stripe\Stripe::setApiKey(config('services.stripe.key'));
+            
+            $account = \Stripe\Account::create([
+                'type' => 'express',
+                'country' => 'US',
+                'email' => 'testband+' . $band->id . '@example.com',
+                'capabilities' => [
+                    'card_payments' => ['requested' => true],
+                    'transfers' => ['requested' => true],
+                ],
+            ]);
+
+            StripeAccounts::create([
+                'band_id' => $band->id,
+                'stripe_account_id' => $account->id,
+                'status' => 'active',
+            ]);
+            
+            $this->command->info("✓ Created Stripe Connect account for Test Band ({$account->id})");
+        } catch (\Stripe\Exception\ApiErrorException $e) {
+            $this->command->warn("⚠ Failed to create Stripe account: {$e->getMessage()}");
+            $this->command->warn("Continuing without Stripe account...");
+        }
 
         // Create bookings with varied created_at dates for time travel testing
         $allBookings = [];
