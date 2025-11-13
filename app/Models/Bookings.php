@@ -138,8 +138,17 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         return $endTime;
     }
 
-    public function getAmountPaidAttribute()
+    public function getAmountPaidAttribute($value = null)
     {
+        // If amount_paid was selected in the query (e.g., from scopeUnpaid or scopePaid),
+        // the raw value is in cents and needs to be formatted like the Price cast does
+        if (array_key_exists('amount_paid', $this->attributes)) {
+            $rawValue = $this->attributes['amount_paid'];
+            // The Price cast divides by 100 and formats
+            return number_format($rawValue / 100, 2, '.', '');
+        }
+
+        // Otherwise, calculate it from the payments relationship
         $total = $this->payments()->where('status', 'paid')->sum('amount') / 100;
         return number_format($total, 2, '.', '');
     }
@@ -255,6 +264,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
                 $query->from('payments')
                     ->selectRaw('payable_id, SUM(amount) as total_paid')
                     ->where('payable_type', Bookings::class)
+                    ->where('status', 'paid')
                     ->groupBy('payable_id');
             },
             'payments_sum',
@@ -266,18 +276,19 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
                 'amount_paid' => Payments::selectRaw('COALESCE(SUM(amount),0)')
                     ->whereColumn('payable_id', 'bookings.id')
                     ->where('payable_type', Bookings::class)
+                    ->where('status', 'paid')
 
             ])
             ->whereRaw('COALESCE(payments_sum.total_paid, 0) < bookings.price')
-            ->withCasts(['amount_paid' => Price::class, 'price' => Price::class])->get();
+            ->get();
     }
 
     public function scopePaid($query)
     {
         return $query->select('bookings.*')
-            ->selectRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id) as amount_paid', [Bookings::class])
-            ->whereRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id) >= bookings.price', [Bookings::class])
-            ->withCasts(['amount_paid' => Price::class, 'price' => Price::class])->get();
+            ->selectRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id AND status = "paid") as amount_paid', [Bookings::class])
+            ->whereRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id AND status = "paid") >= bookings.price', [Bookings::class])
+            ->get();
     }
 
     public function getContractRecipients(): array
