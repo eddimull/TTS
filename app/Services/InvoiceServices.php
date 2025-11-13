@@ -92,15 +92,17 @@ class InvoiceServices
             ],
         ]);
 
+        // Send the invoice first to get the hosted_invoice_url
+        $sentInvoice = $this->stripeClient->sendInvoice($invoice->id, []);
+
         $localInvoice = Invoices::create([
             'booking_id' => $booking->id,
             'amount' => $amount,
             'status' => 'open',
             'stripe_id' => $invoice->id,
+            'stripe_url' => $sentInvoice->hosted_invoice_url ?? null,
             'convenience_fee' => $convenienceFee,
         ]);
-
-        $this->stripeClient->sendInvoice($invoice->id, []);
 
         // create a payment record for the booking in pending state
         // this will be updated when the payment is received
@@ -111,6 +113,7 @@ class InvoiceServices
             'name' => $booking->name . ', invoice ' . $invoice->id,
             'band_id' => $booking->band_id,
             'user_id' => Auth::id(),
+            'payment_type' => 'invoice',
         ]);
     }
 

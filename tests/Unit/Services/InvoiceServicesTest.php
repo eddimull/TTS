@@ -84,7 +84,8 @@ class InvoiceServicesTest extends TestCase
         // Mock sendInvoice
         $mockSentInvoice = StripeObject::constructFrom([
             'id' => 'in_test_101112',
-            'status' => 'open'
+            'status' => 'open',
+            'hosted_invoice_url' => 'https://invoice.stripe.com/i/acct_test/invst_test_101112'
         ]);
         $mockStripeClient->shouldReceive('sendInvoice')
             ->once()
@@ -114,6 +115,7 @@ class InvoiceServicesTest extends TestCase
             'booking_id' => $booking->id,
             'stripe_id' => 'in_test_101112',
             'status' => 'open',
+            'stripe_url' => 'https://invoice.stripe.com/i/acct_test/invst_test_101112',
             'convenience_fee' => true,
         ]);
 
@@ -121,6 +123,7 @@ class InvoiceServicesTest extends TestCase
             'band_id' => $booking->band_id,
             'user_id' => $user->id,
             'status' => 'pending',
+            'payment_type' => 'invoice',
         ]);
     }
 
@@ -175,7 +178,10 @@ class InvoiceServicesTest extends TestCase
         $mockInvoiceItem = StripeObject::constructFrom(['id' => 'ii_test_existing']);
         $mockStripeClient->shouldReceive('createInvoiceItem')->andReturn($mockInvoiceItem);
 
-        $mockSentInvoice = StripeObject::constructFrom(['id' => 'in_test_existing']);
+        $mockSentInvoice = StripeObject::constructFrom([
+            'id' => 'in_test_existing',
+            'hosted_invoice_url' => 'https://invoice.stripe.com/i/acct_test/invst_test_existing'
+        ]);
         $mockStripeClient->shouldReceive('sendInvoice')->andReturn($mockSentInvoice);
 
         $this->app->instance(StripeClientInterface::class, $mockStripeClient);

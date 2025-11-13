@@ -1,17 +1,28 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Application;
 use Inertia\Inertia;
 
 Route::get('/', function () {
+    // If contact is authenticated, redirect to portal dashboard
+    if (Auth::guard('contact')->check()) {
+        return redirect()->route('portal.dashboard');
+    }
+    
+    // If regular user is authenticated, redirect to dashboard
+    if (Auth::check()) {
+        return redirect()->route('dashboard');
+    }
+    
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
     ]);
-})->middleware(['guest']);
+});
 
 Route::get('/dashboard', 'DashboardController@index')
     ->middleware(['auth', 'verified'])

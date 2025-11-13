@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Invoices extends Model
 {
     use HasFactory;
-    protected $fillable = ['booking_id', 'amount', 'status', 'stripe_id', 'convenience_fee'];
+    protected $fillable = ['booking_id', 'amount', 'status', 'stripe_id', 'stripe_url', 'convenience_fee'];
 
     public function booking()
     {
