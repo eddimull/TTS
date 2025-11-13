@@ -3,8 +3,13 @@
     <div class="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
       <div class="max-w-md w-full space-y-8">
         <div>
-          <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
-            Client Portal
+          <div class="flex justify-center mb-4">
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+              Client Portal
+            </span>
+          </div>
+          <h2 class="mt-2 text-center text-3xl font-extrabold text-gray-900 dark:text-white">
+            Welcome Back
           </h2>
           <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
             Log in to view and pay for your bookings
@@ -102,6 +107,18 @@
               <span v-if="form.processing">Logging in...</span>
               <span v-else>Sign in</span>
             </button>
+          </div>
+
+          <div class="mt-6 text-center">
+            <p class="text-sm text-gray-600 dark:text-gray-400">
+              Are you a band member?
+              <Link
+                :href="route('login')"
+                class="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300"
+              >
+                Access Member Login →
+              </Link>
+            </p>
           </div>
         </form>
       </div>
