@@ -31,6 +31,13 @@
         <strong>Notes:</strong> {{ contact.pivot.notes }}
       </p>
       <div
+        v-if="contact.can_login"
+        class="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+      >
+        <i class="pi pi-unlock mr-1" />
+        Portal Access Enabled
+      </div>
+      <div
         v-if="contact.booking_history"
         class="pt-4 border-t mt-4"
       >
@@ -184,6 +191,17 @@
       command: () => startEditing()
     },
     {
+      separator: true
+    },
+    {
+      label: props.contact.can_login ? 'Disable Portal Access' : 'Enable Portal Access',
+      icon: props.contact.can_login ? 'pi pi-lock' : 'pi pi-unlock',
+      command: () => props.contact.can_login ? disablePortalAccess() : enablePortalAccess()
+    },
+    {
+      separator: true
+    },
+    {
       label: 'Delete',
       icon: 'pi pi-trash',
       command: () => deleteContact()
@@ -248,6 +266,105 @@
             Swal.fire(
               'Error!',
               'There was a problem deleting the contact.',
+              'error'
+            );
+          },
+        });
+      }
+    });
+  };
+
+  const enablePortalAccess = () => {
+    Swal.fire({
+      title: 'Enable Portal Access?',
+      html: `
+        <p>This will allow <strong>${props.contact.name}</strong> to:</p>
+        <ul class="text-left mt-3 mb-3 ml-6 list-disc">
+          <li>Log in to the client portal</li>
+          <li>View booking details</li>
+          <li>Make payments online</li>
+        </ul>
+        <p class="text-sm text-gray-600">An email with login instructions will be sent to <strong>${props.contact.email}</strong></p>
+      `,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, send email & enable access'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Show loading
+        Swal.fire({
+          title: 'Sending Email...',
+          html: 'Please wait while we send the login credentials.',
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+        
+        router.post(route('booking.contact.enablePortal', { 
+          band: props.bandId, 
+          booking: props.bookingId
+        }), {
+          contact_id: props.contact.id
+        }, {
+          preserveScroll: true,
+          preserveState: true,
+          onSuccess: (page) => {
+            Swal.fire({
+              title: 'Access Enabled!',
+              html: `
+                <p>Portal access has been enabled for <strong>${props.contact.name}</strong>.</p>
+                <p class="mt-3 text-sm text-gray-600">An email with login instructions has been sent to:</p>
+                <p class="text-sm font-mono bg-gray-100 p-2 rounded mt-2">${props.contact.email}</p>
+                <p class="mt-3 text-sm text-gray-600">They can log in at:</p>
+                <p class="text-sm"><a href="${window.location.origin}/contact/login" class="text-blue-600 hover:underline" target="_blank">${window.location.origin}/contact/login</a></p>
+              `,
+              icon: 'success',
+              confirmButtonText: 'OK'
+            });
+            router.reload({ only: ['booking'] });
+          },
+          onError: (errors) => {
+            Swal.fire(
+              'Error!',
+              errors.message || 'There was a problem enabling portal access.',
+              'error'
+            );
+          },
+        });
+      }
+    });
+  };
+
+  const disablePortalAccess = () => {
+    Swal.fire({
+      title: 'Disable Portal Access?',
+      text: `This will prevent ${props.contact.name} from logging in to the portal.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, disable it!'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        router.post(route('booking.contact.disablePortal', { 
+          band: props.bandId, 
+          booking: props.bookingId
+        }), {
+          contact_id: props.contact.id
+        }, {
+          preserveScroll: true,
+          preserveState: true,
+          onSuccess: () => {
+            Swal.fire('Disabled!', 'Portal access has been disabled.', 'success');
+            router.reload({ only: ['booking'] });
+          },
+          onError: (errors) => {
+            Swal.fire(
+              'Error!',
+              errors.message || 'There was a problem disabling portal access.',
               'error'
             );
           },

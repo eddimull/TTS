@@ -1,80 +1,142 @@
 <template>
-    <Dialog
-        :visible="model"
-        :style="{ width: '450px' }"
-        header="Make a payment"
-        :modal="true"
-        @update:visible="closeDialog"
-    >
-        <div class="flex flex-col">
-            <label for="name">Name</label>
-            <InputText
-                id="name"
-                v-model.trim="newPayment.name"
-                required="true"
-                autofocus
-                :class="{ 'p-invalid': submitted && !newPayment.name }"
-            />
-            <small v-if="submitted && !newPayment.name" class="p-error">
-                Name is required.
-            </small>
-        </div>
+  <Dialog
+    :visible="model"
+    :style="{ width: '450px' }"
+    header="Make a payment"
+    :modal="true"
+    @update:visible="closeDialog"
+  >
+    <div class="flex flex-col">
+      <label for="name">Name</label>
+      <InputText
+        id="name"
+        v-model.trim="newPayment.name"
+        required="true"
+        autofocus
+        :class="{ 'p-invalid': submitted && !newPayment.name }"
+      />
+      <small
+        v-if="submitted && !newPayment.name"
+        class="p-error"
+      >
+        Name is required.
+      </small>
+    </div>
 
-        <div class="flex flex-col my-4">
-            <label for="amount">Amount</label>
-            <InputNumber
-                id="amount"
-                v-model="newPayment.amount"
-                mode="currency"
-                currency="USD"
-                locale="en-US"
+    <div class="flex flex-col my-4">
+      <label for="payment_type">Payment Type</label>
+      <Select
+        id="payment_type"
+        v-model="newPayment.payment_type"
+        :options="paymentTypes"
+        option-label="label"
+        option-value="value"
+        placeholder="Select payment type"
+        :class="{ 'p-invalid': submitted && !newPayment.payment_type }"
+      >
+        <template #value="slotProps">
+          <div
+            v-if="slotProps.value"
+            class="flex items-center"
+          >
+            <i
+              :class="getPaymentTypeIcon(slotProps.value)"
+              class="pi mr-2"
             />
-            <small v-if="submitted && !newPayment.amount" class="p-error"
-                >Amount is required.</small
-            >
-        </div>
-        <div class="flex flex-col">
-            <label for="date">Payment Date</label>
-            <calendar
-                id="date"
-                v-model="newPayment.date"
-                :show-icon="true"
-                date-format="mm/dd/yy"
-            />
-            <small v-if="submitted && !newPayment.date" class="p-error"
-                >Date is required.</small
-            >
-        </div>
-
-        <template #footer>
-            <Button
-                label="Cancel"
-                icon="pi pi-times"
-                class="p-button-text"
-                @click="closeDialog"
-            />
-            <Button
-                :label="saving ? 'Submitting Payment' : 'Submit Payment'"
-                :disabled="saving"
-                icon="pi pi-check"
-                class="p-button-text"
-                :loading="saving"
-                @click="submitPayment"
-            />
+            <span>{{ getPaymentTypeLabel(slotProps.value) }}</span>
+          </div>
+          <span v-else>{{ slotProps.placeholder }}</span>
         </template>
-    </Dialog>
+        <template #option="slotProps">
+          <div class="flex items-center">
+            <i
+              :class="slotProps.option.icon"
+              class="pi mr-2"
+            />
+            <span>{{ slotProps.option.label }}</span>
+          </div>
+        </template>
+      </Select>
+      <small
+        v-if="submitted && !newPayment.payment_type"
+        class="p-error"
+      >
+        Payment type is required.
+      </small>
+    </div>
+
+    <div class="flex flex-col my-4">
+      <label for="amount">Amount</label>
+      <InputNumber
+        id="amount"
+        v-model="newPayment.amount"
+        mode="currency"
+        currency="USD"
+        locale="en-US"
+      />
+      <small
+        v-if="submitted && !newPayment.amount"
+        class="p-error"
+      >Amount is required.</small>
+    </div>
+    <div class="flex flex-col">
+      <label for="date">Payment Date</label>
+      <calendar
+        id="date"
+        v-model="newPayment.date"
+        :show-icon="true"
+        date-format="mm/dd/yy"
+      />
+      <small
+        v-if="submitted && !newPayment.date"
+        class="p-error"
+      >Date is required.</small>
+    </div>
+
+    <template #footer>
+      <Button
+        label="Cancel"
+        icon="pi pi-times"
+        class="p-button-text"
+        @click="closeDialog"
+      />
+      <Button
+        :label="saving ? 'Submitting Payment' : 'Submit Payment'"
+        :disabled="saving"
+        icon="pi pi-check"
+        class="p-button-text"
+        :loading="saving"
+        @click="submitPayment"
+      />
+    </template>
+  </Dialog>
 </template>
 <script setup>
-import { ref, reactive } from "vue";
+import { ref, reactive, computed } from "vue";
 import { useForm } from "@inertiajs/inertia-vue3";
+import Select from "primevue/select";
 defineEmits("submitPayment");
 const props = defineProps({
     booking: {
         type: Object,
         required: true,
     },
+    paymentTypes: {
+        type: Array,
+        required: true,
+    },
 });
 const model = defineModel();
+
+const getPaymentTypeLabel = (value) => {
+    const type = props.paymentTypes.find(t => t.value === value);
+    return type ? type.label : value;
+};
+
+const getPaymentTypeIcon = (value) => {
+    const type = props.paymentTypes.find(t => t.value === value);
+    return type ? type.icon : 'pi pi-question-circle';
+};
 
 const closeDialog = () => {
     model.value = false;
@@ -86,6 +148,7 @@ const newPayment = useForm({
     name: "",
     amount: 0,
     date: null,
+    payment_type: null,
 });
 
 const submitPayment = () => {
@@ -101,6 +164,7 @@ const submitPayment = () => {
                 newPayment.name = "";
                 newPayment.amount = "";
                 newPayment.date = null;
+                newPayment.payment_type = null;
                 closeDialog();
             },
             onFinish: () => {

@@ -130,7 +130,7 @@ class BookingOperationsTest extends TestCase
             'name' => 'Test Payment',
             'date' => now(),
             'band_id' => $booking->band_id,
-            'amount' => 500
+            'amount' => 50000
         ]);
 
         // Refresh the booking model to recalculate the is_paid attribute
@@ -144,7 +144,7 @@ class BookingOperationsTest extends TestCase
             'name' => 'Test Payment',
             'date' => now(),
             'band_id' => $booking->band_id,
-            'amount' => 500
+            'amount' => 50000
         ]);
 
         // Refresh the booking model again
@@ -158,7 +158,7 @@ class BookingOperationsTest extends TestCase
             'name' => 'Test Payment',
             'date' => now(),
             'band_id' => $booking->band_id,
-            'amount' => 100
+            'amount' => 10000
         ]);
 
         // Refresh the booking model once more

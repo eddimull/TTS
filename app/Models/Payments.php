@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\Price;
+use App\Enums\PaymentType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -17,11 +18,12 @@ class Payments extends Model
 
     protected $table = 'payments';
 
-    protected $fillable = ['name', 'amount', 'date', 'band_id', 'user_id', 'status', 'invoices_id', 'payable_type', 'payable_id'];
+    protected $fillable = ['name', 'amount', 'date', 'band_id', 'user_id', 'status', 'invoices_id', 'payable_type', 'payable_id', 'payer_type', 'payer_id', 'payment_type'];
 
     protected $casts = [
         'amount' => Price::class,
         'date' => 'datetime',
+        'payment_type' => PaymentType::class,
     ];
 
     public function getformattedPaymentDateAttribute()
@@ -39,6 +41,17 @@ class Payments extends Model
         return $this->morphTo();
     }
 
+    /**
+     * Get the payer (User or Contact) who made this payment
+     */
+    public function payer(): MorphTo
+    {
+        return $this->morphTo();
+    }
+
+    /**
+     * @deprecated Use payer() relationship instead
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -65,6 +78,9 @@ class Payments extends Model
                 'invoices_id',
                 'payable_type',
                 'payable_id',
+                'payer_type',
+                'payer_id',
+                'payment_type',
             ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()

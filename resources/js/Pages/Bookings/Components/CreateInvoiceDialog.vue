@@ -19,7 +19,7 @@
         Agreed upon price:
       </p>
       <p class="italic w-1/2">
-        {{ formatMoney(booking.price) }}
+        ${{ formatMoney(booking.price) }}
       </p>
     </div>
     <div class="flex flex-row mt-4">
@@ -157,7 +157,7 @@ const emails = props.booking.contacts.map((contact) => {
 });
 
 const formatMoney = (value) => {
-    return '$' + value.toLocaleString("en-US", {
+    return value.toLocaleString("en-US", {
         style: "currency",
         currency: "USD",
         minimumFractionDigits: 2,

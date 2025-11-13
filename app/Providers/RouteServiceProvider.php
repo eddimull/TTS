@@ -66,6 +66,14 @@ class RouteServiceProvider extends ServiceProvider
                 ->middleware('web')
                 ->namespace($this->namespace)
                 ->group(base_path('routes/charts.php'));
+
+            Route::prefix('portal')
+                ->middleware('web')
+                ->namespace($this->namespace)
+                ->group(base_path('routes/contact.php'));
+
+            // Redirect old /contact/* URLs to new /portal/* URLs
+            Route::redirect('/contact/{any}', '/portal/{any}')->where('any', '.*');
         });
     }
 
