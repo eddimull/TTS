@@ -1,33 +1,13 @@
 <template>
-    <div>
-        <TabMenu
-            :model="items"
-            class="py-2"
-            :activeIndex="
-                items.findIndex((item) => route().current() === item.label) || 0
-            "
-        >
-            <template #item="{ item }">
-                <Link
-                    :href="route(item.label)"
-                    :active="route().current() === item.label"
-                    custom
-                >
-                    <a role="menuitem" class="p-menuitem-link">
-                        <span class="p-menuitem-text text-ellipsis truncate">{{
-                            item.label
-                        }}</span>
-                    </a>
-                </Link>
-            </template>
-        </TabMenu>
-    </div>
+  <ResponsiveSubNav
+    :items="items"
+    :active-item-matcher="(item) => route().current() === item.routeName"
+  />
 </template>
 
 <script setup>
 import { computed } from "vue";
-import TabMenu from "primevue/tabmenu";
-import Link from "@/Components/NavLink.vue";
+import ResponsiveSubNav from "@/Components/ResponsiveSubNav.vue";
 
 const props = defineProps({
     routes: {
@@ -37,9 +17,14 @@ const props = defineProps({
 });
 
 const items = computed(() => {
-    return Object.entries(props.routes).map(([name, route]) => ({
+    return Object.entries(props.routes).map(([name, routeInfo]) => ({
         label: name,
-        route: route.uri,
+        routeName: name,
+        route: routeInfo.uri,
     }));
 });
 </script>
+
+<style scoped>
+/* Optional: Add custom styling if needed */
+</style>

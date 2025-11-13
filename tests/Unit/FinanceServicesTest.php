@@ -49,6 +49,47 @@ class FinanceServicesTest extends TestCase
         $this->assertEquals($unpaidBooking->id, $result[0]->unpaidBookings[0]->id);
     }
 
+    public function testGetUnpaidWithPartialPayment()
+    {
+        $band = Bands::factory()->create();
+
+        // Create a booking with partial payment
+        $partiallyPaidBooking = Bookings::factory()->create(['band_id' => $band->id, 'price' => 10000]);
+        Payments::factory()->create([
+            'payable_id' => $partiallyPaidBooking->id,
+            'payable_type' => Bookings::class,
+            'amount' => 3000,
+            'band_id' => $band->id,
+        ]);
+
+        // Create a booking with no payment
+        $unpaidBooking = Bookings::factory()->create(['band_id' => $band->id, 'price' => 5000]);
+
+        // Create a fully paid booking (should not appear)
+        $fullyPaidBooking = Bookings::factory()->create(['band_id' => $band->id, 'price' => 2000]);
+        Payments::factory()->create([
+            'payable_id' => $fullyPaidBooking->id,
+            'payable_type' => Bookings::class,
+            'amount' => 2000,
+            'band_id' => $band->id,
+        ]);
+
+        $result = $this->financeServices->getUnpaid([$band]);
+
+        $this->assertCount(1, $result);
+        $this->assertCount(2, $result[0]->unpaidBookings);
+
+        // Find the partially paid booking in results
+        $partialBooking = $result[0]->unpaidBookings->firstWhere('id', $partiallyPaidBooking->id);
+        $this->assertNotNull($partialBooking, 'Partially paid booking should be in unpaid results');
+        $this->assertEquals(3000, $partialBooking->amount_paid, 'Amount paid should be 3000, not 0');
+
+        // Find the unpaid booking in results
+        $zeroPaymentBooking = $result[0]->unpaidBookings->firstWhere('id', $unpaidBooking->id);
+        $this->assertNotNull($zeroPaymentBooking, 'Unpaid booking should be in unpaid results');
+        $this->assertEquals(0, $zeroPaymentBooking->amount_paid, 'Amount paid should be 0');
+    }
+
     public function testGetPaid()
     {
         $band = Bands::factory()->create();
