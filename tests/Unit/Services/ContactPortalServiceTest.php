@@ -67,6 +67,10 @@ class ContactPortalServiceTest extends TestCase
         $this->assertNotNull($contact1->fresh()->password);
         $this->assertNotNull($contact2->fresh()->password);
 
+        // Assert password_change_required flag is set
+        $this->assertTrue($contact1->fresh()->password_change_required);
+        $this->assertTrue($contact2->fresh()->password_change_required);
+
         // Assert notifications were sent
         Notification::assertSentTo($contact1, ContactPortalAccessGranted::class);
         Notification::assertSentTo($contact2, ContactPortalAccessGranted::class);
@@ -91,6 +95,7 @@ class ContactPortalServiceTest extends TestCase
         $this->service->grantPortalAccessAfterContractCompletion($booking);
 
         $this->assertTrue($contact->fresh()->can_login);
+        $this->assertTrue($contact->fresh()->password_change_required);
         Notification::assertSentTo($contact, ContactPortalAccessGranted::class);
     }
 
@@ -149,6 +154,7 @@ class ContactPortalServiceTest extends TestCase
 
         // Assert new contact got access
         $this->assertTrue($newContact->fresh()->can_login);
+        $this->assertTrue($newContact->fresh()->password_change_required);
 
         // Assert notification only sent to new contact
         Notification::assertSentTo($newContact, ContactPortalAccessGranted::class);
@@ -177,6 +183,7 @@ class ContactPortalServiceTest extends TestCase
         $this->assertTrue($result);
         $this->assertNotNull($contact->fresh()->password);
         $this->assertTrue($contact->fresh()->can_login);
+        $this->assertTrue($contact->fresh()->password_change_required);
     }
 
     public function test_notification_contains_correct_booking_and_band_info(): void
