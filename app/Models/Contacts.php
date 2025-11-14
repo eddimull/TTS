@@ -28,6 +28,7 @@ class Contacts extends Authenticatable
         'password',
         'can_login',
         'email_verified_at',
+        'password_change_required',
     ];
     
     protected $hidden = [
@@ -38,6 +39,7 @@ class Contacts extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'can_login' => 'boolean',
+        'password_change_required' => 'boolean',
     ];
     
     // protected $appends = ['booking_history'];
