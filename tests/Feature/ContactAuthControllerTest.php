@@ -335,4 +335,82 @@ class ContactAuthControllerTest extends TestCase
         // Should be redirected away from login page (middleware behavior)
         $response->assertRedirect();
     }
+
+    /**
+     * Test contact with temporary password is redirected to password change page
+     */
+    public function test_contact_with_temporary_password_redirected_to_change_password()
+    {
+        $band = Bands::factory()->create();
+        $contact = Contacts::factory()->create([
+            'band_id' => $band->id,
+            'email' => 'test@example.com',
+            'password' => Hash::make('temporary123'),
+            'can_login' => true,
+            'password_change_required' => true,
+        ]);
+
+        $response = $this->post(route('portal.login'), [
+            'email' => 'test@example.com',
+            'password' => 'temporary123',
+        ]);
+
+        // Should be redirected to change password page instead of dashboard
+        $response->assertRedirect(route('portal.password.change'));
+        $this->assertAuthenticatedAs($contact, 'contact');
+    }
+
+    /**
+     * Test contact can change their temporary password
+     */
+    public function test_contact_can_change_temporary_password()
+    {
+        $band = Bands::factory()->create();
+        $contact = Contacts::factory()->create([
+            'band_id' => $band->id,
+            'email' => 'test@example.com',
+            'password' => Hash::make('temporary123'),
+            'can_login' => true,
+            'password_change_required' => true,
+        ]);
+
+        $this->actingAs($contact, 'contact');
+
+        $response = $this->post(route('portal.password.change'), [
+            'current_password' => 'temporary123',
+            'password' => 'mynewpassword123',
+            'password_confirmation' => 'mynewpassword123',
+        ]);
+
+        $response->assertRedirect(route('portal.dashboard'));
+
+        // Verify password was changed and flag was cleared
+        $contact->refresh();
+        $this->assertTrue(Hash::check('mynewpassword123', $contact->password));
+        $this->assertFalse($contact->password_change_required);
+    }
+
+    /**
+     * Test contact cannot change password with incorrect current password
+     */
+    public function test_contact_cannot_change_password_with_incorrect_current_password()
+    {
+        $band = Bands::factory()->create();
+        $contact = Contacts::factory()->create([
+            'band_id' => $band->id,
+            'password' => Hash::make('temporary123'),
+            'can_login' => true,
+            'password_change_required' => true,
+        ]);
+
+        $this->actingAs($contact, 'contact');
+
+        $response = $this->post(route('portal.password.change'), [
+            'current_password' => 'wrongpassword',
+            'password' => 'mynewpassword123',
+            'password_confirmation' => 'mynewpassword123',
+        ]);
+
+        $response->assertSessionHasErrors(['current_password']);
+    }
 }

@@ -44,6 +44,11 @@ class ContactAuthController extends Controller
 
         $request->session()->regenerate();
 
+        // Redirect to password change if required
+        if ($contact->password_change_required) {
+            return redirect()->route('portal.password.change');
+        }
+
         return redirect()->intended(route('portal.dashboard'));
     }
 
@@ -120,6 +125,7 @@ class ContactAuthController extends Controller
             function ($contact, $password) {
                 $contact->forceFill([
                     'password' => Hash::make($password),
+                    'password_change_required' => false,
                 ])->save();
             }
         );
@@ -127,5 +133,51 @@ class ContactAuthController extends Controller
         return $status === \Password::PASSWORD_RESET
             ? redirect()->route('portal.login')->with('status', 'Your password has been reset successfully!')
             : back()->withErrors(['email' => [__($status)]]);
+    }
+
+    /**
+     * Show password change form (for temporary password)
+     */
+    public function showChangePassword()
+    {
+        $contact = Auth::guard('contact')->user();
+
+        if (!$contact || !$contact->password_change_required) {
+            return redirect()->route('portal.dashboard');
+        }
+
+        return Inertia::render('Contact/ChangePassword');
+    }
+
+    /**
+     * Change password (for temporary password)
+     */
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required',
+            'password' => 'required|confirmed|min:8',
+        ]);
+
+        $contact = Auth::guard('contact')->user();
+
+        if (!$contact) {
+            return redirect()->route('portal.login');
+        }
+
+        // Verify current password
+        if (!Hash::check($request->current_password, $contact->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['The current password is incorrect.'],
+            ]);
+        }
+
+        // Update password and clear the flag
+        $contact->update([
+            'password' => Hash::make($request->password),
+            'password_change_required' => false,
+        ]);
+
+        return redirect()->route('portal.dashboard')->with('status', 'Your password has been changed successfully!');
     }
 }

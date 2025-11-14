@@ -24,6 +24,7 @@ use App\Http\Requests\StoreBookingPaymentRequest;
 use App\Http\Requests\UploadBookingContractRequest;
 use App\Http\Requests\BookingContact as BookingContactRequest;
 use App\Services\BookingActivityService;
+use App\Services\ContactPortalService;
 use App\Notifications\ContactPortalAccessGranted;
 
 class BookingsController extends Controller
@@ -471,7 +472,7 @@ class BookingsController extends Controller
         ]);
 
         $contact = Contacts::findOrFail($data['contact_id']);
-        
+
         // Verify contact belongs to this booking
         if (!$booking->contacts->contains($contact->id)) {
             abort(403, 'Contact not associated with this booking.');
@@ -484,35 +485,24 @@ class BookingsController extends Controller
             ]);
         }
 
-        // Generate a temporary password
-        $temporaryPassword = \Str::random(16);
-        
-        // Update contact with login access
-        $contact->update([
-            'password' => \Hash::make($temporaryPassword),
-            'can_login' => true,
-        ]);
+        // Use ContactPortalService to grant access (handles password generation, flag setting, and notification)
+        $portalService = new ContactPortalService();
 
-        // Send email notification with credentials
         try {
-            $contact->notify(new ContactPortalAccessGranted(
-                $temporaryPassword,
-                $booking->name,
-                $band->name
-            ));
-            
+            $portalService->grantPortalAccess($contact, $booking);
+
             return redirect()->back()->with([
                 'successMessage' => 'Portal access enabled for ' . $contact->name . '. An email with login instructions has been sent.',
             ]);
         } catch (\Exception $e) {
-            // Log the error but still consider it a success
-            \Log::error('Failed to send portal access email', [
+            // Log the error and return error message
+            \Log::error('Failed to grant portal access', [
                 'contact_id' => $contact->id,
                 'error' => $e->getMessage()
             ]);
-            
+
             return redirect()->back()->with([
-                'warningMessage' => 'Portal access enabled for ' . $contact->name . ', but the email could not be sent. Please contact them directly.',
+                'errorMessage' => 'Failed to enable portal access for ' . $contact->name . '. Please try again.',
             ]);
         }
     }
