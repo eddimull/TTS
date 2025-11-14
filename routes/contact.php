@@ -37,6 +37,10 @@ Route::middleware('auth:contact')->group(function () {
     Route::get('/dashboard', [ContactPortalController::class, 'dashboard'])->name('portal.dashboard');
     Route::post('/logout', [ContactAuthController::class, 'logout'])->name('portal.logout');
 
+    // Password change (for temporary passwords)
+    Route::get('/change-password', [ContactAuthController::class, 'showChangePassword'])->name('portal.password.change');
+    Route::post('/change-password', [ContactAuthController::class, 'changePassword']);
+
     // Payment routes
     Route::get('/booking/{booking}/payment', [ContactPortalController::class, 'showPayment'])->name('portal.booking.payment');
     Route::post('/booking/{booking}/checkout', [ContactPortalController::class, 'createCheckoutSession'])->name('portal.booking.checkout');

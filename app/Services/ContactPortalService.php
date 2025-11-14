@@ -72,6 +72,7 @@ class ContactPortalService
         $contact->update([
             'password' => Hash::make($temporaryPassword),
             'can_login' => true,
+            'password_change_required' => true,
         ]);
 
         // Send email notification with credentials
