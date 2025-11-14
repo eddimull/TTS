@@ -426,4 +426,161 @@ class BookingsControllerTest extends TestCase
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'application/pdf');
     }
+
+    public function test_enabling_portal_access_sets_password_change_required_flag()
+    {
+        $contact = Contacts::factory()->create([
+            'band_id' => $this->band->id,
+            'email' => 'test@example.com',
+            'can_login' => false,
+        ]);
+
+        $this->booking->contacts()->attach($contact, ['role' => 'Client']);
+
+        $response = $this->actingAs($this->owner)->post(
+            route('booking.contact.enablePortal', [$this->band, $this->booking]),
+            ['contact_id' => $contact->id]
+        );
+
+        $response->assertRedirect();
+        $response->assertSessionHas('successMessage');
+
+        // Verify the contact now has portal access
+        $contact->refresh();
+        $this->assertTrue($contact->can_login);
+        $this->assertTrue($contact->password_change_required);
+        $this->assertNotNull($contact->password);
+    }
+
+    public function test_enabling_portal_access_sends_notification()
+    {
+        \Notification::fake();
+
+        $contact = Contacts::factory()->create([
+            'band_id' => $this->band->id,
+            'email' => 'test@example.com',
+            'can_login' => false,
+        ]);
+
+        $this->booking->contacts()->attach($contact, ['role' => 'Client']);
+
+        $response = $this->actingAs($this->owner)->post(
+            route('booking.contact.enablePortal', [$this->band, $this->booking]),
+            ['contact_id' => $contact->id]
+        );
+
+        $response->assertRedirect();
+
+        // Assert notification was sent
+        \Notification::assertSentTo(
+            $contact,
+            \App\Notifications\ContactPortalAccessGranted::class
+        );
+    }
+
+    public function test_cannot_enable_portal_access_for_contact_not_on_booking()
+    {
+        $otherContact = Contacts::factory()->create([
+            'band_id' => $this->band->id,
+            'can_login' => false,
+        ]);
+
+        // Contact not attached to booking
+        $response = $this->actingAs($this->owner)->post(
+            route('booking.contact.enablePortal', [$this->band, $this->booking]),
+            ['contact_id' => $otherContact->id]
+        );
+
+        $response->assertStatus(403);
+
+        // Verify contact still doesn't have access
+        $otherContact->refresh();
+        $this->assertFalse($otherContact->can_login);
+    }
+
+    public function test_end_to_end_portal_access_and_login_flow()
+    {
+        \Notification::fake();
+
+        // Step 1: Create a contact and attach to booking
+        $contact = Contacts::factory()->create([
+            'band_id' => $this->band->id,
+            'email' => 'newcontact@example.com',
+            'can_login' => false,
+        ]);
+
+        $this->booking->contacts()->attach($contact, ['role' => 'Client']);
+
+        // Step 2: Band owner enables portal access
+        $response = $this->actingAs($this->owner)->post(
+            route('booking.contact.enablePortal', [$this->band, $this->booking]),
+            ['contact_id' => $contact->id]
+        );
+
+        $response->assertRedirect();
+        $response->assertSessionHas('successMessage');
+
+        // Step 3: Verify contact has access and password_change_required flag set by the application
+        $contact->refresh();
+        $this->assertTrue($contact->can_login);
+        $this->assertTrue($contact->password_change_required);
+        $this->assertNotNull($contact->password);
+
+        // Step 4: Capture the temporary password from the notification using reflection
+        \Notification::assertSentTo(
+            $contact,
+            \App\Notifications\ContactPortalAccessGranted::class,
+            function ($notification) use (&$temporaryPassword) {
+                // Use reflection to access protected property
+                $reflection = new \ReflectionClass($notification);
+                $property = $reflection->getProperty('temporaryPassword');
+                $property->setAccessible(true);
+                $temporaryPassword = $property->getValue($notification);
+                return true;
+            }
+        );
+
+        $this->assertNotNull($temporaryPassword, 'Temporary password should be captured from notification');
+
+        // Step 5: Log out any existing sessions and clear auth
+        auth()->guard('contact')->logout();
+        auth()->guard('web')->logout();
+
+        // Step 6: Contact attempts to log in with temporary password from notification
+        $loginResponse = $this->post(route('portal.login'), [
+            'email' => 'newcontact@example.com',
+            'password' => $temporaryPassword,
+        ]);
+
+        // Step 7: Should be redirected to password change page, NOT dashboard
+        $loginResponse->assertRedirect(route('portal.password.change'));
+        $this->assertAuthenticatedAs($contact, 'contact');
+
+        // Step 7: Contact changes their password
+        $changePasswordResponse = $this->actingAs($contact, 'contact')->post(route('portal.password.change'), [
+            'current_password' => $temporaryPassword,
+            'password' => 'mynewsecurepassword123',
+            'password_confirmation' => 'mynewsecurepassword123',
+        ]);
+
+        // Step 8: After changing password, should be redirected to dashboard
+        $changePasswordResponse->assertRedirect(route('portal.dashboard'));
+
+        // Step 9: Verify password was changed and flag was cleared
+        $contact->refresh();
+        $this->assertTrue(\Hash::check('mynewsecurepassword123', $contact->password));
+        $this->assertFalse($contact->password_change_required);
+
+        // Step 10: Logout and log back in with new password - should go straight to dashboard
+        $this->post(route('portal.logout'));
+        $this->assertGuest('contact');
+
+        $secondLoginResponse = $this->post(route('portal.login'), [
+            'email' => 'newcontact@example.com',
+            'password' => 'mynewsecurepassword123',
+        ]);
+
+        // Should go to dashboard now, not password change page
+        $secondLoginResponse->assertRedirect(route('portal.dashboard'));
+    }
 }
