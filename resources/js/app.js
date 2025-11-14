@@ -9,6 +9,7 @@ import VueSweetalert2 from 'vue-sweetalert2';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ZiggyVue } from 'ziggy-js';
 import moment from 'moment';
+import * as Sentry from "@sentry/vue";
 import CardModal from '@/Components/CardModal'
 import Card from '@/Components/Card'
 import Accordion from 'primevue/accordion';
@@ -62,6 +63,28 @@ createInertiaApp({
     resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
     setup({ el, App, props, plugin }) {
         const app = createApp({ render: () => h(App, props) });
+
+        // Initialize Sentry for frontend error tracking
+        if (import.meta.env.VITE_SENTRY_DSN) {
+            Sentry.init({
+                app,
+                dsn: import.meta.env.VITE_SENTRY_DSN,
+                environment: import.meta.env.VITE_APP_ENV || 'production',
+                integrations: [
+                    Sentry.browserTracingIntegration(),
+                    Sentry.replayIntegration({
+                        maskAllText: false,
+                        blockAllMedia: false,
+                    }),
+                ],
+                // Performance Monitoring
+                tracesSampleRate: 1.0, // Capture 100% of transactions (adjust for production)
+                // Session Replay
+                replaysSessionSampleRate: 0.1, // 10% of sessions
+                replaysOnErrorSampleRate: 1.0, // 100% of sessions with errors
+                enableLogs: true
+            });
+        }
 
         app.component('BreezeAuthenticatedLayout', BreezeAuthenticatedLayout)
         app.use(plugin)

@@ -92,6 +92,8 @@ jobs:
           key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}
 
       - name: Build assets
+        env:
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
         run: npm run build
 
       - name: Archive production artifacts
