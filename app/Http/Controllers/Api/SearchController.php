@@ -29,22 +29,25 @@ class SearchController extends Controller
             $results = $this->searchService->search($query);
             $bookingsFromContacts = $this->extractBookingsFromContacts($results['contacts'] ?? collect());
             $contactsFromBookings = $this->extractContactsFromBookings($results['bookings'] ?? collect());
-            
+
             $allBookings = collect($results['bookings'] ?? [])
                 ->merge($bookingsFromContacts)
                 ->unique('id')
                 ->values();
-            
+
             $allContacts = collect($results['contacts'] ?? [])
                 ->merge($contactsFromBookings)
                 ->unique('id')
                 ->values();
-            
+
             $results['bookings'] = $allBookings;
             $results['contacts'] = $allContacts;
 
             $results = $this->filterResultsForUsersBand($results);
-            
+
+            // Log search query with results metadata
+            $this->logSearch($query, $results);
+
             // If no results found, return an empty array
             if (empty($results)) {
                 return response()->json([]);
@@ -93,5 +96,27 @@ class SearchController extends Controller
         }
 
         return $results;
+    }
+
+    private function logSearch(string $query, array $results): void
+    {
+        $resultCounts = [];
+        $totalResults = 0;
+
+        foreach ($results as $type => $items) {
+            $count = $items->count();
+            $resultCounts[$type] = $count;
+            $totalResults += $count;
+        }
+
+        activity('search')
+            ->causedBy(Auth::user())
+            ->withProperties([
+                'query' => $query,
+                'total_results' => $totalResults,
+                'results_by_type' => $resultCounts,
+                'has_results' => $totalResults > 0,
+            ])
+            ->log('User performed search');
     }
 }
