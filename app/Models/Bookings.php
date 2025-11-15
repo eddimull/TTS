@@ -58,6 +58,10 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         'is_paid',
     ];
 
+    protected $hidden = [
+        'payment_total_cents', // Internal field used for SQL aggregation, not for API responses
+    ];
+
     public function band()
     {
         return $this->belongsTo(Bands::class);
@@ -111,9 +115,10 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
 
     public function getIsPaidAttribute()
     {
-        $totalPayments = $this->payments()->where('status', 'paid')->sum('amount');
-        // Convert cents to dollars for comparison (price is already cast to dollars)
-        return ($totalPayments / 100) >= $this->price;
+        // Use the amount_paid accessor which handles both SQL aggregation and lazy loading
+        $amountPaid = is_string($this->amount_paid) ? floatval($this->amount_paid) : $this->amount_paid;
+        $price = is_string($this->price) ? floatval($this->price) : $this->price;
+        return $amountPaid >= $price;
     }
 
     public function eventType()
@@ -140,6 +145,13 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
 
     public function getAmountPaidAttribute($value = null)
     {
+        // If payment_total_cents was pre-calculated (e.g., from search aggregation),
+        // use it to avoid N+1 queries
+        if (array_key_exists('payment_total_cents', $this->attributes)) {
+            $rawValue = $this->attributes['payment_total_cents'];
+            return number_format($rawValue / 100, 2, '.', '');
+        }
+
         // If amount_paid was selected in the query (e.g., from scopeUnpaid or scopePaid),
         // the raw value is in cents and needs to be formatted like the Price cast does
         if (array_key_exists('amount_paid', $this->attributes)) {
