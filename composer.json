@@ -26,6 +26,7 @@
         "spatie/browsershot": "^4.0|^5.0",
         "spatie/laravel-activitylog": "^4.10",
         "spatie/laravel-google-calendar": "^3.8",
+        "spatie/laravel-permission": "^6.23",
         "spatie/laravel-webhook-client": "^3.4",
         "stripe/stripe-php": "^15.8",
         "symfony/http-client": "^7.1",
