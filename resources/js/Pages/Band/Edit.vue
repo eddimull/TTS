@@ -176,6 +176,9 @@ export default {
         }, {
           name: 'Calendar Access',
           icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>'
+        }, {
+          name: 'API Tokens',
+          icon: '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>'
         }],
       form: {
         name: this.band.name,
@@ -232,13 +235,21 @@ export default {
         'calendar': 'Calendar Access',
         'calendars': 'Calendar Access',
         'calendar access': 'Calendar Access',
-        'access': 'Calendar Access'
+        'access': 'Calendar Access',
+        'api-tokens': 'API Tokens',
+        'api tokens': 'API Tokens',
+        'tokens': 'API Tokens'
       };
       
       return settingToPanelMap[this.setting.toLowerCase()] || 'Details';
     },
     gotoPage(pageName) {
-      this.$inertia.visit(`/bands/${this.band.id}/edit/${pageName}`);
+      // API Tokens has its own route
+      if (pageName === 'api tokens') {
+        this.$inertia.visit(route('bands.apiTokens', this.band.id));
+      } else {
+        this.$inertia.visit(`/bands/${this.band.id}/edit/${pageName}`);
+      }
     },
 
     // Form update methods
