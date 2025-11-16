@@ -8,6 +8,9 @@ use App\Http\Controllers\ContractsController;
 use App\Http\Controllers\EventTypeController;
 use App\Http\Controllers\StripeWebhookController;
 use App\Http\Controllers\Api\SearchController;
+use App\Http\Controllers\Api\BookedDatesController;
+use App\Http\Controllers\Api\BookingsController;
+use App\Http\Controllers\Api\EventsController;
 use App\Http\Controllers\ChartsController;
 use App\Http\Controllers\RehearsalController;
 
@@ -42,6 +45,45 @@ Route::middleware(['web', 'auth'])->group(function () {
 Route::post('/searchLocations', [LocationController::class, 'searchLocations'])->name('searchLocations');
 Route::post('/getLocationDetails', [LocationController::class, 'getLocationDetails'])->name('getLocationDetails');
 Route::get('/contracts/{contract:envelope_id}/history', [ContractsController::class, 'getHistory'])->name('getContractHistory');
+
+// Band API routes (token-authenticated)
+Route::middleware(['band.api'])->group(function () {
+    // Booked Dates - Read Bookings
+    Route::get('/booked-dates', [BookedDatesController::class, 'index'])
+        ->middleware('api.permission:api:read-bookings')
+        ->name('api.booked-dates');
+
+    // Events - Read
+    Route::get('/events', [EventsController::class, 'index'])
+        ->middleware('api.permission:api:read-events')
+        ->name('api.events.index');
+
+    // Bookings - Read
+    Route::get('/bookings', [BookingsController::class, 'index'])
+        ->middleware('api.permission:api:read-bookings')
+        ->name('api.bookings.index');
+
+    Route::get('/bookings/{id}', [BookingsController::class, 'show'])
+        ->middleware('api.permission:api:read-bookings')
+        ->name('api.bookings.show');
+
+    // Bookings - Write
+    Route::post('/bookings', [BookingsController::class, 'store'])
+        ->middleware('api.permission:api:write-bookings')
+        ->name('api.bookings.store');
+
+    Route::put('/bookings/{id}', [BookingsController::class, 'update'])
+        ->middleware('api.permission:api:write-bookings')
+        ->name('api.bookings.update');
+
+    Route::patch('/bookings/{id}', [BookingsController::class, 'update'])
+        ->middleware('api.permission:api:write-bookings')
+        ->name('api.bookings.patch');
+
+    Route::delete('/bookings/{id}', [BookingsController::class, 'destroy'])
+        ->middleware('api.permission:api:write-bookings')
+        ->name('api.bookings.destroy');
+});
 // });
 
 
