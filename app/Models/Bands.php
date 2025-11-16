@@ -219,6 +219,16 @@ class Bands extends Model
         return $this->hasMany(BandPaymentGroup::class, 'band_id')->where('is_active', true)->orderBy('display_order');
     }
 
+    public function apiTokens()
+    {
+        return $this->hasMany(BandApiToken::class, 'band_id')->orderBy('created_at', 'desc');
+    }
+
+    public function activeApiTokens()
+    {
+        return $this->apiTokens()->where('is_active', true);
+    }
+
     /**
      * Check if a user has access to any of this band's calendars
      */

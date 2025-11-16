@@ -6,6 +6,7 @@ use App\Http\Controllers\BandsController;
 use App\Http\Controllers\InvitationsController;
 use App\Http\Controllers\BandCalendarController;
 use App\Http\Controllers\CalendarAccessController;
+use App\Http\Controllers\BandApiTokenController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('bands')->group(function () {
@@ -21,7 +22,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{band}/uploadLogo', [BandsController::class, 'uploadLogo'])->middleware(['owner'])->name('bands.uploadLogo');
         Route::get('/{band}/setupStripe', [BandsController::class, 'setupStripe'])->middleware(['owner'])->name('bands.setupStripe');
         Route::post('/{band}/syncBandCalendarAccess', [BandsController::class, 'syncBandCalendarAccess'])->middleware(['owner'])->name('bands.syncBandCalendarAccess');
-        
+
+        // API Token Management
+        Route::get('/{band}/api-tokens', [BandApiTokenController::class, 'index'])->middleware(['owner'])->name('bands.apiTokens');
+        Route::post('/{band}/api-tokens', [BandApiTokenController::class, 'store'])->middleware(['owner'])->name('bands.apiTokens.store');
+        Route::post('/{band}/api-tokens/dismiss', [BandApiTokenController::class, 'dismissNewToken'])->middleware(['owner'])->name('bands.apiTokens.dismiss');
+        Route::post('/{band}/api-tokens/{token}/toggle', [BandApiTokenController::class, 'toggle'])->middleware(['owner'])->name('bands.apiTokens.toggle');
+        Route::delete('/{band}/api-tokens/{token}', [BandApiTokenController::class, 'destroy'])->middleware(['owner'])->name('bands.apiTokens.destroy');
     });
     
     Route::post('/grantCalendarAccess/{calendar_id}', [CalendarAccessController::class, 'create'])->middleware(['CalendarOwner'])->name('bands.grantCalendarAccess');
