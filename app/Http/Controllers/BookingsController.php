@@ -174,6 +174,21 @@ class BookingsController extends Controller
         $activityService = new \App\Services\BookingActivityService();
         $recentActivities = $activityService->getBookingTimeline($booking)->take(10);
         
+        // Load active payout configuration and calculate payouts
+        $payoutConfig = null;
+        $payoutResult = null;
+        
+        if ($booking->price > 0) {
+            $payoutConfig = \App\Models\BandPayoutConfig::where('band_id', $band->id)
+                ->where('is_active', true)
+                ->with(['band.paymentGroups.users'])
+                ->first();
+            
+            if ($payoutConfig) {
+                $payoutResult = $payoutConfig->calculatePayouts($booking->price);
+            }
+        }
+        
         return Inertia::render('Bookings/Show', [
             'booking' => $booking,
             'band' => $band,
@@ -182,6 +197,8 @@ class BookingsController extends Controller
             'events' => $booking->events,
             'contract' => $booking->contract,
             'recentActivities' => $recentActivities,
+            'payoutConfig' => $payoutConfig,
+            'payoutResult' => $payoutResult,
         ]);
     }
 
@@ -429,6 +446,61 @@ class BookingsController extends Controller
      * @param  Bookings  $booking
      * @return \Inertia\Response
      */
+    public function payout(Bands $band, Bookings $booking)
+    {
+        // Load booking with necessary relationships
+        $booking->load('band', 'eventType', 'payout.adjustments');
+        
+        // Get or create payout record
+        $payout = $booking->payout;
+        if (!$payout) {
+            // Create initial payout record
+            // booking->price is already formatted as dollars (string), Price cast will convert to cents
+            $baseAmount = is_string($booking->price) 
+                ? floatval($booking->price) 
+                : $booking->price;
+            
+            $payout = $booking->payout()->create([
+                'band_id' => $band->id,
+                'base_amount' => $baseAmount,
+                'adjusted_amount' => $baseAmount,
+            ]);
+        }
+        
+        // Calculate adjusted total for payout
+        $adjustedTotal = $payout->adjusted_amount_float;
+        
+        // Load active payout configuration and calculate payouts
+        $payoutConfig = null;
+        $payoutResult = null;
+        
+        if ($adjustedTotal > 0) {
+            $payoutConfig = \App\Models\BandPayoutConfig::where('band_id', $band->id)
+                ->where('is_active', true)
+                ->with(['band.paymentGroups.users'])
+                ->first();
+            
+            if ($payoutConfig) {
+                $payoutResult = $payoutConfig->calculatePayouts($adjustedTotal);
+                
+                // Store calculation result in payout record
+                $payout->payout_config_id = $payoutConfig->id;
+                $payout->calculation_result = $payoutResult;
+                $payout->save();
+            }
+        }
+        
+        return Inertia::render('Bookings/Payout', [
+            'booking' => $booking,
+            'band' => $band,
+            'payoutConfig' => $payoutConfig,
+            'payoutResult' => $payoutResult,
+            'payout' => $payout,
+            'adjustments' => $payout->adjustments ?? [],
+            'adjustedTotal' => $adjustedTotal,
+        ]);
+    }
+
     public function history(Bands $band, Bookings $booking)
     {
         $activityService = new BookingActivityService();
@@ -551,5 +623,90 @@ class BookingsController extends Controller
         return response()->json([
             'activities' => $activities,
         ]);
+    }
+
+    /**
+     * Store a new payout adjustment
+     */
+    public function storePayoutAdjustment(Request $request, Bands $band, Bookings $booking)
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric',
+            'description' => 'required|string|max:255',
+            'notes' => 'nullable|string',
+        ]);
+
+        // Get or create payout record
+        $payout = $booking->payout;
+        if (!$payout) {
+            $baseAmount = is_string($booking->price) 
+                ? floatval($booking->price) 
+                : $booking->price;
+            
+            $payout = $booking->payout()->create([
+                'band_id' => $band->id,
+                'base_amount' => $baseAmount,
+                'adjusted_amount' => $baseAmount,
+            ]);
+        }
+
+        // Amount is in dollars, Price cast will convert to cents for storage
+        $adjustment = $payout->adjustments()->create([
+            'amount' => $validated['amount'],
+            'description' => $validated['description'],
+            'notes' => $validated['notes'] ?? null,
+            'created_by' => Auth::id(),
+        ]);
+
+        // Recalculate adjusted amount
+        $payout->recalculateAdjustedAmount();
+
+        activity()
+            ->performedOn($booking)
+            ->causedBy(Auth::user())
+            ->withProperties([
+                'adjustment_id' => $adjustment->id,
+                'amount' => $validated['amount'],
+                'description' => $validated['description'],
+            ])
+            ->log('payout_adjustment_added');
+
+        return redirect()->back()->with('successMessage', 'Payout adjustment added successfully');
+    }
+
+    /**
+     * Delete a payout adjustment
+     */
+    public function destroyPayoutAdjustment(Bands $band, Bookings $booking, \App\Models\PayoutAdjustment $adjustment)
+    {
+        // Get the booking's payout
+        $payout = $booking->payout;
+        if (!$payout) {
+            abort(404, 'Payout not found');
+        }
+
+        // Verify the adjustment belongs to this payout
+        if ($adjustment->payout_id !== $payout->id) {
+            abort(403, 'Adjustment does not belong to this booking payout');
+        }
+
+        $amount = $adjustment->amount;
+        $description = $adjustment->description;
+
+        $adjustment->delete();
+
+        // Recalculate adjusted amount
+        $payout->recalculateAdjustedAmount();
+
+        activity()
+            ->performedOn($booking)
+            ->causedBy(Auth::user())
+            ->withProperties([
+                'amount' => $amount,
+                'description' => $description,
+            ])
+            ->log('payout_adjustment_removed');
+
+        return redirect()->back()->with('successMessage', 'Payout adjustment removed successfully');
     }
 }

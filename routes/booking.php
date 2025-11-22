@@ -94,6 +94,10 @@ Route::middleware(['auth', 'verified'])->group(function ()
         ->name('Delete Booking Event')
         ->middleware('booking.access');
 
+    Route::get('bands/{band}/booking/{booking}/payout', [BookingsController::class, 'payout'])
+        ->name('Booking Payout')
+        ->middleware('booking.access');
+
     Route::get('bands/{band}/booking/{booking}/history', [BookingsController::class, 'history'])
         ->name('bookings.history')
         ->middleware('booking.access');
@@ -108,6 +112,14 @@ Route::middleware(['auth', 'verified'])->group(function ()
 
     Route::post('bands/{band}/booking/{booking}/contacts/disable-portal', [BookingsController::class, 'disableContactPortalAccess'])
         ->name('booking.contact.disablePortal')
+        ->middleware('booking.access');
+
+    Route::post('bands/{band}/booking/{booking}/payout/adjustments', [BookingsController::class, 'storePayoutAdjustment'])
+        ->name('booking.payout.storeAdjustment')
+        ->middleware('booking.access');
+
+    Route::delete('bands/{band}/booking/{booking}/payout/adjustments/{adjustment}', [BookingsController::class, 'destroyPayoutAdjustment'])
+        ->name('booking.payout.destroyAdjustment')
         ->middleware('booking.access');
 });
 Route::get('{booking}/downloadReceiptPDF', [BookingsController::class, 'paymentPDF'])->name('bookingpaymentpdf');
