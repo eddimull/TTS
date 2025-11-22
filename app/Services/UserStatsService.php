@@ -52,7 +52,7 @@ class UserStatsService
             // Get all bookings for this band after the user joined
             $bookings = \App\Models\Bookings::where('band_id', $band->id)
                 ->where('date', '>=', $joinDate)
-                ->whereIn('status', ['confirmed']) // Only count actual bookings
+                ->whereIn('status', ['confirmed', 'pending']) // Only count confirmed and pending bookings
                 ->orderBy('date', 'desc')
                 ->get();
 
