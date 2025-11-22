@@ -28,12 +28,6 @@
                 Dashboard
               </breeze-nav-link>
               <breeze-nav-link
-                :href="route('bands')"
-                :active="route().current('bands')"
-              >
-                Bands
-              </breeze-nav-link>
-              <breeze-nav-link
                 v-if="navigation && navigation.Bookings && navigation.Bookings.read"
                 :href="route('Bookings Home')"
                 :active="
@@ -245,6 +239,20 @@
                     Account
                   </breeze-dropdown-link>
                   <breeze-dropdown-link
+                    :href="route('bands')"
+                    method="get"
+                    as="button"
+                  >
+                    Bands
+                  </breeze-dropdown-link>
+                  <breeze-dropdown-link
+                    :href="route('stats')"
+                    method="get"
+                    as="button"
+                  >
+                    Stats
+                  </breeze-dropdown-link>
+                  <breeze-dropdown-link
                     :href="route('logout')"
                     method="post"
                     as="button"
@@ -435,12 +443,6 @@
             Dashboard
           </breeze-responsive-nav-link>
           <breeze-responsive-nav-link
-            :href="route('bands')"
-            :active="route().current('bands')"
-          >
-            Bands
-          </breeze-responsive-nav-link>
-          <breeze-responsive-nav-link
             v-if="navigation && navigation.Events && navigation.Events.read"
             :href="route('events')"
             :active="route().current('events')"
@@ -500,6 +502,20 @@
               as="button"
             >
               Account
+            </breeze-dropdown-link>
+            <breeze-dropdown-link
+              :href="route('bands')"
+              method="get"
+              as="button"
+            >
+              Bands
+            </breeze-dropdown-link>
+            <breeze-dropdown-link
+              :href="route('stats')"
+              method="get"
+              as="button"
+            >
+              Stats
             </breeze-dropdown-link>
             <breeze-responsive-nav-link
               :href="route('logout')"

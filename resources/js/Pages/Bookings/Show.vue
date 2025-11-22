@@ -4,6 +4,8 @@
     :booking="booking"
     :band="band"
     :recent-activities="recentActivities"
+    :payout-config="payoutConfig"
+    :payout-result="payoutResult"
   />
   <BookingForm
     v-else
@@ -35,6 +37,14 @@ const props = defineProps({
   recentActivities: {
     type: Array,
     default: () => [],
+  },
+  payoutConfig: {
+    type: Object,
+    default: null,
+  },
+  payoutResult: {
+    type: Object,
+    default: null,
   },
 })
 

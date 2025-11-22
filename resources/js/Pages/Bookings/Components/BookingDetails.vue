@@ -116,6 +116,15 @@
         </div>
       </div>
 
+      <!-- Payout Section (if available) -->
+      <BookingPayout
+        v-if="payoutConfig"
+        :booking="booking"
+        :band="band"
+        :payout-config="payoutConfig"
+        :payout-result="payoutResult"
+      />
+
       <!-- Three Column Layout for Contacts, Payments, Events -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <!-- Contacts Section -->
@@ -432,6 +441,7 @@ import { computed } from 'vue'
 import { router, Link } from '@inertiajs/vue3'
 import Container from '@/Components/Container.vue'
 import Button from 'primevue/button'
+import BookingPayout from './BookingPayout.vue'
 import { useStore } from 'vuex'
 import { DateTime } from 'luxon'
 
@@ -447,6 +457,14 @@ const props = defineProps({
   recentActivities: {
     type: Array,
     default: () => []
+  },
+  payoutConfig: {
+    type: Object,
+    default: null
+  },
+  payoutResult: {
+    type: Object,
+    default: null
   }
 })
 
