@@ -30,7 +30,7 @@ class UserStatsServiceTest extends TestCase
         $this->band = Bands::factory()->create();
     }
 
-    public function it_calculates_user_join_date_from_band_owner_pivot()
+    public function test_it_calculates_user_join_date_from_band_owner_pivot()
     {
         $joinDate = Carbon::now()->subMonths(6);
 
@@ -52,7 +52,7 @@ class UserStatsServiceTest extends TestCase
     }
 
     
-    public function it_calculates_user_join_date_from_band_member_pivot()
+    public function test_it_calculates_user_join_date_from_band_member_pivot()
     {
         $joinDate = Carbon::now()->subMonths(3);
 
@@ -74,7 +74,7 @@ class UserStatsServiceTest extends TestCase
     }
 
     
-    public function it_uses_earliest_join_date_when_user_is_both_owner_and_member()
+    public function test_it_uses_earliest_join_date_when_user_is_both_owner_and_member()
     {
         $ownerDate = Carbon::now()->subMonths(6);
         $memberDate = Carbon::now()->subMonths(3);
@@ -105,7 +105,7 @@ class UserStatsServiceTest extends TestCase
     }
 
     
-    public function it_calculates_equal_split_when_no_payout_config_exists()
+    public function test_it_calculates_equal_split_when_no_payout_config_exists()
     {
         // Add user as owner
         DB::table('band_owners')->insert([
@@ -143,7 +143,7 @@ class UserStatsServiceTest extends TestCase
     }
 
     
-    public function it_calculates_share_using_payment_group_configuration()
+    public function test_it_calculates_share_using_payment_group_configuration()
     {
         // Add user as member
         DB::table('band_members')->insert([
@@ -206,7 +206,7 @@ class UserStatsServiceTest extends TestCase
     }
 
     
-    public function it_only_counts_bookings_after_user_join_date()
+    public function test_it_only_counts_bookings_after_user_join_date()
     {
         $joinDate = Carbon::now()->subMonths(2);
 
@@ -241,7 +241,7 @@ class UserStatsServiceTest extends TestCase
     }
 
     
-    public function it_only_counts_confirmed_and_pending_bookings()
+    public function test_it_only_counts_confirmed_and_pending_bookings()
     {
         $joinDate = Carbon::now()->subMonth();
 
@@ -289,7 +289,7 @@ class UserStatsServiceTest extends TestCase
     }
 
     
-    public function it_aggregates_earnings_by_year_correctly()
+    public function test_it_aggregates_earnings_by_year_correctly()
     {
         DB::table('band_members')->insert([
             'user_id' => $this->user->id,
@@ -335,7 +335,7 @@ class UserStatsServiceTest extends TestCase
     }
 
     
-    public function it_aggregates_earnings_by_band_correctly()
+    public function test_it_aggregates_earnings_by_band_correctly()
     {
         $band2 = Bands::factory()->create();
 
@@ -385,7 +385,7 @@ class UserStatsServiceTest extends TestCase
     }
 
     
-    public function it_returns_zero_earnings_when_user_not_in_payment_group()
+    public function test_it_returns_zero_earnings_when_user_not_in_payment_group()
     {
         DB::table('band_members')->insert([
             'user_id' => $this->user->id,
@@ -441,7 +441,7 @@ class UserStatsServiceTest extends TestCase
     }
 
     
-    public function it_returns_empty_stats_when_user_not_in_any_bands()
+    public function test_it_returns_empty_stats_when_user_not_in_any_bands()
     {
         $service = new UserStatsService($this->user);
         $stats = $service->getUserStats();
