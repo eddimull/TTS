@@ -8,6 +8,7 @@
       >
         Rehearsal Notes:
         <div
+          ref="rehearsalNotesRef"
           class="ml-3 p-3 shadow-lg rounded break-normal content-container bg-gray-100 dark:bg-slate-700"
           v-html="rehearsalNotes"
         />
@@ -200,7 +201,7 @@
                     Performance Notes:
                   </div>
                   <div
-                    class="p-3 bg-white dark:bg-slate-800 rounded border border-gray-200 dark:border-gray-600"
+                    class="p-3 bg-white dark:bg-slate-800 rounded border border-gray-200 dark:border-gray-600 associated-event-notes"
                     v-html="association.associable.additional_data.performance.notes"
                   />
                 </div>
@@ -379,6 +380,7 @@
       >
         Notes:
         <div
+          ref="eventNotesRef"
           class="ml-3 p-3 shadow-lg rounded break-normal content-container bg-gray-100 dark:bg-slate-700"
           v-html="event.notes"
         />
@@ -399,6 +401,7 @@
               Performance Notes:
             </div>
             <div
+              ref="performanceNotesRef"
               class="p-3 shadow-lg rounded break-normal content-container bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700"
               v-html="event.additional_data.performance.notes"
             />
@@ -596,6 +599,7 @@
       <li v-if="event.additional_data?.attire">
         Attire:
         <div
+          ref="attireRef"
           class="ml-3 p-3 shadow-lg rounded break-normal bg-gray-100 dark:bg-slate-700"
           v-html="event.additional_data?.attire"
         />
@@ -603,16 +607,34 @@
       <Contacts :contacts="event.contacts || []" />
     </ul>
   </div>
+
+  <!-- Image Lightbox -->
+  <ImageLightbox
+    :show="showLightbox"
+    :images="lightboxImages"
+    :initial-index="lightboxIndex"
+    @close="closeLightbox"
+  />
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { computed, ref, onMounted, onBeforeUnmount, nextTick } from "vue";
 import Times from "./Components/Times.vue";
 import Wedding from "./Components/Wedding.vue";
 import Contacts from "./Components/Contacts.vue";
-import { find } from "lodash";
+import ImageLightbox from "@/Components/ImageLightbox.vue";
+import { useImageThumbnails } from "@/Composables/useImageThumbnails";
 
 const props = defineProps(["event", "type"]);
+
+// Image thumbnail functionality
+const { showLightbox, lightboxImages, lightboxIndex, processImages, closeLightbox, cleanupImages } = useImageThumbnails();
+
+// Template refs for content containers with images
+const rehearsalNotesRef = ref(null);
+const eventNotesRef = ref(null);
+const performanceNotesRef = ref(null);
+const attireRef = ref(null);
 
 const isVirtual = computed(() => {
   if (!props.event) return false;
@@ -737,4 +759,46 @@ const getSpotifyEmbedUrl = (url) => {
   }
   return url;
 };
+
+// Process images after component is mounted
+onMounted(async () => {
+  await nextTick();
+
+  // Process images in all content containers
+  const containers = [
+    rehearsalNotesRef.value,
+    eventNotesRef.value,
+    performanceNotesRef.value,
+    attireRef.value
+  ];
+
+  // Also process any associated event notes containers
+  const associatedContainers = document.querySelectorAll('.associated-event-notes');
+  associatedContainers.forEach(container => containers.push(container));
+
+  containers.forEach(container => {
+    if (container) {
+      processImages(container);
+    }
+  });
+});
+
+// Cleanup on unmount
+onBeforeUnmount(() => {
+  const containers = [
+    rehearsalNotesRef.value,
+    eventNotesRef.value,
+    performanceNotesRef.value,
+    attireRef.value
+  ];
+
+  const associatedContainers = document.querySelectorAll('.associated-event-notes');
+  associatedContainers.forEach(container => containers.push(container));
+
+  containers.forEach(container => {
+    if (container) {
+      cleanupImages(container);
+    }
+  });
+});
 </script>

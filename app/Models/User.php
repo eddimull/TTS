@@ -55,12 +55,14 @@ class User extends Authenticatable
 
     public function bandOwner()
     {
-        return $this->belongsToMany(Bands::class, 'band_owners', 'user_id', 'band_id');
+        return $this->belongsToMany(Bands::class, 'band_owners', 'user_id', 'band_id')
+            ->withTimestamps();
     }
 
     public function bandMember()
     {
-        return $this->belongsToMany(Bands::class, 'band_members', 'user_id', 'band_id');
+        return $this->belongsToMany(Bands::class, 'band_members', 'user_id', 'band_id')
+            ->withTimestamps();
     }
 
     public function permissionsForBand($id)

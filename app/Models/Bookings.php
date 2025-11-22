@@ -103,6 +103,11 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         return $this->morphMany(Payments::class, 'payable');
     }
 
+    public function payout(): MorphOne
+    {
+        return $this->morphOne(Payout::class, 'payable');
+    }
+
     public function contract(): MorphOne
     {
         return $this->morphOne(Contracts::class, 'contractable');
@@ -175,6 +180,31 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
     public function getAmountLeftAttribute()
     {
         return $this->getAmountDueAttribute();
+    }
+
+    /**
+     * Calculate the total payout amount including adjustments
+     * Returns amount in dollars as a float
+     */
+    public function getAdjustedPayoutTotalAttribute(): float
+    {
+        $basePrice = is_string($this->price) ? floatval($this->price) : $this->price;
+        
+        // If payout exists with adjustments, use adjusted_amount
+        if ($this->relationLoaded('payout') && $this->payout) {
+            return $this->payout->adjusted_amount_float;
+        }
+        
+        // If payout exists in DB but not loaded
+        $payout = $this->payout()->first();
+        if ($payout) {
+            return is_string($payout->adjusted_amount) 
+                ? floatval($payout->adjusted_amount) 
+                : $payout->adjusted_amount;
+        }
+        
+        // No payout record, return base price
+        return $basePrice;
     }
 
     /**

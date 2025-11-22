@@ -28,6 +28,10 @@ Route::get('/dashboard', 'DashboardController@index')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+Route::get('/stats', 'UserStatsController@index')
+    ->middleware(['auth', 'verified'])
+    ->name('stats');
+
 // Public contract viewing route (for PandaDoc and external access with token)
 Route::get('/contracts/{contractId}/public', [App\Http\Controllers\ContractsController::class, 'publicView'])
     ->name('contracts.public.view');
