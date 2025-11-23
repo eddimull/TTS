@@ -37,6 +37,9 @@ class ProcessEventCreated implements ShouldQueue
                     $this->event->storeGoogleEventId($this->event->getPublicGoogleCalendar(), $publicEvent->id);
                 }
             }
+
+            // Calculate distances for all band members
+            CalculateEventDistances::dispatch($this->event);
         } catch (\Exception $e) {
             Log::error('Failed to create event in calendar: ' . $e->getMessage());
         }
