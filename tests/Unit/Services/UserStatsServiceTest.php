@@ -453,4 +453,95 @@ class UserStatsServiceTest extends TestCase
         $this->assertEquals(0, $stats['travel']['total_miles']);
         $this->assertEmpty($stats['locations']);
     }
+
+    
+    public function test_it_calculates_distance_traveled_for_events()
+    {
+        $joinDate = Carbon::now()->subMonths(2);
+
+        DB::table('band_members')->insert([
+            'user_id' => $this->user->id,
+            'band_id' => $this->band->id,
+            'created_at' => $joinDate,
+            'updated_at' => $joinDate,
+        ]);
+
+        // Create a booking with an event
+        $booking = Bookings::factory()->create([
+            'band_id' => $this->band->id,
+            'price' => 1000,
+            'date' => Carbon::now()->subDays(5), // Past event
+            'status' => 'confirmed',
+        ]);
+
+        // Create the event linked to the booking
+        $event = Events::factory()->create([
+            'eventable_type' => 'App\\Models\\Bookings',
+            'eventable_id' => $booking->id,
+            'date' => $booking->date,
+            'time' => '19:00',
+            'title' => $booking->name,
+        ]);
+
+        // Create distance record for this event
+        EventDistanceForMembers::create([
+            'user_id' => $this->user->id,
+            'event_id' => $event->id,
+            'miles' => 150,
+            'minutes' => 180, // 3 hours
+        ]);
+
+        $service = new UserStatsService($this->user);
+        $stats = $service->getUserStats();
+
+        $this->assertEquals(150, $stats['travel']['total_miles']);
+        $this->assertEquals(180, $stats['travel']['total_minutes']);
+        $this->assertEquals(3.0, $stats['travel']['total_hours']);
+        $this->assertEquals(1, $stats['travel']['event_count']);
+    }
+
+    
+    public function test_it_excludes_distance_for_future_events()
+    {
+        $joinDate = Carbon::now()->subMonths(2);
+
+        DB::table('band_members')->insert([
+            'user_id' => $this->user->id,
+            'band_id' => $this->band->id,
+            'created_at' => $joinDate,
+            'updated_at' => $joinDate,
+        ]);
+
+        // Create a booking with a future event
+        $booking = Bookings::factory()->create([
+            'band_id' => $this->band->id,
+            'price' => 1000,
+            'date' => Carbon::now()->addDays(10), // Future event
+            'status' => 'confirmed',
+        ]);
+
+        // Create the event linked to the booking
+        $event = Events::factory()->create([
+            'eventable_type' => 'App\\Models\\Bookings',
+            'eventable_id' => $booking->id,
+            'date' => $booking->date,
+            'time' => '19:00',
+            'title' => $booking->name,
+        ]);
+
+        // Create distance record for this future event
+        EventDistanceForMembers::create([
+            'user_id' => $this->user->id,
+            'event_id' => $event->id,
+            'miles' => 150,
+            'minutes' => 180,
+        ]);
+
+        $service = new UserStatsService($this->user);
+        $stats = $service->getUserStats();
+
+        // Future events should not be counted in travel stats
+        $this->assertEquals(0, $stats['travel']['total_miles']);
+        $this->assertEquals(0, $stats['travel']['total_minutes']);
+    }
 }
