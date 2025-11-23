@@ -31,10 +31,13 @@ class ProcessEventUpdated implements ShouldQueue
     {
         $this->writeToGoogleCalendar($this->event->getGoogleCalendar());
 
-        if ($this->event->additional_data && $this->event->additional_data->public) {
+        if ($this->event->additional_data && is_object($this->event->additional_data) && isset($this->event->additional_data->public) && $this->event->additional_data->public) {
             Log::info('Event is public, writing to public calendar for event ID: ' . $this->event->id);
             $this->writeToGoogleCalendar($this->event->getPublicGoogleCalendar());
         }
+
+        // Recalculate distances if event was updated (venue might have changed)
+        CalculateEventDistances::dispatch($this->event);
 
         $this->SendNotification();
     }
