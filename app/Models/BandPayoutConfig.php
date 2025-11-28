@@ -54,8 +54,11 @@ class BandPayoutConfig extends Model
 
     /**
      * Calculate payout distribution for a given amount
+     * 
+     * @param float $totalAmount The amount to distribute
+     * @param array|null $memberCounts Optional array with ['owners' => int, 'members' => int] to avoid N+1 queries
      */
-    public function calculatePayouts(float $totalAmount): array
+    public function calculatePayouts(float $totalAmount, ?array $memberCounts = null): array
     {
         $result = [
             'total_amount' => $totalAmount,
@@ -140,12 +143,25 @@ class BandPayoutConfig extends Model
         } else {
             // Fallback to old calculation methods
             $memberCount = 0;
-            if ($this->include_owners) {
-                $memberCount += $this->band->owners()->count();
+            
+            // Use cached counts if provided to avoid N+1 queries
+            if ($memberCounts !== null) {
+                if ($this->include_owners) {
+                    $memberCount += $memberCounts['owners'] ?? 0;
+                }
+                if ($this->include_members) {
+                    $memberCount += $memberCounts['members'] ?? 0;
+                }
+            } else {
+                // Fallback to querying (will cause N+1 if used in loops)
+                if ($this->include_owners) {
+                    $memberCount += $this->band->owners()->count();
+                }
+                if ($this->include_members) {
+                    $memberCount += $this->band->members()->count();
+                }
             }
-            if ($this->include_members) {
-                $memberCount += $this->band->members()->count();
-            }
+            
             if ($this->production_member_count > 0) {
                 $memberCount += $this->production_member_count;
             }
@@ -154,10 +170,13 @@ class BandPayoutConfig extends Model
                 switch ($this->member_payout_type) {
                     case 'equal_split':
                         $perMemberAmount = $result['distributable_amount'] / $memberCount;
+                        $ownerCount = $memberCounts !== null ? ($memberCounts['owners'] ?? 0) : $this->band->owners()->count();
+                        $memberOnlyCount = $memberCounts !== null ? ($memberCounts['members'] ?? 0) : $this->band->members()->count();
+                        
                         for ($i = 0; $i < $memberCount; $i++) {
                             $result['member_payouts'][] = [
-                                'type' => $i < $this->band->owners()->count() ? 'owner' : 
-                                         ($i < ($this->band->owners()->count() + $this->band->members()->count()) ? 'member' : 'production'),
+                                'type' => $i < $ownerCount ? 'owner' : 
+                                         ($i < ($ownerCount + $memberOnlyCount) ? 'member' : 'production'),
                                 'amount' => $perMemberAmount,
                                 'payout_type' => 'equal_split',
                             ];
@@ -175,10 +194,13 @@ class BandPayoutConfig extends Model
                                     $perMemberAmount = $applicableTier['value'] / $memberCount;
                                 }
                                 
+                                $ownerCount = $memberCounts !== null ? ($memberCounts['owners'] ?? 0) : $this->band->owners()->count();
+                                $memberOnlyCount = $memberCounts !== null ? ($memberCounts['members'] ?? 0) : $this->band->members()->count();
+                                
                                 for ($i = 0; $i < $memberCount; $i++) {
                                     $result['member_payouts'][] = [
-                                        'type' => $i < $this->band->owners()->count() ? 'owner' : 
-                                                 ($i < ($this->band->owners()->count() + $this->band->members()->count()) ? 'member' : 'production'),
+                                        'type' => $i < $ownerCount ? 'owner' : 
+                                                 ($i < ($ownerCount + $memberOnlyCount) ? 'member' : 'production'),
                                         'amount' => max($perMemberAmount, $this->minimum_payout),
                                         'payout_type' => 'tiered',
                                     ];
