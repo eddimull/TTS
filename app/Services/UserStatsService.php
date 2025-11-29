@@ -40,19 +40,39 @@ class UserStatsService
         $totalBookingCount = 0;
 
         // Get all bands the user owns or is a member of
-        $ownedBands = $this->user->bandOwner()->get();
-        $memberBands = $this->user->bandMember()->get();
+        // Eager load counts and payout configs to avoid N+1 queries in payout calculations
+        $ownedBands = $this->user->bandOwner()
+            ->withCount(['owners', 'members'])
+            ->with('activePayoutConfig')
+            ->get();
+        $memberBands = $this->user->bandMember()
+            ->withCount(['owners', 'members'])
+            ->with('activePayoutConfig')
+            ->get();
 
         $allBands = $ownedBands->merge($memberBands)->unique('id');
+        
+        // Pre-calculate user's membership status and join dates for each band to avoid N+1 queries
+        $userBandStatus = [];
+        $bandJoinDates = [];
+        foreach ($allBands as $band) {
+            $userBandStatus[$band->id] = [
+                'is_owner' => $ownedBands->contains('id', $band->id),
+                'is_member' => $memberBands->contains('id', $band->id),
+            ];
+            $bandJoinDates[$band->id] = $this->getUserJoinDate($band);
+        }
 
         foreach ($allBands as $band) {
-            // Determine user's join date for this band
-            $joinDate = $this->getUserJoinDate($band);
+            // Use cached join date
+            $joinDate = $bandJoinDates[$band->id];
 
             // Get all bookings for this band after the user joined
+            // Eager load payouts to avoid N+1 queries
             $bookings = \App\Models\Bookings::where('band_id', $band->id)
                 ->where('date', '>=', $joinDate)
                 ->whereIn('status', ['confirmed', 'pending']) // Only count confirmed and pending bookings
+                ->with(['payout.adjustments'])
                 ->orderBy('date', 'desc')
                 ->get();
 
@@ -60,7 +80,7 @@ class UserStatsService
 
             foreach ($bookings as $booking) {
                 // Calculate user's share of this booking
-                $userShare = $this->calculateUserShareFromBooking($band, $booking);
+                $userShare = $this->calculateUserShareFromBooking($band, $booking, $userBandStatus[$band->id] ?? []);
 
                 if ($userShare > 0) {
                     $bandTotal += $userShare;
@@ -148,6 +168,16 @@ class UserStatsService
     }
 
     /**
+     * Get all bands the user owns or is a member of
+     */
+    protected function getUserBands()
+    {
+        $ownedBands = $this->user->bandOwner()->get();
+        $memberBands = $this->user->bandMember()->get();
+        return $ownedBands->merge($memberBands)->unique('id');
+    }
+
+    /**
      * Get the user's join date for a specific band
      */
     protected function getUserJoinDate($band): Carbon
@@ -177,16 +207,18 @@ class UserStatsService
 
     /**
      * Calculate the user's share of a booking based on its price
+     * 
+     * @param mixed $band Band model with eager loaded relationships
+     * @param mixed $booking Booking model with eager loaded payout
+     * @param array $userBandStatus Array with ['is_owner' => bool, 'is_member' => bool]
      */
-    protected function calculateUserShareFromBooking($band, $booking): float
+    protected function calculateUserShareFromBooking($band, $booking, array $userBandStatus = []): float
     {
-        // Get the band's payout configuration
-        $payoutConfig = \App\Models\BandPayoutConfig::where('band_id', $band->id)
-            ->where('is_active', true)
-            ->first();
+        // Use eager loaded payout configuration to avoid N+1 query
+        $payoutConfig = $band->activePayoutConfig;
 
-        // Check if booking has a payout with adjustments
-        $payout = $booking->payout()->with('adjustments')->first();
+        // Use eager loaded payout to avoid N+1 query
+        $payout = $booking->payout;
         
         // Use adjusted amount if payout exists, otherwise use base price
         $bookingPrice = $payout 
@@ -195,7 +227,12 @@ class UserStatsService
 
         if ($payoutConfig) {
             // Use the payout config to calculate distribution
-            $distribution = $payoutConfig->calculatePayouts($bookingPrice);
+            // Pass member counts to avoid N+1 queries (use attribute if available, otherwise query)
+            $memberCounts = [
+                'owners' => $band->owners_count ?? (isset($band->owners_count) ? $band->owners_count : $band->owners()->count()),
+                'members' => $band->members_count ?? (isset($band->members_count) ? $band->members_count : $band->members()->count()),
+            ];
+            $distribution = $payoutConfig->calculatePayouts($bookingPrice, $memberCounts);
 
             // Check if payouts have user_ids (payment groups) or not (old equal split)
             $hasUserIds = !empty($distribution['member_payouts']) && isset($distribution['member_payouts'][0]['user_id']);
@@ -213,9 +250,9 @@ class UserStatsService
                 return 0;
             } else {
                 // Old system: payouts by type (owner/member) without user_ids
-                // Check if user is an owner or member and distribute accordingly
-                $isOwner = $band->owners()->where('user_id', $this->user->id)->exists();
-                $isMember = $band->members()->where('user_id', $this->user->id)->exists();
+                // Use pre-calculated status to avoid N+1 queries
+                $isOwner = $userBandStatus['is_owner'] ?? false;
+                $isMember = $userBandStatus['is_member'] ?? false;
 
                 if (!$isOwner && !$isMember) {
                     return 0;
@@ -231,8 +268,12 @@ class UserStatsService
                     return 0;
                 }
 
-                // Count how many users of this type exist
-                $typeCount = $userType === 'owner' ? $band->owners()->count() : $band->members()->count();
+                // Use cached counts to avoid N+1 queries (with fallback for tests)
+                if ($userType === 'owner') {
+                    $typeCount = isset($band->owners_count) ? $band->owners_count : $band->owners()->count();
+                } else {
+                    $typeCount = isset($band->members_count) ? $band->members_count : $band->members()->count();
+                }
 
                 // Sum all payouts for this type and divide by number of users of this type
                 $totalForType = array_sum(array_column($typePayouts, 'amount'));
@@ -242,8 +283,9 @@ class UserStatsService
             }
         } else {
             // No payout config - divide equally among all members
-            $ownerCount = $band->owners()->count();
-            $memberCount = $band->members()->count();
+            // Use cached counts to avoid N+1 queries (with fallback for tests)
+            $ownerCount = isset($band->owners_count) ? $band->owners_count : $band->owners()->count();
+            $memberCount = isset($band->members_count) ? $band->members_count : $band->members()->count();
             $totalMembers = $ownerCount + $memberCount;
 
             if ($totalMembers > 0) {
@@ -260,10 +302,8 @@ class UserStatsService
      */
     protected function getTravelStats(): array
     {
-        // Get all bands the user owns or is a member of
-        $ownedBands = $this->user->bandOwner()->get();
-        $memberBands = $this->user->bandMember()->get();
-        $allBands = $ownedBands->merge($memberBands)->unique('id');
+        // Get all bands the user owns or is a member of (simple query, no eager loading needed)
+        $allBands = $this->getUserBands();
 
         if ($allBands->isEmpty()) {
             return [
@@ -274,10 +314,15 @@ class UserStatsService
         }
 
         // Get event IDs for events after user joined each band
+        // Cache join dates to avoid N+1 queries
         $validEventIds = [];
+        $bandJoinDates = [];
+        foreach ($allBands as $band) {
+            $bandJoinDates[$band->id] = $this->getUserJoinDate($band);
+        }
 
         foreach ($allBands as $band) {
-            $joinDate = $this->getUserJoinDate($band);
+            $joinDate = $bandJoinDates[$band->id];
 
             // Get events for this band after the user joined (only past events)
             $bandEvents = Events::whereHasMorph('eventable', [\App\Models\Bookings::class, \App\Models\BandEvents::class], function ($query) use ($band) {
@@ -316,19 +361,23 @@ class UserStatsService
      */
     protected function getEventLocations(): array
     {
-        // Get all bands the user owns or is a member of
-        $ownedBands = $this->user->bandOwner()->get();
-        $memberBands = $this->user->bandMember()->get();
-        $allBands = $ownedBands->merge($memberBands)->unique('id');
+        // Get all bands the user owns or is a member of (simple query, no eager loading needed)
+        $allBands = $this->getUserBands();
 
         if ($allBands->isEmpty()) {
             return [];
         }
 
+        // Cache join dates to avoid N+1 queries
+        $bandJoinDates = [];
+        foreach ($allBands as $band) {
+            $bandJoinDates[$band->id] = $this->getUserJoinDate($band);
+        }
+
         $allEvents = collect();
 
         foreach ($allBands as $band) {
-            $joinDate = $this->getUserJoinDate($band);
+            $joinDate = $bandJoinDates[$band->id];
 
             // Get events from bookings for this band after join date
             $bookingEvents = Events::whereHasMorph('eventable', [\App\Models\Bookings::class], function ($query) use ($band) {
