@@ -6,8 +6,8 @@
       </h2>
     </template>
 
-    <div class="py-12">
-      <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+    <div class="py-12 min-w-0">
+      <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6 min-w-0">
         <!-- Info Banner -->
         <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
           <div class="flex">
@@ -188,14 +188,14 @@
               <div
                 v-for="yearData in stats.payments.bookings_by_year"
                 :key="yearData.year"
-                class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+                class="border border-gray-200 dark:border-gray-700 rounded-lg"
               >
                 <!-- Year Header -->
                 <button
-                  class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center justify-between"
+                  class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center justify-between rounded-t-lg min-w-0"
                   @click="toggleYear(yearData.year)"
                 >
-                  <div class="flex items-center space-x-4">
+                  <div class="flex items-center space-x-4 min-w-0">
                     <svg
                       class="h-5 w-5 text-gray-500 transition-transform"
                       :class="{ 'rotate-90': expandedYears.includes(yearData.year) }"
@@ -229,77 +229,81 @@
                   v-if="expandedYears.includes(yearData.year)"
                   class="overflow-x-auto"
                 >
-                  <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                    <thead class="bg-gray-50 dark:bg-gray-900">
-                      <tr>
-                        <th
-                          scope="col"
-                          class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                  <DataTable
+                    :value="yearData.bookings"
+                    responsive-layout="scroll"
+                    striped-rows
+                  >
+                    <Column
+                      field="date"
+                      header="Date"
+                      :sortable="true"
+                    >
+                      <template #body="slotProps">
+                        {{ formatDate(slotProps.data.date) }}
+                      </template>
+                    </Column>
+                    <Column
+                      field="booking_name"
+                      header="Booking"
+                      :sortable="true"
+                    >
+                      <template #body="slotProps">
+                        <div class="font-medium">
+                          {{ slotProps.data.booking_name }}
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                          {{ slotProps.data.band_name }}
+                        </div>
+                      </template>
+                    </Column>
+                    <Column
+                      field="venue_name"
+                      header="Venue"
+                      :sortable="true"
+                    >
+                      <template #body="slotProps">
+                        <div>
+                          {{ slotProps.data.venue_name }}
+                        </div>
+                        <div
+                          v-if="slotProps.data.venue_address"
+                          class="text-xs text-gray-500 dark:text-gray-400"
                         >
-                          Date
-                        </th>
-                        <th
-                          scope="col"
-                          class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                        >
-                          Booking
-                        </th>
-                        <th
-                          scope="col"
-                          class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                        >
-                          Venue
-                        </th>
-                        <th
-                          scope="col"
-                          class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                        >
-                          Total Price
-                        </th>
-                        <th
-                          scope="col"
-                          class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                        >
-                          My Share
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                      <tr
-                        v-for="booking in yearData.bookings"
-                        :key="booking.id"
-                      >
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                          {{ formatDate(booking.date) }}
-                        </td>
-                        <td class="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                          <div class="font-medium">
-                            {{ booking.booking_name }}
-                          </div>
-                          <div class="text-xs text-gray-500 dark:text-gray-400">
-                            {{ booking.band_name }}
-                          </div>
-                        </td>
-                        <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                          <div>
-                            {{ booking.venue_name }}
-                          </div>
-                          <div
-                            v-if="booking.venue_address"
-                            class="text-xs"
-                          >
-                            {{ booking.venue_address }}
-                          </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white">
-                          ${{ formatNumber(booking.total_price) }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-green-600 dark:text-green-400">
-                          ${{ formatNumber(booking.user_share) }}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                          {{ slotProps.data.venue_address }}
+                        </div>
+                      </template>
+                    </Column>
+                    <Column
+                      field="total_price"
+                      header="Total Price"
+                      :sortable="true"
+                    >
+                      <template #body="slotProps">
+                        <div class="text-right">
+                          ${{ formatNumber(slotProps.data.total_price) }}
+                        </div>
+                      </template>
+                    </Column>
+                    <Column
+                      field="user_share"
+                      header="My Share"
+                      :sortable="true"
+                    >
+                      <template #body="slotProps">
+                        <div class="text-right font-semibold text-green-600 dark:text-green-400">
+                          ${{ formatNumber(slotProps.data.user_share) }}
+                        </div>
+                      </template>
+                    </Column>
+                    <template #empty>
+                      <div class="text-center py-4">
+                        <p class="text-gray-500">
+                          No bookings for this year.
+                        </p>
+                      </div>
+                    </template>
+                  </DataTable>
                 </div>
               </div>
             </div>
@@ -311,7 +315,7 @@
           v-if="stats.locations.length > 0"
           class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-lg"
         >
-          <div class="p-6">
+          <div class="sm:p-6">
             <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
               Where I've Performed
             </h3>
@@ -331,57 +335,46 @@
             <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
               My Recent Performance Locations
             </h3>
-            <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead class="bg-gray-50 dark:bg-gray-900">
-                  <tr>
-                    <th
-                      scope="col"
-                      class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                    >
-                      Event
-                    </th>
-                    <th
-                      scope="col"
-                      class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                    >
-                      Venue
-                    </th>
-                    <th
-                      scope="col"
-                      class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                    >
-                      Address
-                    </th>
-                    <th
-                      scope="col"
-                      class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                    >
-                      Date
-                    </th>
-                  </tr>
-                </thead>
-                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  <tr
-                    v-for="(location, index) in stats.locations.slice(0, 20)"
-                    :key="index"
-                  >
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {{ location.title }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {{ location.venue_name }}
-                    </td>
-                    <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                      {{ location.venue_address }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {{ formatDate(location.date) }}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              :value="stats.locations.slice(0, 20)"
+              responsive-layout="scroll"
+              striped-rows
+              :paginator="true"
+              :rows="10"
+              :rows-per-page-options="[10, 20]"
+            >
+              <Column
+                field="title"
+                header="Event"
+                :sortable="true"
+              />
+              <Column
+                field="venue_name"
+                header="Venue"
+                :sortable="true"
+              />
+              <Column
+                field="venue_address"
+                header="Address"
+                :sortable="true"
+              />
+              <Column
+                field="date"
+                header="Date"
+                :sortable="true"
+              >
+                <template #body="slotProps">
+                  {{ formatDate(slotProps.data.date) }}
+                </template>
+              </Column>
+              <template #empty>
+                <div class="text-center py-4">
+                  <p class="text-gray-500">
+                    No performance locations yet.
+                  </p>
+                </div>
+              </template>
+            </DataTable>
           </div>
         </div>
 
@@ -421,13 +414,17 @@
 import AuthenticatedLayout from '@/Layouts/Authenticated.vue'
 import LocationMap from './LocationMap.vue'
 import { Chart, registerables } from 'chart.js'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
 
 Chart.register(...registerables)
 
 export default {
   components: {
     AuthenticatedLayout,
-    LocationMap
+    LocationMap,
+    DataTable,
+    Column
   },
 
   props: {
