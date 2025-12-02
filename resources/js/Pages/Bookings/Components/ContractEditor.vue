@@ -27,7 +27,6 @@ import "svg2pdf.js";
 import EditableContractWYSIWYG from "./EditableContractWYSIWYG.vue";
 import SendContractPopup from "./SendContractPopup.vue";
 import InitialTerms from "./InitialTerms.json";
-import { Inertia } from "@inertiajs/inertia";
 
 const props = defineProps({
     booking: Object,
@@ -66,7 +65,7 @@ const generatePDF = async () => {
     if (unsavedChanges.value) {
         await saveContract();
     }
-    Inertia.get(
+    router.get(
         route("Download Booking Contract", {
             band: props.band.id,
             booking: props.booking.id,
@@ -97,7 +96,7 @@ const cancelSendContract = () => {
 
 const confirmSendContract = async (contacts) => {
     await saveContract();
-    Inertia.post(
+    router.post(
         route("Send Booking Contract", {
             band: props.band.id,
             booking: props.booking.id,

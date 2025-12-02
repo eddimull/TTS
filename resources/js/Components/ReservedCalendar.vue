@@ -27,7 +27,7 @@
 </template>
 
 <script>
-import { usePage } from '@inertiajs/inertia-vue3'
+import { usePage } from '@inertiajs/vue3'
 import { computed } from '@vue/runtime-core'
 export default {
   props:['bookedDates','proposedDates'],
