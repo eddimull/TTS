@@ -65,7 +65,7 @@
                   for="event_date"
                   class="block text-sm font-medium mb-1"
                 >Date *</label>
-                <Calendar
+                <DatePicker
                   id="event_date"
                   v-model="eventDateObject"
                   date-format="yy-mm-dd"
@@ -542,7 +542,7 @@ import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
-import Calendar from 'primevue/calendar';
+import DatePicker from 'primevue/datepicker';
 import Checkbox from 'primevue/checkbox';
 import Editor from 'primevue/editor';
 
