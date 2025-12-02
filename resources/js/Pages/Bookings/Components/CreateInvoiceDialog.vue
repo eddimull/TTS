@@ -119,7 +119,7 @@
 </template>
 <script setup>
 import { ref, computed } from "vue";
-import { useForm } from "@inertiajs/inertia-vue3";
+import { useForm } from "@inertiajs/vue3";
 import Select from 'primevue/select';
 import ToggleSwitch from "primevue/toggleswitch";
 

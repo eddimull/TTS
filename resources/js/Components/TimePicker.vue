@@ -4,7 +4,7 @@
       <slot />
     </p>
     <p>
-      <Calendar
+      <DatePicker
         v-model="localTime"
         :step-minute="15"
         :show-time="true"
@@ -13,10 +13,10 @@
       />
       <slot name="append" />
     </p>
-  </div> 
+  </div>
 </template>
 <script setup>
-    import Calendar from 'primevue/calendar';  
+    import DatePicker from 'primevue/datepicker';
     import { DateTime } from 'luxon';
     import { defineModel, computed } from 'vue';
     const model = defineModel()
