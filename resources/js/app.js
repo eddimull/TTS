@@ -20,7 +20,7 @@ import Editor from 'primevue/editor';
 import Panel from 'primevue/panel';
 import PrimeVue from 'primevue/config';
 import Aura from '@primevue/themes/aura';
-import Calendar from 'primevue/calendar';
+import DatePicker from 'primevue/datepicker';
 import Divider from 'primevue/divider';
 import Button from 'primevue/button';
 import RadioButton from 'primevue/radiobutton';
@@ -98,7 +98,8 @@ createInertiaApp({
             Container,
             Chart,
             CardModal,
-            Calendar,
+            DatePicker,
+            Calendar: DatePicker, // Alias for backward compatibility
             Checkbox,
             Column,
             Accordion,
