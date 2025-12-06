@@ -153,7 +153,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 
 const props = defineProps({
     eventDate: {
@@ -184,6 +184,21 @@ const dragOffset = ref({ x: 0, y: 0 });
 const expandedEntries = ref(new Set());
 const isDragging = ref(false);
 const dragStartPos = ref({ x: 0, y: 0 });
+
+// Watch for changes to event date/time from parent and sync to timeline
+watch(
+    () => [props.eventDate, props.eventTime],
+    ([newDate, newTime]) => {
+        const eventEntry = timeEntries.value.find(e => e.isEventTime);
+        if (eventEntry) {
+            const newDateTime = `${newDate}T${newTime}`;
+            // Only update if it's actually different to avoid infinite loops
+            if (eventEntry.time !== newDateTime) {
+                eventEntry.time = newDateTime;
+            }
+        }
+    }
+);
 
 onMounted(() => {
     if (timelineContainer.value) {
@@ -679,7 +694,11 @@ const removeTimeEntry = (id) => {
 const emitUpdate = () => {
     const filteredEntries = timeEntries.value
         .filter((entry) => !entry.isEventTime && entry.title && entry.time);
-    emit("update:times", filteredEntries);
+    
+    // Find the main event time entry
+    const eventTimeEntry = timeEntries.value.find((entry) => entry.isEventTime);
+    
+    emit("update:times", filteredEntries, eventTimeEntry);
 };
 
 // Cleanup on unmount
