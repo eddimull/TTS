@@ -10,14 +10,14 @@
     >
       <div
         v-if="show"
-        class="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
+        class="fixed inset-0 z-[999] flex items-center justify-center bg-black/90 p-4"
         @click="close"
       >
         <!-- Close button -->
         <button
           class="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors z-10"
-          @click="close"
           aria-label="Close"
+          @click="close"
         >
           <svg
             class="w-8 h-8"
@@ -37,9 +37,9 @@
         <!-- Previous button (if multiple images) -->
         <button
           v-if="images.length > 1"
-          class="absolute left-4 text-white hover:text-gray-300 transition-colors z-10 p-2"
-          @click.stop="previous"
+          class="absolute left-2 sm:left-4 text-white hover:text-gray-300 transition-colors z-[110] p-2 sm:p-3 bg-black/50 hover:bg-black/70 rounded-full backdrop-blur-sm touch-manipulation"
           aria-label="Previous image"
+          @click.stop="previous"
         >
           <svg
             class="w-10 h-10"
@@ -58,22 +58,24 @@
 
         <!-- Image container -->
         <div
-          class="max-w-7xl max-h-full flex items-center justify-center"
+          class="max-w-7xl max-h-full flex items-center justify-center overflow-auto touch-pan-x touch-pan-y touch-pinch-zoom"
+          style="touch-action: pinch-zoom pan-x pan-y;"
           @click.stop
         >
           <img
             :src="currentImage"
             :alt="`Image ${currentIndex + 1} of ${images.length}`"
             class="max-w-full max-h-[90vh] object-contain rounded shadow-2xl"
-          />
+            style="touch-action: pinch-zoom;"
+          >
         </div>
 
         <!-- Next button (if multiple images) -->
         <button
           v-if="images.length > 1"
           class="absolute right-4 text-white hover:text-gray-300 transition-colors z-10 p-2"
-          @click.stop="next"
           aria-label="Next image"
+          @click.stop="next"
         >
           <svg
             class="w-10 h-10"
