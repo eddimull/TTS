@@ -304,8 +304,18 @@ onMounted(() => {
     });
 });
 
-const updateTimes = (newTimes) => {
+const updateTimes = (newTimes, eventTimeEntry) => {
     event.value.additional_data.times = newTimes;
+    
+    // If the main event time was updated, sync it to the parent event
+    if (eventTimeEntry && eventTimeEntry.time) {
+        // Parse the datetime string (format: "YYYY-MM-DDTHH:MM")
+        const [datePart, timePart] = eventTimeEntry.time.split('T');
+        if (datePart && timePart) {
+            event.value.date = datePart;
+            event.value.time = timePart;
+        }
+    }
 };
 
 const save = () => {
