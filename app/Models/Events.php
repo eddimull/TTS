@@ -106,6 +106,11 @@ class Events extends Model implements GoogleCalenderable
         return $this->morphMany(GoogleEvents::class, 'google_eventable');
     }
 
+    public function attachments()
+    {
+        return $this->hasMany(EventAttachment::class, 'event_id');
+    }
+
     public function getGoogleEvent(BandCalendars $bandCalendar = null): GoogleEvents|null
     {
         if(!$bandCalendar) {

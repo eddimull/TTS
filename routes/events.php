@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\EventsController;
+use App\Http\Controllers\EventAttachmentsController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('events')->group(function () {
@@ -22,5 +23,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/createContact/{event:event_key}', [EventsController::class, 'createContact'])->name('events.createContact');
         Route::post('/editContact/{contact}', [EventsController::class, 'editContact'])->name('events.editContact');
         Route::delete('/deleteContact/{contact}', [EventsController::class, 'deleteContact'])->name('events.deleteContact');
+
+        // Event attachments
+        Route::get('/{event}/attachments', [EventAttachmentsController::class, 'index'])->name('events.attachments.index');
+        Route::post('/{event}/attachments', [EventAttachmentsController::class, 'upload'])->name('events.attachments.upload');
+        Route::get('/attachments/{attachment}', [EventAttachmentsController::class, 'show'])->name('events.attachments.show');
+        Route::get('/attachments/{attachment}/download', [EventAttachmentsController::class, 'download'])->name('events.attachments.download');
+        Route::delete('/attachments/{attachment}', [EventAttachmentsController::class, 'destroy'])->name('events.attachments.destroy');
     });
 });
