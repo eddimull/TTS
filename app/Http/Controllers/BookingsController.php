@@ -376,6 +376,9 @@ class BookingsController extends Controller
 
     public function events(Bands $band, Bookings $booking)
     {
+        // Load events with attachments relationship
+        $booking->load(['events.attachments']);
+        
         // Get events with last updated user info from activity log
         $events = $booking->events->map(function ($event) {
             // Get the last update activity
@@ -390,6 +393,13 @@ class BookingsController extends Controller
                     'id' => $lastActivity->causer->id,
                     'name' => $lastActivity->causer->name,
                 ];
+            }
+            
+            // Add formatted file size to attachments
+            if ($event->attachments) {
+                $event->attachments->each(function ($attachment) {
+                    $attachment->formatted_size = $attachment->formattedSize;
+                });
             }
             
             return $event;
