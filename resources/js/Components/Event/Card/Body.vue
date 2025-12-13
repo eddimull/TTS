@@ -382,8 +382,88 @@
         <div
           ref="eventNotesRef"
           class="ml-3 p-3 shadow-lg rounded break-normal content-container bg-gray-100 dark:bg-slate-700"
-          v-html="event.notes"
-        />
+        >
+          <!-- Display notes as plain text or HTML (backward compatibility) -->
+          <div
+            v-if="isHtmlContent(event.notes)"
+            v-html="event.notes"
+          />
+          <div
+            v-else
+            class="whitespace-pre-wrap"
+          >
+            {{ event.notes }}
+          </div>
+
+          <!-- Display attachments if they exist -->
+          <div
+            v-if="event.attachments && event.attachments.length > 0"
+            class="mt-4 pt-4 border-t border-gray-300 dark:border-gray-600"
+          >
+            <div class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
+              Attachments:
+            </div>
+            <div class="space-y-2">
+              <!-- Image attachments with thumbnails -->
+              <div
+                v-for="attachment in event.attachments"
+                :key="attachment.id"
+              >
+                <!-- Image thumbnail -->
+                <div
+                  v-if="isAttachmentImage(attachment.mime_type)"
+                  class="relative inline-block mr-3 mb-3 group cursor-pointer"
+                  @click="handleAttachmentClick(attachment)"
+                >
+                  <img
+                    :src="getAttachmentShowUrl(attachment.id)"
+                    :alt="attachment.filename"
+                    class="max-w-[200px] max-h-[150px] object-cover rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 shadow-md hover:shadow-xl transition-all duration-200"
+                  >
+                  <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 rounded-lg flex items-center justify-center pointer-events-none">
+                    <svg
+                      class="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200 drop-shadow-lg"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7"
+                      />
+                    </svg>
+                  </div>
+                  <div class="text-xs text-gray-600 dark:text-gray-400 mt-1 max-w-[200px] truncate">
+                    {{ attachment.filename }}
+                  </div>
+                </div>
+                
+                <!-- Non-image attachments -->
+                <div
+                  v-else
+                  class="flex items-center gap-2 p-2 bg-white dark:bg-slate-600 rounded border border-gray-200 dark:border-gray-500 hover:bg-gray-50 dark:hover:bg-slate-500 transition-colors group cursor-pointer"
+                  @click="handleAttachmentClick(attachment)"
+                >
+                  <i
+                    :class="getAttachmentIconClass(attachment.mime_type)"
+                    class="text-blue-600 dark:text-blue-400 flex-shrink-0"
+                  />
+                  <span class="text-sm truncate flex-1 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+                    {{ attachment.filename }}
+                  </span>
+                  <span class="text-xs text-gray-500 dark:text-gray-400">
+                    {{ attachment.formatted_size }}
+                  </span>
+                  <i
+                    class="pi pi-download text-xs text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </li>
       
       <!-- Performance Information Section -->
@@ -758,6 +838,54 @@ const getSpotifyEmbedUrl = (url) => {
     return `https://open.spotify.com/embed/playlist/${playlistId}`;
   }
   return url;
+};
+
+// Attachment helpers
+const isHtmlContent = (text) => {
+  if (!text) return false;
+  // Check for common HTML tags (backward compatibility for old rich text)
+  return /<\/?[a-z][\s\S]*>/i.test(text);
+};
+
+const getAttachmentIconClass = (mimeType) => {
+  if (mimeType.startsWith('image/')) return 'pi pi-image';
+  if (mimeType === 'application/pdf') return 'pi pi-file-pdf';
+  if (mimeType.startsWith('video/')) return 'pi pi-video';
+  if (mimeType.startsWith('audio/')) return 'pi pi-volume-up';
+  return 'pi pi-file';
+};
+
+const getAttachmentDownloadUrl = (attachmentId) => {
+  return window.route('events.attachments.download', attachmentId);
+};
+
+const getAttachmentShowUrl = (attachmentId) => {
+  return window.route('events.attachments.show', attachmentId);
+};
+
+const isAttachmentImage = (mimeType) => {
+  return mimeType && mimeType.startsWith('image/');
+};
+
+const handleAttachmentClick = (attachment) => {
+  if (isAttachmentImage(attachment.mime_type)) {
+    // Get all image attachments for the lightbox gallery
+    const imageAttachments = (props.event.attachments || []).filter(att => 
+      isAttachmentImage(att.mime_type)
+    );
+    
+    // Create array of image URLs for lightbox (it expects strings, not objects)
+    lightboxImages.value = imageAttachments.map(att => getAttachmentShowUrl(att.id));
+    
+    // Find the index of the clicked image
+    const clickedIndex = imageAttachments.findIndex(att => att.id === attachment.id);
+    lightboxIndex.value = clickedIndex >= 0 ? clickedIndex : 0;
+    
+    showLightbox.value = true;
+  } else {
+    // Download non-image files
+    window.open(getAttachmentDownloadUrl(attachment.id), '_blank');
+  }
 };
 
 // Process images after component is mounted

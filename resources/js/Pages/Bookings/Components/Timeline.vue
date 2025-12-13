@@ -1,14 +1,102 @@
 <template>
   <div class="mt-6 mb-2">
-    <!-- Timeline Grid -->
-    <div class="border rounded-lg bg-white dark:bg-slate-800 overflow-hidden">
+    <!-- Times Component (Read-only view) -->
+    <div
+      v-if="!editMode"
+      class="max-w-md mx-auto bg-white dark:bg-slate-700 dark:border-gray-200 shadow-lg rounded-lg overflow-hidden"
+    >
+      <!-- Header with Edit Button -->
+      <div class="bg-gray-50 dark:bg-slate-800 px-4 py-3 border-b dark:border-slate-600 flex items-center justify-end">
+        <button
+          type="button"
+          class="p-1.5 rounded-lg bg-gray-200 hover:bg-gray-300 dark:bg-slate-600 dark:hover:bg-slate-500 text-gray-600 dark:text-gray-300 transition-all duration-200"
+          title="Enter edit mode"
+          @click="toggleEditMode"
+        >
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+            />
+          </svg>
+        </button>
+      </div>
+      
+      <!-- Times List -->
+      <ul class="divide-y divide-gray-200 dark:divide-slate-600">
+        <li
+          v-for="(entry, index) in sortedTimeEntries"
+          :key="entry.id"
+          class="relative"
+        >
+          <div class="flex items-center p-4">
+            <div
+              :class="[
+                'flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center',
+                entry.isEventTime
+                  ? 'bg-blue-500 border-2 border-white dark:border-slate-700'
+                  : 'bg-blue-500'
+              ]"
+            >
+              <span class="text-white font-semibold text-lg">{{ index + 1 }}</span>
+            </div>
+            <div class="ml-4 flex-grow">
+              <p
+                :class="{
+                  'font-bold': entry.isEventTime
+                }"
+                class="text-sm font-medium text-gray-900 dark:text-white"
+              >
+                {{ entry.title || 'Untitled' }}
+              </p>
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                {{ formatTimeForDisplay(entry.time) }}
+              </p>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </div>
+    
+    <!-- Timeline Grid (Edit mode) -->
+    <div
+      v-else
+      class="border rounded-lg bg-white dark:bg-slate-800 overflow-hidden"
+    >
       <!-- Time Grid Header -->
       <div class="flex border-b dark:border-slate-600">
         <div class="w-16 flex-shrink-0 p-2 text-sm font-medium bg-gray-50 dark:bg-slate-700 border-r dark:border-slate-600">
           Time
         </div>
-        <div class="flex-1 p-2 text-sm font-medium bg-gray-50 dark:bg-slate-700">
-          Events
+        <div class="flex-1 p-2 text-sm font-medium bg-gray-50 dark:bg-slate-700 flex items-center justify-between">
+          <span>Events</span>
+          <button
+            type="button"
+            class="p-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-all duration-200"
+            title="Exit edit mode"
+            @click="toggleEditMode"
+          >
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
         </div>
       </div>
       
@@ -126,34 +214,35 @@
           </div>
         </div>
       </div>
-    </div>
-    
-    <div class="mt-4 px-2">
-      <button
-        class="w-full sm:w-auto px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors shadow-sm hover:shadow-md flex items-center justify-center space-x-2"
-        @click="addTimeEntry"
-      >
-        <svg
-          class="w-5 h-5"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
+      
+      <div class="mt-4 px-2">
+        <button
+          class="w-full sm:w-auto px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors shadow-sm hover:shadow-md flex items-center justify-center space-x-2"
+          @click="addTimeEntry"
         >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-          />
-        </svg>
-        <span>Add Time Entry</span>
-      </button>
+          <svg
+            class="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+            />
+          </svg>
+          <span>Add Time Entry</span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue";
+import Times from "@/Components/Event/Card/Components/Times.vue";
 
 const props = defineProps({
     eventDate: {
@@ -184,6 +273,45 @@ const dragOffset = ref({ x: 0, y: 0 });
 const expandedEntries = ref(new Set());
 const isDragging = ref(false);
 const dragStartPos = ref({ x: 0, y: 0 });
+const editMode = ref(false);
+
+// Toggle edit mode
+const toggleEditMode = () => {
+    editMode.value = !editMode.value;
+    // Close any expanded entries when exiting edit mode
+    if (!editMode.value) {
+        expandedEntries.value.clear();
+    } else {
+        // When entering edit mode, scroll to event time after DOM updates
+        nextTick(() => {
+            if (timelineContainer.value) {
+                const eventEntry = timeEntries.value.find(e => e.isEventTime);
+                if (eventEntry) {
+                    // Parse the event time to calculate scroll position
+                    const timePart = eventEntry.time.indexOf('T') > -1 
+                        ? eventEntry.time.split('T')[1] 
+                        : eventEntry.time.split(' ')[1];
+                    
+                    if (timePart) {
+                        const [hours, minutes] = timePart.split(':').map(Number);
+                        
+                        // Calculate the top position of the event (same logic as getEntryStyle)
+                        const topPosition = (hours * HOUR_HEIGHT) + (minutes / 60 * HOUR_HEIGHT);
+                        
+                        // Get container height
+                        const containerHeight = timelineContainer.value.clientHeight;
+                        
+                        // Scroll to position the event time in the upper portion of the view
+                        // (about 1/3 from the top so there's room to see earlier times)
+                        const scrollTo = topPosition - (containerHeight / 3);
+                        
+                        timelineContainer.value.scrollTop = Math.max(0, scrollTo);
+                    }
+                }
+            }
+        });
+    }
+};
 
 // Watch for changes to event date/time from parent and sync to timeline
 watch(
@@ -270,6 +398,22 @@ const timeSlots = computed(() => {
     }
     return slots;
 });
+
+// Sorted time entries for display
+const sortedTimeEntries = computed(() => {
+    return [...timeEntries.value].sort((a, b) => {
+        const timeA = new Date(a.time);
+        const timeB = new Date(b.time);
+        return timeA - timeB;
+    });
+});
+
+// Format time for display in list view
+const formatTimeForDisplay = (timeString) => {
+    if (!timeString) return 'No time set';
+    const date = new Date(timeString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+};
 
 // Toggle entry expansion (only one entry can be expanded at a time)
 const toggleEntry = (id) => {
