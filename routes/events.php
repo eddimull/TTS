@@ -27,6 +27,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Event attachments
         Route::get('/{event}/attachments', [EventAttachmentsController::class, 'index'])->name('events.attachments.index');
         Route::post('/{event}/attachments', [EventAttachmentsController::class, 'upload'])->name('events.attachments.upload');
+        Route::post('/{event}/attachments/convert-image', [EventAttachmentsController::class, 'convertImageToAttachment'])->name('events.attachments.convertImage');
         Route::get('/attachments/{attachment}', [EventAttachmentsController::class, 'show'])->name('events.attachments.show');
         Route::get('/attachments/{attachment}/download', [EventAttachmentsController::class, 'download'])->name('events.attachments.download');
         Route::delete('/attachments/{attachment}', [EventAttachmentsController::class, 'destroy'])->name('events.attachments.destroy');
