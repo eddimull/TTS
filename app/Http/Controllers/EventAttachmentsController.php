@@ -123,4 +123,139 @@ class EventAttachmentsController extends Controller
             'attachments' => $event->attachments,
         ]);
     }
+
+    /**
+     * Convert an image URL from old rich-text format to an attachment
+     */
+    public function convertImageToAttachment(Request $request, Events $event)
+    {
+        $request->validate([
+            'image_url' => 'required|string',
+        ]);
+
+        $imageUrl = $request->input('image_url');
+
+        \Log::info('Converting image to attachment', [
+            'image_url' => $imageUrl,
+            'event_id' => $event->id,
+        ]);
+
+        // Extract the path from the URL (remove domain if present)
+        $path = parse_url($imageUrl, PHP_URL_PATH);
+        
+        // If path starts with /images/, it's a public file
+        if (!str_starts_with($path, '/images/')) {
+            \Log::warning('Invalid image URL - must start with /images/', ['path' => $path]);
+            return response()->json(['error' => 'Invalid image URL'], 400);
+        }
+
+        // Remove leading slash to get relative path from public directory
+        $publicPath = ltrim($path, '/');
+
+        \Log::info('Attempting to fetch image', [
+            'path' => $path,
+            'public_path' => $publicPath,
+        ]);
+
+        // Try to fetch from default disk (s3 or local public storage)
+        $disk = config('filesystems.default');
+        
+        // For S3 storage, the /images/ prefix is just a URL convention
+        // Actual storage path doesn't include "images/"
+        $storagePath = $publicPath;
+        if (str_starts_with($publicPath, 'images/')) {
+            $storagePath = substr($publicPath, 7); // Remove "images/" prefix
+        }
+        
+        \Log::info('Checking storage paths', [
+            'public_path' => $publicPath,
+            'storage_path' => $storagePath,
+            'disk' => $disk,
+        ]);
+        
+        // Check if file exists on the storage disk
+        if (!Storage::disk($disk)->exists($storagePath)) {
+            // Try local public path as fallback
+            $fullPath = public_path($publicPath);
+            
+            \Log::info('File not on default disk, checking public path', [
+                'disk' => $disk,
+                'public_path' => $publicPath,
+                'full_path' => $fullPath,
+                'exists' => file_exists($fullPath),
+            ]);
+            
+            if (!file_exists($fullPath)) {
+                \Log::warning('Image file not found for conversion', [
+                    'disk' => $disk,
+                    'tried_path' => $publicPath,
+                    'tried_public_path' => $fullPath,
+                ]);
+                return response()->json(['error' => 'File not found at: ' . $publicPath], 404);
+            }
+
+            // File found in local public directory
+            $filename = basename($publicPath);
+            $mimeType = mime_content_type($fullPath);
+            $fileSize = filesize($fullPath);
+            $fileContents = file_get_contents($fullPath);
+        } else {
+            // File found on storage disk (S3/MinIO)
+            \Log::info('File found on storage disk', [
+                'disk' => $disk,
+                'path' => $storagePath,
+            ]);
+
+            try {
+                $filename = basename($storagePath);
+                $fileContents = Storage::disk($disk)->get($storagePath);
+                $fileSize = Storage::disk($disk)->size($storagePath);
+                $mimeType = Storage::disk($disk)->mimeType($storagePath);
+            } catch (\Exception $e) {
+                \Log::error('Failed to fetch file from storage', [
+                    'disk' => $disk,
+                    'path' => $publicPath,
+                    'error' => $e->getMessage(),
+                ]);
+                return response()->json(['error' => 'Failed to fetch file from storage'], 500);
+            }
+        }
+
+        try {
+            // Instead of duplicating the file, reference the existing storage location
+            // The file is already in the correct band's event_uploads folder
+            $attachmentDisk = config('filesystems.default') === 's3' ? 's3' : 'local';
+            
+            // Use the existing storage path (without images/ prefix for S3)
+            $storedPath = $storagePath ?? $publicPath;
+
+            \Log::info('Creating attachment record', [
+                'stored_path' => $storedPath,
+                'disk' => $attachmentDisk,
+                'filename' => $filename,
+            ]);
+
+            // Create attachment record pointing to the existing file
+            $attachment = EventAttachment::create([
+                'event_id' => $event->id,
+                'filename' => $filename,
+                'stored_filename' => $storedPath,
+                'mime_type' => $mimeType,
+                'file_size' => $fileSize,
+                'disk' => $attachmentDisk,
+            ]);
+
+            return response()->json([
+                'message' => 'Image converted to attachment successfully',
+                'attachment' => $attachment,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to convert image to attachment', [
+                'error' => $e->getMessage(),
+                'path' => $publicPath,
+            ]);
+            
+            return response()->json(['error' => 'Failed to convert image'], 500);
+        }
+    }
 }

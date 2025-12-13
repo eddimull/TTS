@@ -1,5 +1,16 @@
 <template>
   <div class="flex flex-col h-full">
+    <!-- Conversion indicator -->
+    <div
+      v-if="isConverting"
+      class="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center gap-2"
+    >
+      <i class="pi pi-spin pi-spinner text-blue-600 dark:text-blue-400" />
+      <span class="text-sm text-blue-700 dark:text-blue-300">
+        Converting legacy rich-text format and extracting images...
+      </span>
+    </div>
+
     <!-- Notes textarea - prominent and spacious, grows to fill space -->
     <div class="flex-1 flex flex-col mb-4">
       <textarea
@@ -8,6 +19,7 @@
                focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
                dark:bg-slate-800 dark:text-gray-50 resize-none"
         placeholder="Add your notes here..."
+        :disabled="isConverting"
       />
     </div>
 
@@ -211,7 +223,7 @@ const props = defineProps({
     },
 });
 
-const emit = defineEmits(['attachmentsChanged']);
+const emit = defineEmits(['attachmentsChanged', 'update:modelValue']);
 
 const fileInput = ref(null);
 const selectedFiles = ref([]);
@@ -219,13 +231,175 @@ const existingAttachments = ref([]);
 const showPreviewModal = ref(false);
 const currentPreview = ref(null);
 const showAttachments = ref(false);
+const isConverting = ref(false);
 
 // Load existing attachments on mount
 onMounted(async () => {
     if (props.modelValue.id) {
         await loadAttachments();
+        await convertLegacyRichTextIfNeeded();
     }
 });
+
+/**
+ * Convert legacy rich-text HTML notes to plain text and extract images as attachments
+ */
+const convertLegacyRichTextIfNeeded = async () => {
+    const notes = props.modelValue.notes;
+    
+    // Check if notes contain HTML tags (indicating legacy format)
+    if (!notes || !notes.includes('<')) {
+        return;
+    }
+
+    isConverting.value = true;
+
+    try {
+        // Create a temporary DOM element to parse HTML
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = notes;
+
+        // Extract all image tags
+        const images = tempDiv.querySelectorAll('img');
+        const imageUrls = [];
+        
+        images.forEach(img => {
+            const src = img.getAttribute('src');
+            if (src) {
+                imageUrls.push(src);
+                // Remove the img tag from the DOM
+                img.remove();
+            }
+        });
+
+        // Convert remaining HTML to plain text with formatting preserved
+        let plainText = convertHtmlToPlainText(tempDiv);
+
+        // Convert images to attachments
+        for (const imageUrl of imageUrls) {
+            try {
+                await convertImageToAttachment(imageUrl);
+            } catch (error) {
+                console.error('Failed to convert image:', imageUrl, error);
+                // Add a note about the failed conversion
+                plainText += `\n\n[Image conversion failed: ${imageUrl}]`;
+            }
+        }
+
+        // Update the notes with plain text version
+        const updatedEvent = { ...props.modelValue, notes: plainText };
+        emit('update:modelValue', updatedEvent);
+        
+        // Reload attachments to show newly converted images
+        await loadAttachments();
+        
+        if (imageUrls.length > 0) {
+            showAttachments.value = true; // Open attachments drawer to show converted images
+        }
+    } catch (error) {
+        console.error('Failed to convert legacy rich text:', error);
+    } finally {
+        isConverting.value = false;
+    }
+};
+
+/**
+ * Convert HTML content to plain text with preserved formatting
+ */
+const convertHtmlToPlainText = (element) => {
+    let text = '';
+    
+    // Process each child node
+    for (const node of element.childNodes) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            // Add text content
+            const content = node.textContent.trim();
+            if (content) {
+                text += content;
+            }
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+            const tagName = node.tagName.toLowerCase();
+            
+            // Handle different HTML tags
+            switch (tagName) {
+                case 'h1':
+                case 'h2':
+                case 'h3':
+                case 'h4':
+                case 'h5':
+                case 'h6':
+                    text += '\n\n' + node.textContent.trim().toUpperCase() + '\n';
+                    break;
+                case 'p':
+                    text += '\n' + convertHtmlToPlainText(node) + '\n';
+                    break;
+                case 'br':
+                    text += '\n';
+                    break;
+                case 'strong':
+                case 'b':
+                    text += node.textContent.trim();
+                    break;
+                case 'em':
+                case 'i':
+                    text += node.textContent.trim();
+                    break;
+                case 'ul':
+                case 'ol':
+                    text += '\n' + convertListToPlainText(node, tagName === 'ol') + '\n';
+                    break;
+                case 'li':
+                    text += '  • ' + node.textContent.trim() + '\n';
+                    break;
+                case 'div':
+                    text += convertHtmlToPlainText(node);
+                    break;
+                default:
+                    // For other tags, just extract text content
+                    text += node.textContent.trim();
+            }
+        }
+    }
+    
+    return text.trim();
+};
+
+/**
+ * Convert HTML list to plain text
+ */
+const convertListToPlainText = (listElement, isOrdered) => {
+    let text = '';
+    const items = listElement.querySelectorAll('li');
+    
+    items.forEach((item, index) => {
+        const prefix = isOrdered ? `${index + 1}. ` : '  • ';
+        text += prefix + item.textContent.trim() + '\n';
+    });
+    
+    return text;
+};
+
+/**
+ * Convert an old image URL to an attachment
+ */
+const convertImageToAttachment = async (imageUrl) => {
+    if (!props.modelValue.id) {
+        throw new Error('Event must be saved before converting images');
+    }
+
+    // Ensure we're using the full URL from the Laravel server, not relative path
+    let fullImageUrl = imageUrl;
+    if (imageUrl.startsWith('/')) {
+        // Get the Laravel app URL (typically https://localhost:8710 in dev)
+        const appUrl = window.location.origin;
+        fullImageUrl = appUrl + imageUrl;
+    }
+
+    const url = window.route('events.attachments.convertImage', props.modelValue.id);
+    const response = await axios.post(url, { image_url: fullImageUrl });
+    
+    return response.data.attachment;
+};
 
 const loadAttachments = async () => {
     try {
