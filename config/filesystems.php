@@ -61,6 +61,7 @@ return [
             'bucket' => env('AWS_CHART_BUCKET','ttsprivate'),
             'url' => env('AWS_URL'),
             'endpoint' => env('AWS_ENDPOINT'),
+            'use_path_style_endpoint' => env('AWS_USE_PATH_STYLE_ENDPOINT', false),
         ],
 
     ],
