@@ -25,6 +25,39 @@
       :event-title="event.title"
     />
 
+    <!-- Notes Full Screen Modal -->
+    <Dialog
+      v-model:visible="showNotesModal"
+      modal
+      :dismissable-mask="false"
+      :closable="false"
+      :block-scroll="true"
+      class="w-full h-full m-0"
+      :style="{ width: '100vw', height: '100vh', maxHeight: '100vh' }"
+      :content-style="{ height: '100%', display: 'flex', flexDirection: 'column', padding: 0 }"
+    >
+      <template #header>
+        <div class="flex items-center justify-between w-full">
+          <h3 class="text-xl font-semibold">
+            Notes & Attachments
+          </h3>
+          <Button
+            icon="pi pi-times"
+            text
+            rounded
+            @click="closeNotesModal"
+          />
+        </div>
+      </template>
+      <div class="flex-1 overflow-y-auto p-4 pb-32">
+        <NotesSection
+          ref="notesSection"
+          v-model="event"
+          @attachments-changed="handleAttachmentsChanged"
+        />
+      </div>
+    </Dialog>
+
     <div class="space-y-4">
       <!-- Basic Information Section -->
       <SectionCard
@@ -36,14 +69,60 @@
         <BasicInfo v-model="event" />
       </SectionCard>
 
-      <!-- Notes Section -->
+      <!-- Notes Section - Click to open full screen -->
       <SectionCard
         title="Notes"
         icon="notes"
         :is-open="openSections.notes"
         @toggle="toggleSection('notes')"
       >
-        <NotesSection v-model="event" />
+        <button
+          type="button"
+          class="w-full p-4 text-left border-2 border-dashed border-gray-300 dark:border-gray-600 
+                 rounded-lg hover:border-blue-500 dark:hover:border-blue-400 hover:bg-gray-50 
+                 dark:hover:bg-slate-700 transition-colors"
+          @click="openNotesModal"
+        >
+          <div class="flex items-center justify-between">
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-medium text-gray-900 dark:text-gray-100 mb-2">
+                Click to edit notes and attachments
+              </div>
+              <div
+                v-if="notesPreview"
+                class="space-y-1 mb-2"
+              >
+                <div
+                  v-for="(line, index) in notesPreview"
+                  :key="index"
+                  class="text-sm text-gray-600 dark:text-gray-400 truncate"
+                >
+                  {{ line }}
+                </div>
+                <div
+                  v-if="event.notes.split('\n').filter(l => l.trim()).length > 3"
+                  class="text-xs text-gray-500 dark:text-gray-500 italic"
+                >
+                  + {{ event.notes.split('\n').filter(l => l.trim()).length - 3 }} more lines
+                </div>
+              </div>
+              <div
+                v-else
+                class="text-sm text-gray-500 dark:text-gray-500 italic mb-2"
+              >
+                No notes yet
+              </div>
+              <div
+                v-if="attachmentsCount > 0"
+                class="inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-slate-700 px-2 py-1 rounded"
+              >
+                <i class="pi pi-paperclip" />
+                <span>{{ attachmentsCount }} attachment{{ attachmentsCount !== 1 ? 's' : '' }}</span>
+              </div>
+            </div>
+            <i class="pi pi-external-link ml-3 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+          </div>
+        </button>
       </SectionCard>
 
       <!-- Timeline Section -->
@@ -132,6 +211,9 @@
 import { ref, computed, reactive, onMounted, nextTick, watch, onUnmounted } from "vue";
 import { router } from '@inertiajs/vue3';
 import { DateTime } from 'luxon';
+import axios from 'axios';
+import Dialog from 'primevue/dialog';
+import Button from 'primevue/button';
 import Timeline from "./Timeline.vue";
 import BasicInfo from "./EventEditor/BasicInfo.vue";
 import NotesSection from "./EventEditor/NotesSection.vue";
@@ -156,6 +238,8 @@ const emit = defineEmits(["save", "cancel", "removeEvent"]);
 const event = ref(JSON.parse(JSON.stringify(props.initialEvent)));
 const editorContainer = ref(null);
 const showHistoryModal = ref(false);
+const showNotesModal = ref(false);
+const notesSection = ref(null);
 
 // Autosave state
 const isSaving = ref(false);
@@ -166,6 +250,15 @@ const lastSavedUpdateInterval = ref(null);
 const isInitialized = ref(false);
 
 const isWedding = computed(() => event.value.event_type_id === 1);
+
+const attachmentsCount = ref(0);
+
+const notesPreview = computed(() => {
+    if (!event.value.notes) return null;
+    
+    const lines = event.value.notes.split('\n').filter(line => line.trim());
+    return lines.slice(0, 3); // Show first 3 non-empty lines
+});
 
 // Format last saved time
 const lastSavedText = computed(() => {
@@ -255,6 +348,9 @@ onMounted(() => {
         }
     }, 10000);
     
+    // Load attachments count on mount
+    loadAttachmentsCount();
+    
     // Mark as initialized after next tick to avoid initial watch trigger
     nextTick(() => {
         isInitialized.value = true;
@@ -272,13 +368,13 @@ onUnmounted(() => {
 });
 
 // Autosave function
-const autoSave = async () => {
+const autoSave = () => {
     if (!hasUnsavedChanges.value || isSaving.value) return;
     
     isSaving.value = true;
     
     try {
-        await emit("save", event.value);
+        emit("save", event.value);
         hasUnsavedChanges.value = false;
         lastSaved.value = Date.now();
     } catch (error) {
@@ -318,21 +414,81 @@ const updateTimes = (newTimes, eventTimeEntry) => {
     }
 };
 
-const save = () => {
+const save = async () => {
     // Clear autosave timer when manually saving
     if (autosaveTimer.value) {
         clearTimeout(autosaveTimer.value);
     }
     
     isSaving.value = true;
-    emit("save", event.value);
-    hasUnsavedChanges.value = false;
-    lastSaved.value = Date.now();
     
-    // Reset saving state after a short delay
-    setTimeout(() => {
-        isSaving.value = false;
-    }, 500);
+    try {
+        // First save the event data
+        await emit("save", event.value);
+        
+        // Then upload any new attachments
+        if (notesSection.value) {
+            const selectedFiles = notesSection.value.getSelectedFiles();
+            if (selectedFiles.length > 0) {
+                await uploadAttachments(selectedFiles);
+                notesSection.value.clearSelectedFiles();
+                await notesSection.value.loadAttachments();
+            }
+        }
+        
+        hasUnsavedChanges.value = false;
+        lastSaved.value = Date.now();
+    } catch (error) {
+        console.error('Save failed:', error);
+    } finally {
+        // Reset saving state after a short delay
+        setTimeout(() => {
+            isSaving.value = false;
+        }, 500);
+    }
+};
+
+const uploadAttachments = async (files) => {
+    if (!event.value.id || files.length === 0) return;
+    
+    const formData = new FormData();
+    files.forEach(file => {
+        formData.append('files[]', file);
+    });
+    
+    try {
+        const url = window.route('events.attachments.upload', event.value.id);
+        await axios.post(url, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+    } catch (error) {
+        console.error('Failed to upload attachments:', error);
+        throw error;
+    }
+};
+
+const handleAttachmentsChanged = async () => {
+    // Refresh can happen here if needed
+    hasUnsavedChanges.value = true;
+    await loadAttachmentsCount();
+};
+
+const loadAttachmentsCount = async () => {
+    if (!event.value.id) {
+        attachmentsCount.value = 0;
+        return;
+    }
+    
+    try {
+        const url = window.route('events.attachments.index', event.value.id);
+        const response = await axios.get(url);
+        attachmentsCount.value = response.data.attachments?.length || 0;
+    } catch (error) {
+        console.error('Failed to load attachments count:', error);
+        attachmentsCount.value = 0;
+    }
 };
 
 const cancel = () => {
@@ -350,9 +506,16 @@ const viewOnDashboard = () => {
     const identifier = event.value.id || event.value.key;
     router.visit(route('dashboard') + '#event_' + identifier);
 };
-
 const viewHistory = () => {
     showHistoryModal.value = true;
+};
+
+const openNotesModal = () => {
+    showNotesModal.value = true;
+};
+
+const closeNotesModal = () => {
+    showNotesModal.value = false;
 };
 </script>
 
