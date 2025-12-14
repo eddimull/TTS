@@ -49,7 +49,7 @@
           />
         </div>
       </template>
-      <div class="flex-1 overflow-y-auto p-4 pb-32">
+      <div class="flex-1 overflow-y-auto p-4">
         <NotesSection
           ref="notesSection"
           v-model="event"
@@ -195,6 +195,7 @@
     </div>
 
     <ActionButtons
+      v-show="!showNotesModal"
       class="mt-6"
       :is-saving="isSaving"
       :last-saved="lastSaved"
