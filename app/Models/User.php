@@ -265,7 +265,7 @@ class User extends Authenticatable
     }
 
 
-    public function getEventsAttribute($afterDate = null, $includeNotes = false)
+    public function getEventsAttribute($afterDate = null, $includeNotes = false, $beforeDate = null, $limit = null)
     {
         $bandIds = $this->bands()->pluck('id')->toArray();
         
@@ -309,6 +309,10 @@ class User extends Authenticatable
             $bookingQuery->where('events.date', '>=', $afterDate->toDateString());
         }
         
+        if ($beforeDate) {
+            $bookingQuery->where('events.date', '<', $beforeDate->toDateString());
+        }
+        
         // Build the rehearsal events query
         $rehearsalQuery = Events::join('rehearsals', 'events.eventable_id', '=', 'rehearsals.id')
             ->join('rehearsal_schedules', 'rehearsals.rehearsal_schedule_id', '=', 'rehearsal_schedules.id')
@@ -346,6 +350,10 @@ class User extends Authenticatable
         // Apply date filter if provided
         if ($afterDate) {
             $rehearsalQuery->where('events.date', '>=', $afterDate->toDateString());
+        }
+        
+        if ($beforeDate) {
+            $rehearsalQuery->where('events.date', '<', $beforeDate->toDateString());
         }
         
         // Get both result sets and merge them

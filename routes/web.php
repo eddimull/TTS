@@ -28,6 +28,10 @@ Route::get('/dashboard', 'DashboardController@index')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+Route::get('/dashboard/load-older-events', 'DashboardController@loadOlderEvents')
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard.load-older');
+
 Route::get('/stats', 'UserStatsController@index')
     ->middleware(['auth', 'verified'])
     ->name('stats');

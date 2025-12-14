@@ -15,17 +15,17 @@ class RehearsalScheduleService
      * 
      * @param array $bandIds Array of band IDs to generate rehearsals for
      * @param Carbon|null $startDate Starting date (default: now)
-     * @param int $weeksAhead Number of weeks to look ahead (default: 12)
+     * @param Carbon|null $endDate Ending date (default: 12 weeks from start)
      * @return Collection Collection of virtual event objects
      */
-    public function generateUpcomingRehearsals(array $bandIds, Carbon $startDate = null, int $weeksAhead = 12): Collection
+    public function generateUpcomingRehearsals(array $bandIds, Carbon $startDate = null, Carbon $endDate = null): Collection
     {
         if (empty($bandIds)) {
             return collect();
         }
 
         $startDate = $startDate ?? Carbon::now();
-        $endDate = $startDate->copy()->addWeeks($weeksAhead);
+        $endDate = $endDate ?? $startDate->copy()->addWeeks(12);
 
         // Get all active rehearsal schedules for the user's bands
         $schedules = RehearsalSchedule::whereIn('band_id', $bandIds)
@@ -103,7 +103,7 @@ class RehearsalScheduleService
         $instances = collect();
         $currentDate = $startDate->copy();
 
-        while ($currentDate->lte($endDate)) {
+        while ($currentDate->lt($endDate)) {
             $dateString = $currentDate->toDateString();
             
             if (!in_array($dateString, $existingDates)) {
@@ -124,7 +124,7 @@ class RehearsalScheduleService
         $instances = collect();
         $currentDate = $startDate->copy();
 
-        while ($currentDate->lte($endDate)) {
+        while ($currentDate->lt($endDate)) {
             // Only include Monday through Friday
             if ($currentDate->isWeekday()) {
                 $dateString = $currentDate->toDateString();
@@ -167,7 +167,7 @@ class RehearsalScheduleService
         $currentDate = $startDate->copy();
 
         // Generate instances for all selected days
-        while ($currentDate->lte($endDate)) {
+        while ($currentDate->lt($endDate)) {
             // Check if current day matches any selected days
             if (in_array($currentDate->dayOfWeek, $targetDays)) {
                 $dateString = $currentDate->toDateString();
@@ -200,7 +200,7 @@ class RehearsalScheduleService
 
         $currentDate = $startDate->copy()->startOfMonth();
 
-        while ($currentDate->lte($endDate)) {
+        while ($currentDate->lt($endDate)) {
             $monthDate = null;
 
             if ($pattern === 'day_of_month') {
