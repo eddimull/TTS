@@ -43,12 +43,16 @@ class UserEventsService
                             $i++;
                         }
                         
+                        // Get URL using /images/ route
+                        $url = url('/images/' . $attachment->stored_filename);
+                        
                         return [
                             'id' => $attachment->id,
                             'filename' => $attachment->filename,
                             'mime_type' => $attachment->mime_type,
                             'file_size' => $attachment->file_size,
                             'formatted_size' => round($bytes, 2) . ' ' . $units[$i],
+                            'url' => $url,
                         ];
                     })->toArray();
                     

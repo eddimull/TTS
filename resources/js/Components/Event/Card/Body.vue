@@ -416,7 +416,7 @@
                   @click="handleAttachmentClick(attachment)"
                 >
                   <img
-                    :src="getAttachmentShowUrl(attachment.id)"
+                    :src="getAttachmentShowUrl(attachment)"
                     :alt="attachment.filename"
                     class="max-w-[200px] max-h-[150px] object-cover rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 shadow-md hover:shadow-xl transition-all duration-200"
                   >
@@ -855,12 +855,17 @@ const getAttachmentIconClass = (mimeType) => {
   return 'pi pi-file';
 };
 
-const getAttachmentDownloadUrl = (attachmentId) => {
-  return window.route('events.attachments.download', attachmentId);
+const getAttachmentDownloadUrl = (attachment) => {
+  // Always use controller route for downloads to ensure proper Content-Disposition headers
+  return window.route('events.attachments.download', attachment.id);
 };
 
-const getAttachmentShowUrl = (attachmentId) => {
-  return window.route('events.attachments.show', attachmentId);
+const getAttachmentShowUrl = (attachment) => {
+  // Prefer direct URL for display if available, fallback to controller route
+  if (attachment.url) {
+    return attachment.url;
+  }
+  return window.route('events.attachments.show', attachment.id);
 };
 
 const isAttachmentImage = (mimeType) => {
@@ -875,7 +880,7 @@ const handleAttachmentClick = (attachment) => {
     );
     
     // Create array of image URLs for lightbox (it expects strings, not objects)
-    lightboxImages.value = imageAttachments.map(att => getAttachmentShowUrl(att.id));
+    lightboxImages.value = imageAttachments.map(att => getAttachmentShowUrl(att));
     
     // Find the index of the clicked image
     const clickedIndex = imageAttachments.findIndex(att => att.id === attachment.id);
@@ -884,7 +889,7 @@ const handleAttachmentClick = (attachment) => {
     showLightbox.value = true;
   } else {
     // Download non-image files
-    window.open(getAttachmentDownloadUrl(attachment.id), '_blank');
+    window.open(getAttachmentDownloadUrl(attachment), '_blank');
   }
 };
 
