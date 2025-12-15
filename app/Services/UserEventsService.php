@@ -9,10 +9,13 @@ use Illuminate\Support\Carbon;
 
 class UserEventsService
 {
-    public function getEvents()
+    public function getEvents($afterDate = null, $beforeDate = null, $limit = null)
     {
-        $afterDate = Carbon::now()->subHours(72);
-        $events = Auth::user()->getEventsAttribute($afterDate, true); //why isn't the laravel magic happening where I can just specify 'events'
+        if ($afterDate === null) {
+            $afterDate = Carbon::now()->subHours(72);
+        }
+        
+        $events = Auth::user()->getEventsAttribute($afterDate, true, $beforeDate, $limit); //why isn't the laravel magic happening where I can just specify 'events'
         
         // Load attachments for all events
         $eventIds = $events->pluck('id')->filter()->unique()->toArray();
@@ -69,7 +72,7 @@ class UserEventsService
         // Generate virtual rehearsal events from schedules
         if (!empty($bandIds)) {
             $rehearsalService = new RehearsalScheduleService();
-            $virtualRehearsals = $rehearsalService->generateUpcomingRehearsals($bandIds, $afterDate);
+            $virtualRehearsals = $rehearsalService->generateUpcomingRehearsals($bandIds, $afterDate, $beforeDate);
             
             // Convert Eloquent models to arrays for consistency with virtual rehearsals
             // But preserve nested relationships for rehearsals

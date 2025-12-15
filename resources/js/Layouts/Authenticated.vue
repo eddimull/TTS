@@ -534,7 +534,7 @@
       <!-- Page Heading -->
       <header
         v-if="$slots.header"
-        class="bg-white dark:bg-slate-700 dark:text-white shadow"
+        class="sticky top-16 z-40 bg-white dark:bg-slate-700 dark:text-white shadow"
       >
         <div class="max-w-7xl mx-auto py-2 px-4 sm:px-4 lg:px-8">
           <slot name="header" />
@@ -543,7 +543,7 @@
 
       <header
         v-else
-        class="bg-white dark:bg-slate-700 shadow"
+        class="sticky top-16 z-40 bg-white dark:bg-slate-700 shadow"
       >
         <div class="max-w-7xl mx-auto py-2 px-4 sm:px-4 lg:px-8">
           <h2
