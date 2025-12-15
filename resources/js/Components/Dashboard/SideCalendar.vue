@@ -10,7 +10,8 @@
       <strong
         v-if="isReserved(date)"
         :title="getEventName(date)"
-        class="rounded-full h-24 w-24 flex items-center justify-center bg-blue-300"
+        :class="getEventClass(date)"
+        class="rounded-full h-24 w-24 flex items-center justify-center"
         @click="setEventId(date)"
       >
         {{ date.day }}
@@ -64,6 +65,26 @@ const getEventName = (date) => {
     }
   });
   return event ? event.event_name : '';
+};
+
+const getEventClass = (date) => {
+  const jsDate = parseDate(date);
+  const event = Object.values(props.events).find(event => {
+    if (!event.date) return false;
+    try {
+      return DateTime.fromFormat(event.date, 'yyyy-MM-dd').equals(jsDate);
+    } catch (e) {
+      return false;
+    }
+  });
+  
+  if (!event) return 'bg-blue-300';
+  
+  // Check if it's a rehearsal (either saved or virtual)
+  const isRehearsal = event.eventable_type === 'App\\Models\\Rehearsal' || event.is_virtual;
+  
+  // Return appropriate color class
+  return isRehearsal ? 'bg-purple-400 dark:bg-purple-500' : 'bg-blue-300 dark:bg-blue-400';
 };
 
 const setEventId = (date) => {
