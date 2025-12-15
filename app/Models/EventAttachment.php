@@ -19,6 +19,8 @@ class EventAttachment extends Model
         'disk',
     ];
 
+    protected $appends = ['url', 'formatted_size'];
+
     /**
      * Get the event that owns the attachment
      */
@@ -32,7 +34,8 @@ class EventAttachment extends Model
      */
     public function getUrlAttribute()
     {
-        return Storage::disk($this->disk)->url($this->stored_filename);
+        // Use the /images/ route which proxies through ImageController
+        return url('/images/' . $this->stored_filename);
     }
 
     /**

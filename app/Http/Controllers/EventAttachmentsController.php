@@ -32,22 +32,29 @@ class EventAttachmentsController extends Controller
             return response()->json(['error' => 'No files uploaded'], 400);
         }
 
+        // Get band from event's booking relationship
+        $band = $event->eventable_type === 'App\\Models\\Bookings' 
+            ? $event->eventable->band 
+            : $event->eventable->band;
+
+        // Use consistent storage location pattern
+        $storagePath = $band->site_name . '/event_uploads';
+        $disk = config('filesystems.default');
+
         foreach ($files as $file) {
             \Log::info('Processing file', [
                 'original_name' => $file->getClientOriginalName(),
                 'mime_type' => $file->getMimeType(),
                 'size' => $file->getSize(),
+                'storage_path' => $storagePath,
             ]);
 
             // Generate unique filename
             $extension = $file->getClientOriginalExtension();
             $filename = Str::uuid() . '.' . $extension;
-
-            // Store file - use s3-private for production storage
-            $disk = config('filesystems.default') === 's3' ? 's3-private' : 'local';
             
             // Store the file directly from the uploaded file object
-            $path = $file->storeAs('event-attachments', $filename, $disk);
+            $path = $file->storeAs($storagePath, $filename, $disk);
 
             \Log::info('File stored', ['path' => $path, 'disk' => $disk]);
 
@@ -224,7 +231,7 @@ class EventAttachmentsController extends Controller
         try {
             // Instead of duplicating the file, reference the existing storage location
             // The file is already in the correct band's event_uploads folder
-            $attachmentDisk = config('filesystems.default') === 's3' ? 's3' : 'local';
+            $attachmentDisk = config('filesystems.default');
             
             // Use the existing storage path (without images/ prefix for S3)
             $storedPath = $storagePath ?? $publicPath;
