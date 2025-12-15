@@ -165,9 +165,8 @@
       v-model:visible="showPreviewModal"
       modal
       :dismissable-mask="true"
-      class="w-full max-w-4xl"
-      :style="{ width: '90vw', maxHeight: '90vh' }"
-      :content-style="{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }"
+      class="w-11/12 max-w-4xl max-h-[90%]"
+      :content-style="{ overflow: 'hidden', display: 'flex', flexDirection: 'column', maxHeight: '85vh' }"
     >
       <template #header>
         <div class="flex items-center justify-between w-full">
@@ -178,19 +177,18 @@
       </template>
       <div
         v-if="currentPreview"
-        class="flex justify-center items-center overflow-auto"
-        style="max-height: calc(90vh - 120px);"
+        class="flex justify-center items-center overflow-auto flex-1"
       >
         <img
           v-if="currentPreview.mime_type.startsWith('image/')"
           :src="getShowUrl(currentPreview.id)"
           :alt="currentPreview.filename"
-          class="max-w-full max-h-[70vh] object-contain"
+          class="max-w-full max-h-full object-contain"
         >
         <iframe
           v-else-if="currentPreview.mime_type === 'application/pdf'"
           :src="getShowUrl(currentPreview.id)"
-          class="w-full h-[70vh]"
+          class="w-full h-full min-h-[500px]"
         />
         <div
           v-else

@@ -568,7 +568,7 @@
 
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
-    import moment from 'moment'
+    import { DateTime } from 'luxon'
     import SectionTitle from './CreateSectionTitle.vue';
     import Input from '@/Components/Input.vue';
     import Checkbox from '@/Components/Checkbox.vue';
@@ -644,10 +644,10 @@
             },
             assumeSeven()
             {
-                this.form.event_time = new Date(moment(String(this.form.event_time)).add('hour',19));
-                this.form.end_time = new Date(moment(String(this.form.event_time)).add('hour',4));
-                this.form.quiet_time = new Date(moment(String(this.form.event_time)).subtract('hour',1));
-                this.form.ceremony_time = new Date(moment(String(this.form.event_time)).subtract('hour',1));
+                this.form.event_time = DateTime.fromJSDate(this.form.event_time).plus({ hours: 19 }).toJSDate();
+                this.form.end_time = DateTime.fromJSDate(this.form.event_time).plus({ hours: 4 }).toJSDate();
+                this.form.quiet_time = DateTime.fromJSDate(this.form.event_time).minus({ hours: 1 }).toJSDate();
+                this.form.ceremony_time = DateTime.fromJSDate(this.form.event_time).minus({ hours: 1 }).toJSDate();
                 
             },
             setDate()
@@ -655,16 +655,16 @@
                 const amountBefore = this.form.onsite ? 1 : 0;
                 if(this.form.event_type_id == 1)
                 {
-                    this.form.quiet_time = new Date(moment(String(this.form.ceremony_time)).subtract('hour',amountBefore));
-                    this.form.band_loadin_time = new Date(moment(String(this.form.quiet_time)).subtract('hour',2));
-                    this.form.rhythm_loadin_time = new Date(moment(String(this.form.quiet_time)).subtract('hour',3));
-                    this.form.production_loadin_time = new Date(moment(String(this.form.quiet_time)).subtract('hour',4));
+                    this.form.quiet_time = DateTime.fromJSDate(this.form.ceremony_time).minus({ hours: amountBefore }).toJSDate();
+                    this.form.band_loadin_time = DateTime.fromJSDate(this.form.quiet_time).minus({ hours: 2 }).toJSDate();
+                    this.form.rhythm_loadin_time = DateTime.fromJSDate(this.form.quiet_time).minus({ hours: 3 }).toJSDate();
+                    this.form.production_loadin_time = DateTime.fromJSDate(this.form.quiet_time).minus({ hours: 4 }).toJSDate();
                 }
                 else
                 {
-                    this.form.band_loadin_time = new Date(moment(String(this.form.quiet_time)).subtract('hour',2));
-                    this.form.rhythm_loadin_time = new Date(moment(String(this.form.quiet_time)).subtract('hour',3));
-                    this.form.production_loadin_time = new Date(moment(String(this.form.quiet_time)).subtract('hour',4));
+                    this.form.band_loadin_time = DateTime.fromJSDate(this.form.quiet_time).minus({ hours: 2 }).toJSDate();
+                    this.form.rhythm_loadin_time = DateTime.fromJSDate(this.form.quiet_time).minus({ hours: 3 }).toJSDate();
+                    this.form.production_loadin_time = DateTime.fromJSDate(this.form.quiet_time).minus({ hours: 4 }).toJSDate();
                 }
             },
 

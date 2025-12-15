@@ -213,7 +213,7 @@
 
 <script>
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue'
-    import moment from 'moment';
+    import { DateTime } from 'luxon';
     import Payments from '../../Components/Finances/AllPayments.vue';
     
     import TabMenu from 'primevue/tabmenu';
@@ -272,7 +272,7 @@ import { Link } from '@inertiajs/vue3';
               
               const completedProposals = [...this.completedProposals[band].completed_proposals];
                 var years = completedProposals.map(function(d) {
-                    const year = moment(d.date).format('YYYY');
+                    const year = DateTime.fromISO(d.date).toFormat('yyyy');
                     return [year,parseFloat(d.price)];
                 });
                 
@@ -386,7 +386,7 @@ import { Link } from '@inertiajs/vue3';
                 };
 
                 completedProposals.forEach(proposal => {
-                  const dateIndex = moment(proposal.date).format('M') - 1;
+                  const dateIndex = DateTime.fromISO(proposal.date).month - 1;
                     data.datasets[proposal.paid ? 0 : 1].data[dateIndex] += parseInt(proposal.price);
                 });
                 const newBandData = {

@@ -32,7 +32,7 @@
 </template>
 <script>
 import CardIcon from "./CardIcon.vue";
-import moment from "moment";
+import { DateTime } from "luxon";
 export default {
     components: {
         CardIcon,
@@ -64,7 +64,7 @@ export default {
     data() {
         return {
             showEditModal: false,
-            parsedDate: moment().format("mm-dd-yyyy"),
+            parsedDate: DateTime.now().toFormat("MM-dd-yyyy"),
         };
     },
     computed: {
@@ -81,8 +81,8 @@ export default {
     },
     created() {
         this.parsedDate = {
-            date: moment(this.date).format("MM-DD-YYYY"),
-            day: moment(this.date).format("(ddd)"),
+            date: DateTime.fromISO(this.date).toFormat("MM-dd-yyyy"),
+            day: DateTime.fromISO(this.date).toFormat("(EEE)"),
         };
     },
     methods: {

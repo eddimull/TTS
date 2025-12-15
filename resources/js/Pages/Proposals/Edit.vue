@@ -289,7 +289,7 @@
     import 'vue3-timepicker/dist/VueTimepicker.css'
     import ReservedCalendar from '../../Components/ReservedCalendar.vue'
 
-    import moment from 'moment';
+    import { DateTime } from 'luxon';
     import axios from 'axios'
     import { forEach } from 'lodash'
     export default {
@@ -381,11 +381,11 @@
             }
         },
         created(){
-            this.proposalData.date = new Date(moment(String(this.proposalData.date)))
+            this.proposalData.date = DateTime.fromISO(String(this.proposalData.date)).toJSDate()
             for(let i in this.recurringDates)
             {
                 
-                this.recurringDates[i].date = new Date(moment(String(this.recurringDates[i].date)))
+                this.recurringDates[i].date = DateTime.fromISO(String(this.recurringDates[i].date)).toJSDate()
 
             }
         },
@@ -452,7 +452,7 @@
             },
 
             addRecurringDate(){
-                this.recurringDates.push({date: new Date(moment(String(this.proposalData.date)).add(this.recurringDates.length + 1,'days'))});
+                this.recurringDates.push({date: DateTime.fromJSDate(this.proposalData.date).plus({ days: this.recurringDates.length + 1 }).toJSDate()});
             },
             
             deleteProposal(){
