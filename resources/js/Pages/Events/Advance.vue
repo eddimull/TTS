@@ -258,7 +258,7 @@
 
 <script>
     import BreezeUnAuthenticatedLayout from '@/Layouts/Guest'
-    import moment from 'moment';
+    import { DateTime } from 'luxon';
     export default {
         components: {
             BreezeUnAuthenticatedLayout,
@@ -273,12 +273,12 @@
         },
         methods:{
             formatDate(date){
-                return moment(String(date)).format('MM/DD/YYYY')
+                return DateTime.fromISO(String(date)).toFormat('MM/dd/yyyy')
             },
 
             formatTime(date)
             {
-                return moment(String(date)).format("h:mm A")
+                return DateTime.fromISO(String(date)).toFormat("h:mm a")
             }
 
         }

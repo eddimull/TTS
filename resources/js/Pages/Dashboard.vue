@@ -375,6 +375,12 @@ import { pull } from 'lodash'
 
     const gotoDate = (identifier) => {
       const el = document.querySelector(`#event_${identifier}`);
+      
+      // If element doesn't exist, skip (elements not rendered yet)
+      if (!el) {
+        return;
+      }
+      
       const header = document.querySelector('nav'); // Adjust this selector to match your header
       
       // Get the actual header height
@@ -820,14 +826,15 @@ import { pull } from 'lodash'
         updateScrollDirection();
       });
       
-      // Handle initial hash navigation
+      // Handle initial hash navigation - wait for DOM to be fully rendered
       if(window.location.hash.includes('event_'))
       {
         const identifier = window.location.hash.replace('#event_','');
+        // Wait for nextTick to ensure Vue has rendered, then add extra delay for DOM to settle
         nextTick(() => {
           setTimeout(()=>{
             gotoDate(identifier);
-          },100) // scroll to the item that includes the offset after 100ms. 
+          }, 150) // scroll to the item that includes the offset after DOM is ready
         })        
       }
       
@@ -850,18 +857,6 @@ import { pull } from 'lodash'
         clearTimeout(scrollTimeout);
       }
     });
-        const identifier = window.location.hash.replace('#event_','');
-        nextTick(() => {
-          setTimeout(()=>{
-            gotoDate(identifier);
-          },100) // scroll to the item that includes the offset after 100ms. 
-        })        
-      
-      
-      // Mark as initialized after a short delay to prevent immediate loading
-      setTimeout(() => {
-        isInitialized.value = true;
-      }, 500);
     
 
     onUnmounted(() => {

@@ -79,7 +79,7 @@
 
 <script>
     import BreezeGuestLayout from '@/Layouts/Guest'
-    import moment from 'moment';
+    import { DateTime } from 'luxon';
     import Button from 'primevue/button';
     import ProgressSpinner from 'primevue/progressspinner';
 
@@ -103,7 +103,7 @@
                 this.showIntro = false;
             },
             formatDate(date){
-                return moment(date).format('LLLL');
+                return DateTime.fromISO(date).toLocaleString(DateTime.DATETIME_HUGE);
             },
             acceptProposal()
             {
