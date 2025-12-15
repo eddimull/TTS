@@ -9,7 +9,7 @@
 
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
-    import moment from 'moment';
+    import { DateTime } from 'luxon';
     import EventList from './EventList.vue';
     export default {
         components: {
@@ -19,7 +19,7 @@
         props:['events','successMessage','includeAll'],
         methods:{
             formatDate(date){
-                return moment(String(date)).format('MM/DD/YYYY')
+                return DateTime.fromISO(String(date)).toFormat('MM/dd/yyyy')
             }
         }
     }

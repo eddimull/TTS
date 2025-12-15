@@ -477,7 +477,7 @@
 
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
-    import moment from 'moment';
+    import { DateTime } from 'luxon';
     import DataTable from 'primevue/datatable';
     import Column from 'primevue/column';
     import InputText from 'primevue/inputtext';
@@ -546,7 +546,7 @@ import Label from '../../Components/Label.vue';
                 ],
                 proposalData:{
                     name:'',
-                    date:new Date(moment().set({'hour':19,'minute':0}).add(1,'month')),
+                    date:DateTime.now().set({ hour: 19, minute: 0 }).plus({ months: 1 }).toJSDate(),
                     event_type_id:0,
                     hours:0,
                     price:0,
@@ -647,7 +647,7 @@ import Label from '../../Components/Label.vue';
             draftProposal(){
                 const data = {...this.proposalData};
 
-                data.date = moment(data.date).format('YYYY-MM-DD HH:mm:ss');
+                data.date = DateTime.fromJSDate(data.date).toFormat('yyyy-MM-dd HH:mm:ss');
                 this.$inertia.post('/proposals/' + this.activeBandSite + '/create',data);
             },
              writeToCalendar(){
@@ -684,7 +684,7 @@ import Label from '../../Components/Label.vue';
                 
             },
             parseDate(date){
-                return moment(date).format('YYYY-MM-DD');
+                return DateTime.fromJSDate(new Date(date)).toFormat('yyyy-MM-dd');
             },
             sendContract(){
                this.loading = true;
