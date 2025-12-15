@@ -8,7 +8,7 @@ import { createStore } from 'vuex'
 import VueSweetalert2 from 'vue-sweetalert2';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ZiggyVue } from 'ziggy-js';
-import moment from 'moment';
+import { DateTime } from 'luxon';
 import * as Sentry from "@sentry/vue";
 import CardModal from '@/Components/CardModal'
 import Card from '@/Components/Card'
@@ -127,7 +127,7 @@ createInertiaApp({
         });
         app.mixin({ methods: { route } });
 
-        app.config.globalProperties.$moment = moment;
+        app.config.globalProperties.$luxon = DateTime;
         app.config.globalProperties.$qs = qs;
         app.config.globalProperties.$route = route;
 

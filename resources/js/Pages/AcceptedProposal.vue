@@ -36,7 +36,7 @@
 
 <script>
     import BreezeGuestLayout from '@/Layouts/Guest'
-    import moment from 'moment';
+    import { DateTime } from 'luxon';
     import ConfettiGenerator from "confetti-js";
 
     export default {
@@ -80,7 +80,7 @@
                 this.showIntro = false;
             },
             formatDate(date){
-                return moment(date).format('LLLL');
+                return DateTime.fromISO(date).toLocaleString(DateTime.DATETIME_HUGE);
             }
         }
     }

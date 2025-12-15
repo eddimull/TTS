@@ -2,6 +2,7 @@
   <div
     ref="editorContainer"
     class="mt-4 p-2 md:p-6 bg-white dark:bg-slate-800 dark:text-gray-50 rounded-xl shadow-lg max-w-full"
+    :class="{ 'overflow-hidden': showNotesModal }"
   >
     <!-- Header -->
     <div class="flex items-center justify-between mb-6 pb-4 border-b dark:border-slate-600">
@@ -32,9 +33,8 @@
       :dismissable-mask="false"
       :closable="false"
       :block-scroll="true"
-      class="w-full h-full m-0"
-      :style="{ width: '100vw', height: '100vh', maxHeight: '100vh' }"
-      :content-style="{ height: '100%', display: 'flex', flexDirection: 'column', padding: 0 }"
+      class="!w-full !h-full !m-0 !max-w-full !max-h-full"
+      :content-style="{ height: '100%', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }"
     >
       <template #header>
         <div class="flex items-center justify-between w-full">
@@ -61,6 +61,7 @@
     <div class="space-y-4">
       <!-- Basic Information Section -->
       <SectionCard
+        v-show="!showNotesModal"
         title="Basic Information"
         icon="info"
         :is-open="openSections.basicInfo"
@@ -127,6 +128,7 @@
 
       <!-- Timeline Section -->
       <SectionCard
+        v-show="!showNotesModal"
         title="Event Timeline"
         icon="clock"
         :is-open="openSections.timeline"
@@ -144,6 +146,7 @@
 
       <!-- Attire Section -->
       <SectionCard
+        v-show="!showNotesModal"
         title="Attire"
         icon="attire"
         :is-open="openSections.attire"
@@ -154,6 +157,7 @@
 
       <!-- Additional Data Section -->
       <SectionCard
+        v-show="!showNotesModal"
         title="Additional Data"
         icon="data"
         :is-open="openSections.additionalData"
@@ -164,6 +168,7 @@
 
       <!-- Lodging Section -->
       <SectionCard
+        v-show="!showNotesModal"
         title="Lodging Information"
         icon="lodging"
         :is-open="openSections.lodging"
@@ -174,6 +179,7 @@
 
       <!-- Performance Section -->
       <SectionCard
+        v-show="!showNotesModal"
         title="Performance Notes"
         icon="performance"
         :is-open="openSections.performance"
@@ -184,6 +190,7 @@
 
       <!-- Wedding Section -->
       <SectionCard
+        v-show="!showNotesModal"
         v-if="isWedding"
         title="Wedding Details"
         icon="wedding"
@@ -513,10 +520,12 @@ const viewHistory = () => {
 
 const openNotesModal = () => {
     showNotesModal.value = true;
+    document.body.style.overflow = 'hidden';
 };
 
 const closeNotesModal = () => {
     showNotesModal.value = false;
+    document.body.style.overflow = '';
 };
 </script>
 
