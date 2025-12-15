@@ -130,13 +130,13 @@
                   >
                     <i class="pi pi-eye text-xs" />
                   </button>
-                  <a
-                    :href="getDownloadUrl(attachment.id)"
+                  <button
+                    type="button"
                     class="p-1 text-blue-600 hover:text-blue-800 dark:text-blue-400"
-                    download
+                    @click="downloadAttachment(attachment)"
                   >
                     <i class="pi pi-download text-xs" />
-                  </a>
+                  </button>
                   <button
                     type="button"
                     class="p-1 text-red-600 hover:text-red-800 dark:text-red-400"
@@ -181,13 +181,13 @@
       >
         <img
           v-if="currentPreview.mime_type.startsWith('image/')"
-          :src="getShowUrl(currentPreview.id)"
+          :src="getShowUrl(currentPreview)"
           :alt="currentPreview.filename"
           class="max-w-full max-h-full object-contain"
         >
         <iframe
           v-else-if="currentPreview.mime_type === 'application/pdf'"
-          :src="getShowUrl(currentPreview.id)"
+          :src="getShowUrl(currentPreview)"
           class="w-full h-full min-h-[500px]"
         />
         <div
@@ -196,13 +196,13 @@
         >
           <i class="pi pi-file text-6xl mb-4" />
           <p>Preview not available for this file type</p>
-          <a
-            :href="getDownloadUrl(currentPreview.id)"
-            class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mt-4 inline-block"
-            download
+          <button
+            type="button"
+            class="text-blue-600 hover:text-blue-800 dark:text-blue-400 mt-4 inline-block underline"
+            @click="downloadAttachment(currentPreview)"
           >
             Download to view
-          </a>
+          </button>
         </div>
       </div>
     </Dialog>
@@ -501,17 +501,28 @@ const formatFileSize = (bytes) => {
     
     return `${size.toFixed(2)} ${units[unitIndex]}`;
 }
-const getDownloadUrl = (attachmentId) => {
-    return window.route('events.attachments.download', attachmentId);
+const getDownloadUrl = (attachment) => {
+    // Always use controller route for downloads to ensure proper Content-Disposition headers
+    const id = typeof attachment === 'object' ? attachment.id : attachment;
+    return window.route('events.attachments.download', id);
 };
 
-const getShowUrl = (attachmentId) => {
-    return window.route('events.attachments.show', attachmentId);
+const getShowUrl = (attachment) => {
+    // Prefer direct URL for display if available, fallback to controller route
+    if (typeof attachment === 'object' && attachment.url) {
+        return attachment.url;
+    }
+    const id = typeof attachment === 'object' ? attachment.id : attachment;
+    return window.route('events.attachments.show', id);
 };
 
 const previewAttachment = (attachment) => {
     currentPreview.value = attachment;
     showPreviewModal.value = true;
+};
+
+const downloadAttachment = (attachment) => {
+    window.location.href = getDownloadUrl(attachment);
 };
 
 // Expose method to get selected files for upload
