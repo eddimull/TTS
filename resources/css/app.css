@@ -2,6 +2,12 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+/* Prevent pull-to-refresh browser behavior */
+html,
+body {
+    overscroll-behavior-y: none;
+}
+
 .content-container a {
     display: inline-block;
     max-width: 100%;
