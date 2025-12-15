@@ -50,12 +50,13 @@ export function useImageThumbnails() {
 
       // Force max-height via inline style to ensure it's respected
       img.style.maxHeight = '300px';
-      img.style.maxWidth = '400px';
+      img.style.maxWidth = '100%';
 
       // Wrap image in a container for overlay effect
       const wrapper = document.createElement('div');
       wrapper.className = 'thumbnail-wrapper inline-block relative mr-3 mb-3 group';
       wrapper.style.display = 'inline-block';
+      wrapper.style.maxWidth = '100%';
 
       // Replace img with wrapper
       img.parentNode.insertBefore(wrapper, img);
