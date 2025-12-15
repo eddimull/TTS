@@ -144,7 +144,7 @@
 
 <script>
 import BreezeAuthenticatedLayout from "@/Layouts/Authenticated";
-import moment from "moment";
+import { DateTime } from "luxon";
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
 import InputText from "primevue/inputtext";
@@ -204,9 +204,7 @@ export default {
             ],
             proposalData: {
                 name: "",
-                date: new Date(
-                    moment().set({ hour: 19, minute: 0 }).add("month", 1)
-                ),
+                date: DateTime.now().set({ hour: 19, minute: 0 }).plus({ months: 1 }).toJSDate(),
                 event_type_id: 0,
                 hours: 0,
                 price: 0,
@@ -306,9 +304,9 @@ export default {
         },
         selectProposal(proposal) {
             for (const i in proposal.data.invoices) {
-                proposal.data.invoices[i].created_at = moment(
+                proposal.data.invoices[i].created_at = DateTime.fromISO(
                     proposal.data.invoices[i].created_at
-                ).format("LLLL");
+                ).toLocaleString(DateTime.DATETIME_HUGE);
             }
             this.activeProposal = proposal.data;
             this.showModal = true;

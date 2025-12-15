@@ -65,7 +65,7 @@ methods:{
       return String(padded);
     }
     const dateString = String(date.year) + '-' + zeroPad(date.month + 1) + '-' + zeroPad(date.day);
-    const jsDate = this.$moment(dateString).format('YYYY-MM-DD');
+    const jsDate = this.$luxon.fromISO(dateString).toFormat('yyyy-MM-dd');
     return jsDate;
   },
      findReservedDate(date)
@@ -74,7 +74,7 @@ methods:{
                 var booked = false;
                 // console.log(this.bookedDates);
                 this.bookedDates.forEach(bookedDate =>{
-                    const parsedDate = this.$moment(bookedDate.event_time).format('YYYY-MM-DD');
+                    const parsedDate = this.$luxon.fromISO(bookedDate.event_time).toFormat('yyyy-MM-dd');
                     if(parsedDate === jsDate)
                     {
                         booked = true;
@@ -87,7 +87,7 @@ methods:{
               const jsDate = this.parsePrimeVueDate(date);
                 var name = '';
                 this.bookedDates.forEach(bookedDate =>{
-                    const parsedDate = this.$moment(bookedDate.event_time).format('YYYY-MM-DD');
+                    const parsedDate = this.$luxon.fromISO(bookedDate.event_time).toFormat('yyyy-MM-dd');
                     if(parsedDate === jsDate)
                     {
                         name = bookedDate.event_name;
@@ -100,7 +100,7 @@ methods:{
                 const jsDate = this.parsePrimeVueDate(date);
                 var booked = false;
                 this.proposedDates.forEach(proposedDate =>{
-                    const parsedDate = this.$moment(proposedDate.date).format('YYYY-MM-DD');
+                    const parsedDate = this.$luxon.fromISO(proposedDate.date).toFormat('yyyy-MM-dd');
                     if(parsedDate === jsDate)
                     {
                         booked = true;
@@ -113,7 +113,7 @@ methods:{
               const jsDate = this.parsePrimeVueDate(date);
                 var name = '';
                 this.proposedDates.forEach(proposedDate =>{
-                    const parsedDate = this.$moment(proposedDate.date).format('YYYY-MM-DD');
+                    const parsedDate = this.$luxon.fromISO(proposedDate.date).toFormat('yyyy-MM-dd');
                     if(parsedDate === jsDate)
                     {
                         name = proposedDate.name;
@@ -125,8 +125,8 @@ methods:{
             {
                 let dateArray = [];
                 // this.bookedDates.forEach(date=>{
-                //   console.log(new Date(this.$moment(String(date.event_time))));
-                //     dateArray.push(new Date(this.$moment(String(date.event_time))));
+                //   console.log(new Date(this.$luxon.fromISO(String(date.event_time)).toJSDate()));
+                //     dateArray.push(this.$luxon.fromISO(String(date.event_time)).toJSDate());
                 // })
                 return dateArray;
             },
