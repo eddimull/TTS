@@ -527,7 +527,7 @@
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
     import ButtonComponent from '@/Components/Button'
-    import moment from 'moment';
+    import { DateTime } from 'luxon';
     import SectionTitle from './CreateSectionTitle.vue';
     import TimePicker from '@/Components/TimePicker.vue';
     import TextInput from '@/Components/TextInput.vue';
@@ -759,7 +759,7 @@
             },
             formatDate(date) {
               if (!date) return null;
-              return moment(date).format('YYYY-MM-DD HH:mm:ss');
+              return DateTime.fromJSDate(new Date(date)).toFormat('yyyy-MM-dd HH:mm:ss');
             },            
         }
     }

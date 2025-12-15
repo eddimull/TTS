@@ -186,7 +186,7 @@
     import Datepicker from 'vue3-datepicker'
     import VueTimepicker from 'vue3-timepicker'
     import 'vue3-timepicker/dist/VueTimepicker.css'
-    import moment from 'moment';
+    import { DateTime } from 'luxon';
     export default {
         components: {
             BreezeAuthenticatedLayout,Datepicker,VueTimepicker,ButtonComponent
@@ -263,7 +263,7 @@
             }
         },
         created(){
-            this.proposalData.date = new Date(moment(String(this.proposalData.date)))
+            this.proposalData.date = DateTime.fromISO(String(this.proposalData.date)).toJSDate()
         },
         methods:{
             saveContact(){

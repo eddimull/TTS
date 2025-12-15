@@ -306,15 +306,32 @@ class EventsController extends Controller
         $venue_name = $event->eventable->venue_name;
         $venue_address = $event->eventable->venue_address;
         $location = urlencode($venue_name . ' ' . $venue_address);
+        
+        // Create a cache key based on the venue address
+        $cacheKey = 'google_maps_image_' . md5($venue_name . '|' . $venue_address);
+        
+        // Cache the response body (image data) for 30 days
+        $imageData = \Cache::remember($cacheKey, 60 * 24 * 30, function () use ($location) {
+            $url = "https://maps.googleapis.com/maps/api/staticmap?"
+                . "center={$location}"
+                . "&zoom=17"
+                . "&size=400x400"
+                . "&markers=color:red%7C{$location}"
+                . "&key=" . config('googlemaps.key');
 
-        $url = "https://maps.googleapis.com/maps/api/staticmap?"
-            . "center={$location}"
-            . "&zoom=17"
-            . "&size=400x400"
-            . "&markers=color:red%7C{$location}"
-            . "&key=" . config('googlemaps.key');
-
-        return Http::get($url);
+            $response = Http::get($url);
+            
+            // Cache only the body content and status
+            return [
+                'body' => $response->body(),
+                'status' => $response->status(),
+                'headers' => $response->headers()
+            ];
+        });
+        
+        // Return a response object with the cached data
+        return response($imageData['body'], $imageData['status'])
+            ->withHeaders($imageData['headers']);
     }
     /**
      * Remove the specified resource from storage.
