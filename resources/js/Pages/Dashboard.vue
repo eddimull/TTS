@@ -365,8 +365,6 @@ import { pull } from 'lodash'
     const scrollLoadOpacity = ref(0);
     const scrollLoadThreshold = 300; // Distance from top to start showing indicator
     const scrollLoadTrigger = 50; // Distance from top to trigger load
-    let wheelTimeout = null;
-    let upwardScrollAttempts = 0;
 
     // Infinite scroll state
     const isLoadingOlder = ref(false);
@@ -383,7 +381,7 @@ import { pull } from 'lodash'
       const headerHeight = header ? header.offsetHeight : 0;
       
       // Add a small additional padding if desired
-      const additionalPadding = 20; 
+      const additionalPadding = 0; 
       const offset = headerHeight + additionalPadding;
       
       const elementPosition = el.getBoundingClientRect().top;
@@ -526,13 +524,18 @@ import { pull } from 'lodash'
       // Update scroll direction based on position relative to "today"
       updateScrollDirection();
       
-      // Handle scroll-to-load-older indicator
+      // Handle scroll-to-load-older indicator and trigger
       if (isInitialized.value && canLoadMore.value && !isLoadingOlder.value) {
         // Show indicator when within threshold distance from top
         if (currentScrollY <= scrollLoadThreshold) {
           showScrollLoadIndicator.value = true;
           // Calculate opacity based on distance from top (closer = more opaque)
           scrollLoadOpacity.value = Math.min(1, (scrollLoadThreshold - currentScrollY) / scrollLoadThreshold);
+          
+          // Trigger load when very close to top
+          if (currentScrollY <= scrollLoadTrigger && lastScrollY > scrollLoadTrigger) {
+            loadOlderEvents();
+          }
         } else {
           showScrollLoadIndicator.value = false;
           scrollLoadOpacity.value = 0;
@@ -553,42 +556,6 @@ import { pull } from 'lodash'
       scrollTimeout = setTimeout(() => {
         updateHashOnScroll();
       }, 150);
-    };
-
-    const handleWheel = (e) => {
-      if (!isInitialized.value || isLoadingOlder.value || !canLoadMore.value) {
-        return;
-      }
-
-      const currentScrollY = window.scrollY;
-      
-      // Detect upward scroll attempt (negative deltaY means scrolling up)
-      if (e.deltaY < 0 && currentScrollY === 0) {
-        upwardScrollAttempts++;
-        
-        // Show feedback
-        showScrollLoadIndicator.value = true;
-        scrollLoadOpacity.value = 1;
-        
-        // Clear previous timeout
-        if (wheelTimeout) {
-          clearTimeout(wheelTimeout);
-        }
-        
-        // If user scrolls up 2+ times at the top, load older events
-        if (upwardScrollAttempts >= 2) {
-          loadOlderEvents();
-          upwardScrollAttempts = 0;
-        }
-        
-        // Reset attempts after a delay
-        wheelTimeout = setTimeout(() => {
-          upwardScrollAttempts = 0;
-        }, 1000);
-      } else if (currentScrollY > 0) {
-        // Reset attempts when scrolled away from top
-        upwardScrollAttempts = 0;
-      }
     };
 
     const handleTouchStart = (e) => {
@@ -838,9 +805,6 @@ import { pull } from 'lodash'
       // Add scroll listener
       window.addEventListener('scroll', handleScroll);
       
-      // Add wheel listener for scroll-to-load on desktop
-      window.addEventListener('wheel', handleWheel, { passive: true });
-      
       // Add touch listeners for pull-to-refresh on mobile
       window.addEventListener('touchstart', handleTouchStart, { passive: true });
       window.addEventListener('touchmove', handleTouchMove, { passive: true });
@@ -854,10 +818,6 @@ import { pull } from 'lodash'
       // Initialize scroll direction
       nextTick(() => {
         updateScrollDirection();
-        // Initialize lastScrollY to current position
-        lastScrollY = window.scrollY;
-        // Trigger initial scroll check to show indicator if at top
-        handleScroll();
       });
       
       // Handle initial hash navigation
@@ -881,9 +841,6 @@ import { pull } from 'lodash'
       // Clean up scroll listener
       window.removeEventListener('scroll', handleScroll);
       
-      // Clean up wheel listener
-      window.removeEventListener('wheel', handleWheel);
-      
       // Clean up touch listeners
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
@@ -891,10 +848,6 @@ import { pull } from 'lodash'
       
       if (scrollTimeout) {
         clearTimeout(scrollTimeout);
-      }
-      
-      if (wheelTimeout) {
-        clearTimeout(wheelTimeout);
       }
     });
         const identifier = window.location.hash.replace('#event_','');
