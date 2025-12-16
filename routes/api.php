@@ -44,6 +44,7 @@ Route::middleware(['web', 'auth'])->group(function () {
 
 Route::post('/searchLocations', [LocationController::class, 'searchLocations'])->name('searchLocations');
 Route::post('/getLocationDetails', [LocationController::class, 'getLocationDetails'])->name('getLocationDetails');
+Route::post('/geocodeAddress', [LocationController::class, 'geocodeAddress'])->name('geocodeAddress');
 Route::get('/contracts/{contract:envelope_id}/history', [ContractsController::class, 'getHistory'])->name('getContractHistory');
 
 // Band API routes (token-authenticated)
