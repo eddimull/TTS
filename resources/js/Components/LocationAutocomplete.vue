@@ -78,6 +78,12 @@
       searchTimer.value = null;
     }
 
+    // Only search if input is 3+ characters
+    if (!props.modelValue || props.modelValue.length < 3) {
+      searchResults.value = null;
+      return;
+    }
+
     searchTimer.value = setTimeout(() => {
       try {
         axios.post('/api/searchLocations', {
@@ -85,11 +91,15 @@
           input: props.modelValue,
         }).then((response) => {
           searchResults.value = response.data.predictions;
+        }).catch((error) => {
+          console.error('Error in autocomplete', error);
+          searchResults.value = null;
         });
       } catch (e) {
         console.error('Error in autocomplete', e);
+        searchResults.value = null;
       }
-    }, 800);
+    }, 1200); // Increased from 800ms to 1200ms to reduce API calls
   };
 
   const getLocationDetails = (place_id) => {

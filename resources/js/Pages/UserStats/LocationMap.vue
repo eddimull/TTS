@@ -3,7 +3,7 @@
     <div class="relative">
       <div
         ref="map"
-        class="w-full h-96 rounded-lg"
+        class="w-full h-96 rounded-lg bg-gray-100 dark:bg-gray-900"
       />
       <div
         v-if="loading"
@@ -37,15 +37,17 @@
       </div>
     </div>
     <p
-      v-if="!apiKeyAvailable"
-      class="mt-2 text-sm text-gray-500 dark:text-gray-400"
+      v-if="!hasLocations"
+      class="mt-2 text-sm text-gray-500 dark:text-gray-400 text-center"
     >
-      Google Maps API key not configured. Set GOOGLE_MAPS_API_KEY in your .env file to see the map.
+      {{ locations.length === 0 ? 'No performance locations to display.' : 'Map requires geocoding your performance locations.' }}
     </p>
   </div>
 </template>
 
 <script>
+import axios from 'axios'
+
 export default {
   props: {
     locations: {
@@ -62,83 +64,80 @@ export default {
     return {
       map: null,
       markers: [],
-      apiKeyAvailable: false,
-      geocoder: null,
       loading: false,
       markersLoaded: 0,
-      totalToLoad: 0
+      totalToLoad: 0,
+      geocodedLocations: []
+    }
+  },
+
+  computed: {
+    hasLocations() {
+      return this.locations && this.locations.length > 0
     }
   },
 
   mounted() {
-    this.loadGoogleMapsScript()
+    if (this.hasLocations) {
+      this.loadMapWithLeaflet()
+    }
   },
 
   methods: {
-    loadGoogleMapsScript() {
-      // Check if script is already loaded
-      if (window.google && window.google.maps) {
-        this.apiKeyAvailable = true
+    async loadMapWithLeaflet() {
+      // Load Leaflet CSS and JS dynamically
+      if (!document.getElementById('leaflet-css')) {
+        const link = document.createElement('link')
+        link.id = 'leaflet-css'
+        link.rel = 'stylesheet'
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+        link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY='
+        link.crossOrigin = ''
+        document.head.appendChild(link)
+      }
+
+      if (!window.L) {
+        const script = document.createElement('script')
+        script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+        script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo='
+        script.crossOrigin = ''
+        script.onload = () => {
+          this.initMap()
+        }
+        script.onerror = () => {
+          console.error('Failed to load Leaflet')
+        }
+        document.head.appendChild(script)
+      } else {
         this.initMap()
-        return
       }
-
-      // Use API key from props
-      if (!this.apiKey) {
-        console.warn('Google Maps API key not provided')
-        this.showLocationsList()
-        return
-      }
-
-      this.apiKeyAvailable = true
-
-      // Load Google Maps script
-      const script = document.createElement('script')
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${this.apiKey}&libraries=places`
-      script.async = true
-      script.defer = true
-      script.onload = () => {
-        this.initMap()
-      }
-      script.onerror = () => {
-        console.error('Failed to load Google Maps script')
-        this.showLocationsList()
-      }
-      document.head.appendChild(script)
     },
 
-    initMap() {
-      if (!this.$refs.map || !window.google) {
-        this.showLocationsList()
+    async initMap() {
+      if (!this.$refs.map || !window.L) {
         return
       }
 
       // Create map centered on US (default)
-      this.map = new window.google.maps.Map(this.$refs.map, {
-        zoom: 4,
-        center: { lat: 39.8283, lng: -98.5795 }, // Center of US
-        styles: [
-          {
-            featureType: 'poi',
-            elementType: 'labels',
-            stylers: [{ visibility: 'off' }]
-          }
-        ]
-      })
+      this.map = window.L.map(this.$refs.map).setView([39.8283, -98.5795], 4)
 
-      this.geocoder = new window.google.maps.Geocoder()
+      // Add OpenStreetMap tiles (free, no API key needed)
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19
+      }).addTo(this.map)
 
-      // Add markers for each location
-      this.addMarkers()
+      // Geocode and add markers
+      await this.addMarkers()
     },
 
     async addMarkers() {
-      if (!this.map || !this.geocoder || this.locations.length === 0) {
+      if (!this.map || this.locations.length === 0) {
         return
       }
 
       this.loading = true
-      const bounds = new window.google.maps.LatLngBounds()
+      const bounds = window.L.latLngBounds()
       let successfulMarkers = 0
 
       // Limit to first 50 locations to prevent excessive API calls
@@ -146,90 +145,68 @@ export default {
       this.totalToLoad = limitedLocations.length
       this.markersLoaded = 0
 
-      // Add delay between geocoding requests to avoid rate limiting
-      for (let i = 0; i < limitedLocations.length; i++) {
-        const location = limitedLocations[i]
+      // Batch geocode requests (5 at a time to avoid overwhelming the server)
+      const batchSize = 5
+      for (let i = 0; i < limitedLocations.length; i += batchSize) {
+        const batch = limitedLocations.slice(i, i + batchSize)
 
-        try {
-          // Add small delay between requests (100ms)
-          if (i > 0) {
-            await new Promise(resolve => setTimeout(resolve, 100))
-          }
+        const promises = batch.map(async (location) => {
+          try {
+            const result = await this.geocodeAddress(location.full_address)
+            if (result) {
+              const marker = window.L.marker([result.lat, result.lng]).addTo(this.map)
 
-          const result = await this.geocodeAddress(location.full_address)
-          if (result) {
-            const marker = new window.google.maps.Marker({
-              position: result,
-              map: this.map,
-              title: location.title
-            })
-
-            // Create info window
-            const infoWindow = new window.google.maps.InfoWindow({
-              content: `
-                <div style="padding: 8px;">
+              marker.bindPopup(`
+                <div style="padding: 4px;">
                   <h3 style="font-weight: bold; margin-bottom: 4px;">${location.title}</h3>
                   <p style="margin: 0; color: #666;">${location.venue_name}</p>
                   <p style="margin: 0; color: #666; font-size: 12px;">${location.venue_address}</p>
                   <p style="margin: 4px 0 0 0; color: #999; font-size: 12px;">${location.date}</p>
+                  ${result.from_cache ? '<p style="margin: 2px 0 0 0; color: #10b981; font-size: 10px;">Cached</p>' : ''}
                 </div>
-              `
-            })
+              `)
 
-            marker.addListener('click', () => {
-              infoWindow.open(this.map, marker)
-            })
-
-            this.markers.push(marker)
-            bounds.extend(result)
-            successfulMarkers++
+              this.markers.push(marker)
+              bounds.extend([result.lat, result.lng])
+              successfulMarkers++
+            }
+            this.markersLoaded++
+          } catch (error) {
+            console.warn(`Failed to geocode location: ${location.full_address}`, error)
+            this.markersLoaded++
           }
+        })
 
-          this.markersLoaded = i + 1
-        } catch (error) {
-          console.warn(`Failed to geocode location: ${location.full_address}`, error)
-          this.markersLoaded = i + 1
+        await Promise.all(promises)
+
+        // Small delay between batches
+        if (i + batchSize < limitedLocations.length) {
+          await new Promise(resolve => setTimeout(resolve, 500))
         }
       }
 
       // Fit map to bounds if we have markers
       if (successfulMarkers > 0) {
-        this.map.fitBounds(bounds)
+        this.map.fitBounds(bounds, { padding: [50, 50] })
 
         // Don't zoom in too much if there's only one location
-        const listener = window.google.maps.event.addListener(this.map, 'idle', () => {
-          if (successfulMarkers === 1 && this.map.getZoom() > 12) {
-            this.map.setZoom(12)
-          }
-          window.google.maps.event.removeListener(listener)
-        })
+        if (successfulMarkers === 1 && this.map.getZoom() > 12) {
+          this.map.setZoom(12)
+        }
       }
 
       this.loading = false
     },
 
-    geocodeAddress(address) {
-      return new Promise((resolve, reject) => {
-        this.geocoder.geocode({ address: address }, (results, status) => {
-          if (status === 'OK' && results[0]) {
-            resolve(results[0].geometry.location)
-          } else {
-            reject(new Error(`Geocoding failed: ${status}`))
-          }
+    async geocodeAddress(address) {
+      try {
+        const response = await axios.post('/api/geocodeAddress', {
+          address: address
         })
-      })
-    },
-
-    showLocationsList() {
-      // Fallback: just show the map div with a message
-      if (this.$refs.map) {
-        this.$refs.map.innerHTML = `
-          <div class="flex items-center justify-center h-full bg-gray-100 dark:bg-gray-900 rounded-lg">
-            <p class="text-gray-500 dark:text-gray-400">
-              Map view requires Google Maps API configuration
-            </p>
-          </div>
-        `
+        return response.data
+      } catch (error) {
+        console.error('Geocoding error:', error)
+        return null
       }
     }
   },
@@ -237,9 +214,15 @@ export default {
   beforeUnmount() {
     // Clean up markers
     this.markers.forEach(marker => {
-      marker.setMap(null)
+      marker.remove()
     })
     this.markers = []
+
+    // Clean up map
+    if (this.map) {
+      this.map.remove()
+      this.map = null
+    }
   }
 }
 </script>
