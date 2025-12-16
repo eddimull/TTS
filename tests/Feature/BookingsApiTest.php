@@ -174,7 +174,7 @@ class BookingsApiTest extends TestCase
         $bookingData = [
             'name' => 'Wedding Reception',
             'event_type_id' => $this->eventType->id,
-            'date' => '2025-12-15',
+            'date' => now()->addDays(30)->format('Y-m-d'),
             'start_time' => '18:00',
             'duration' => 4,
             'price' => 1500,
@@ -282,7 +282,7 @@ class BookingsApiTest extends TestCase
         $bookingData = [
             'name' => 'Test Event',
             'event_type_id' => $this->eventType->id,
-            'date' => '2025-12-15',
+            'date' => now()->addDays(30)->format('Y-m-d'),
             'start_time' => '18:00',
             'duration' => 3,
             'price' => 1500,
