@@ -249,17 +249,10 @@
                       Band: {{ booking.band_name }}
                     </div>
                     <div class="mt-2 flex items-center gap-2">
-                      <span
-                        :class="[
-                          'px-2 inline-flex text-xs leading-5 font-semibold rounded-full',
-                          booking.status === 'confirmed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                          booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                          booking.status === 'cancelled' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
-                          'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                        ]"
-                      >
-                        {{ booking.status.charAt(0).toUpperCase() + booking.status.slice(1) }}
-                      </span>
+                      <StatusBadge
+                        :status="booking.status"
+                        variant="badge"
+                      />
                       <span class="text-xs text-gray-500 dark:text-gray-400">
                         since {{ booking.status_changed_at }}
                       </span>
@@ -493,6 +486,7 @@
 import { computed } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import ContactLayout from '@/Layouts/ContactLayout.vue';
+import StatusBadge from '@/Components/StatusBadge.vue';
 
 const props = defineProps({
   portal: Object,
