@@ -530,14 +530,11 @@ const formatTime = (time) => {
   return dt.isValid ? dt.toFormat('h:mm a') : time
 }
 
-const formatPrice = (price) => {
-  if (price === null || price === undefined) return '0.00'
-  return parseFloat(price).toFixed(2)
-}
-
-// Use shared payment types composable
+// Use shared utilities
 import { usePaymentTypes } from '@/composables/usePaymentTypes';
-const { getPaymentTypeLabel, getPaymentTypeIcon, getPaymentTypeColor } = usePaymentTypes();
+import { formatMoney } from '@/utils/formatters';
+const { getPaymentTypeIcon, getPaymentTypeColor } = usePaymentTypes();
+const formatPrice = formatMoney;
 
 const editBooking = () => {
   // Navigate to Booking Details with edit mode query param or use an edit component

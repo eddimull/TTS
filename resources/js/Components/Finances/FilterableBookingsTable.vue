@@ -95,19 +95,10 @@
         class="w-1/6"
       >
         <template #body="value">
-          <span
-            :class="{
-              'text-red-600 font-bold':
-                value?.data?.status === 'cancelled',
-              'text-green-600 font-bold':
-                value?.data?.status === 'confirmed',
-              'text-blue-600 font-bold':
-                value?.data?.status === 'pending',
-            }"
-          >
-            {{ value.data.status.charAt(0).toUpperCase() +
-              value.data.status.slice(1) }}
-          </span>
+          <StatusBadge
+            :status="value.data.status"
+            variant="text"
+          />
         </template>
         <template #filter="{ filterModel, filterCallback}">
           <MultiSelect
@@ -203,6 +194,8 @@ import { FilterMatchMode, FilterOperator } from "@primevue/core/api";
 import MultiSelect from "primevue/multiselect";
 import DatePicker from "primevue/datepicker";
 import Select from "primevue/select";
+import StatusBadge from '@/Components/StatusBadge.vue';
+import { formatDate as formatDateUtil } from '@/utils/formatters';
 
 const props = defineProps({
     band: {
@@ -346,15 +339,7 @@ const getPaymentColor = (booking) => {
     return `rgb(${red}, ${green}, 0)`;
 };
 
-const formatDate = (value) => {
-    if (!value) return '';
-    const date = new Date(value);
-    return date.toLocaleDateString('en-US', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    });
-};
+const formatDate = formatDateUtil;
 
 const handleRowClick = (event) => {
     const url = route("Booking Finances", { band: props.band.id, booking: event.data.id });
