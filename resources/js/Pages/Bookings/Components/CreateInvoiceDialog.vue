@@ -156,13 +156,8 @@ const emails = props.booking.contacts.map((contact) => {
     };
 });
 
-const formatMoney = (value) => {
-    return value.toLocaleString("en-US", {
-        style: "currency",
-        currency: "USD",
-        minimumFractionDigits: 2,
-    });
-};
+import { formatCurrency } from '@/utils/formatters';
+const formatMoney = formatCurrency;
 
 const createInvoice = () => {
     saving.value = true;
