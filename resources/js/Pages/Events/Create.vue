@@ -673,17 +673,26 @@
                     clearTimeout(this.searchTimer);
                     this.searchTimer = null;
                 }
-                try{
 
+                // Only search if venue name is 3+ characters
+                if(!this.form.venue_name || this.form.venue_name.length < 3){
+                    this.searchResults = [];
+                    return;
+                }
+
+                try{
                   this.searchTimer = setTimeout(()=>{
                     axios.post('/autocompleteLocation',{
                       sessionToken:this.sessionToken,
                         searchParams:this.form.venue_name,
                     }).then((response)=>{
                       this.searchResults = response.data.predictions
+                    }).catch((error)=>{
+                      console.error('Error in autocomplete', error);
+                      this.searchResults = [];
                     })
-                  },800)
-                } 
+                  },1200) // Increased from 800ms to 1200ms to reduce API calls
+                }
                 catch (e)
                 {
                   this.$page.props.errors = ['Error in autocomplete' + e]

@@ -655,15 +655,24 @@
                     clearTimeout(this.searchTimer);
                     this.searchTimer = null;
                 }
+
+                // Only search if venue name is 4+ characters
+                if(!this.form.venue_name || this.form.venue_name.length < 4){
+                    this.searchResults = [];
+                    return;
+                }
+
                 this.searchTimer = setTimeout(()=>{
                     axios.post('/autocompleteLocation',{
                         sessionToken:this.sessionToken,
                         searchParams:this.form.venue_name,
                     }).then((response)=>{
-                        console.log(response.data);
                         this.searchResults = response.data.predictions
+                    }).catch((error)=>{
+                        console.error('Error in autocomplete', error);
+                        this.searchResults = [];
                     })
-                },800)
+                },1200) // Increased from 800ms to 1200ms to reduce API calls
             },
 
             getLocationDetails(place_id)
