@@ -23,7 +23,6 @@
 import { router } from "@inertiajs/vue3";
 import { ref, onMounted } from "vue";
 import "jspdf-autotable";
-import "svg2pdf.js";
 import EditableContractWYSIWYG from "./EditableContractWYSIWYG.vue";
 import SendContractPopup from "./SendContractPopup.vue";
 import InitialTerms from "./InitialTerms.json";

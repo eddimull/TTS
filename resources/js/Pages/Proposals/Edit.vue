@@ -478,14 +478,24 @@
                     clearTimeout(this.searchTimer);
                     this.searchTimer = null;
                 }
+
+                // Only search if location is 4+ characters
+                if(!this.proposalData.location || this.proposalData.location.length < 4){
+                    this.searchResults = [];
+                    return;
+                }
+
                 this.searchTimer = setTimeout(()=>{
                     axios.post('/autocompleteLocation',{
                         sessionToken:this.sessionToken,
                         searchParams:this.proposalData.location,
                     }).then((response)=>{
                         this.searchResults = response.data.predictions
+                    }).catch((error)=>{
+                        console.error('Error in autocomplete', error);
+                        this.searchResults = [];
                     })
-                },800)
+                },1200) // Increased from 800ms to 1200ms to reduce API calls
             }
         }
     }
