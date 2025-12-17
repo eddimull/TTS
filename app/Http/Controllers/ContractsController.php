@@ -198,6 +198,9 @@ class ContractsController extends Controller
 
         $contractPdf = $booking->getContractPdf($contact);
         $booking->storeContractPdf($contractPdf);
+
+        // Refresh to get the updated contract with asset_url populated
+        $booking->refresh();
         $contract = $booking->contract;
 
         if (!$contract)
