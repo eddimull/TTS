@@ -1,8 +1,22 @@
 <template>
   <div class="inline-block">  
     <div class="max-w-sm rounded overflow-hidden shadow-lg">
+      <!-- PDF Preview -->
+      <div
+        v-if="isPdf"
+        class="bg-gradient-to-br from-red-50 to-orange-100 dark:from-gray-700 dark:to-gray-800 h-48 flex items-center justify-center overflow-hidden"
+      >
+        <div class="w-full h-full flex items-center justify-center bg-white">
+          <pdf
+            :src="picture"
+            :page="1"
+            style="transform: scale(0.3); transform-origin: center;"
+          />
+        </div>
+      </div>
+      <!-- Image Preview -->
       <img
-        v-if="picture !== false"
+        v-else-if="picture && picture !== false"
         class="w-full"
         :src="picture"
         :alt="title"
@@ -30,25 +44,39 @@
 </template>
 
 <script>
-    export default {
-        name: 'Card',
-        props: {
-            picture: {
-                default: 'https://scontent-dfw5-1.xx.fbcdn.net/v/t1.6435-9/90202670_2981972625166587_3140944514533818368_n.jpg?_nc_cat=111&ccb=1-3&_nc_sid=cdbe9c&_nc_ohc=_rByVu-Lk6MAX8T3vNM&_nc_ht=scontent-dfw5-1.xx&oh=782d09d2a26045a7eb03568bc3c9c264&oe=60AE70A5',
-                type:String
-            },
-            title: {
-                default: 'No Title',
-                type:String
-            },
-            description: {
-                default: 'Description of the thing',
-                type:String
-            },
-            hashTags:{
-                default:[],
-                type:Array
-            }
+import pdf from "@jbtje/vite-vue3pdf";
+
+export default {
+    name: 'Card',
+    components: {
+        pdf,
+    },
+    props: {
+        picture: {
+            default: null,
+            type: [String, Boolean]
+        },
+        title: {
+            default: 'No Title',
+            type:String
+        },
+        description: {
+            default: 'Description of the thing',
+            type:String
+        },
+        hashTags:{
+            default:[],
+            type:Array
+        },
+        fileType: {
+            default: null,
+            type: String
+        }
+    },
+    computed: {
+        isPdf() {
+            return this.fileType && this.fileType.indexOf('application/pdf') !== -1;
         }
     }
+}
 </script>
