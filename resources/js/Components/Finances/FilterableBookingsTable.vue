@@ -63,7 +63,7 @@
       :rows="20"
       class="cursor-pointer"
       sort-field="date"
-      sort-order="1"
+      :sort-order="1"
       :global-filter-fields="['name', 'status', 'price', 'amount_paid', 'date']"
       filter-display="menu"
       @row-click="handleRowClick"
@@ -214,10 +214,6 @@ const props = defineProps({
         type: String,
         default: "No bookings found.",
     },
-    stats: {
-        type: Array,
-        default: () => [],
-    },
 });
 
 const initFilters = () => {
@@ -253,6 +249,48 @@ const filteredBookingsByYear = computed(() => {
 
 const filteredBookings = computed(() => {
     return getFilteredBookings(filteredBookingsByYear.value);
+});
+
+const stats = computed(() => {
+    const bookings = filteredBookings.value;
+    
+    if (bookings.length === 0) {
+        return [];
+    }
+
+    const totalDue = bookings.reduce((total, booking) => {
+        const price = parseFloat(booking.price) || 0;
+        const amountPaid = parseFloat(booking.amount_paid) || 0;
+        return total + (price - amountPaid);
+    }, 0);
+
+    const totalPaid = bookings.reduce((total, booking) => {
+        const amountPaid = parseFloat(booking.amount_paid) || 0;
+        return total + amountPaid;
+    }, 0);
+
+    const totalPrice = bookings.reduce((total, booking) => {
+        const price = parseFloat(booking.price) || 0;
+        return total + price;
+    }, 0);
+
+    return [
+        {
+            label: 'Number of Bookings',
+            value: bookings.length,
+            colorClass: 'text-blue-600 dark:text-blue-400',
+        },
+        {
+            label: 'Total Due',
+            value: `$${totalDue.toFixed(2)}`,
+            colorClass: 'text-green-600 dark:text-green-400',
+        },
+        {
+            label: 'Amount Paid',
+            value: `$${totalPaid.toFixed(2)}`,
+            colorClass: 'text-orange-600 dark:text-orange-400',
+        },
+    ];
 });
 
 const statusOptions = [
