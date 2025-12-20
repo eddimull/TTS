@@ -6,7 +6,7 @@
       <!-- Primary Navigation Menu -->
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
-          <div class="flex">
+          <div class="flex flex-1 min-w-0">
             <!-- Logo -->
             <div class="flex-shrink-0 flex items-center">
               <Link :href="route('dashboard')">
@@ -18,60 +18,40 @@
 
             <!-- Navigation Links -->
             <div
-              class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex transition-opacity duration-300 ease-in-out"
+              class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex sm:items-center transition-opacity duration-300 ease-in-out"
               :class="{ 'opacity-0 pointer-events-none': searchActive }"
             >
-              <breeze-nav-link
-                :href="route('dashboard')"
-                :active="route().current('dashboard')"
-              >
-                Dashboard
-              </breeze-nav-link>
-              <breeze-nav-link
-                v-if="navigation && navigation.Bookings && navigation.Bookings.read"
-                :href="route('Bookings Home')"
-                :active="
-                  route().current().indexOf('Booking') > -1
-                "
-              >
-                Booking
-              </breeze-nav-link>
-              <breeze-nav-link
-                v-if="navigation && navigation.Events && navigation.Events.read"
-                :href="route('events')"
-                :active="route().current('events')"
-              >
-                Events
-              </breeze-nav-link>
-              <breeze-nav-link
-                v-if="navigation && navigation.Rehearsals && navigation.Rehearsals.read"
-                :href="route('rehearsal-schedules.index')"
-                :active="route().current().includes('rehearsal')"
-              >
-                Rehearsals
-              </breeze-nav-link>
-              <breeze-nav-link
-                v-if="navigation && navigation.Invoices && navigation.Invoices.read"
-                :href="route('finances')"
-                :active="
-                  route().current('finances') ||
-                    $page.props?.url?.includes('/finances')
-                "
-              >
-                Finances
-              </breeze-nav-link>
-              <breeze-nav-link
-                v-if="navigation && navigation.Charts && navigation.Charts.read"
-                :href="route('charts')"
-                :active="route().current('charts')"
-              >
-                Charts
-              </breeze-nav-link>
+              <NavDropdown
+                v-for="group in visibleGroups"
+                :key="group.id"
+                :label="group.label"
+                :items="group.items"
+                :group-id="group.id"
+                :is-active-group="group.isActive"
+              />
+            </div>
+          </div>
+          <!-- Search Overlay -->
+          <div                        
+            class="absolute inset-0 bg-white dark:bg-slate-700 z-10 flex items-center px-4 sm:px-6 lg:px-8 transition-all duration-300 ease-in-out transform"
+            :class="{
+              'translate-y-0 opacity-100': searchActive,
+              '-translate-y-full opacity-0': !searchActive
+            }"
+          >
+            <div class="flex-1 max-w-2xl mx-auto">
+              <SearchComponent
+                :is-overlay="true"
+                @close="closeSearch"
+              />
             </div>
           </div>
 
-          <!-- Search Toggle Button -->
-          <div class="hidden sm:flex sm:items-center sm:ml-6">
+          <!-- notifications and username -->
+          <div
+            class="hidden sm:flex sm:items-center sm:ml-6 flex-shrink-0 transition-opacity duration-300 ease-in-out"
+            :class="{ 'opacity-0 pointer-events-none': searchActive }"
+          >
             <button
               class="p-2 rounded-md text-gray-400 dark:text-gray-300 hover:text-gray-500 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors"
               :class="{ 'text-indigo-600 dark:text-indigo-400': searchActive }"
@@ -90,30 +70,6 @@
                 />
               </svg>
             </button>
-          </div>
-
-          <!-- Search Overlay -->
-          <div
-                        
-            class="absolute inset-0 bg-white dark:bg-slate-700 z-10 flex items-center px-4 sm:px-6 lg:px-8 transition-all duration-300 ease-in-out transform"
-            :class="{
-              'translate-y-0 opacity-100': searchActive,
-              '-translate-y-full opacity-0': !searchActive
-            }"
-          >
-            <div class="flex-1 max-w-2xl mx-auto">
-              <SearchComponent
-                :is-overlay="true"
-                @close="closeSearch"
-              />
-            </div>
-          </div>
-
-          <!-- notifications and username -->
-          <div
-            class="hidden sm:flex sm:items-center sm:ml-6 transition-opacity duration-300 ease-in-out"
-            :class="{ 'opacity-0 pointer-events-none': searchActive }"
-          >
             <div class="ml-3 relative">
               <breeze-dropdown
                 align="right"
@@ -265,7 +221,7 @@
           </div>
 
           <!-- notifications on mobile -->
-          <div class="flex items-center sm:hidden">
+          <div class="flex items-center sm:hidden pr-4">
             <breeze-dropdown
               align="full"
               width="full"
@@ -435,49 +391,23 @@
           <div class="px-4 py-2">
             <SearchComponent />
           </div>
-                    
+
           <breeze-responsive-nav-link
             :href="route('dashboard')"
             :active="route().current('dashboard')"
           >
             Dashboard
           </breeze-responsive-nav-link>
-          <breeze-responsive-nav-link
-            v-if="navigation && navigation.Events && navigation.Events.read"
-            :href="route('events')"
-            :active="route().current('events')"
-          >
-            Events
-          </breeze-responsive-nav-link>
-          <breeze-responsive-nav-link
-            v-if="navigation && navigation.Rehearsals && navigation.Rehearsals.read"
-            :href="route('rehearsal-schedules.index')"
-            :active="route().current().includes('rehearsal')"
-          >
-            Rehearsals
-          </breeze-responsive-nav-link>
-          <breeze-responsive-nav-link
-            v-if="navigation && navigation.Bookings && navigation.Bookings.read"
-            :href="route('Bookings Home')"
-            :active="route().current('Bookings Home')"
-          >
-            Booking
-          </breeze-responsive-nav-link>
-          <breeze-responsive-nav-link
-            v-if="navigation && navigation.Invoices && navigation.Invoices.read"
-            :href="route('finances')"
-            :active="route().current('finances')"
-          >
-            Finances
-          </breeze-responsive-nav-link>
 
-          <breeze-responsive-nav-link
-            v-if="navigation && navigation.Charts && navigation.Charts.read"
-            :href="route('charts')"
-            :active="route().current('charts')"
-          >
-            Charts
-          </breeze-responsive-nav-link>
+          <!-- Navigation Accordions -->
+          <NavAccordion
+            v-for="group in visibleGroups"
+            :key="group.id"
+            :label="group.label"
+            :items="group.items"
+            :group-id="group.id"
+            :is-active-group="group.isActive"
+          />
         </div>
 
         <!-- Responsive Settings Options -->
@@ -576,10 +506,13 @@ import NotificationLink from "@/Components/NotificationDropdown";
 import BreezeNavLink from "@/Components/NavLink";
 import BreezeResponsiveNavLink from "@/Components/ResponsiveNavLink";
 import SearchComponent from "@/Components/Search/SearchComponent.vue";
+import NavDropdown from "@/Components/NavDropdown.vue";
+import NavAccordion from "@/Components/NavAccordion.vue";
 import Toast from "primevue/toast";
 import axios from "axios";
 import { mapState, mapActions } from "vuex";
 import { router } from "@inertiajs/vue3";
+import { navigationGroups } from "@/config/navigation.js";
 
 export default {
     components: {
@@ -590,6 +523,8 @@ export default {
         BreezeResponsiveNavLink,
         NotificationLink,
         SearchComponent,
+        NavDropdown,
+        NavAccordion,
         Toast,
     },
     props: {
@@ -637,6 +572,15 @@ export default {
         },
         firstBandId() {
             return this.$page.props.auth?.user?.bands?.[0]?.id || null;
+        },
+        visibleGroups() {
+            return navigationGroups
+                .filter(group => this.isGroupVisible(group))
+                .map(group => ({
+                    ...group,
+                    items: this.getVisibleItems(group),
+                    isActive: this.isGroupActive(group)
+                }));
         }
     },
     onUpdated() {
@@ -696,6 +640,30 @@ export default {
 
         closeSearch() {
             this.searchActive = false;
+        },
+
+        isGroupVisible(group) {
+            if (group.permission) {
+                return this.navigation?.[group.permission]?.read;
+            }
+            // If no group permission, show if any child has permission
+            return this.getVisibleItems(group).length > 0;
+        },
+
+        getVisibleItems(group) {
+            return group.items
+                .filter(item => {
+                    if (!item.permission) return true;
+                    return this.navigation?.[item.permission]?.read;
+                })
+                .map(item => ({
+                    ...item,
+                    active: item.activeMatch(route().current())
+                }));
+        },
+
+        isGroupActive(group) {
+            return group.items.some(item => item.activeMatch(route().current()));
         },
 
         toast() {

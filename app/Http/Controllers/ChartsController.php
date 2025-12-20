@@ -191,6 +191,12 @@ class ChartsController extends Controller
 
     public function getResource(Charts $chart, ChartUploads $upload)
     {
+        $user = Auth::user();
+
+        if (!$user || !$user->canRead('charts', $chart->band_id)) {
+            abort(403, 'You do not have permission to download this file');
+        }
+
         try {
             if (!Storage::disk('s3')->exists($upload->url)) {
                 abort(404, 'File not found');
