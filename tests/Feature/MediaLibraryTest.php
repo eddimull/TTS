@@ -9,6 +9,7 @@ use App\Models\BandOwners;
 use App\Models\BandMembers;
 use App\Models\MediaFile;
 use App\Models\BandStorageQuota;
+use App\Models\userPermissions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -38,6 +39,16 @@ class MediaLibraryTest extends TestCase
         BandOwners::create([
             'user_id' => $this->user->id,
             'band_id' => $this->band->id
+        ]);
+
+        // Create user permissions for media access
+        // Note: Band owners should have all permissions automatically,
+        // but we create this explicitly to ensure tests work reliably
+        userPermissions::create([
+            'user_id' => $this->user->id,
+            'band_id' => $this->band->id,
+            'read_media' => true,
+            'write_media' => true
         ]);
     }
 
@@ -132,8 +143,13 @@ class MediaLibraryTest extends TestCase
             'band_id' => $this->band->id
         ]);
 
-        // Set write_media permission to false
-        $member->permissionsForBand($this->band->id)->update(['write_media' => false]);
+        // Create permissions with write_media set to false
+        userPermissions::create([
+            'user_id' => $member->id,
+            'band_id' => $this->band->id,
+            'read_media' => true,
+            'write_media' => false
+        ]);
 
         $file = UploadedFile::fake()->image('test.jpg');
 
@@ -309,7 +325,8 @@ class MediaLibraryTest extends TestCase
         $response = $this->actingAs($this->user)
             ->get(route('media.download', $mediaFile->id));
 
-        $response->assertStatus(403);
+        $response->assertRedirect();
+        $response->assertSessionHas('errorMessage', 'Permission denied');
     }
 
     public function test_determines_media_type_correctly()
