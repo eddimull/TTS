@@ -68,6 +68,8 @@ class Kernel extends HttpKernel
         'userInBand' => \App\Http\Middleware\userInBand::class,
         'charts.read' => \App\Http\Middleware\CanReadCharts::class,
         'charts.write' => \App\Http\Middleware\CanWriteCharts::class,
+        'media.read' => \App\Http\Middleware\CanReadMedia::class,
+        'media.write' => \App\Http\Middleware\CanWriteMedia::class,
         'booking.access' => \App\Http\Middleware\BookingAccessMiddleware::class,
         'dev' => \App\Http\Middleware\dev::class,
         'band.api' => \App\Http\Middleware\AuthenticateBandApiToken::class,

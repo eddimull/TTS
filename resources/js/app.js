@@ -31,7 +31,14 @@ import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea';
 import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
+import MultiSelect from 'primevue/multiselect';
+import ContextMenu from 'primevue/contextmenu';
 import Image from 'primevue/image';
+import FileUpload from 'primevue/fileupload';
+import Toolbar from 'primevue/toolbar';
+import Tag from 'primevue/tag';
+import ProgressBar from 'primevue/progressbar';
+import Paginator from 'primevue/paginator';
 import qs from 'qs';
 import Chart from 'primevue/chart';
 import TabView from 'primevue/tabview';
@@ -40,6 +47,7 @@ import ProgressSpinner from 'primevue/progressspinner';
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
 import Container from '@/Components/Container'
 import ToastService from 'primevue/toastservice';
+import Tooltip from 'primevue/tooltip';
 import 'sweetalert2/dist/sweetalert2.min.css';
 // import 'primevue/resources/themes/saga-blue/theme.css'
 // import 'primevue/resources/primevue.min.css'
@@ -119,12 +127,22 @@ createInertiaApp({
             Panel,
             TabView,
             TabPanel,
-            ProgressSpinner
+            ProgressSpinner,
+            FileUpload,
+            Toolbar,
+            Tag,
+            ProgressBar,
+            Paginator,
+            Dropdown,
+            MultiSelect,
+            ContextMenu,
+            InputSwitch
         };
 
         Object.entries(components).forEach(([name, component]) => {
             app.component(name, component);
         });
+        app.directive('tooltip', Tooltip);
         app.mixin({ methods: { route } });
 
         app.config.globalProperties.$luxon = DateTime;
