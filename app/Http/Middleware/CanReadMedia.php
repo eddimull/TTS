@@ -31,7 +31,8 @@ class CanReadMedia
             $band_id = $request->band_id;
         } else {
             // Try to get band_id from media model if available
-            $media = $request->route('media');
+            // Check both 'media' and 'id' route parameters (download route uses 'id')
+            $media = $request->route('media') ?? $request->route('id');
             if ($media instanceof MediaFile) {
                 $band_id = $media->band_id;
             } elseif ($media) {

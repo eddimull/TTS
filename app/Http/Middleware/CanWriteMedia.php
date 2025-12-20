@@ -23,9 +23,16 @@ class CanWriteMedia
 
         // Try to get band_id from request or route parameter
         if (!$request->band_id) {
-            $media = $request->route('media');
+            // Check both 'media' and 'id' route parameters
+            $media = $request->route('media') ?? $request->route('id');
             if ($media instanceof MediaFile) {
                 $band_id = $media->band_id;
+            } elseif ($media) {
+                // If media is just an ID, load the model
+                $mediaFile = MediaFile::find($media);
+                if ($mediaFile) {
+                    $band_id = $mediaFile->band_id;
+                }
             }
         } else {
             $band_id = $request->band_id;
