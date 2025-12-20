@@ -82,6 +82,15 @@ class EventAttachmentsController extends Controller
      */
     public function show(EventAttachment $attachment)
     {
+        $user = \Auth::user();
+        $band_id = $attachment->event->eventable_type === 'App\\Models\\Bookings'
+            ? $attachment->event->eventable->band_id
+            : $attachment->event->eventable->band_id;
+
+        if (!$user || !$user->canRead('events', $band_id)) {
+            abort(403, 'You do not have permission to view this file');
+        }
+
         try {
             $file = Storage::disk($attachment->disk)->get($attachment->stored_filename);
             
@@ -99,6 +108,15 @@ class EventAttachmentsController extends Controller
      */
     public function download(EventAttachment $attachment)
     {
+        $user = \Auth::user();
+        $band_id = $attachment->event->eventable_type === 'App\\Models\\Bookings'
+            ? $attachment->event->eventable->band_id
+            : $attachment->event->eventable->band_id;
+
+        if (!$user || !$user->canRead('events', $band_id)) {
+            abort(403, 'You do not have permission to download this file');
+        }
+
         try {
             return Storage::disk($attachment->disk)->download(
                 $attachment->stored_filename,

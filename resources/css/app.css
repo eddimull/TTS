@@ -307,3 +307,69 @@ body {
 .swal2-loader {
     border-color: rgb(37, 99, 235) transparent rgb(37, 99, 235) transparent !important;
 }
+
+/* ============================================
+   Navigation Dropdown & Accordion Styles
+   ============================================ */
+
+/* NavDropdown - Desktop */
+.nav-dropdown-trigger {
+    @apply inline-flex items-center px-1 pt-1 border-b-2 border-transparent;
+    @apply text-sm font-medium leading-5 text-gray-500 dark:text-gray-50;
+    @apply hover:text-gray-700 hover:border-gray-300 dark:hover:text-blue-100;
+    @apply focus:outline-none focus:text-gray-700 focus:border-gray-300;
+    @apply transition duration-150 ease-in-out;
+}
+
+.nav-dropdown-trigger.active {
+    @apply border-indigo-400 text-gray-900 dark:text-gray-100;
+}
+
+.nav-dropdown-trigger .chevron {
+    @apply ml-1 h-4 w-4 transition-transform duration-200;
+}
+
+.nav-dropdown-menu {
+    @apply absolute z-50 mt-1 w-56 rounded-md shadow-lg;
+    @apply bg-white dark:bg-gray-800;
+    @apply ring-1 ring-black ring-opacity-5 dark:ring-gray-700;
+    @apply py-1;
+}
+
+.nav-dropdown-item {
+    @apply block w-full px-4 py-2 text-left;
+    @apply text-sm text-gray-700 dark:text-gray-50;
+    @apply hover:bg-gray-100 dark:hover:bg-gray-600;
+    @apply focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-600;
+    @apply transition duration-150 ease-in-out;
+}
+
+.nav-dropdown-item.active {
+    @apply bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400;
+}
+
+/* NavAccordion - Mobile */
+.nav-accordion-trigger {
+    @apply block w-full pl-3 pr-4 py-2 border-l-4 border-transparent;
+    @apply text-base font-medium text-gray-600 dark:text-gray-300;
+    @apply hover:text-gray-800 dark:hover:text-gray-100;
+    @apply hover:bg-gray-50 dark:hover:bg-slate-600;
+    @apply hover:border-gray-300 dark:hover:border-gray-600;
+    @apply focus:outline-none transition duration-150 ease-in-out;
+    @apply flex items-center justify-between;
+}
+
+.nav-accordion-trigger.active {
+    @apply border-indigo-400 text-indigo-700 dark:text-indigo-300;
+}
+
+.nav-accordion-trigger .chevron {
+    @apply h-5 w-5 transition-transform duration-200;
+}
+
+/* Focus styles for accessibility */
+.nav-dropdown-trigger:focus-visible,
+.nav-dropdown-item:focus-visible,
+.nav-accordion-trigger:focus-visible {
+    @apply outline-2 outline-indigo-500 outline-offset-2;
+}
