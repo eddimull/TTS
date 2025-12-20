@@ -173,7 +173,8 @@ class User extends Authenticatable
             'Colors' => ['read' => false, 'write' => false],
             'Charts' => ['read' => false, 'write' => false],
             'Bookings' => ['read' => false, 'write' => false],
-            'Rehearsals' => ['read' => false, 'write' => false]
+            'Rehearsals' => ['read' => false, 'write' => false],
+            'Media' => ['read' => false, 'write' => false]
         ];
 
 
@@ -186,7 +187,8 @@ class User extends Authenticatable
                 'Colors' => ['read' => true, 'write' => true],
                 'Charts' => ['read' => true, 'write' => true],
                 'Bookings' => ['read' => true, 'write' => true],
-                'Rehearsals' => ['read' => true, 'write' => true]
+                'Rehearsals' => ['read' => true, 'write' => true],
+                'Media' => ['read' => true, 'write' => true]
             ];
         }
         $bands = $this->bandMember;

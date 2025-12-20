@@ -5,10 +5,10 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use App\Providers\RouteServiceProvider;
-use App\Models\Charts;
-use Auth;
+use App\Models\MediaFile;
+use Illuminate\Support\Facades\Auth;
 
-class CanReadCharts
+class CanReadMedia
 {
     /**
      * Handle an incoming request.
@@ -30,22 +30,23 @@ class CanReadCharts
         if ($request->band_id) {
             $band_id = $request->band_id;
         } else {
-            // Try to get band_id from chart model if available
-            $chart = $request->route('chart');
-            if ($chart instanceof Charts) {
-                $band_id = $chart->band_id;
-            } elseif ($chart) {
-                // If chart is just an ID, load the model
-                $chartModel = Charts::find($chart);
-                if ($chartModel) {
-                    $band_id = $chartModel->band_id;
+            // Try to get band_id from media model if available
+            // Check both 'media' and 'id' route parameters (download route uses 'id')
+            $media = $request->route('media') ?? $request->route('id');
+            if ($media instanceof MediaFile) {
+                $band_id = $media->band_id;
+            } elseif ($media) {
+                // If media is just an ID, load the model
+                $mediaFile = MediaFile::find($media);
+                if ($mediaFile) {
+                    $band_id = $mediaFile->band_id;
                 }
             }
         }
 
         // If no band_id found and we're on index route, allow access
         // The controller will handle filtering by bands the user has access to
-        if (!$band_id && $request->route()->getName() === 'charts') {
+        if (!$band_id && $request->route()->getName() === 'media.index') {
             return $next($request);
         }
 
@@ -54,7 +55,7 @@ class CanReadCharts
                 ->with('errorMessage', 'Band not found');
         }
 
-        if (!Auth::user()->canRead('charts', $band_id)) {
+        if (!Auth::user()->canRead('media', $band_id)) {
             return redirect(RouteServiceProvider::HOME)
                 ->with('errorMessage', 'Permission denied');
         }
