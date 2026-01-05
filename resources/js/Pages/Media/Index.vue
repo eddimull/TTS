@@ -114,7 +114,9 @@
             v-if="$page.props.auth.user.navigation && $page.props.auth.user.navigation.Media && $page.props.auth.user.navigation.Media.write"
             label="Upload Files"
             icon="pi pi-upload"
+            :disabled="isInSyncedFolder"
             @click="showUploadDialog = true"
+            v-tooltip.bottom="isInSyncedFolder ? 'Cannot upload to Google Drive synced folders (one-way sync)' : 'Upload files to media library'"
           />
         </div>
         
@@ -125,7 +127,9 @@
           icon="pi pi-upload"
           size="small"
           class="block md:!hidden w-full"
+          :disabled="isInSyncedFolder"
           @click="showUploadDialog = true"
+          v-tooltip.bottom="isInSyncedFolder ? 'Cannot upload to Google Drive synced folders' : ''"
         />
       </div>
     </template>
@@ -144,8 +148,9 @@
           <FolderSidebar
             :folders="folders"
             :current-folder="currentFolder"
-            :can-write="$page.props.auth.user.navigation && $page.props.auth.user.navigation.Media && $page.props.auth.user.navigation.Media.write"
+            :can-write="canUploadOrCreate"
             :band-id="currentBandId"
+            :is-synced-folder="isInSyncedFolder"
             @navigate="navigateToFolder"
             @create-folder="showCreateFolderDialog = true"
             @folder-renamed="handleFolderRenamed"
@@ -160,8 +165,9 @@
           <FolderSidebar
             :folders="folders"
             :current-folder="currentFolder"
-            :can-write="$page.props.auth.user.navigation && $page.props.auth.user.navigation.Media && $page.props.auth.user.navigation.Media.write"
+            :can-write="canUploadOrCreate"
             :band-id="currentBandId"
+            :is-synced-folder="isInSyncedFolder"
             @navigate="navigateToFolder"
             @create-folder="showCreateFolderDialog = true"
             @folder-renamed="handleFolderRenamed"
@@ -176,70 +182,93 @@
           <!-- Toolbar with filters -->
           <Toolbar class="mb-4">
             <template #start>
-              <div class="flex flex-wrap items-center gap-2">
-                <!-- Search -->
-                <IconField class="w-full sm:w-48">
-                  <InputIcon class="pi pi-search" />
-                  <InputText
-                    v-model="localFilters.search"
-                    placeholder="Search..."
-                    class="w-full"
-                    @input="debouncedSearch"
+              <div class="flex flex-col gap-3 w-full">
+                <!-- Folder Breadcrumbs -->
+                <div v-if="currentFolder" class="w-full">
+                  <FolderBreadcrumbs
+                    :current-folder="currentFolder"
+                    @navigate="navigateToFolder"
                   />
-                </IconField>
+                </div>
 
-                <!-- Media type filter -->
-                <Dropdown
-                  v-model="localFilters.media_type"
-                  :options="mediaTypes"
-                  option-label="label"
-                  option-value="value"
-                  placeholder="All Types"
-                  class="w-full sm:w-auto"
-                  @change="applyFilters"
-                />
+                <!-- Filters Row -->
+                <div class="flex flex-wrap items-center gap-2">
+                  <!-- Search -->
+                  <IconField class="w-full sm:w-48">
+                    <InputIcon class="pi pi-search" />
+                    <InputText
+                      v-model="localFilters.search"
+                      placeholder="Search..."
+                      class="w-full"
+                      @input="debouncedSearch"
+                    />
+                  </IconField>
 
-                <!-- Tag filter -->
-                <MultiSelect
-                  v-model="localFilters.tags"
-                  :options="tags"
-                  option-label="name"
-                  option-value="id"
-                  placeholder="Filter by tags"
-                  class="w-full sm:w-auto"
-                  display="chip"
-                  :show-toggle-all="false"
-                  @change="applyFilters"
-                >
-                  <template #chip="{ value }">
-                    <span class="px-2 py-1 rounded text-xs" :style="getTagStyle(value)">
-                      {{ getTagName(value) }}
-                    </span>
-                  </template>
-                  <template #option="{ option }">
-                    <div class="flex items-center gap-2">
-                      <div
-                        class="w-3 h-3 rounded-full"
-                        :style="{ backgroundColor: option.color || '#3B82F6' }"
-                      />
-                      <span>{{ option.name }}</span>
-                    </div>
-                  </template>
-                </MultiSelect>
+                  <!-- Media type filter -->
+                  <Dropdown
+                    v-model="localFilters.media_type"
+                    :options="mediaTypes"
+                    option-label="label"
+                    option-value="value"
+                    placeholder="All Types"
+                    class="w-full sm:w-auto"
+                    @change="applyFilters"
+                  />
 
-                <!-- Clear filters button -->
-                <Button
-                  v-if="hasActiveFilters"
-                  icon="pi pi-filter-slash"
-                  severity="secondary"
-                  size="small"
-                  @click="clearFilters"
-                />
+                  <!-- Tag filter -->
+                  <MultiSelect
+                    v-model="localFilters.tags"
+                    :options="tags"
+                    option-label="name"
+                    option-value="id"
+                    placeholder="Filter by tags"
+                    class="w-full sm:w-auto"
+                    display="chip"
+                    :show-toggle-all="false"
+                    @change="applyFilters"
+                  >
+                    <template #chip="{ value }">
+                      <span class="px-2 py-1 rounded text-xs" :style="getTagStyle(value)">
+                        {{ getTagName(value) }}
+                      </span>
+                    </template>
+                    <template #option="{ option }">
+                      <div class="flex items-center gap-2">
+                        <div
+                          class="w-3 h-3 rounded-full"
+                          :style="{ backgroundColor: option.color || '#3B82F6' }"
+                        />
+                        <span>{{ option.name }}</span>
+                      </div>
+                    </template>
+                  </MultiSelect>
+
+                  <!-- Clear filters button -->
+                  <Button
+                    v-if="hasActiveFilters"
+                    icon="pi pi-filter-slash"
+                    severity="secondary"
+                    size="small"
+                    @click="clearFilters"
+                  />
+                </div>
               </div>
             </template>
 
             <template #end>
               <div class="flex items-center gap-2">
+                <!-- Google Drive Button -->
+                <Button
+                  icon="pi pi-google"
+                  severity="secondary"
+                  outlined
+                  @click="showDriveDialog = true"
+                  v-tooltip.bottom="'Manage Google Drive connections'"
+                  class="hidden sm:flex"
+                  label="Google Drive"
+                >
+                </Button>
+
                 <!-- View mode toggle -->
                 <Button
                   icon="pi pi-th-large"
@@ -257,7 +286,7 @@
 
           <!-- Bulk Operations Toolbar -->
           <BulkOperationsToolbar
-            v-if="$page.props.auth.user.navigation && $page.props.auth.user.navigation.Media && $page.props.auth.user.navigation.Media.write"
+            v-if="canUploadOrCreate"
             :selected-count="selectedMediaIds.length"
             :selected-ids="selectedMediaIds"
             :folders="folders"
@@ -267,10 +296,27 @@
             @deleted="handleBulkDeleted"
           />
 
+          <!-- Google Drive Sync Info Banner -->
+          <div
+            v-if="isInSyncedFolder"
+            class="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start gap-3"
+          >
+            <i class="pi pi-google text-blue-500 text-xl flex-shrink-0 mt-0.5" />
+            <div class="flex-1">
+              <h4 class="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                Google Drive Synced Folder (Read-Only)
+              </h4>
+              <p class="text-sm text-blue-800 dark:text-blue-200">
+                This folder is automatically synced from Google Drive. Files are synced one-way from Google Drive to your media library.
+                Upload and folder management are disabled in this directory.
+              </p>
+            </div>
+          </div>
+
           <!-- Grid View -->
           <div v-if="viewMode === 'grid'" class="mt-6">
             <div
-              v-if="media.data.length === 0"
+              v-if="media.data.length === 0 && (!subfolders || subfolders.length === 0)"
               class="text-center py-8 sm:py-16 px-4"
             >
               <i class="pi pi-folder-open text-4xl sm:text-6xl text-gray-300 mb-4" />
@@ -289,7 +335,7 @@
                 </template>
               </p>
               <Button
-                v-if="$page.props.auth.user.navigation && $page.props.auth.user.navigation.Media && $page.props.auth.user.navigation.Media.write && currentFolder"
+                v-if="canUploadOrCreate && currentFolder"
                 label="Upload Files Here"
                 icon="pi pi-upload"
                 @click="openUploadToCurrentFolder"
@@ -300,12 +346,45 @@
               v-else
               class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
             >
+              <!-- Folder Cards -->
+              <div
+                v-for="folder in subfolders"
+                :key="'folder-' + folder.path"
+                :class="[
+                  'bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-200 cursor-pointer border-2 relative',
+                  dragOverFolderCard === folder.path ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-transparent hover:border-primary-500',
+                  folder.is_drive_synced ? 'cursor-not-allowed' : ''
+                ]"
+                @click="navigateToFolder(folder.path)"
+                @dragover.prevent="handleFolderCardDragOver($event, folder)"
+                @dragleave="handleFolderCardDragLeave"
+                @drop.prevent="handleFolderCardDrop($event, folder)"
+              >
+                <div class="p-6 flex flex-col items-center justify-center h-full">
+                  <div class="relative">
+                    <i class="pi pi-folder text-6xl text-yellow-500 mb-4"></i>
+                    <i
+                      v-if="folder.is_drive_synced"
+                      class="pi pi-google text-xl text-blue-500 absolute -top-1 -right-1 bg-white dark:bg-gray-800 rounded-full p-1"
+                      v-tooltip.top="`Synced from Google Drive: ${folder.drive_folder_name}`"
+                    ></i>
+                  </div>
+                  <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 text-center break-words">
+                    {{ folder.name }}
+                  </h3>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    {{ folder.file_count }} {{ folder.file_count === 1 ? 'file' : 'files' }}
+                  </p>
+                </div>
+              </div>
+
+              <!-- File Cards -->
               <MediaCard
                 v-for="item in media.data"
                 :key="item.id"
                 :media="item"
                 :is-selected="selectedMediaIds.includes(item.id)"
-                :can-write="$page.props.auth.user.navigation && $page.props.auth.user.navigation.Media && $page.props.auth.user.navigation.Media.write"
+                :can-write="canUploadOrCreate"
                 @select="toggleMediaSelection"
                 @preview="handlePreviewMedia"
                 @edit="handleEditMedia"
@@ -329,35 +408,58 @@
           <!-- Table View -->
           <div v-else class="overflow-x-auto">
             <DataTable
-              :value="media.data"
+              :value="tableViewData"
               striped-rows
-              :paginator="media.last_page > 1"
-              :rows="media.per_page"
-              :total-records="media.total"
-              lazy
+              :paginator="false"
               responsive-layout="scroll"
-              @page="onPage"
+              :row-class="getRowClass"
+              @row-click="handleRowClick"
             >
             <Column header="Preview" style="width: 100px">
               <template #body="slotProps">
+                <div
+                  v-if="slotProps.data.is_folder"
+                  class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center relative cursor-pointer"
+                  @click.stop="navigateToFolder(slotProps.data.path)"
+                >
+                  <i class="pi pi-folder text-3xl text-yellow-500" />
+                  <i
+                    v-if="slotProps.data.is_drive_synced"
+                    class="pi pi-google text-sm text-blue-500 absolute top-0 right-0 bg-white dark:bg-gray-800 rounded-full p-0.5"
+                  />
+                </div>
                 <img
-                  v-if="slotProps.data.media_type === 'image'"
+                  v-else-if="slotProps.data.media_type === 'image'"
                   :src="slotProps.data.url"
-                  class="w-16 h-16 object-cover rounded"
+                  class="w-16 h-16 object-cover rounded cursor-pointer"
                 />
                 <div
                   v-else
-                  class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center"
+                  class="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded flex items-center justify-center cursor-pointer"
                 >
                   <i :class="getMediaIcon(slotProps.data.media_type)" class="text-2xl text-gray-400" />
                 </div>
               </template>
             </Column>
 
-            <Column field="title" header="Title" :sortable="true">
+            <Column field="title" header="Name" :sortable="true">
               <template #body="slotProps">
-                <div class="font-semibold">{{ slotProps.data.title }}</div>
-                <div class="text-sm text-gray-500">{{ slotProps.data.filename }}</div>
+                <div
+                  v-if="slotProps.data.is_folder"
+                  class="flex items-center gap-2 cursor-pointer hover:text-primary-500"
+                  @click.stop="navigateToFolder(slotProps.data.path)"
+                >
+                  <span class="font-semibold">{{ slotProps.data.name }}</span>
+                  <i
+                    v-if="slotProps.data.is_drive_synced"
+                    class="pi pi-google text-xs text-blue-500"
+                    v-tooltip.top="`Synced from Google Drive: ${slotProps.data.drive_folder_name}`"
+                  />
+                </div>
+                <div v-else class="cursor-pointer">
+                  <div class="font-semibold">{{ slotProps.data.title }}</div>
+                  <div class="text-sm text-gray-500">{{ slotProps.data.filename }}</div>
+                </div>
               </template>
             </Column>
 
@@ -367,34 +469,64 @@
               </template>
             </Column>
 
-            <Column field="formatted_size" header="Size" :sortable="true" />
+            <Column field="formatted_size" header="Size" :sortable="true">
+              <template #body="slotProps">
+                <span v-if="slotProps.data.is_folder">
+                  {{ slotProps.data.file_count }} {{ slotProps.data.file_count === 1 ? 'item' : 'items' }}
+                </span>
+                <span v-else>
+                  {{ slotProps.data.formatted_size }}
+                </span>
+              </template>
+            </Column>
 
             <Column field="created_at" header="Uploaded" :sortable="true">
               <template #body="slotProps">
-                {{ formatDate(slotProps.data.created_at) }}
+                <span v-if="!slotProps.data.is_folder">
+                  {{ formatDate(slotProps.data.created_at) }}
+                </span>
               </template>
             </Column>
 
             <Column header="Actions" style="width: 150px">
               <template #body="slotProps">
-                <div class="flex gap-2">
+                <div v-if="!slotProps.data.is_folder" class="flex gap-2">
                   <Button
                     icon="pi pi-download"
                     severity="secondary"
                     size="small"
-                    @click="downloadMedia(slotProps.data.id)"
+                    @click.stop="downloadMedia(slotProps.data.id)"
                   />
                   <Button
-                    v-if="$page.props.auth.user.navigation && $page.props.auth.user.navigation.Media && $page.props.auth.user.navigation.Media.write"
+                    v-if="canUploadOrCreate"
                     icon="pi pi-trash"
                     severity="danger"
                     size="small"
-                    @click="deleteMedia(slotProps.data.id)"
+                    @click.stop="deleteMedia(slotProps.data.id)"
+                  />
+                </div>
+                <div v-else>
+                  <Button
+                    icon="pi pi-folder-open"
+                    severity="secondary"
+                    size="small"
+                    @click.stop="navigateToFolder(slotProps.data.path)"
+                    label="Open"
                   />
                 </div>
               </template>
             </Column>
             </DataTable>
+
+            <!-- Pagination below table -->
+            <div v-if="media.last_page > 1" class="mt-4 flex justify-center">
+              <Paginator
+                :rows="media.per_page"
+                :total-records="media.total"
+                :first="(media.current_page - 1) * media.per_page"
+                @page="onPage"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -620,6 +752,21 @@
           </div>
         </template>
       </Dialog>
+
+      <!-- Google Drive Dialog -->
+      <Dialog
+        v-model:visible="showDriveDialog"
+        header="Google Drive Integration"
+        :style="{ width: '60rem' }"
+        :modal="true"
+        :dismissable-mask="true"
+      >
+        <DriveConnectionsPanel
+          :connections="driveConnections"
+          :band-id="currentBandId"
+          :can-write="$page.props.auth.user.navigation && $page.props.auth.user.navigation.Media && $page.props.auth.user.navigation.Media.write"
+        />
+      </Dialog>
     </Container>
   </breeze-authenticated-layout>
 </template>
@@ -638,6 +785,8 @@ import MediaCard from './Components/MediaCard.vue';
 import EditMediaDialog from './Components/EditMediaDialog.vue';
 import BulkOperationsToolbar from './Components/BulkOperationsToolbar.vue';
 import MediaPreviewDialog from './Components/MediaPreviewDialog.vue';
+import DriveConnectionsPanel from './Components/DriveConnectionsPanel.vue';
+import FolderBreadcrumbs from './Components/FolderBreadcrumbs.vue';
 import { debounce } from 'lodash';
 
 export default {
@@ -654,27 +803,32 @@ export default {
     MediaCard,
     EditMediaDialog,
     BulkOperationsToolbar,
-    MediaPreviewDialog
+    MediaPreviewDialog,
+    DriveConnectionsPanel,
+    FolderBreadcrumbs
   },
   props: {
     media: Object,
     tags: Array,
     folders: Array,
+    subfolders: Array,
     quota: Object,
     filters: Object,
     availableBands: Array,
     currentBandId: Number,
     bookings: Array,
     events: Array,
+    driveConnections: Array,
   },
   data() {
     return {
-      viewMode: 'grid',
+      viewMode: localStorage.getItem('mediaViewMode') || 'grid',
       showUploadDialog: false,
       showCreateFolderDialog: false,
       showEditDialog: false,
       showMoveDialog: false,
       showPreviewDialog: false,
+      showDriveDialog: false,
       sidebarVisible: false,
       selectedFiles: [],
       selectedMediaIds: [],
@@ -704,7 +858,8 @@ export default {
       ],
       isDraggingFiles: false,
       dragCounter: 0,
-      isApplyingFilters: false
+      isApplyingFilters: false,
+      dragOverFolderCard: null
     };
   },
   computed: {
@@ -720,10 +875,13 @@ export default {
       return this.availableBands.find(b => b.id == this.currentBandId) || null;
     },
     folderOptions() {
-      const options = this.folders.map(folder => ({
-        label: folder.path,
-        value: folder.path
-      }));
+      // Filter out Google Drive synced folders (one-way sync only)
+      const options = this.folders
+        .filter(folder => !folder.is_drive_synced)
+        .map(folder => ({
+          label: folder.path,
+          value: folder.path
+        }));
 
       // Add "No folder" option
       options.unshift({ label: 'No folder (root)', value: null });
@@ -731,8 +889,8 @@ export default {
       return options;
     },
     hasActiveFilters() {
-      return !!(this.localFilters.search || 
-                this.localFilters.media_type || 
+      return !!(this.localFilters.search ||
+                this.localFilters.media_type ||
                 (this.localFilters.tags && this.localFilters.tags.length > 0));
     },
     uploadButtonLabel() {
@@ -740,6 +898,37 @@ export default {
     },
     clearFiltersLabel() {
       return window.innerWidth < 640 ? '' : 'Clear';
+    },
+    tableViewData() {
+      // Combine folders and files for table view
+      const folders = (this.subfolders || []).map(folder => ({
+        ...folder,
+        is_folder: true,
+        media_type: 'folder',
+        formatted_size: '—',
+      }));
+
+      return [...folders, ...this.media.data];
+    },
+    isInSyncedFolder() {
+      // Check if current folder or any parent folder is synced from Google Drive
+      if (!this.currentFolder) return false;
+
+      return this.folders.some(folder => {
+        // Check if this folder is synced
+        if (!folder.is_drive_synced) return false;
+
+        // Check if current path matches or is a child of this synced folder
+        return this.currentFolder === folder.path ||
+               this.currentFolder.startsWith(folder.path + '/');
+      });
+    },
+    canUploadOrCreate() {
+      // Can't upload or create in synced folders (one-way sync only)
+      return !this.isInSyncedFolder &&
+             this.$page.props.auth.user.navigation &&
+             this.$page.props.auth.user.navigation.Media &&
+             this.$page.props.auth.user.navigation.Media.write;
     }
   },
   watch: {
@@ -754,6 +943,10 @@ export default {
         }
       },
       deep: true
+    },
+    viewMode(newMode) {
+      // Persist view mode preference to localStorage
+      localStorage.setItem('mediaViewMode', newMode);
     }
   },
   created() {
@@ -1008,8 +1201,8 @@ export default {
       this.showUploadDialog = true;
     },
     handleWindowDragEnter(e) {
-      // Check if user has write permissions
-      if (!this.$page.props.auth.user.navigation?.Media?.write) {
+      // Check if user has write permissions and not in synced folder
+      if (!this.canUploadOrCreate) {
         return;
       }
 
@@ -1051,8 +1244,8 @@ export default {
       this.isDraggingFiles = false;
       this.dragCounter = 0;
 
-      // Check if user has write permissions
-      if (!this.$page.props.auth.user.navigation?.Media?.write) {
+      // Check if user has write permissions and not in synced folder
+      if (!this.canUploadOrCreate) {
         return;
       }
 
@@ -1110,6 +1303,58 @@ export default {
     getBandName(bandId) {
       const band = this.availableBands.find(b => b.id === bandId);
       return band ? band.name : '';
+    },
+    getRowClass(data) {
+      // Add cursor-pointer class to file rows (not folders, handled separately)
+      return !data.is_folder ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700' : '';
+    },
+    handleRowClick(event) {
+      // Only handle click for files (folders have their own click handlers)
+      if (!event.data.is_folder) {
+        this.handlePreviewMedia(event.data);
+      }
+    },
+    handleFolderCardDragOver(event, folder) {
+      // Prevent drop on synced folders
+      if (folder.is_drive_synced) {
+        event.dataTransfer.dropEffect = 'none';
+        this.dragOverFolderCard = null;
+        return;
+      }
+
+      event.dataTransfer.dropEffect = 'move';
+      this.dragOverFolderCard = folder.path;
+    },
+    handleFolderCardDragLeave() {
+      this.dragOverFolderCard = null;
+    },
+    handleFolderCardDrop(event, folder) {
+      this.dragOverFolderCard = null;
+
+      // Prevent drop on synced folders
+      if (folder.is_drive_synced) {
+        this.$toast?.add({
+          severity: 'error',
+          summary: 'Cannot Move',
+          detail: 'Cannot move files into Google Drive synced folders (one-way sync only).',
+          life: 3000
+        });
+        return;
+      }
+
+      try {
+        const data = JSON.parse(event.dataTransfer.getData('application/json'));
+
+        if (data.id) {
+          // Moving a file to this folder
+          this.handleDropFile({
+            mediaId: data.id,
+            folderPath: folder.path
+          });
+        }
+      } catch (error) {
+        console.error('Failed to parse drop data:', error);
+      }
     }
   }
 };

@@ -44,6 +44,11 @@ class Kernel extends ConsoleKernel
         // Send final payment reminders daily at 10:00 AM
         $schedule->command('payments:send-final-reminders')
             ->dailyAt('10:00');
+
+        // Sync all Google Drive folders every 6 hours
+        $schedule->job(new \App\Jobs\SyncAllGoogleDriveFolders())
+            ->everySixHours()
+            ->onOneServer();
     }
 
     /**
