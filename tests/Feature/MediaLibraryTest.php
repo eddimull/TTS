@@ -10,6 +10,7 @@ use App\Models\BandMembers;
 use App\Models\MediaFile;
 use App\Models\BandStorageQuota;
 use App\Models\userPermissions;
+use App\Services\MediaLibraryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -375,5 +376,310 @@ class MediaLibraryTest extends TestCase
         $quota->recalculate();
 
         $this->assertEquals(3000, $quota->fresh()->quota_used);
+    }
+
+    // ========================================
+    // Folder Structure Tests
+    // ========================================
+
+    public function test_gets_root_level_folders()
+    {
+        // Create files in various folders
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Photos',
+        ]);
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Documents',
+        ]);
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Drive',
+        ]);
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Drive/Subfolder',
+        ]);
+
+        $service = app(MediaLibraryService::class);
+        $subfolders = $service->getSubfoldersOf($this->band->id, null);
+
+        // Should return 3 root folders: Photos, Documents, Drive
+        $this->assertCount(3, $subfolders);
+        $folderNames = array_column($subfolders, 'name');
+        $this->assertContains('Photos', $folderNames);
+        $this->assertContains('Documents', $folderNames);
+        $this->assertContains('Drive', $folderNames);
+    }
+
+    public function test_gets_root_level_folders_from_nested_paths()
+    {
+        // Create files with deep nested paths
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Photos/2024/Summer',
+        ]);
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Photos/2023/Winter',
+        ]);
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Documents/Work/Projects',
+        ]);
+
+        $service = app(MediaLibraryService::class);
+        $subfolders = $service->getSubfoldersOf($this->band->id, null);
+
+        // Should extract only top-level: Photos, Documents
+        $this->assertCount(2, $subfolders);
+        $folderNames = array_column($subfolders, 'name');
+        $this->assertContains('Photos', $folderNames);
+        $this->assertContains('Documents', $folderNames);
+    }
+
+    public function test_gets_immediate_subfolders_of_specific_folder()
+    {
+        // Create nested folder structure
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Drive/Photos',
+        ]);
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Drive/Documents',
+        ]);
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Drive/Photos/2024',
+        ]);
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Drive/Photos/2023',
+        ]);
+
+        $service = app(MediaLibraryService::class);
+        $subfolders = $service->getSubfoldersOf($this->band->id, 'Drive');
+
+        // Should return only immediate children: Photos, Documents
+        $this->assertCount(2, $subfolders);
+        $folderPaths = array_column($subfolders, 'path');
+        $this->assertContains('Drive/Photos', $folderPaths);
+        $this->assertContains('Drive/Documents', $folderPaths);
+    }
+
+    public function test_gets_subfolders_at_deeper_level()
+    {
+        // Create deep nested structure
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Drive/Photos/2024/Summer',
+        ]);
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Drive/Photos/2024/Winter',
+        ]);
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Drive/Photos/2023',
+        ]);
+
+        $service = app(MediaLibraryService::class);
+        $subfolders = $service->getSubfoldersOf($this->band->id, 'Drive/Photos');
+
+        // Should return: 2024, 2023
+        $this->assertCount(2, $subfolders);
+        $folderPaths = array_column($subfolders, 'path');
+        $this->assertContains('Drive/Photos/2024', $folderPaths);
+        $this->assertContains('Drive/Photos/2023', $folderPaths);
+    }
+
+    public function test_handles_empty_folder_path()
+    {
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Photos',
+        ]);
+
+        $service = app(MediaLibraryService::class);
+
+        // Both null and empty string should work the same
+        $subfolders1 = $service->getSubfoldersOf($this->band->id, null);
+        $subfolders2 = $service->getSubfoldersOf($this->band->id, '');
+
+        $this->assertEquals($subfolders1, $subfolders2);
+    }
+
+    public function test_handles_trailing_slash_in_parent_path()
+    {
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Drive/Photos',
+        ]);
+
+        $service = app(MediaLibraryService::class);
+
+        // Both with and without trailing slash should work
+        $subfolders1 = $service->getSubfoldersOf($this->band->id, 'Drive');
+        $subfolders2 = $service->getSubfoldersOf($this->band->id, 'Drive/');
+
+        $this->assertEquals($subfolders1, $subfolders2);
+    }
+
+    public function test_returns_empty_array_when_no_subfolders_exist()
+    {
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Photos',
+        ]);
+
+        $service = app(MediaLibraryService::class);
+
+        // Looking for subfolders of "Documents" which doesn't exist
+        $subfolders = $service->getSubfoldersOf($this->band->id, 'Documents');
+
+        $this->assertEmpty($subfolders);
+    }
+
+    public function test_counts_files_in_subfolders_recursively()
+    {
+        // Create Drive/Photos with files at multiple levels
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Drive/Photos',
+        ]);
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Drive/Photos',
+        ]);
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Drive/Photos/2024',
+        ]);
+
+        $service = app(MediaLibraryService::class);
+        $subfolders = $service->getSubfoldersOf($this->band->id, 'Drive');
+
+        // Should count all files in Drive/Photos and its subfolders
+        $photosFolder = collect($subfolders)->firstWhere('name', 'Photos');
+        $this->assertNotNull($photosFolder);
+        $this->assertEquals(3, $photosFolder['file_count']); // All files under Drive/Photos*
+    }
+
+    public function test_does_not_return_files_from_other_bands()
+    {
+        $otherBand = Bands::factory()->create();
+
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'MyFolder',
+        ]);
+
+        MediaFile::factory()->create([
+            'band_id' => $otherBand->id,
+            'folder_path' => 'OtherFolder',
+        ]);
+
+        $service = app(MediaLibraryService::class);
+        $subfolders = $service->getSubfoldersOf($this->band->id, null);
+
+        $this->assertCount(1, $subfolders);
+        $this->assertEquals('MyFolder', $subfolders[0]['name']);
+    }
+
+    public function test_sorts_subfolders_alphabetically()
+    {
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Zebra',
+        ]);
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Apple',
+        ]);
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Mango',
+        ]);
+
+        $service = app(MediaLibraryService::class);
+        $subfolders = $service->getSubfoldersOf($this->band->id, null);
+
+        $folderNames = array_column($subfolders, 'name');
+        $this->assertEquals(['Apple', 'Mango', 'Zebra'], $folderNames);
+    }
+
+    public function test_handles_google_drive_nested_structure()
+    {
+        // Simulate Google Drive sync creating nested folders
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Drive',
+            'source' => 'google_drive',
+        ]);
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Drive/Photos',
+            'source' => 'google_drive',
+        ]);
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Drive/Photos/2024',
+            'source' => 'google_drive',
+        ]);
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Drive/Documents',
+            'source' => 'google_drive',
+        ]);
+
+        $service = app(MediaLibraryService::class);
+
+        // Root level should show "Drive"
+        $rootFolders = $service->getSubfoldersOf($this->band->id, null);
+        $this->assertCount(1, $rootFolders);
+        $this->assertEquals('Drive', $rootFolders[0]['name']);
+
+        // Inside Drive should show "Photos" and "Documents"
+        $driveFolders = $service->getSubfoldersOf($this->band->id, 'Drive');
+        $this->assertCount(2, $driveFolders);
+        $folderNames = array_column($driveFolders, 'name');
+        $this->assertContains('Photos', $folderNames);
+        $this->assertContains('Documents', $folderNames);
+
+        // Inside Drive/Photos should show "2024"
+        $photosFolders = $service->getSubfoldersOf($this->band->id, 'Drive/Photos');
+        $this->assertCount(1, $photosFolders);
+        $this->assertEquals('2024', $photosFolders[0]['name']);
+    }
+
+    public function test_handles_folder_with_spaces_and_numbers()
+    {
+        // Reproduce the exact issue: Live test folder > Whatever > 53y53y > 44444
+        // Add files at both the parent level AND the subfolder level
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Live test folder/Whatever/53y53y',
+            'filename' => 'file-in-parent.jpg',
+        ]);
+
+        MediaFile::factory()->create([
+            'band_id' => $this->band->id,
+            'folder_path' => 'Live test folder/Whatever/53y53y/44444',
+            'filename' => 'file-in-subfolder.jpg',
+        ]);
+
+        $service = app(MediaLibraryService::class);
+
+        // When viewing "Live test folder/Whatever/53y53y", should see "44444"
+        $subfolders = $service->getSubfoldersOf($this->band->id, 'Live test folder/Whatever/53y53y');
+
+        dump('Subfolders found:', $subfolders);
+        dump('All folder paths in DB:', MediaFile::where('band_id', $this->band->id)->pluck('folder_path')->toArray());
+
+        $this->assertCount(1, $subfolders, 'Should find the "44444" subfolder');
+        $this->assertEquals('44444', $subfolders[0]['name']);
+        $this->assertEquals('Live test folder/Whatever/53y53y/44444', $subfolders[0]['path']);
     }
 }

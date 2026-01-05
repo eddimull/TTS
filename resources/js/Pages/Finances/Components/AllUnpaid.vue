@@ -4,7 +4,7 @@
       v-for="(band, index) in props.unpaid"
       :key="index"
       :band="band"
-      :bookings="band.unpaidBookings"
+      :bookings="band.unpaidBookings" 
       title="Unpaid Services"
       empty-message="No unpaid services found."
     />
