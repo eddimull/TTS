@@ -43,6 +43,12 @@ return [
         'key' => env('STRIPE_KEY'),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
         'invoice_url' => env('STRIPE_INVOICE_URL'),
-    ]
+    ],
+
+    'google_drive' => [
+        'client_id' => env('GOOGLE_DRIVE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_DRIVE_CLIENT_SECRET'),
+        'redirect_uri' => env('APP_URL') . '/media/drive/callback',
+    ],
 
 ];
