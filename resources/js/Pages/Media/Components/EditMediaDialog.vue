@@ -222,13 +222,16 @@ export default {
         { label: 'Root (No folder)', value: null }
       ];
 
-      this.folders.forEach(folder => {
-        const indent = '\u00A0\u00A0'.repeat(folder.depth);
-        options.push({
-          label: indent + folder.name + ` (${folder.file_count})`,
-          value: folder.path
+      // Filter out Google Drive synced folders (one-way sync only)
+      this.folders
+        .filter(folder => !folder.is_drive_synced)
+        .forEach(folder => {
+          const indent = '\u00A0\u00A0'.repeat(folder.depth);
+          options.push({
+            label: indent + folder.name + ` (${folder.file_count})`,
+            value: folder.path
+          });
         });
-      });
 
       return options;
     }
