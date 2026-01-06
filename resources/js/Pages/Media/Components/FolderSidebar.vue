@@ -4,13 +4,14 @@
       <div class="flex items-center justify-between">
         <span class="text-base">Folders</span>
         <Button
-          v-if="canWrite"
+          v-if="canWrite || isSyncedFolder"
           icon="pi pi-plus"
           size="small"
           text
           rounded
+          :disabled="isSyncedFolder"
           @click="$emit('create-folder')"
-          v-tooltip.right="'Create Folder'"
+          v-tooltip.right="isSyncedFolder ? 'Cannot create folders in Google Drive synced directories (one-way sync)' : 'Create Folder'"
         />
       </div>
     </template>
@@ -38,7 +39,7 @@
 
         <!-- Folder list with hierarchy -->
         <div
-          v-for="(folder, index) in folders"
+          v-for="(folder, index) in visibleFolders"
           :key="folder.path"
           class="relative"
         >
@@ -60,7 +61,7 @@
             ]"
             :style="{ paddingLeft: (12 + folder.depth * 16) + 'px' }"
             :draggable="canWrite && !folder.is_system"
-            @click="$emit('navigate', folder.path)"
+            @click="handleFolderClick(folder)"
             @contextmenu.prevent="showFolderMenu($event, folder)"
             @dragstart="handleFolderDragStart($event, folder)"
             @dragend="handleFolderDragEnd"
@@ -69,9 +70,23 @@
             @drop.prevent="handleFolderDrop($event, folder)"
           >
             <div class="flex items-center gap-2 flex-1 min-w-0">
-              <i :class="folder.has_children ? 'pi pi-folder-open' : 'pi pi-folder'" class="text-sm flex-shrink-0" />
+              <!-- Chevron for folders with children -->
+              <i
+                v-if="folder.has_children"
+                :class="[
+                  'pi transition-transform cursor-pointer',
+                  isFolderExpanded(folder.path) ? 'pi-chevron-down' : 'pi-chevron-right'
+                ]"
+                class="text-xs flex-shrink-0"
+                @click.stop="toggleFolder(folder.path)"
+              />
+              <!-- Spacer for folders without children -->
+              <span v-else class="w-3 flex-shrink-0"></span>
+
+              <i :class="isFolderExpanded(folder.path) && folder.has_children ? 'pi pi-folder-open' : 'pi pi-folder'" class="text-sm flex-shrink-0" />
               <span class="text-sm truncate">{{ folder.name }}</span>
               <i v-if="folder.is_system" class="pi pi-lock text-xs text-gray-400 flex-shrink-0" v-tooltip.right="'System folder'" />
+              <i v-if="folder.is_drive_synced" class="pi pi-google text-xs text-blue-500 flex-shrink-0" v-tooltip.right="`Synced from Google Drive: ${folder.drive_folder_name}`" />
             </div>
             <div class="flex items-center gap-2 ml-2 flex-shrink-0">
               <i v-if="dropLinePosition === 'into-' + folder.path" 
@@ -215,9 +230,42 @@ export default {
     bandId: {
       type: Number,
       required: true
+    },
+    isSyncedFolder: {
+      type: Boolean,
+      default: false
     }
   },
   emits: ['navigate', 'create-folder', 'folder-renamed', 'folder-deleted', 'drop-file', 'folder-created'],
+  computed: {
+    visibleFolders() {
+      // Only show folders that should be visible based on expanded state
+      return this.folders.filter(folder => {
+        // Root level folders are always visible
+        if (folder.depth === 0) {
+          return true;
+        }
+
+        // For nested folders, check if parent is expanded
+        const parentPath = folder.path.substring(0, folder.path.lastIndexOf('/'));
+        return this.expandedFolders.has(parentPath);
+      });
+    }
+  },
+  watch: {
+    currentFolder(newFolder) {
+      // Auto-expand parent folders when navigating to a folder
+      if (newFolder) {
+        this.expandParentFolders(newFolder);
+      }
+    }
+  },
+  mounted() {
+    // Auto-expand parent folders on initial load if we're already in a folder
+    if (this.currentFolder) {
+      this.expandParentFolders(this.currentFolder);
+    }
+  },
   data() {
     return {
       selectedFolder: null,
@@ -230,10 +278,59 @@ export default {
       draggedFolder: null,
       dragType: null, // 'file' or 'folder'
       dropLinePosition: null, // 'before-{path}' or 'after-{path}' or 'into-{path}'
-      dropTarget: null
+      dropTarget: null,
+      expandedFolders: new Set() // Track which folders are expanded
     };
   },
   methods: {
+    handleFolderClick(folder) {
+      // If clicking on the already-selected folder, do nothing
+      if (this.currentFolder === folder.path) {
+        return;
+      }
+
+      // Navigate to the folder
+      this.$emit('navigate', folder.path);
+
+      // If folder has children and is not already expanded, expand it
+      if (folder.has_children && !this.isFolderExpanded(folder.path)) {
+        this.expandedFolders.add(folder.path);
+      }
+    },
+    toggleFolder(folderPath) {
+      if (this.expandedFolders.has(folderPath)) {
+        // When collapsing, also collapse all descendants
+        this.collapseDescendants(folderPath);
+        this.expandedFolders.delete(folderPath);
+      } else {
+        this.expandedFolders.add(folderPath);
+      }
+    },
+    collapseDescendants(parentPath) {
+      // Find and remove all folders that are descendants of parentPath
+      const descendantsToRemove = Array.from(this.expandedFolders).filter(path =>
+        path.startsWith(parentPath + '/')
+      );
+
+      descendantsToRemove.forEach(path => {
+        this.expandedFolders.delete(path);
+      });
+    },
+    isFolderExpanded(folderPath) {
+      return this.expandedFolders.has(folderPath);
+    },
+    expandParentFolders(folderPath) {
+      // Expand all parent folders of the given path
+      if (!folderPath) return;
+
+      const parts = folderPath.split('/');
+      let currentPath = '';
+
+      for (let i = 0; i < parts.length - 1; i++) {
+        currentPath = currentPath ? `${currentPath}/${parts[i]}` : parts[i];
+        this.expandedFolders.add(currentPath);
+      }
+    },
     showFolderMenu(event, folder) {
       if (!this.canWrite) return;
 
@@ -384,13 +481,28 @@ export default {
     handleFileDragOver(event, folderPath) {
       // For file dragging (non-folder), use simple folder highlighting
       if (this.dragType !== 'folder') {
+        // Check if target folder is synced - prevent drop
+        const targetFolder = this.folders.find(f => f.path === folderPath);
+        if (targetFolder && targetFolder.is_drive_synced) {
+          event.dataTransfer.dropEffect = 'none';
+          this.dragOverFolder = null;
+          return;
+        }
+
         event.dataTransfer.dropEffect = 'move';
         this.dragOverFolder = folderPath;
       }
     },
     handleFolderDragOver(event, folder, index) {
       if (this.dragType !== 'folder') {
-        // File drag - just highlight the folder
+        // File drag - check if target folder is synced
+        if (folder.is_drive_synced) {
+          event.dataTransfer.dropEffect = 'none';
+          this.dragOverFolder = null;
+          return;
+        }
+
+        // Allow drop - just highlight the folder
         event.dataTransfer.dropEffect = 'move';
         this.dragOverFolder = folder.path;
         return;
@@ -400,19 +512,19 @@ export default {
       const rect = event.currentTarget.getBoundingClientRect();
       const mouseY = event.clientY - rect.top;
       const height = rect.height;
-      
+
       // Can't drop into itself or its descendants
-      if (this.draggedFolder === folder.path || 
+      if (this.draggedFolder === folder.path ||
           (folder.path && folder.path.startsWith(this.draggedFolder + '/'))) {
         event.dataTransfer.dropEffect = 'none';
         this.dropLinePosition = null;
         this.dropTarget = null;
         return;
       }
-      
+
       // Determine if we're in top third, middle third, or bottom third
       const third = height / 3;
-      
+
       if (mouseY < third) {
         // Top third - show line above, drop as sibling before
         this.dropLinePosition = 'before-' + folder.path;
@@ -422,8 +534,8 @@ export default {
         this.dropLinePosition = 'after-' + folder.path;
         this.dropTarget = { type: 'after', folder: folder };
       } else {
-        // Middle third - drop into folder (if not system)
-        if (folder.is_system) {
+        // Middle third - drop into folder (if not system or synced)
+        if (folder.is_system || folder.is_drive_synced) {
           event.dataTransfer.dropEffect = 'none';
           this.dropLinePosition = null;
           this.dropTarget = null;
@@ -432,7 +544,7 @@ export default {
         this.dropLinePosition = 'into-' + folder.path;
         this.dropTarget = { type: 'into', folder: folder };
       }
-      
+
       event.dataTransfer.dropEffect = 'move';
     },
     handleDragLeave() {
@@ -444,9 +556,18 @@ export default {
       this.dropLinePosition = null;
       this.dropTarget = null;
 
+      // Check if target folder is synced
+      if (folderPath) {
+        const targetFolder = this.folders.find(f => f.path === folderPath);
+        if (targetFolder && targetFolder.is_drive_synced) {
+          alert('Cannot move files into Google Drive synced folders (one-way sync only).');
+          return;
+        }
+      }
+
       try {
         const data = JSON.parse(event.dataTransfer.getData('application/json'));
-        
+
         if (data.type !== 'folder') {
           // Moving a file
           this.$emit('drop-file', {
@@ -466,24 +587,43 @@ export default {
 
       try {
         const data = JSON.parse(event.dataTransfer.getData('application/json'));
-        
+
         if (data.type === 'folder') {
           // Moving a folder based on drop target
           if (!target) return;
-          
+
           if (target.type === 'into') {
-            // Drop into the folder
+            // Drop into the folder - check if target is synced
+            if (target.folder.is_drive_synced) {
+              alert('Cannot move folders into Google Drive synced directories (one-way sync only).');
+              return;
+            }
             this.moveFolder(data.path, target.folder.path);
           } else if (target.type === 'before' || target.type === 'after') {
             // Drop as sibling - get parent path of target folder
             const targetPath = target.folder.path;
-            const parentPath = targetPath.includes('/') 
+            const parentPath = targetPath.includes('/')
               ? targetPath.substring(0, targetPath.lastIndexOf('/'))
               : null;
+
+            // Check if parent is synced
+            if (parentPath) {
+              const parentFolder = this.folders.find(f => f.path === parentPath);
+              if (parentFolder && parentFolder.is_drive_synced) {
+                alert('Cannot move folders into Google Drive synced directories (one-way sync only).');
+                return;
+              }
+            }
+
             this.moveFolder(data.path, parentPath);
           }
         } else {
-          // Moving a file
+          // Moving a file - check if target folder is synced
+          if (folder.is_drive_synced) {
+            alert('Cannot move files into Google Drive synced folders (one-way sync only).');
+            return;
+          }
+
           this.$emit('drop-file', {
             mediaId: data.id,
             folderPath: folder.path
@@ -494,6 +634,15 @@ export default {
       }
     },
     async moveFolder(sourcePath, targetPath) {
+      // Check if target folder is synced
+      if (targetPath) {
+        const targetFolder = this.folders.find(f => f.path === targetPath);
+        if (targetFolder && targetFolder.is_drive_synced) {
+          alert('Cannot move folders into Google Drive synced directories (one-way sync only).');
+          return;
+        }
+      }
+
       // Calculate the new path
       const folderName = sourcePath.substring(sourcePath.lastIndexOf('/') + 1);
       const newPath = targetPath ? `${targetPath}/${folderName}` : folderName;

@@ -6,6 +6,7 @@ use App\Models\Bands;
 use App\Models\MediaFile;
 use App\Models\MediaTag;
 use App\Models\BandStorageQuota;
+use App\Models\GoogleDriveConnection;
 use App\Services\MediaLibraryService;
 use App\Http\Requests\Media\UploadMediaRequest;
 use App\Http\Requests\Media\UpdateMediaRequest;
@@ -63,8 +64,29 @@ class MediaLibraryController extends Controller
             );
         } else {
             // Regular media files
+            \Log::info('Before search', [
+                'band_id' => $currentBandId,
+                'filters' => $filters
+            ]);
+
             $mediaQuery = $this->mediaService->search($currentBandId, $filters);
+
+            \Log::info('After search - before paginate', [
+                'query_count' => $mediaQuery->count(),
+                'sql' => $mediaQuery->toSql(),
+                'bindings' => $mediaQuery->getBindings()
+            ]);
+
             $media = $mediaQuery->paginate(24)->withQueryString();
+
+            // DEBUG: Log what we're returning
+            \Log::info('Media Index Debug - After paginate', [
+                'folder_path' => $filters['folder_path'] ?? 'NULL',
+                'media_count' => $media->count(),
+                'total' => $media->total(),
+                'items' => $media->items(),
+                'files' => $media->pluck('id', 'filename')->toArray()
+            ]);
         }
 
         $tags = MediaTag::where('band_id', $currentBandId)
@@ -73,6 +95,9 @@ class MediaLibraryController extends Controller
             ->get();
 
         $folders = $this->mediaService->getFolders($currentBandId);
+
+        // Get subfolders for current path (for inline display)
+        $subfolders = $this->mediaService->getSubfoldersOf($currentBandId, $folderPath);
 
         $quota = BandStorageQuota::firstOrCreate(
             ['band_id' => $currentBandId],
@@ -104,10 +129,16 @@ class MediaLibraryController extends Controller
                 'date' => $event->date,
             ]);
 
+        // Get Google Drive connections for this band
+        $driveConnections = GoogleDriveConnection::where('band_id', $currentBandId)
+            ->with(['user:id,name', 'folders'])
+            ->get();
+
         return Inertia::render('Media/Index', [
             'media' => $media,
             'tags' => $tags,
             'folders' => $folders,
+            'subfolders' => $subfolders,
             'quota' => [
                 'used' => $quota->quota_used,
                 'limit' => $quota->quota_limit,
@@ -120,6 +151,7 @@ class MediaLibraryController extends Controller
             'currentBandId' => $currentBandId,
             'bookings' => $bookings,
             'events' => $events,
+            'driveConnections' => $driveConnections,
         ]);
     }
 

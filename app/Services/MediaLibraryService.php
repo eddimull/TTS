@@ -422,6 +422,91 @@ class MediaLibraryService
      * @param int $bandId
      * @return array
      */
+    /**
+     * Get immediate subfolders of a given folder path
+     *
+     * @param int $bandId
+     * @param string|null $parentPath
+     * @return array
+     */
+    public function getSubfoldersOf($bandId, $parentPath = null)
+    {
+        // Get all folder paths
+        $allPaths = MediaFile::where('band_id', $bandId)
+            ->whereNotNull('folder_path')
+            ->distinct()
+            ->pluck('folder_path');
+
+        // Also get defined empty folders
+        $definedPaths = \App\Models\MediaFolder::where('band_id', $bandId)
+            ->pluck('path');
+
+        $allPaths = $allPaths->merge($definedPaths)->unique();
+
+        // Get Google Drive folder syncs for this band
+        $driveSyncedFolders = \App\Models\GoogleDriveFolder::whereHas('connection', function ($query) use ($bandId) {
+            $query->where('band_id', $bandId);
+        })
+        ->get()
+        ->keyBy('local_folder_path');
+
+        $subfolders = [];
+
+        foreach ($allPaths as $path) {
+            // If viewing root (null), get top-level folders
+            if ($parentPath === null || $parentPath === '') {
+                // Top-level folders have no slash or only one level deep
+                if (!str_contains($path, '/')) {
+                    $subfolders[$path] = $path;
+                } else {
+                    // Get the first part before the first slash
+                    $firstLevel = explode('/', $path)[0];
+                    $subfolders[$firstLevel] = $firstLevel;
+                }
+            } else {
+                // Check if this path is a direct child of parentPath
+                $parentPrefix = rtrim($parentPath, '/') . '/';
+                if (str_starts_with($path, $parentPrefix)) {
+                    // Get the part after the parent
+                    $remainder = substr($path, strlen($parentPrefix));
+
+                    // If no more slashes, this is a direct child
+                    if (!str_contains($remainder, '/')) {
+                        $subfolders[$path] = $path;
+                    } else {
+                        // Get the first level of the remainder (immediate subfolder)
+                        $immediateChild = $parentPrefix . explode('/', $remainder)[0];
+                        $subfolders[$immediateChild] = $immediateChild;
+                    }
+                }
+            }
+        }
+
+        // Get file counts for each subfolder
+        $result = [];
+        foreach (array_unique($subfolders) as $folderPath) {
+            $fileCount = MediaFile::where('band_id', $bandId)
+                ->where('folder_path', 'LIKE', $folderPath . '%')
+                ->count();
+
+            $folderName = basename($folderPath);
+
+            $result[] = [
+                'path' => $folderPath,
+                'name' => $folderName,
+                'file_count' => $fileCount,
+                'is_folder' => true,
+                'is_drive_synced' => isset($driveSyncedFolders[$folderPath]),
+                'drive_folder_name' => $driveSyncedFolders[$folderPath]->google_folder_name ?? null,
+            ];
+        }
+
+        // Sort by name
+        usort($result, fn($a, $b) => strcasecmp($a['name'], $b['name']));
+
+        return $result;
+    }
+
     public function getFolders($bandId)
     {
         // Get folders that have files
@@ -439,6 +524,13 @@ class MediaLibraryService
             ->orderBy('path')
             ->get();
 
+        // Get Google Drive folder syncs for this band
+        $driveSyncedFolders = \App\Models\GoogleDriveFolder::whereHas('connection', function ($query) use ($bandId) {
+            $query->where('band_id', $bandId);
+        })
+        ->get()
+        ->keyBy('local_folder_path');
+
         // Merge both lists
         $allFolders = [];
 
@@ -447,6 +539,8 @@ class MediaLibraryService
             $allFolders[$path] = [
                 'path' => $path,
                 'file_count' => $folder->file_count,
+                'is_drive_synced' => isset($driveSyncedFolders[$path]),
+                'drive_folder_name' => $driveSyncedFolders[$path]->google_folder_name ?? null,
             ];
         }
 
@@ -456,6 +550,8 @@ class MediaLibraryService
                 $allFolders[$folder->path] = [
                     'path' => $folder->path,
                     'file_count' => 0,
+                    'is_drive_synced' => isset($driveSyncedFolders[$folder->path]),
+                    'drive_folder_name' => $driveSyncedFolders[$folder->path]->google_folder_name ?? null,
                 ];
             }
         }
@@ -468,6 +564,8 @@ class MediaLibraryService
                     'path' => $systemFolder,
                     'file_count' => $count,
                     'is_system' => true,
+                    'is_drive_synced' => false,
+                    'drive_folder_name' => null,
                 ];
             } else {
                 // Mark existing folder as system folder and add system file counts
@@ -551,14 +649,18 @@ class MediaLibraryService
                         'path' => $fullPath,
                         'file_count' => 0,
                         'is_system' => false,
+                        'is_drive_synced' => false,
+                        'drive_folder_name' => null,
                         'children' => []
                     ];
                 }
 
-                // Add file count and system flag to the deepest folder
+                // Add file count and flags to the deepest folder
                 if ($index === count($parts) - 1) {
                     $current[$part]['file_count'] = $folder['file_count'];
                     $current[$part]['is_system'] = $folder['is_system'] ?? false;
+                    $current[$part]['is_drive_synced'] = $folder['is_drive_synced'] ?? false;
+                    $current[$part]['drive_folder_name'] = $folder['drive_folder_name'] ?? null;
                 }
 
                 $current = &$current[$part]['children'];
