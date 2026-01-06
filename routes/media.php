@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\MediaLibraryController;
 use App\Http\Controllers\MediaShareController;
 use App\Http\Controllers\MediaTagController;
+use App\Http\Controllers\GoogleDriveController;
 
 // Authenticated media library routes
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -81,6 +82,40 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/bulk/move', [MediaLibraryController::class, 'bulkMove'])
             ->middleware('media.write')
             ->name('media.bulk.move');
+
+        // Google Drive integration routes
+        Route::prefix('drive')->group(function () {
+            Route::get('/connect', [GoogleDriveController::class, 'connect'])
+                ->middleware('media.write')
+                ->name('media.drive.connect');
+
+            Route::get('/callback', [GoogleDriveController::class, 'callback'])
+                ->name('media.drive.callback');
+
+            Route::get('/browse', [GoogleDriveController::class, 'browseFolders'])
+                ->middleware('media.read')
+                ->name('media.drive.browse');
+
+            Route::post('/folders', [GoogleDriveController::class, 'addFolders'])
+                ->middleware('media.write')
+                ->name('media.drive.folders.add');
+
+            Route::post('/folders/{folder}/sync', [GoogleDriveController::class, 'syncFolder'])
+                ->middleware('media.write')
+                ->name('media.drive.sync');
+
+            Route::delete('/folders/{folder}', [GoogleDriveController::class, 'removeFolder'])
+                ->middleware('media.write')
+                ->name('media.drive.folders.remove');
+
+            Route::delete('/connections/{connection}', [GoogleDriveController::class, 'disconnect'])
+                ->middleware('media.write')
+                ->name('media.drive.disconnect');
+
+            Route::get('/connections/{connection}/status', [GoogleDriveController::class, 'status'])
+                ->middleware('media.read')
+                ->name('media.drive.status');
+        });
     });
 });
 
