@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\BandEvents;
+use App\Models\Events;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
@@ -105,5 +106,130 @@ class UserEventsService
         }
         
         return $events;
+    }
+
+    public function getUpcomingCharts()
+    {
+        $user = Auth::user();
+        $today = Carbon::today();
+
+        // Get all user's band IDs
+        $ownedBands = $user->bandOwner()->pluck('bands.id')->toArray();
+        $memberBands = $user->bandMember()->pluck('bands.id')->toArray();
+        $bandIds = array_merge($ownedBands, $memberBands);
+
+        if (empty($bandIds)) {
+            return collect();
+        }
+
+        // Query all upcoming booking events
+        $bookingEvents = Events::join('bookings', function($join) {
+                $join->on('events.eventable_id', '=', 'bookings.id')
+                     ->where('events.eventable_type', '=', 'App\\Models\\Bookings');
+            })
+            ->whereIn('bookings.band_id', $bandIds)
+            ->where('events.date', '>=', $today)
+            ->select([
+                'events.id',
+                'events.title',
+                'events.date',
+                'events.time',
+                'events.additional_data',
+                'bookings.venue_name',
+                'bookings.band_id'
+            ])
+            ->get();
+
+        // Query all upcoming rehearsal events
+        $rehearsalEvents = Events::join('rehearsals', function($join) {
+                $join->on('events.eventable_id', '=', 'rehearsals.id')
+                     ->where('events.eventable_type', '=', 'App\\Models\\Rehearsal');
+            })
+            ->whereIn('rehearsals.band_id', $bandIds)
+            ->where('events.date', '>=', $today)
+            ->select([
+                'events.id',
+                'events.title',
+                'events.date',
+                'events.time',
+                'events.additional_data',
+                'rehearsals.additional_data as rehearsal_additional_data',
+                'rehearsals.venue_name',
+                'rehearsals.band_id'
+            ])
+            ->get();
+
+        // Merge and sort all events
+        $upcomingEvents = $bookingEvents->merge($rehearsalEvents)
+            ->sortBy([
+                ['date', 'asc'],
+                ['time', 'asc']
+            ])
+            ->values();
+
+        // Extract charts and songs from each event
+        $items = [];
+        foreach ($upcomingEvents as $event) {
+            // Determine the source of charts/songs data
+            // Rehearsals store directly in additional_data, bookings store in additional_data->performance
+            $chartsSource = null;
+            $songsSource = null;
+
+            // Check if this is a rehearsal event (has rehearsal_additional_data)
+            if (isset($event->rehearsal_additional_data)) {
+                // Decode JSON string if needed (when data comes from join query)
+                $rehearsalData = is_string($event->rehearsal_additional_data)
+                    ? json_decode($event->rehearsal_additional_data)
+                    : $event->rehearsal_additional_data;
+
+                $chartsSource = $rehearsalData->charts ?? null;
+                $songsSource = $rehearsalData->songs ?? null;
+            }
+            // Otherwise check booking event structure (additional_data->performance)
+            elseif (isset($event->additional_data->performance)) {
+                $chartsSource = $event->additional_data->performance->charts ?? null;
+                $songsSource = $event->additional_data->performance->songs ?? null;
+            }
+
+            // Extract charts
+            if ($chartsSource && is_array($chartsSource)) {
+                foreach ($chartsSource as $chart) {
+                    $items[] = [
+                        'type' => 'chart',
+                        'chart_id' => $chart->id ?? null,
+                        'title' => $chart->title ?? 'Untitled',
+                        'composer' => $chart->composer ?? null,
+                        'url' => null,
+                        'event_id' => $event->id,
+                        'event_title' => $event->title,
+                        'event_date' => $event->date->format('Y-m-d'),
+                        'event_time' => $event->time,
+                        'venue_name' => $event->venue_name,
+                        'band_id' => $event->band_id,
+                    ];
+                }
+            }
+
+            // Extract songs (links)
+            if ($songsSource && is_array($songsSource)) {
+                foreach ($songsSource as $song) {
+                    $items[] = [
+                        'type' => 'song',
+                        'chart_id' => null,
+                        'title' => $song->title ?? 'Untitled',
+                        'composer' => null,
+                        'url' => $song->url ?? null,
+                        'event_id' => $event->id,
+                        'event_title' => $event->title,
+                        'event_date' => $event->date->format('Y-m-d'),
+                        'event_time' => $event->time,
+                        'venue_name' => $event->venue_name,
+                        'band_id' => $event->band_id,
+                    ];
+                }
+            }
+        }
+
+        return collect($items);
     }
 }
