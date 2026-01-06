@@ -18,13 +18,15 @@ class DashboardController extends Controller
     public function index()
     {
         $events = (new UserEventsService())->getEvents();
-        
-        
+        $upcomingCharts = (new UserEventsService())->getUpcomingCharts();
+
+
         // $stats = (new MileageService())->handle($events);
         // dd($stats);
         return Inertia::render('Dashboard',
         [
             'events'=>$events,
+            'upcomingCharts'=>$upcomingCharts,
             'stats'=>[]
             ]);
         }
