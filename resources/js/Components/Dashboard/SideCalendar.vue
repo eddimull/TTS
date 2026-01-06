@@ -4,6 +4,7 @@
     :show-time="false"
     :step-minute="15"
     hour-format="12"
+    class="w-full"
     inline
   >
     <template #date="{ date }">
@@ -77,12 +78,12 @@ const getEventClass = (date) => {
       return false;
     }
   });
-  
+
   if (!event) return 'bg-blue-300';
-  
+
   // Check if it's a rehearsal (either saved or virtual)
   const isRehearsal = event.eventable_type === 'App\\Models\\Rehearsal' || event.is_virtual;
-  
+
   // Return appropriate color class
   return isRehearsal ? 'bg-purple-400 dark:bg-purple-500' : 'bg-blue-300 dark:bg-blue-400';
 };
