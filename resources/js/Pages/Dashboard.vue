@@ -139,12 +139,24 @@
     <div class="hidden lg:block py-2 mx-auto">
       <div
         class="sticky"
-        style="top:100px"
+        style="top:120px"
       >
+       <!-- Calendar Widget -->
         <side-calendar
           :events="localEvents"
           @date="gotoDate"
+          class="mb-6"
         />
+
+        <!-- Upcoming Music Widget -->
+        <div class="mb-6">
+          <upcoming-charts
+            :charts="upcomingCharts"
+            @scroll-to-event="scrollToEventFromChart"
+          />
+        </div>
+
+       
       </div>
     </div>
   </div>
@@ -155,6 +167,28 @@
       v-if="showBackToTop"
       class="fixed bottom-8 right-8 z-50 flex flex-col gap-3"
     >
+      <!-- Upcoming Music Button (Mobile only) -->
+      <button
+        v-if="upcomingCharts.length > 0"
+        class="lg:hidden relative p-4 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110"
+        aria-label="View upcoming music"
+        @click="showMusicModal = true"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        <!-- Count Badge -->
+        <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center border-2 border-white">
+          {{ upcomingCharts.length }}
+        </span>
+      </button>
+
       <!-- Search Button -->
       <button
         class="p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110"
@@ -287,6 +321,49 @@
     </div>
   </transition>
 
+  <!-- Upcoming Music Modal (Mobile) -->
+  <transition name="fade">
+    <div
+      v-if="showMusicModal"
+      class="lg:hidden fixed inset-0 z-50 flex items-end justify-center"
+      @click.self="showMusicModal = false"
+    >
+      <div class="bg-white dark:bg-gray-800 rounded-t-2xl shadow-xl w-full max-h-[80vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex justify-between items-center">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
+            Upcoming Music
+          </h3>
+          <button
+            class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            @click="showMusicModal = false"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-6 w-6"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <div class="p-4">
+          <upcoming-charts
+            :charts="upcomingCharts"
+            @scroll-to-event="handleMobileScrollToEvent"
+          />
+        </div>
+      </div>
+    </div>
+  </transition>
+
   <!-- Rehearsal Editor Modal -->
   <rehearsal-editor-modal
     v-model:visible="showRehearsalEditor"
@@ -304,6 +381,7 @@
     import DefaultComponent from '../Components/DefaultDashboard.vue'
     import EventCard from '../Components/EventCard.vue'
     import SideCalendar from '../Components/Dashboard/SideCalendar.vue'
+    import UpcomingCharts from '../Components/Dashboard/UpcomingCharts.vue'
     import RehearsalEditorModal from '../Components/Rehearsal/RehearsalEditorModal.vue'
     import { nextTick, onMounted, onUnmounted, ref } from 'vue';
     import { router, usePage } from '@inertiajs/vue3';
@@ -311,6 +389,10 @@ import { pull } from 'lodash'
     
     const props = defineProps({
       events: {
+        type: Array,
+        default: () => []
+      },
+      upcomingCharts: {
         type: Array,
         default: () => []
       },
@@ -348,6 +430,9 @@ import { pull } from 'lodash'
     const searchQuery = ref('');
     const filteredEventsList = ref([]);
     const showSearchModal = ref(false);
+
+    // Music modal state (mobile)
+    const showMusicModal = ref(false);
 
     // Scroll tracking
     let scrollTimeout = null;
@@ -405,6 +490,15 @@ import { pull } from 'lodash'
       
       // Close the search modal if it's open
       showSearchModal.value = false;
+    };
+
+    const scrollToEventFromChart = (eventId) => {
+      gotoDate(eventId);
+    };
+
+    const handleMobileScrollToEvent = (eventId) => {
+      showMusicModal.value = false;
+      gotoDate(eventId);
     };
 
     const scrollToTop = () => {
@@ -810,22 +904,22 @@ import { pull } from 'lodash'
     onMounted(()=> {
       // Add scroll listener
       window.addEventListener('scroll', handleScroll);
-      
+
       // Add touch listeners for pull-to-refresh on mobile
       window.addEventListener('touchstart', handleTouchStart, { passive: true });
       window.addEventListener('touchmove', handleTouchMove, { passive: true });
       window.addEventListener('touchend', handleTouchEnd, { passive: true });
-      
+
       // Initialize oldest event date
       if (localEvents.value.length > 0) {
         oldestEventDate.value = localEvents.value[0].date;
       }
-      
+
       // Initialize scroll direction
       nextTick(() => {
         updateScrollDirection();
       });
-      
+
       // Handle initial hash navigation - wait for DOM to be fully rendered
       if(window.location.hash.includes('event_'))
       {
@@ -835,9 +929,9 @@ import { pull } from 'lodash'
           setTimeout(()=>{
             gotoDate(identifier);
           }, 150) // scroll to the item that includes the offset after DOM is ready
-        })        
+        })
       }
-      
+
       // Mark as initialized after a short delay to prevent immediate loading
       setTimeout(() => {
         isInitialized.value = true;
@@ -847,21 +941,12 @@ import { pull } from 'lodash'
     onUnmounted(() => {
       // Clean up scroll listener
       window.removeEventListener('scroll', handleScroll);
-      
+
       // Clean up touch listeners
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
-      
-      if (scrollTimeout) {
-        clearTimeout(scrollTimeout);
-      }
-    });
-    
 
-    onUnmounted(() => {
-      // Clean up scroll listener
-      window.removeEventListener('scroll', handleScroll);
       if (scrollTimeout) {
         clearTimeout(scrollTimeout);
       }

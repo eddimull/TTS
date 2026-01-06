@@ -1,0 +1,70 @@
+<?php
+
+namespace Database\Factories;
+
+use App\Models\Bands;
+use App\Models\RehearsalSchedule;
+use Illuminate\Database\Eloquent\Factories\Factory;
+
+class RehearsalScheduleFactory extends Factory
+{
+    protected $model = RehearsalSchedule::class;
+
+    public function definition()
+    {
+        return [
+            'band_id' => Bands::factory(),
+            'name' => 'Weekly Rehearsal',
+            'description' => $this->faker->optional()->sentence,
+            'frequency' => $this->faker->randomElement(['weekly', 'biweekly', 'monthly', 'custom']),
+            'day_of_week' => $this->faker->numberBetween(0, 6),
+            'selected_days' => null,
+            'day_of_month' => null,
+            'monthly_pattern' => null,
+            'monthly_weekday' => null,
+            'default_time' => '19:00:00',
+            'location_name' => $this->faker->company . ' Studio',
+            'location_address' => $this->faker->address,
+            'notes' => $this->faker->optional()->paragraph,
+            'active' => true,
+        ];
+    }
+
+    public function forBand(Bands $band)
+    {
+        return $this->state(function (array $attributes) use ($band) {
+            return [
+                'band_id' => $band->id,
+            ];
+        });
+    }
+
+    public function inactive()
+    {
+        return $this->state(function (array $attributes) {
+            return [
+                'active' => false,
+            ];
+        });
+    }
+
+    public function weekly()
+    {
+        return $this->state(function (array $attributes) {
+            return [
+                'frequency' => 'weekly',
+                'day_of_week' => 3, // Wednesday
+            ];
+        });
+    }
+
+    public function monthly()
+    {
+        return $this->state(function (array $attributes) {
+            return [
+                'frequency' => 'monthly',
+                'day_of_month' => 15,
+            ];
+        });
+    }
+}
