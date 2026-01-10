@@ -77,6 +77,26 @@
         </div>
 
         <div>
+          <LocationAutocomplete
+            v-model="form.venue_name"
+            name="venue_name"
+            label="Venue"
+            placeholder="Enter a venue name or address"
+            @location-selected="handleLocationSelected"
+          />
+        </div>
+
+        <div>
+          <Input
+            id="venue_address"
+            v-model="form.venue_address"
+            label="Venue Address"
+            type="text"
+            class="mt-1 block w-full border border-gray-300 dark:border-gray-600 rounded-md shadow-sm py-2 px-3 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          />
+        </div>
+
+        <div>
           <Input
             id="start_time"
             v-model="form.start_time"
@@ -148,6 +168,7 @@ import DatePicker from "primevue/datepicker";
 import InputNumber from "primevue/inputnumber";
 import { DateTime } from "luxon";
 import Input from "@/Components/Input.vue";
+import LocationAutocomplete from "@/Components/LocationAutocomplete.vue";
 
 export default {
     components: {
@@ -155,6 +176,7 @@ export default {
         DatePicker,
         InputNumber,
         Input,
+        LocationAutocomplete,
     },
     props: {
         band: {
@@ -179,6 +201,8 @@ export default {
             name: "",
             event_type_id: "",
             date: "",
+            venue_name: "",
+            venue_address: "",
             start_time: "19:00",
             duration: 4,
             price: null,
@@ -271,6 +295,11 @@ export default {
             return false;
         });
 
+        const handleLocationSelected = (locationData) => {
+            // Handle full location data from Google Places API
+            form.venue_address = locationData.result.formatted_address;
+        };
+
         return {
             form,
             bookingDate,
@@ -283,6 +312,7 @@ export default {
             isDateBooked,
             isSelectedDateBooked,
             getBookingStatusForSlot,
+            handleLocationSelected,
         };
     },
     computed: {
