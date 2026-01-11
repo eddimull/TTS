@@ -1,14 +1,17 @@
 <template>
   <div class="space-y-4">
-    <!-- Rich text notes -->
+    <!-- Performance notes -->
     <div>
       <label class="block mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
         Performance Notes
       </label>
-      <Editor
+      <textarea
         v-model="performanceNotes"
-        class="w-full p-2 border rounded"
-        editor-style="height: 200px"
+        class="w-full p-4 text-base border-2 border-gray-300 dark:border-gray-600 rounded-lg
+               focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+               dark:bg-slate-800 dark:text-gray-50 resize-none"
+        placeholder="Add performance notes here..."
+        rows="8"
       />
     </div>
 
@@ -278,7 +281,6 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
-import Editor from 'primevue/editor';
 import axios from 'axios';
 
 const props = defineProps({
