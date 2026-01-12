@@ -41,6 +41,7 @@ class UpdateBookingEventRequest extends FormRequest
             'time' => 'required',
             'title' => 'required|string',
             'notes' => 'nullable|string',
+            'roster_id' => 'nullable|exists:rosters,id',
             'additional_data' => 'required|array',
             'additional_data.migrated_from_event_id' => 'nullable|integer',
             'additional_data.public' => 'required|boolean',

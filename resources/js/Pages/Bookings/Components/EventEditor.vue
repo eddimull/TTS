@@ -70,6 +70,20 @@
         <BasicInfo v-model="event" />
       </SectionCard>
 
+      <!-- Roster / Lineup Section -->
+      <SectionCard
+        v-show="!showNotesModal"
+        title="Roster & Lineup"
+        icon="users"
+        :is-open="openSections.roster"
+        @toggle="toggleSection('roster')"
+      >
+        <RosterSection
+          v-model="event"
+          :band-id="event.eventable?.band_id"
+        />
+      </SectionCard>
+
       <!-- Notes Section - Click to open full screen -->
       <SectionCard
         title="Notes"
@@ -224,6 +238,7 @@ import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
 import Timeline from "./Timeline.vue";
 import BasicInfo from "./EventEditor/BasicInfo.vue";
+import RosterSection from "./EventEditor/RosterSection.vue";
 import NotesSection from "./EventEditor/NotesSection.vue";
 import AttireSection from "./EventEditor/AttireSection.vue";
 import AdditionalData from "./EventEditor/AdditionalData.vue";
@@ -312,6 +327,7 @@ const formattedUpdatedAt = computed(() => {
 // Track which sections are open
 const openSections = reactive({
     basicInfo: true,
+    roster: true,
     notes: true,
     timeline: true, // Default open so timeline can auto-scroll
     attire: true,

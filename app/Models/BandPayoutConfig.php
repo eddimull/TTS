@@ -54,11 +54,12 @@ class BandPayoutConfig extends Model
 
     /**
      * Calculate payout distribution for a given amount
-     * 
+     *
      * @param float $totalAmount The amount to distribute
      * @param array|null $memberCounts Optional array with ['owners' => int, 'members' => int] to avoid N+1 queries
+     * @param Bookings|null $booking Optional booking to check event attendance for weighted payouts
      */
-    public function calculatePayouts(float $totalAmount, ?array $memberCounts = null): array
+    public function calculatePayouts(float $totalAmount, ?array $memberCounts = null, ?Bookings $booking = null): array
     {
         $result = [
             'total_amount' => $totalAmount,
@@ -143,45 +144,82 @@ class BandPayoutConfig extends Model
         } else {
             // Fallback to old calculation methods
             $memberCount = 0;
-            
-            // Use cached counts if provided to avoid N+1 queries
-            if ($memberCounts !== null) {
-                if ($this->include_owners) {
-                    $memberCount += $memberCounts['owners'] ?? 0;
-                }
-                if ($this->include_members) {
-                    $memberCount += $memberCounts['members'] ?? 0;
-                }
+            $attendanceWeights = collect();
+
+            // Check if booking has attendance tracking across events
+            if ($booking) {
+                $attendanceWeights = $this->calculateAttendanceWeights($booking);
+                $memberCount = $attendanceWeights->count();
             } else {
-                // Fallback to querying (will cause N+1 if used in loops)
-                if ($this->include_owners) {
-                    $memberCount += $this->band->owners()->count();
+                // Use default band member counts
+                if ($memberCounts !== null) {
+                    if ($this->include_owners) {
+                        $memberCount += $memberCounts['owners'] ?? 0;
+                    }
+                    if ($this->include_members) {
+                        $memberCount += $memberCounts['members'] ?? 0;
+                    }
+                } else {
+                    // Fallback to querying (will cause N+1 if used in loops)
+                    if ($this->include_owners) {
+                        $memberCount += $this->band->owners()->count();
+                    }
+                    if ($this->include_members) {
+                        $memberCount += $this->band->members()->count();
+                    }
                 }
-                if ($this->include_members) {
-                    $memberCount += $this->band->members()->count();
+
+                if ($this->production_member_count > 0) {
+                    $memberCount += $this->production_member_count;
                 }
-            }
-            
-            if ($this->production_member_count > 0) {
-                $memberCount += $this->production_member_count;
             }
 
             if ($memberCount > 0) {
                 switch ($this->member_payout_type) {
                     case 'equal_split':
-                        $perMemberAmount = $result['distributable_amount'] / $memberCount;
-                        $ownerCount = $memberCounts !== null ? ($memberCounts['owners'] ?? 0) : $this->band->owners()->count();
-                        $memberOnlyCount = $memberCounts !== null ? ($memberCounts['members'] ?? 0) : $this->band->members()->count();
-                        
-                        for ($i = 0; $i < $memberCount; $i++) {
-                            $result['member_payouts'][] = [
-                                'type' => $i < $ownerCount ? 'owner' : 
-                                         ($i < ($ownerCount + $memberOnlyCount) ? 'member' : 'production'),
-                                'amount' => $perMemberAmount,
-                                'payout_type' => 'equal_split',
-                            ];
+                        // If using attendance-based weights
+                        if ($attendanceWeights->isNotEmpty()) {
+                            $totalWeight = $attendanceWeights->sum('weight');
+
+                            foreach ($attendanceWeights as $attendance) {
+                                // Calculate weighted payout
+                                $weightedAmount = ($result['distributable_amount'] * $attendance['weight']) / $totalWeight;
+
+                                // Use custom payout if set
+                                if ($attendance['custom_payout']) {
+                                    $amount = $attendance['custom_payout'];
+                                } else {
+                                    $amount = $weightedAmount;
+                                }
+
+                                $result['member_payouts'][] = [
+                                    'type' => $attendance['type'],
+                                    'name' => $attendance['name'],
+                                    'user_id' => $attendance['user_id'],
+                                    'roster_member_id' => $attendance['roster_member_id'],
+                                    'amount' => max($amount, $this->minimum_payout),
+                                    'payout_type' => 'attendance_weighted',
+                                    'events_attended' => $attendance['events_attended'],
+                                    'total_events' => $attendance['total_events'],
+                                    'weight' => $attendance['weight'],
+                                ];
+                            }
+                        } else {
+                            // Use default band member counting
+                            $perMemberAmount = $result['distributable_amount'] / $memberCount;
+                            $ownerCount = $memberCounts !== null ? ($memberCounts['owners'] ?? 0) : $this->band->owners()->count();
+                            $memberOnlyCount = $memberCounts !== null ? ($memberCounts['members'] ?? 0) : $this->band->members()->count();
+
+                            for ($i = 0; $i < $memberCount; $i++) {
+                                $result['member_payouts'][] = [
+                                    'type' => $i < $ownerCount ? 'owner' :
+                                             ($i < ($ownerCount + $memberOnlyCount) ? 'member' : 'production'),
+                                    'amount' => $perMemberAmount,
+                                    'payout_type' => 'equal_split',
+                                ];
+                            }
                         }
-                        $result['total_member_payout'] = $result['distributable_amount'];
+                        $result['total_member_payout'] = array_sum(array_column($result['member_payouts'], 'amount'));
                         break;
 
                     case 'tiered':
@@ -193,17 +231,47 @@ class BandPayoutConfig extends Model
                                 } else {
                                     $perMemberAmount = $applicableTier['value'] / $memberCount;
                                 }
-                                
-                                $ownerCount = $memberCounts !== null ? ($memberCounts['owners'] ?? 0) : $this->band->owners()->count();
-                                $memberOnlyCount = $memberCounts !== null ? ($memberCounts['members'] ?? 0) : $this->band->members()->count();
-                                
-                                for ($i = 0; $i < $memberCount; $i++) {
-                                    $result['member_payouts'][] = [
-                                        'type' => $i < $ownerCount ? 'owner' : 
-                                                 ($i < ($ownerCount + $memberOnlyCount) ? 'member' : 'production'),
-                                        'amount' => max($perMemberAmount, $this->minimum_payout),
-                                        'payout_type' => 'tiered',
-                                    ];
+
+                                // If using attendance-based weights
+                                if ($attendanceWeights->isNotEmpty()) {
+                                    $totalWeight = $attendanceWeights->sum('weight');
+
+                                    foreach ($attendanceWeights as $attendance) {
+                                        // Calculate weighted payout
+                                        $weightedAmount = ($result['distributable_amount'] * $attendance['weight']) / $totalWeight;
+
+                                        // Use custom payout if set, otherwise weighted amount
+                                        if ($attendance['custom_payout']) {
+                                            $amount = $attendance['custom_payout'];
+                                        } else {
+                                            $amount = $weightedAmount;
+                                        }
+
+                                        $result['member_payouts'][] = [
+                                            'type' => $attendance['type'],
+                                            'name' => $attendance['name'],
+                                            'user_id' => $attendance['user_id'],
+                                            'roster_member_id' => $attendance['roster_member_id'],
+                                            'amount' => max($amount, $this->minimum_payout),
+                                            'payout_type' => 'attendance_weighted_tiered',
+                                            'events_attended' => $attendance['events_attended'],
+                                            'total_events' => $attendance['total_events'],
+                                            'weight' => $attendance['weight'],
+                                        ];
+                                    }
+                                } else {
+                                    // Use default band member counting
+                                    $ownerCount = $memberCounts !== null ? ($memberCounts['owners'] ?? 0) : $this->band->owners()->count();
+                                    $memberOnlyCount = $memberCounts !== null ? ($memberCounts['members'] ?? 0) : $this->band->members()->count();
+
+                                    for ($i = 0; $i < $memberCount; $i++) {
+                                        $result['member_payouts'][] = [
+                                            'type' => $i < $ownerCount ? 'owner' :
+                                                     ($i < ($ownerCount + $memberOnlyCount) ? 'member' : 'production'),
+                                            'amount' => max($perMemberAmount, $this->minimum_payout),
+                                            'payout_type' => 'tiered',
+                                        ];
+                                    }
                                 }
                                 $result['total_member_payout'] = array_sum(array_column($result['member_payouts'], 'amount'));
                             }
@@ -302,5 +370,101 @@ class BandPayoutConfig extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Calculate attendance weights for all attendees across booking's events
+     *
+     * Returns collection with:
+     * - name: Display name
+     * - user_id: User ID if applicable
+     * - roster_member_id: Roster member ID
+     * - type: member/substitute/etc
+     * - events_attended: Number of events attended
+     * - total_events: Total events in booking
+     * - weight: Attendance weight (1.0 = attended all events)
+     * - custom_payout: Custom payout amount if set (in dollars)
+     */
+    private function calculateAttendanceWeights(Bookings $booking): \Illuminate\Support\Collection
+    {
+        $events = $booking->events()->with('eventMembers.rosterMember.user')->get();
+        $totalEvents = $events->count();
+
+        if ($totalEvents === 0) {
+            return collect();
+        }
+
+        // Aggregate attendance across all events
+        $attendance = [];
+
+        foreach ($events as $event) {
+            foreach ($event->eventMembers as $eventMember) {
+                // Only count members who attended or are confirmed (skip absent/excused)
+                if ($eventMember->isAbsent()) {
+                    continue;
+                }
+
+                // Use user_id as primary key to avoid counting same person twice
+                // Fallback to roster_member_id for non-registered roster members
+                // Fallback to event_member.id for custom subs with no IDs
+                if ($eventMember->user_id) {
+                    $key = 'user_' . $eventMember->user_id;
+                } elseif ($eventMember->roster_member_id) {
+                    $key = 'roster_' . $eventMember->roster_member_id;
+                } else {
+                    $key = 'event_member_' . $eventMember->id;
+                }
+
+                if (!isset($attendance[$key])) {
+                    // Determine member type:
+                    // - Has rosterMember + isUser() → 'member' (regular band member)
+                    // - Has rosterMember + NOT isUser() → 'substitute' (roster sub/guest)
+                    // - No rosterMember + has user_id → 'member' (registered user added directly)
+                    // - No rosterMember + no user_id → 'substitute' (custom name sub)
+                    $type = $eventMember->rosterMember
+                        ? ($eventMember->rosterMember->isUser() ? 'member' : 'substitute')
+                        : ($eventMember->user_id ? 'member' : 'substitute');
+
+                    // Get role/instrument - prioritize event member role, then roster member role
+                    $role = $eventMember->role;
+                    if (!$role && $eventMember->rosterMember) {
+                        $role = $eventMember->rosterMember->role;
+                    }
+
+                    $attendance[$key] = [
+                        'roster_member_id' => $eventMember->roster_member_id,
+                        'user_id' => $eventMember->user_id,
+                        'name' => $eventMember->display_name,
+                        'role' => $role,
+                        'type' => $type,
+                        'events_attended' => 0,
+                        'total_events' => $totalEvents,
+                        'custom_payout' => null,
+                        'custom_payout_sum' => 0,
+                    ];
+                }
+
+                $attendance[$key]['events_attended']++;
+
+                // Track custom payouts (we'll average them or use the most common)
+                if ($eventMember->payout_amount) {
+                    $attendance[$key]['custom_payout_sum'] += $eventMember->payout_amount / 100; // Convert cents to dollars
+                }
+            }
+        }
+
+        // Calculate weights and finalize custom payouts
+        return collect($attendance)->map(function ($item) {
+            $item['weight'] = $item['events_attended'] / $item['total_events'];
+
+            // If custom payouts were set, average them across attended events
+            if ($item['custom_payout_sum'] > 0) {
+                $item['custom_payout'] = $item['custom_payout_sum'] / $item['events_attended'];
+            }
+
+            unset($item['custom_payout_sum']);
+
+            return $item;
+        })->values();
     }
 }

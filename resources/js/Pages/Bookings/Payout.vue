@@ -208,7 +208,13 @@
                         Member
                       </th>
                       <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                        Role
+                      </th>
+                      <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                         Type
+                      </th>
+                      <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                        Attendance
                       </th>
                       <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                         Amount
@@ -230,7 +236,19 @@
                         />
                       </td>
                       <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                        {{ payout.role || '-' }}
+                      </td>
+                      <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
                         {{ formatPayoutType(payout.payout_type) }}
+                      </td>
+                      <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 text-center">
+                        <span v-if="payout.events_attended !== undefined && payout.total_events !== undefined">
+                          {{ payout.events_attended }}/{{ payout.total_events }}
+                          <span class="text-xs text-gray-500 dark:text-gray-500">
+                            ({{ Math.round((payout.weight || 0) * 100) }}%)
+                          </span>
+                        </span>
+                        <span v-else class="text-gray-400">-</span>
                       </td>
                       <td class="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-gray-50 text-right">
                         ${{ formatPrice(payout.amount) }}
@@ -260,7 +278,13 @@
                     Member
                   </th>
                   <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                    Role
+                  </th>
+                  <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                     Type
+                  </th>
+                  <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                    Attendance
                   </th>
                   <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                     Amount
@@ -282,7 +306,19 @@
                     />
                   </td>
                   <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                    {{ payout.role || '-' }}
+                  </td>
+                  <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
                     {{ payout.type || 'N/A' }}
+                  </td>
+                  <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 text-center">
+                    <span v-if="payout.events_attended !== undefined && payout.total_events !== undefined">
+                      {{ payout.events_attended }}/{{ payout.total_events }}
+                      <span class="text-xs text-gray-500 dark:text-gray-500">
+                        ({{ Math.round((payout.weight || 0) * 100) }}%)
+                      </span>
+                    </span>
+                    <span v-else class="text-gray-400">-</span>
                   </td>
                   <td class="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-gray-50 text-right">
                     ${{ formatPrice(payout.amount) }}
