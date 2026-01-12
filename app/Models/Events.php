@@ -5,7 +5,6 @@ namespace App\Models;
 use Carbon\Carbon;
 use App\Casts\TimeCast;
 use App\Formatters\CalendarEventFormatter;
-use Ramsey\Uuid\Type\Time;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Interfaces\GoogleCalenderable;
 use App\Models\Traits\GoogleCalendarWritable;
@@ -18,6 +17,16 @@ class Events extends Model implements GoogleCalenderable
 {
     use HasFactory, GoogleCalendarWritable, LogsActivity;
 
+    protected static function booted()
+    {
+        // Automatically sync roster members when roster_id is set or changed
+        static::saved(function ($event) {
+            if ($event->wasChanged('roster_id') && $event->roster_id) {
+                $event->syncRosterMembers();
+            }
+        });
+    }
+
     protected $fillable = [
         'additional_data',
         'date',
@@ -28,6 +37,7 @@ class Events extends Model implements GoogleCalenderable
         'title',
         'notes',
         'time',
+        'roster_id',
     ];
 
     protected $casts = [
@@ -109,6 +119,62 @@ class Events extends Model implements GoogleCalenderable
     public function attachments()
     {
         return $this->hasMany(EventAttachment::class, 'event_id');
+    }
+
+    public function roster()
+    {
+        return $this->belongsTo(Roster::class);
+    }
+
+    public function eventMembers()
+    {
+        return $this->hasMany(EventMember::class, 'event_id');
+    }
+
+    public function attendedMembers()
+    {
+        return $this->eventMembers()->attended();
+    }
+
+    public function absentMembers()
+    {
+        return $this->eventMembers()->absent();
+    }
+
+    /**
+     * Sync roster members to event members.
+     * This copies all active members from the assigned roster to this event.
+     */
+    public function syncRosterMembers(): void
+    {
+        if (!$this->roster_id) {
+            return;
+        }
+
+        // Get the band_id from the eventable (either Booking or BandEvents)
+        $bandId = $this->eventable->band_id ?? null;
+
+        if (!$bandId) {
+            return;
+        }
+
+        // Permanently delete existing event members (including soft-deleted ones)
+        // Use forceDelete to avoid unique constraint violation
+        $this->eventMembers()->withTrashed()->forceDelete();
+
+        // Get active roster members
+        $rosterMembers = $this->roster->members()->where('is_active', true)->get();
+
+        // Create event members from roster members
+        foreach ($rosterMembers as $rosterMember) {
+            EventMember::create([
+                'event_id' => $this->id,
+                'band_id' => $bandId,
+                'roster_member_id' => $rosterMember->id,
+                'user_id' => $rosterMember->user_id,
+                'attendance_status' => 'confirmed',
+            ]);
+        }
     }
 
     public function getGoogleEvent(BandCalendars $bandCalendar = null): GoogleEvents|null

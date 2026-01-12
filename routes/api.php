@@ -36,6 +36,7 @@ Route::get('/getAllEventTypes', [EventTypeController::class, 'getAllEventTypes']
 
 Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/bands/{band}/contacts', [BandsController::class, 'contacts']);
+    Route::get('/bands/{band}/members', [BandsController::class, 'members'])->name('api.bands.members');
     Route::get('/search', [SearchController::class, 'search']);
     Route::get('/charts', [ChartsController::class, 'getChartsForUser']);
     Route::get('/rehearsal/{rehearsal_id}', [RehearsalController::class, 'getRehearsalData'])->name('api.rehearsal.get');

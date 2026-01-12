@@ -98,12 +98,16 @@ class BookingsController extends Controller
             'custom_terms' => Storage::disk('local')->json('contract/InitialTerms.json'),
         ]);
         // TODO need to refactor this outside of the controller
+        // Get default roster for the band
+        $defaultRoster = $band->defaultRoster;
+
         $event = [
             'event_type_id' => $booking->event_type_id,
             'key' => Str::uuid(),
             'title' => $booking->name,
             'date' => $booking->date,
             'time' => $booking->start_time,
+            'roster_id' => $defaultRoster?->id,
             'additional_data' => [
                 'times' => [
                     ['title' => 'Load In', 'time' => $booking->start_date_time->copy()->subHours(4)->format('Y-m-d H:i')],
@@ -164,6 +168,7 @@ class BookingsController extends Controller
             'events' => function ($query) {
                 $query->orderBy('date', 'desc');
             },
+            'events.eventable',
         ]);
         
         // Calculate financial totals
@@ -177,15 +182,16 @@ class BookingsController extends Controller
         // Load active payout configuration and calculate payouts
         $payoutConfig = null;
         $payoutResult = null;
-        
+
         if ($booking->price > 0) {
             $payoutConfig = \App\Models\BandPayoutConfig::where('band_id', $band->id)
                 ->where('is_active', true)
                 ->with(['band.paymentGroups.users'])
                 ->first();
-            
+
             if ($payoutConfig) {
-                $payoutResult = $payoutConfig->calculatePayouts($booking->price);
+                // Calculate payouts with attendance data from all events
+                $payoutResult = $payoutConfig->calculatePayouts($booking->price, null, $booking);
             }
         }
         
@@ -376,8 +382,8 @@ class BookingsController extends Controller
 
     public function events(Bands $band, Bookings $booking)
     {
-        // Load events with attachments relationship
-        $booking->load(['events.attachments']);
+        // Load events with attachments and eventable relationships
+        $booking->load(['events.attachments', 'events.eventable']);
         
         // Get events with last updated user info from activity log
         $events = $booking->events->map(function ($event) {
@@ -458,9 +464,15 @@ class BookingsController extends Controller
      */
     public function payout(Bands $band, Bookings $booking)
     {
-        // Load booking with necessary relationships
-        $booking->load('band', 'eventType', 'payout.adjustments');
-        
+        // Load booking with necessary relationships including events and their members
+        $booking->load([
+            'band',
+            'eventType',
+            'payout.adjustments',
+            'events.eventMembers.rosterMember',
+            'events.eventMembers.user',
+        ]);
+
         // Get or create payout record
         $payout = $booking->payout;
         if (!$payout) {
@@ -483,16 +495,17 @@ class BookingsController extends Controller
         // Load active payout configuration and calculate payouts
         $payoutConfig = null;
         $payoutResult = null;
-        
+
         if ($adjustedTotal > 0) {
             $payoutConfig = \App\Models\BandPayoutConfig::where('band_id', $band->id)
                 ->where('is_active', true)
                 ->with(['band.paymentGroups.users'])
                 ->first();
-            
+
             if ($payoutConfig) {
-                $payoutResult = $payoutConfig->calculatePayouts($adjustedTotal);
-                
+                // Calculate payouts with attendance data from all events
+                $payoutResult = $payoutConfig->calculatePayouts($adjustedTotal, null, $booking);
+
                 // Store calculation result in payout record
                 $payout->payout_config_id = $payoutConfig->id;
                 $payout->calculation_result = $payoutResult;
@@ -500,6 +513,26 @@ class BookingsController extends Controller
             }
         }
         
+        // Format events with attendance data
+        $events = $booking->events->map(function ($event) {
+            return [
+                'id' => $event->id,
+                'title' => $event->title,
+                'date' => $event->date,
+                'time' => $event->time,
+                'members' => $event->eventMembers->map(function ($member) {
+                    return [
+                        'id' => $member->id,
+                        'display_name' => $member->display_name,
+                        'role' => $member->role ?? $member->rosterMember?->role,
+                        'attendance_status' => $member->attendance_status,
+                        'user_id' => $member->user_id,
+                        'roster_member_id' => $member->roster_member_id,
+                    ];
+                }),
+            ];
+        });
+
         return Inertia::render('Bookings/Payout', [
             'booking' => $booking,
             'band' => $band,
@@ -508,6 +541,7 @@ class BookingsController extends Controller
             'payout' => $payout,
             'adjustments' => $payout->adjustments ?? [],
             'adjustedTotal' => $adjustedTotal,
+            'events' => $events,
         ]);
     }
 

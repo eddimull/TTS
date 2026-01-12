@@ -58,7 +58,8 @@
             >
               <span class="text-gray-600 dark:text-gray-400">
                 {{ memberPayout.user_name }}
-                <span class="text-xs text-gray-500">({{ memberPayout.payout_type }})</span>
+                <span v-if="memberPayout.role" class="text-xs text-gray-500 ml-1">- {{ memberPayout.role }}</span>
+                <span class="text-xs text-gray-500 ml-1">({{ memberPayout.payout_type }})</span>
               </span>
               <span class="font-medium">{{ moneyFormat(memberPayout.amount) }}</span>
             </div>
@@ -105,6 +106,7 @@
               {{ payout.type === 'owner' ? 'Owner' : payout.type === 'member' ? 'Member' : 'Production' }}
             </span>
             {{ payout.name || (index + 1) }}
+            <span v-if="payout.role" class="text-xs text-gray-500 ml-1">- {{ payout.role }}</span>
           </span>
           <span class="font-semibold">{{ moneyFormat(payout.amount) }}</span>
         </div>
