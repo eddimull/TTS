@@ -121,5 +121,9 @@ Route::middleware(['auth', 'verified'])->group(function ()
     Route::delete('bands/{band}/booking/{booking}/payout/adjustments/{adjustment}', [BookingsController::class, 'destroyPayoutAdjustment'])
         ->name('booking.payout.destroyAdjustment')
         ->middleware('booking.access');
+
+    Route::put('bands/{band}/booking/{booking}/payout/configuration', [BookingsController::class, 'updatePayoutConfiguration'])
+        ->name('booking.payout.updateConfiguration')
+        ->middleware('booking.access');
 });
 Route::get('{booking}/downloadReceiptPDF', [BookingsController::class, 'paymentPDF'])->name('bookingpaymentpdf');

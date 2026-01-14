@@ -44,10 +44,8 @@ class BookingsController extends Controller
 
         $bookings = $band ? $band->bookings() : Bookings::whereIn('band_id', $userBands->pluck('id'));
 
-
         $bookings = $bookings->where('date', '>=', Carbon::now()->subMonths(6))
-            ->with('contract') // Eager load the contract relationship
-            ->with('contacts') // Eager load the contacts relationship
+            ->with(['contract', 'contacts'])
             ->get();
 
 
@@ -171,9 +169,8 @@ class BookingsController extends Controller
             'events.eventable',
         ]);
         
-        // Calculate financial totals
-        $booking->amountPaid = $booking->amountPaid;
-        $booking->amountLeft = $booking->amountLeft;
+        // Append calculated financial attributes for frontend consumption
+        $booking->append(['amountPaid', 'amountLeft']);
         
         // Get recent activity history
         $activityService = new \App\Services\BookingActivityService();
@@ -259,8 +256,7 @@ class BookingsController extends Controller
     public function finances(Bands $band, Bookings $booking)
     {
         $booking->load(['contacts', 'payments.invoice', 'payments.payer', 'payments.user', 'contract']);
-        $booking->amountPaid = $booking->amountPaid;
-        $booking->amountLeft = $booking->amountLeft;
+        $booking->append(['amountPaid', 'amountLeft']);
 
         return Inertia::render('Bookings/Finances', [
             'booking' => $booking,
@@ -382,35 +378,21 @@ class BookingsController extends Controller
 
     public function events(Bands $band, Bookings $booking)
     {
-        // Load events with attachments and eventable relationships
-        $booking->load(['events.attachments', 'events.eventable']);
-        
-        // Get events with last updated user info from activity log
+        $booking->load([
+            'events.attachments',
+            'events.eventable',
+            'events.eventMembers.rosterMember',
+            'events.eventMembers.user'
+        ]);
+
         $events = $booking->events->map(function ($event) {
-            // Get the last update activity
-            $lastActivity = $event->activities()
-                ->where('description', 'updated')
-                ->latest()
-                ->first();
-            
-            // Add last updated user info if available
-            if ($lastActivity && $lastActivity->causer) {
-                $event->last_updated_by = [
-                    'id' => $lastActivity->causer->id,
-                    'name' => $lastActivity->causer->name,
-                ];
-            }
-            
-            // Add formatted file size to attachments
-            if ($event->attachments) {
-                $event->attachments->each(function ($attachment) {
-                    $attachment->formatted_size = $attachment->formattedSize;
-                });
-            }
-            
+            $this->appendLastUpdatedBy($event);
+            $this->appendFormattedAttachmentSizes($event);
+            $event->roster_members = $this->formatRosterMembers($event);
+
             return $event;
         });
-        
+
         return Inertia::render('Bookings/Events', [
             'booking' => $booking,
             'events' => $events
@@ -464,7 +446,6 @@ class BookingsController extends Controller
      */
     public function payout(Bands $band, Bookings $booking)
     {
-        // Load booking with necessary relationships including events and their members
         $booking->load([
             'band',
             'eventType',
@@ -473,40 +454,41 @@ class BookingsController extends Controller
             'events.eventMembers.user',
         ]);
 
-        // Get or create payout record
-        $payout = $booking->payout;
-        if (!$payout) {
-            // Create initial payout record
-            // booking->price is already formatted as dollars (string), Price cast will convert to cents
-            $baseAmount = is_string($booking->price) 
-                ? floatval($booking->price) 
-                : $booking->price;
-            
-            $payout = $booking->payout()->create([
-                'band_id' => $band->id,
-                'base_amount' => $baseAmount,
-                'adjusted_amount' => $baseAmount,
-            ]);
-        }
-        
-        // Calculate adjusted total for payout
+        $payout = $this->getOrCreatePayout($booking, $band);
         $adjustedTotal = $payout->adjusted_amount_float;
-        
-        // Load active payout configuration and calculate payouts
+
+        // Load all available configurations for the band
+        $availableConfigs = \App\Models\BandPayoutConfig::where('band_id', $band->id)
+            ->orderBy('is_active', 'desc')
+            ->orderBy('name')
+            ->get(['id', 'name', 'is_active']);
+
+        // Load payout configuration and calculate payouts
         $payoutConfig = null;
         $payoutResult = null;
 
         if ($adjustedTotal > 0) {
-            $payoutConfig = \App\Models\BandPayoutConfig::where('band_id', $band->id)
-                ->where('is_active', true)
-                ->with(['band.paymentGroups.users'])
-                ->first();
+            // Use stored config if exists, otherwise use active config
+            if ($payout->payout_config_id) {
+                $payoutConfig = \App\Models\BandPayoutConfig::where('id', $payout->payout_config_id)
+                    ->where('band_id', $band->id)
+                    ->with(['band.paymentGroups.users'])
+                    ->first();
+            }
+
+            // Fallback to active config if no stored config or stored config not found
+            if (!$payoutConfig) {
+                $payoutConfig = \App\Models\BandPayoutConfig::where('band_id', $band->id)
+                    ->where('is_active', true)
+                    ->with(['band.paymentGroups.users'])
+                    ->first();
+            }
 
             if ($payoutConfig) {
                 // Calculate payouts with attendance data from all events
                 $payoutResult = $payoutConfig->calculatePayouts($adjustedTotal, null, $booking);
 
-                // Store calculation result in payout record
+                // Store calculation result and config ID in payout record
                 $payout->payout_config_id = $payoutConfig->id;
                 $payout->calculation_result = $payoutResult;
                 $payout->save();
@@ -542,6 +524,7 @@ class BookingsController extends Controller
             'adjustments' => $payout->adjustments ?? [],
             'adjustedTotal' => $adjustedTotal,
             'events' => $events,
+            'availableConfigs' => $availableConfigs,
         ]);
     }
 
@@ -680,21 +663,7 @@ class BookingsController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        // Get or create payout record
-        $payout = $booking->payout;
-        if (!$payout) {
-            $baseAmount = is_string($booking->price) 
-                ? floatval($booking->price) 
-                : $booking->price;
-            
-            $payout = $booking->payout()->create([
-                'band_id' => $band->id,
-                'base_amount' => $baseAmount,
-                'adjusted_amount' => $baseAmount,
-            ]);
-        }
-
-        // Amount is in dollars, Price cast will convert to cents for storage
+        $payout = $this->getOrCreatePayout($booking, $band);
         $adjustment = $payout->adjustments()->create([
             'amount' => $validated['amount'],
             'description' => $validated['description'],
@@ -752,5 +721,146 @@ class BookingsController extends Controller
             ->log('payout_adjustment_removed');
 
         return redirect()->back()->with('successMessage', 'Payout adjustment removed successfully');
+    }
+
+    /**
+     * Update the payout configuration for a booking
+     */
+    public function updatePayoutConfiguration(Request $request, Bands $band, Bookings $booking)
+    {
+        $validated = $request->validate([
+            'payout_config_id' => 'required|exists:band_payout_configs,id',
+        ]);
+
+        $payout = $this->getOrCreatePayout($booking, $band);
+        $payoutConfig = \App\Models\BandPayoutConfig::where('id', $validated['payout_config_id'])
+            ->where('band_id', $band->id)
+            ->with(['band.paymentGroups.users'])
+            ->firstOrFail();
+
+        // Load booking relationships needed for payout calculation
+        $booking->load([
+            'events.eventMembers.rosterMember',
+            'events.eventMembers.user',
+        ]);
+
+        // Update the payout configuration
+        $payout->payout_config_id = $payoutConfig->id;
+
+        // Recalculate payouts with the new configuration
+        $adjustedTotal = $payout->adjusted_amount_float;
+        if ($adjustedTotal > 0) {
+            $payoutResult = $payoutConfig->calculatePayouts($adjustedTotal, null, $booking);
+            $payout->calculation_result = $payoutResult;
+        }
+
+        $payout->save();
+
+        activity()
+            ->performedOn($booking)
+            ->causedBy(Auth::user())
+            ->withProperties([
+                'config_id' => $payoutConfig->id,
+                'config_name' => $payoutConfig->name,
+            ])
+            ->log('payout_configuration_updated');
+
+        return redirect()->back()->with('successMessage', 'Payout configuration updated successfully');
+    }
+
+    /**
+     * Append last updated user info from activity log to the event.
+     */
+    private function appendLastUpdatedBy(Events $event): void
+    {
+        $lastActivity = $event->activities()
+            ->where('description', 'updated')
+            ->latest()
+            ->first();
+
+        if ($lastActivity && $lastActivity->causer) {
+            $event->last_updated_by = [
+                'id' => $lastActivity->causer->id,
+                'name' => $lastActivity->causer->name,
+            ];
+        }
+    }
+
+    /**
+     * Append formatted file sizes to event attachments.
+     */
+    private function appendFormattedAttachmentSizes(Events $event): void
+    {
+        if ($event->attachments) {
+            $event->attachments->each(function ($attachment) {
+                $attachment->formatted_size = $attachment->formattedSize;
+            });
+        }
+    }
+
+    /**
+     * Format roster members with resolved roles.
+     */
+    private function formatRosterMembers(Events $event): \Illuminate\Support\Collection
+    {
+        return $event->eventMembers->map(function ($eventMember) use ($event) {
+            $role = $this->resolveEventMemberRole($eventMember, $event);
+
+            return [
+                'name' => $eventMember->display_name,
+                'role' => $role,
+            ];
+        })->sortBy('name')->values();
+    }
+
+    /**
+     * Resolve the role for an event member with fallbacks.
+     */
+    private function resolveEventMemberRole($eventMember, Events $event): ?string
+    {
+        if ($eventMember->role) {
+            return $eventMember->role;
+        }
+
+        if ($eventMember->rosterMember) {
+            return $eventMember->rosterMember->role;
+        }
+
+        // Fallback: find role from current roster by user_id (for data integrity issues)
+        if ($eventMember->user_id && $event->eventable) {
+            $band = $event->eventable->band ?? null;
+            if ($band) {
+                $currentRosterMember = $band->rosters()
+                    ->where('is_active', true)
+                    ->with('members')
+                    ->get()
+                    ->flatMap(fn($roster) => $roster->members)
+                    ->firstWhere('user_id', $eventMember->user_id);
+
+                return $currentRosterMember?->role;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get or create a payout record for a booking.
+     */
+    private function getOrCreatePayout(Bookings $booking, Bands $band): \App\Models\Payout
+    {
+        if ($booking->payout) {
+            return $booking->payout;
+        }
+
+        $baseAmount = is_string($booking->price)
+            ? floatval($booking->price)
+            : $booking->price;
+
+        return $booking->payout()->create([
+            'band_id' => $band->id,
+            'base_amount' => $baseAmount,
+            'adjusted_amount' => $baseAmount,
+        ]);
     }
 }
