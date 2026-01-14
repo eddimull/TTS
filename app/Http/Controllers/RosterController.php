@@ -6,58 +6,32 @@ use App\Models\Bands;
 use App\Models\Roster;
 use App\Http\Requests\StoreRosterRequest;
 use App\Http\Requests\UpdateRosterRequest;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Inertia\Response as InertiaResponse;
 
 class RosterController extends Controller
 {
     /**
      * Get all rosters for a band.
      */
-    public function index(Bands $band)
+    public function index(Bands $band): JsonResponse|InertiaResponse
     {
-        // Check if user can view band rosters
-        if (!$band->everyone()->contains('user_id', auth()->id())) {
-            abort(403, 'Unauthorized');
-        }
+        $this->authorizeViewBand($band);
 
         $rosters = $band->rosters()
             ->withCount('members')
-            ->with(['members' => function ($query) {
-                $query->where('is_active', true)->with('user');
-            }])
+            ->with(['members' => fn($query) => $query->where('is_active', true)->with('user')])
             ->orderBy('is_default', 'desc')
             ->orderBy('name')
             ->get();
 
-        // If this is a JSON API request (from EventEditor), return JSON
-        // Note: Don't use request()->ajax() as Inertia also sends X-Requested-With header
         if (request()->wantsJson()) {
-            return response()->json([
-                'rosters' => $rosters,
-            ]);
+            return response()->json(['rosters' => $rosters]);
         }
 
-        // Get all roster members for the band (for call lists)
-        $rosterMembers = $band->rosters()
-            ->with('members.user')
-            ->get()
-            ->pluck('members')
-            ->flatten()
-            ->unique('id')
-            ->filter(fn($member) => $member->is_active)
-            ->values()
-            ->map(function ($member) {
-                return [
-                    'id' => $member->id,
-                    'user_id' => $member->user_id,
-                    'display_name' => $member->display_name,
-                    'display_email' => $member->display_email,
-                    'phone' => $member->phone,
-                    'role' => $member->role,
-                ];
-            });
+        $rosterMembers = $this->getActiveRosterMembers($band);
 
-        // Otherwise return Inertia view (for the Rosters page)
         return inertia('Band/Rosters/Index', [
             'band' => $band,
             'rosters' => $rosters,
@@ -68,32 +42,27 @@ class RosterController extends Controller
     /**
      * Show a single roster with all its members.
      */
-    public function show(Roster $roster)
+    public function show(Roster $roster): JsonResponse
     {
-        // Check if user can view this roster
-        if (!$roster->band->everyone()->contains('user_id', auth()->id())) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
+        $this->authorizeViewBand($roster->band);
 
         $roster->load(['members.user', 'band']);
 
         return response()->json([
             'roster' => $roster,
-            'members' => $roster->members->map(function ($member) {
-                return [
-                    'id' => $member->id,
-                    'user_id' => $member->user_id,
-                    'name' => $member->display_name,
-                    'email' => $member->display_email,
-                    'phone' => $member->phone,
-                    'role' => $member->role,
-                    'default_payout_type' => $member->default_payout_type,
-                    'default_payout_amount' => $member->default_payout_amount ? $member->default_payout_amount / 100 : null,
-                    'notes' => $member->notes,
-                    'is_active' => $member->is_active,
-                    'is_user' => $member->isUser(),
-                ];
-            }),
+            'members' => $roster->members->map(fn($member) => [
+                'id' => $member->id,
+                'user_id' => $member->user_id,
+                'name' => $member->display_name,
+                'email' => $member->display_email,
+                'phone' => $member->phone,
+                'role' => $member->role,
+                'default_payout_type' => $member->default_payout_type,
+                'default_payout_amount' => $member->default_payout_amount ? $member->default_payout_amount / 100 : null,
+                'notes' => $member->notes,
+                'is_active' => $member->is_active,
+                'is_user' => $member->isUser(),
+            ]),
         ]);
     }
 
@@ -110,7 +79,7 @@ class RosterController extends Controller
             'is_active' => $request->boolean('is_active', true),
         ]);
 
-        return back()->with('success', 'Roster created successfully');
+        return $this->respondWithSuccess($roster, 'Roster created successfully', 201);
     }
 
     /**
@@ -120,7 +89,7 @@ class RosterController extends Controller
     {
         $roster->update($request->validated());
 
-        return back()->with('success', 'Roster updated successfully');
+        return $this->respondWithSuccess($roster, 'Roster updated successfully');
     }
 
     /**
@@ -128,26 +97,19 @@ class RosterController extends Controller
      */
     public function destroy(Roster $roster)
     {
-        // Check authorization - only owners
-        if (!$roster->band->owners()->where('user_id', auth()->id())->exists()) {
-            abort(403, 'Unauthorized');
-        }
+        $this->authorizeBandOwner($roster->band);
 
-        // Don't allow deleting default roster
         if ($roster->is_default) {
-            return back()->withErrors(['message' => 'Cannot delete the default roster']);
+            return $this->respondWithError('Cannot delete the default roster', 422);
         }
 
-        // Check if roster is being used by any events
-        if ($roster->events()->count() > 0) {
-            return back()->withErrors([
-                'message' => 'Cannot delete roster that is assigned to events'
-            ]);
+        if ($roster->events()->exists()) {
+            return $this->respondWithError('Cannot delete roster that is assigned to events', 422);
         }
 
         $roster->delete();
 
-        return back()->with('success', 'Roster deleted successfully');
+        return $this->respondWithSuccess(['message' => 'Roster deleted successfully'], 'Roster deleted successfully');
     }
 
     /**
@@ -155,32 +117,27 @@ class RosterController extends Controller
      */
     public function setDefault(Bands $band, Roster $roster)
     {
-        // Check authorization - only owners
-        if (!$band->owners()->where('user_id', auth()->id())->exists()) {
-            abort(403, 'Unauthorized');
-        }
+        $this->authorizeBandOwner($band);
 
         if ($roster->band_id !== $band->id) {
             abort(404, 'Roster does not belong to this band');
         }
 
-        $roster->is_default = true;
-        $roster->save();
+        $roster->update(['is_default' => true]);
 
-        return back()->with('success', 'Default roster updated');
+        return $this->respondWithSuccess(
+            ['message' => 'Default roster updated', 'roster' => $roster->fresh()],
+            'Default roster updated'
+        );
     }
 
     /**
      * Initialize roster from band members.
      */
-    public function initializeFromBand(Bands $band)
+    public function initializeFromBand(Bands $band): JsonResponse
     {
-        // Check authorization - only owners
-        if (!$band->owners()->where('user_id', auth()->id())->exists()) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
+        $this->authorizeBandOwner($band);
 
-        // Check if band already has a default roster
         if ($band->defaultRoster) {
             return response()->json([
                 'message' => 'Band already has a default roster',
@@ -191,7 +148,6 @@ class RosterController extends Controller
         DB::beginTransaction();
         try {
             $roster = Roster::createDefaultForBand($band);
-
             DB::commit();
 
             return response()->json([
@@ -205,6 +161,73 @@ class RosterController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Authorize that the current user can view this band.
+     */
+    private function authorizeViewBand(Bands $band): void
+    {
+        if (!$band->everyone()->contains('user_id', auth()->id())) {
+            abort(403, 'Unauthorized');
+        }
+    }
+
+    /**
+     * Authorize that the current user is an owner of this band.
+     */
+    private function authorizeBandOwner(Bands $band): void
+    {
+        if (!$band->owners()->where('user_id', auth()->id())->exists()) {
+            abort(403, 'Unauthorized');
+        }
+    }
+
+    /**
+     * Get all active roster members for a band.
+     */
+    private function getActiveRosterMembers(Bands $band)
+    {
+        return $band->rosters()
+            ->with('members.user')
+            ->get()
+            ->pluck('members')
+            ->flatten()
+            ->unique('id')
+            ->filter(fn($member) => $member->is_active)
+            ->values()
+            ->map(fn($member) => [
+                'id' => $member->id,
+                'user_id' => $member->user_id,
+                'display_name' => $member->display_name,
+                'display_email' => $member->display_email,
+                'phone' => $member->phone,
+                'role' => $member->role,
+            ]);
+    }
+
+    /**
+     * Return a success response (JSON or redirect back with message).
+     */
+    private function respondWithSuccess($data, string $message, int $status = 200)
+    {
+        if (request()->wantsJson()) {
+            return response()->json($data, $status);
+        }
+
+        return back()->with('success', $message);
+    }
+
+    /**
+     * Return an error response (JSON or redirect back with error).
+     */
+    private function respondWithError(string $message, int $status = 422)
+    {
+        if (request()->wantsJson()) {
+            return response()->json(['message' => $message], $status);
+        }
+
+        return back()->withErrors(['message' => $message]);
     }
 }
 

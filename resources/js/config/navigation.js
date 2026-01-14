@@ -63,6 +63,11 @@ export const navigationGroups = [
         label: 'Payout Calculator',
         routeName: 'Payout Calculator',
         activeMatch: (route) => route === 'Payout Calculator'
+      },
+      {
+        label: 'Payout Configurations',
+        routeName: 'Payout Configurations',
+        activeMatch: (route) => route === 'Payout Configurations'
       }
     ]
   },

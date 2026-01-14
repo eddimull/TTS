@@ -61,6 +61,38 @@
         </div>
       </SectionCard>
 
+      <!-- Roster Section -->
+      <SectionCard
+        v-if="hasRoster"
+        title="Event Roster"
+        icon="users"
+        :is-open="openSections.roster"
+        :view-mode="true"
+        @toggle="toggleSection('roster')"
+      >
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <div
+            v-for="(member, index) in event.roster_members"
+            :key="index"
+            class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-700 rounded-lg"
+          >
+            <div
+              class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0"
+            >
+              <i class="pi pi-user text-blue-600 dark:text-blue-300" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 dark:text-gray-50 truncate">
+                {{ member.name }}
+              </div>
+              <div class="text-sm text-gray-600 dark:text-gray-400 truncate">
+                {{ member.role || 'No role specified' }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </SectionCard>
+
       <!-- Notes Section -->
       <SectionCard
         v-if="event.notes"
@@ -427,6 +459,7 @@ const showHistoryModal = ref(false);
 // Track which sections are open
 const openSections = reactive({
     basicInfo: true,
+    roster: true,
     notes: true,
     timeline: true, // Default open so timeline can auto-scroll
     attire: false,
@@ -457,6 +490,10 @@ onMounted(() => {
 });
 
 // Computed properties for conditional rendering
+const hasRoster = computed(() => {
+    return props.event.roster_members?.length > 0;
+});
+
 const hasTimeline = computed(() => {
     return props.event.additional_data?.times?.length > 0;
 });

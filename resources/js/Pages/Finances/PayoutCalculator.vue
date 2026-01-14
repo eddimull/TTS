@@ -20,9 +20,18 @@
         <PaymentGroupManager :band="band" />
 
         <div class="componentPanel shadow-lg rounded-lg p-6 space-y-6">
-          <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-100 border-b pb-3">
-            {{ band.name }} - Payout Calculator
-          </h2>
+          <div class="flex justify-between items-center border-b pb-3">
+            <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-100">
+              {{ band.name }} - Payout Calculator
+            </h2>
+            <Link
+              :href="route('finances.payoutFlow.edit', band.id)"
+              class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              <i class="pi pi-sitemap mr-2" />
+              Visual Flow Editor
+            </Link>
+          </div>
 
           <QuickCalculator
             v-model:total-amount="calculators[band.id].totalAmount"
@@ -51,7 +60,7 @@
 
 <script setup>
 import { reactive } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { router, Link } from '@inertiajs/vue3'
 import FinanceLayout from './Layout/FinanceLayout.vue'
 import PaymentGroupManager from './Components/PaymentGroupManager.vue'
 import QuickCalculator from './Components/QuickCalculator.vue'

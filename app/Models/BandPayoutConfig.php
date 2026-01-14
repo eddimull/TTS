@@ -29,6 +29,7 @@ class BandPayoutConfig extends Model
         'notes',
         'use_payment_groups',
         'payment_group_config',
+        'flow_diagram',
     ];
 
     protected $casts = [
@@ -45,6 +46,7 @@ class BandPayoutConfig extends Model
         'production_member_count' => 'integer',
         'use_payment_groups' => 'boolean',
         'payment_group_config' => 'array',
+        'flow_diagram' => 'array',
     ];
 
     public function band(): BelongsTo
@@ -61,6 +63,11 @@ class BandPayoutConfig extends Model
      */
     public function calculatePayouts(float $totalAmount, ?array $memberCounts = null, ?Bookings $booking = null): array
     {
+        // If this config has a flow_diagram, use flow-based calculation
+        if ($this->flow_diagram && is_array($this->flow_diagram) && isset($this->flow_diagram['nodes'])) {
+            return $this->calculateFromFlow($totalAmount, $booking);
+        }
+
         $result = [
             'total_amount' => $totalAmount,
             'band_cut' => 0,
@@ -91,7 +98,7 @@ class BandPayoutConfig extends Model
 
         // If using payment groups, calculate based on groups
         if ($this->use_payment_groups && $this->payment_group_config && is_array($this->payment_group_config)) {
-            return $this->calculatePayoutsWithGroups($result);
+            return $this->calculatePayoutsWithGroups($result, $booking);
         }
 
         // Check if we have member-specific configurations
@@ -197,6 +204,7 @@ class BandPayoutConfig extends Model
                                     'name' => $attendance['name'],
                                     'user_id' => $attendance['user_id'],
                                     'roster_member_id' => $attendance['roster_member_id'],
+                                    'role' => $attendance['role'] ?? null,
                                     'amount' => max($amount, $this->minimum_payout),
                                     'payout_type' => 'attendance_weighted',
                                     'events_attended' => $attendance['events_attended'],
@@ -252,6 +260,7 @@ class BandPayoutConfig extends Model
                                             'name' => $attendance['name'],
                                             'user_id' => $attendance['user_id'],
                                             'roster_member_id' => $attendance['roster_member_id'],
+                                            'role' => $attendance['role'] ?? null,
                                             'amount' => max($amount, $this->minimum_payout),
                                             'payout_type' => 'attendance_weighted_tiered',
                                             'events_attended' => $attendance['events_attended'],
@@ -288,18 +297,24 @@ class BandPayoutConfig extends Model
 
     /**
      * Calculate payouts using payment groups
-     * 
+     *
      * Groups are allocated SEQUENTIALLY based on display_order:
      * 1. Start with distributable_amount (after band cut)
      * 2. Allocate to first group (fixed or percentage of remaining)
      * 3. Subtract allocation from remaining
      * 4. Allocate to second group from what's left
      * 5. Continue until all groups processed
-     * 
+     *
      * This allows formulas like: (net - band_cut - production_group) / player_group
      */
-    private function calculatePayoutsWithGroups(array $result): array
+    private function calculatePayoutsWithGroups(array $result, ?Bookings $booking = null): array
     {
+        // Calculate attendance weights with role information if booking is provided
+        $attendanceData = collect();
+        if ($booking) {
+            $attendanceData = $this->calculateAttendanceWeights($booking);
+        }
+
         $remainingAmount = $result['distributable_amount'];
         $paymentGroups = BandPaymentGroup::where('band_id', $this->band_id)
             ->where('is_active', true)
@@ -323,7 +338,7 @@ class BandPayoutConfig extends Model
             }
 
             // Calculate individual member payouts within the group
-            $groupPayoutResult = $group->calculateGroupPayout($groupAllocation);
+            $groupPayoutResult = $group->calculateGroupPayout($groupAllocation, $attendanceData);
             
             $result['payment_group_payouts'][] = $groupPayoutResult;
             
@@ -334,6 +349,7 @@ class BandPayoutConfig extends Model
                     'group_name' => $group->name,
                     'name' => $payout['user_name'],
                     'user_id' => $payout['user_id'],
+                    'role' => $payout['role'] ?? null,
                     'payout_type' => $payout['payout_type'],
                     'amount' => max($payout['amount'], $this->minimum_payout),
                 ];
@@ -431,6 +447,20 @@ class BandPayoutConfig extends Model
                         $role = $eventMember->rosterMember->role;
                     }
 
+                    // Fallback: If no role found and rosterMember is null, try to find role from current roster by user_id
+                    if (!$role && !$eventMember->rosterMember && $eventMember->user_id) {
+                        $currentRosterMember = $this->band->rosters()
+                            ->where('is_active', true)
+                            ->with('members')
+                            ->get()
+                            ->flatMap(fn($roster) => $roster->members)
+                            ->firstWhere('user_id', $eventMember->user_id);
+
+                        if ($currentRosterMember) {
+                            $role = $currentRosterMember->role;
+                        }
+                    }
+
                     $attendance[$key] = [
                         'roster_member_id' => $eventMember->roster_member_id,
                         'user_id' => $eventMember->user_id,
@@ -466,5 +496,149 @@ class BandPayoutConfig extends Model
 
             return $item;
         })->values();
+    }
+
+    /**
+     * Calculate payouts from flow diagram
+     */
+    private function calculateFromFlow(float $totalAmount, ?Bookings $booking = null): array
+    {
+        $nodes = $this->flow_diagram['nodes'] ?? [];
+        $edges = $this->flow_diagram['edges'] ?? [];
+
+        $result = [
+            'total_amount' => $totalAmount,
+            'band_cut' => 0,
+            'distributable_amount' => $totalAmount,
+            'member_payouts' => [],
+            'payment_group_payouts' => [],
+            'total_member_payout' => 0,
+            'remaining' => 0,
+        ];
+
+        // Get attendance data with roles if booking provided
+        $attendanceData = collect();
+        if ($booking) {
+            $attendanceData = $this->calculateAttendanceWeights($booking);
+        }
+
+        // Apply band cut
+        $bandCutNode = collect($nodes)->firstWhere('type', 'bandCut');
+        if ($bandCutNode) {
+            $cutType = $bandCutNode['data']['cutType'] ?? 'none';
+            $cutValue = $bandCutNode['data']['value'] ?? 0;
+
+            if ($cutType === 'percentage') {
+                $result['band_cut'] = ($totalAmount * $cutValue) / 100;
+            } elseif ($cutType === 'fixed') {
+                $result['band_cut'] = $cutValue;
+            }
+        }
+
+        $result['distributable_amount'] = $totalAmount - $result['band_cut'];
+        $remainingAmount = $result['distributable_amount'];
+
+        // Build adjacency list for traversal
+        $adjacency = collect($edges)->groupBy('source');
+
+        // Find income node and traverse
+        $incomeNode = collect($nodes)->firstWhere('type', 'income');
+        if ($incomeNode) {
+            $this->traverseFlowNode($incomeNode['id'], $remainingAmount, $nodes, $adjacency, $attendanceData, $result);
+        }
+
+        $result['total_member_payout'] = collect($result['member_payouts'])->sum('amount');
+        $result['remaining'] = $result['distributable_amount'] - $result['total_member_payout'];
+
+        return $result;
+    }
+
+    /**
+     * Traverse flow nodes recursively
+     */
+    private function traverseFlowNode(string $nodeId, float $amount, array $nodes, $adjacency, $attendanceData, array &$result): void
+    {
+        $node = collect($nodes)->firstWhere('id', $nodeId);
+        if (!$node) return;
+
+        // Process payoutGroup nodes
+        if ($node['type'] === 'payoutGroup') {
+            $nodeData = $node['data'];
+
+            // Get allocation for this group
+            $allocationType = $nodeData['incomingAllocationType'] ?? 'remainder';
+            $allocationValue = $nodeData['incomingAllocationValue'] ?? 0;
+
+            $groupAllocation = 0;
+            if ($allocationType === 'percentage') {
+                $groupAllocation = ($amount * $allocationValue) / 100;
+            } elseif ($allocationType === 'fixed') {
+                $groupAllocation = $allocationValue;
+            } elseif ($allocationType === 'remainder') {
+                $groupAllocation = $amount;
+            }
+
+            // Filter members by role
+            $rosterConfig = $nodeData['rosterConfig'] ?? [];
+            $filterByRole = $rosterConfig['filterByRole'] ?? [];
+
+            $filteredMembers = $attendanceData->filter(function ($member) use ($filterByRole) {
+                return empty($filterByRole) || in_array($member['role'], $filterByRole);
+            });
+
+            // Distribute allocation based on distribution mode
+            $distributionMode = $nodeData['distributionMode'] ?? 'equal_split';
+            $memberCount = $filteredMembers->count();
+
+            if ($memberCount > 0) {
+                if ($distributionMode === 'fixed') {
+                    $fixedAmount = $nodeData['fixedAmountPerMember'] ?? 0;
+                    foreach ($filteredMembers as $member) {
+                        $result['member_payouts'][] = [
+                            'type' => $member['type'],
+                            'name' => $member['name'],
+                            'user_id' => $member['user_id'],
+                            'roster_member_id' => $member['roster_member_id'],
+                            'role' => $member['role'],
+                            'amount' => max($fixedAmount, $this->minimum_payout),
+                            'payout_type' => 'fixed',
+                            'events_attended' => $member['events_attended'] ?? null,
+                            'total_events' => $member['total_events'] ?? null,
+                        ];
+                    }
+                    $groupAllocation = $fixedAmount * $memberCount;
+                } elseif ($distributionMode === 'equal_split') {
+                    $perMemberAmount = $groupAllocation / $memberCount;
+                    foreach ($filteredMembers as $member) {
+                        $result['member_payouts'][] = [
+                            'type' => $member['type'],
+                            'name' => $member['name'],
+                            'user_id' => $member['user_id'],
+                            'roster_member_id' => $member['roster_member_id'],
+                            'role' => $member['role'],
+                            'amount' => max($perMemberAmount, $this->minimum_payout),
+                            'payout_type' => 'equal_split',
+                            'events_attended' => $member['events_attended'] ?? null,
+                            'total_events' => $member['total_events'] ?? null,
+                        ];
+                    }
+                }
+            }
+
+            // Continue with remaining amount
+            $remainingAmount = $amount - $groupAllocation;
+
+            // Traverse outgoing edges
+            $outgoingEdges = $adjacency->get($nodeId, collect());
+            foreach ($outgoingEdges as $edge) {
+                $this->traverseFlowNode($edge['target'], $remainingAmount, $nodes, $adjacency, $attendanceData, $result);
+            }
+        } else {
+            // For non-payoutGroup nodes, just traverse to next node
+            $outgoingEdges = $adjacency->get($nodeId, collect());
+            foreach ($outgoingEdges as $edge) {
+                $this->traverseFlowNode($edge['target'], $amount, $nodes, $adjacency, $attendanceData, $result);
+            }
+        }
     }
 }

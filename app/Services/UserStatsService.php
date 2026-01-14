@@ -207,27 +207,73 @@ class UserStatsService
 
     /**
      * Calculate the user's share of a booking based on its price
-     * 
+     *
      * @param mixed $band Band model with eager loaded relationships
      * @param mixed $booking Booking model with eager loaded payout
      * @param array $userBandStatus Array with ['is_owner' => bool, 'is_member' => bool]
      */
     protected function calculateUserShareFromBooking($band, $booking, array $userBandStatus = []): float
     {
-        // Use eager loaded payout configuration to avoid N+1 query
-        $payoutConfig = $band->activePayoutConfig;
-
         // Use eager loaded payout to avoid N+1 query
         $payout = $booking->payout;
-        
+
+        // First priority: Check if there's a saved payout calculation result (from flow-based or payment groups)
+        if ($payout && isset($payout->calculation_result['member_payouts'])) {
+            $memberPayouts = $payout->calculation_result['member_payouts'];
+            $userTotal = 0;
+
+            // Sum all payouts for this user (they might appear in multiple payout groups)
+            foreach ($memberPayouts as $memberPayout) {
+                if (isset($memberPayout['user_id']) && $memberPayout['user_id'] == $this->user->id) {
+                    $userTotal += $memberPayout['amount'];
+                }
+            }
+
+            if ($userTotal > 0) {
+                // Return amount in cents (payout amount is in dollars)
+                return $userTotal * 100;
+            }
+
+            // User not in any payout groups for this booking
+            return 0;
+        }
+
+        // Second priority: Calculate using active payout config
+        $payoutConfig = $band->activePayoutConfig;
+
         // Use adjusted amount if payout exists, otherwise use base price
-        $bookingPrice = $payout 
+        $bookingPrice = $payout
             ? $payout->adjusted_amount_float
             : (is_string($booking->price) ? floatval($booking->price) : $booking->price);
 
         if ($payoutConfig) {
-            // Use the payout config to calculate distribution
-            // Pass member counts to avoid N+1 queries (use attribute if available, otherwise query)
+            // Check if this config uses flow_diagram (new system)
+            if ($payoutConfig->flow_diagram && is_array($payoutConfig->flow_diagram) && isset($payoutConfig->flow_diagram['nodes'])) {
+                // Flow-based calculation - need to calculate on the fly
+                $distribution = $payoutConfig->calculatePayouts($bookingPrice, null, $booking);
+
+                if (isset($distribution['member_payouts'])) {
+                    $userTotal = 0;
+
+                    // Sum all payouts for this user
+                    foreach ($distribution['member_payouts'] as $memberPayout) {
+                        if (isset($memberPayout['user_id']) && $memberPayout['user_id'] == $this->user->id) {
+                            $userTotal += $memberPayout['amount'];
+                        }
+                    }
+
+                    if ($userTotal > 0) {
+                        // Return amount in cents (payout amount is in dollars)
+                        return $userTotal * 100;
+                    }
+                }
+
+                // User not in any payout groups
+                return 0;
+            }
+
+            // Old payment groups system (before flow diagrams)
+            // Pass member counts to avoid N+1 queries
             $memberCounts = [
                 'owners' => $band->owners_count ?? (isset($band->owners_count) ? $band->owners_count : $band->owners()->count()),
                 'members' => $band->members_count ?? (isset($band->members_count) ? $band->members_count : $band->members()->count()),
@@ -239,11 +285,16 @@ class UserStatsService
 
             if ($hasUserIds) {
                 // Payment groups: Find this user's share by user_id
-                foreach ($distribution['member_payouts'] as $payout) {
-                    if (isset($payout['user_id']) && $payout['user_id'] == $this->user->id) {
-                        // Return amount in cents (payout amount is in dollars)
-                        return $payout['amount'] * 100;
+                $userTotal = 0;
+                foreach ($distribution['member_payouts'] as $memberPayout) {
+                    if (isset($memberPayout['user_id']) && $memberPayout['user_id'] == $this->user->id) {
+                        $userTotal += $memberPayout['amount'];
                     }
+                }
+
+                if ($userTotal > 0) {
+                    // Return amount in cents (payout amount is in dollars)
+                    return $userTotal * 100;
                 }
 
                 // User not in payment groups

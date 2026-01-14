@@ -30,6 +30,60 @@
         </div>
       </div>
 
+      <!-- Configuration Selector -->
+      <div
+        v-if="availableConfigs && availableConfigs.length > 0"
+        class="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4"
+      >
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3 flex-1">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Payout Configuration:
+            </label>
+            <Dropdown
+              v-model="selectedConfigId"
+              :options="availableConfigs"
+              optionLabel="name"
+              optionValue="id"
+              placeholder="Select a configuration"
+              class="w-full max-w-md"
+              @change="handleConfigurationChange"
+            >
+              <template #value="slotProps">
+                <div v-if="slotProps.value" class="flex items-center gap-2">
+                  <span>{{ getConfigName(slotProps.value) }}</span>
+                  <span
+                    v-if="isActiveConfig(slotProps.value)"
+                    class="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded"
+                  >
+                    Active
+                  </span>
+                </div>
+                <span v-else>{{ slotProps.placeholder }}</span>
+              </template>
+              <template #option="slotProps">
+                <div class="flex items-center justify-between w-full">
+                  <span>{{ slotProps.option.name }}</span>
+                  <span
+                    v-if="slotProps.option.is_active"
+                    class="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 rounded"
+                  >
+                    Active
+                  </span>
+                </div>
+              </template>
+            </Dropdown>
+          </div>
+          <Link
+            :href="route('finances.payoutFlow.edit', band.id)"
+            class="inline-flex items-center px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
+          >
+            <i class="pi pi-cog mr-2" />
+            Edit
+          </Link>
+        </div>
+      </div>
+
       <!-- Adjustments Section -->
       <div class="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
         <div class="flex justify-between items-center mb-4">
@@ -256,6 +310,7 @@
                     </tr>
                   </tbody>
                 </table>
+                
               </div>
             </div>
           </div>
@@ -329,53 +384,6 @@
           </div>
         </div>
 
-        <!-- Configuration Details -->
-        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-3 flex items-center">
-            <i class="pi pi-cog mr-2" />
-            Configuration Details
-          </h2>
-          
-          <div class="space-y-2 text-sm">
-            <div class="flex justify-between">
-              <span class="text-gray-600 dark:text-gray-400">Configuration Name:</span>
-              <span class="font-medium text-gray-900 dark:text-gray-50">{{ payoutConfig.name }}</span>
-            </div>
-            <div
-              v-if="payoutConfig.use_payment_groups"
-              class="flex justify-between"
-            >
-              <span class="text-gray-600 dark:text-gray-400">Distribution Method:</span>
-              <span class="font-medium text-gray-900 dark:text-gray-50">Payment Groups</span>
-            </div>
-            <div
-              v-if="payoutConfig.minimum_payout > 0"
-              class="flex justify-between"
-            >
-              <span class="text-gray-600 dark:text-gray-400">Minimum Payout:</span>
-              <span class="font-medium text-gray-900 dark:text-gray-50">${{ formatPrice(payoutConfig.minimum_payout) }}</span>
-            </div>
-            <div
-              v-if="payoutConfig.notes"
-              class="pt-2 border-t border-gray-200 dark:border-gray-700"
-            >
-              <span class="text-gray-600 dark:text-gray-400">Notes:</span>
-              <p class="text-gray-900 dark:text-gray-50 mt-1">
-                {{ payoutConfig.notes }}
-              </p>
-            </div>
-          </div>
-          
-          <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <Link
-              :href="route('Payout Calculator')"
-              class="inline-flex items-center text-sm text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              <i class="pi pi-external-link mr-1" />
-              Edit Configuration
-            </Link>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -489,6 +497,7 @@ import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
+import Dropdown from 'primevue/dropdown'
 
 defineOptions({
   layout: BookingLayout,
@@ -518,6 +527,10 @@ const props = defineProps({
   adjustedTotal: {
     type: Number,
     default: 0
+  },
+  availableConfigs: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -527,6 +540,9 @@ const adjustmentForm = useForm({
   description: '',
   notes: ''
 })
+
+// Configuration selector
+const selectedConfigId = ref(props.payoutConfig?.id || null)
 
 const page = usePage()
 
@@ -608,5 +624,35 @@ const deleteAdjustment = (adjustmentId) => {
 const formatDateTime = (dateTime) => {
   if (!dateTime) return 'N/A'
   return DateTime.fromISO(dateTime).toFormat('MMM d, yyyy h:mm a')
+}
+
+const handleConfigurationChange = () => {
+  if (!selectedConfigId.value) return
+
+  router.put(
+    route('booking.payout.updateConfiguration', {
+      band: props.band.id,
+      booking: props.booking.id
+    }),
+    {
+      payout_config_id: selectedConfigId.value
+    },
+    {
+      preserveScroll: true,
+      onSuccess: () => {
+        // Configuration updated successfully
+      }
+    }
+  )
+}
+
+const getConfigName = (configId) => {
+  const config = props.availableConfigs.find(c => c.id === configId)
+  return config?.name || 'Unknown'
+}
+
+const isActiveConfig = (configId) => {
+  const config = props.availableConfigs.find(c => c.id === configId)
+  return config?.is_active || false
 }
 </script>
