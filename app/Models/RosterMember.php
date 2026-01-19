@@ -17,15 +17,14 @@ class RosterMember extends Model
         'email',
         'phone',
         'role',
-        'default_payout_type',
-        'default_payout_amount',
+        'band_role_id',
         'notes',
         'is_active',
+        'deleted_at',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
-        'default_payout_amount' => 'integer',
     ];
 
     /**
@@ -42,6 +41,14 @@ class RosterMember extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the band role for this roster member.
+     */
+    public function bandRole()
+    {
+        return $this->belongsTo(BandRole::class, 'band_role_id');
     }
 
     /**
@@ -74,6 +81,14 @@ class RosterMember extends Model
         }
 
         return $this->email;
+    }
+
+    /**
+     * Get the role name from BandRole relationship.
+     */
+    public function getRoleNameAttribute(): ?string
+    {
+        return $this->bandRole?->name;
     }
 
     /**

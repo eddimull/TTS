@@ -52,7 +52,6 @@ class RosterMemberManagementTest extends TestCase
             ->postJson("/rosters/{$this->roster->id}/members", [
                 'user_id' => $newUser->id,
                 'role' => 'Guitar',
-                'default_payout_type' => 'equal_split',
             ]);
 
         $response->assertStatus(201)
@@ -74,8 +73,6 @@ class RosterMemberManagementTest extends TestCase
                 'email' => 'john@example.com',
                 'phone' => '555-1234',
                 'role' => 'Bass',
-                'default_payout_type' => 'fixed',
-                'default_payout_amount' => 150.00,
             ]);
 
         $response->assertStatus(201);
@@ -85,7 +82,6 @@ class RosterMemberManagementTest extends TestCase
             'user_id' => null,
             'name' => 'John Doe',
             'email' => 'john@example.com',
-            'default_payout_amount' => 15000, // cents
         ]);
     }
 
@@ -144,37 +140,6 @@ class RosterMemberManagementTest extends TestCase
     }
 
     #[Test]
-    public function payout_type_must_be_valid()
-    {
-        $response = $this->actingAs($this->owner)
-            ->postJson("/rosters/{$this->roster->id}/members", [
-                'user_id' => $this->member->id,
-                'default_payout_type' => 'invalid_type',
-            ]);
-
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['default_payout_type']);
-    }
-
-    #[Test]
-    public function payout_amount_is_converted_to_cents()
-    {
-        $response = $this->actingAs($this->owner)
-            ->postJson("/rosters/{$this->roster->id}/members", [
-                'user_id' => $this->member->id,
-                'default_payout_type' => 'fixed',
-                'default_payout_amount' => 250.50,
-            ]);
-
-        $response->assertStatus(201);
-
-        $this->assertDatabaseHas('roster_members', [
-            'user_id' => $this->member->id,
-            'default_payout_amount' => 25050, // 250.50 * 100
-        ]);
-    }
-
-    #[Test]
     public function owner_can_update_roster_member()
     {
         $rosterMember = RosterMember::factory()->create([
@@ -186,8 +151,6 @@ class RosterMemberManagementTest extends TestCase
         $response = $this->actingAs($this->owner)
             ->patchJson("/roster-members/{$rosterMember->id}", [
                 'role' => 'Bass',
-                'default_payout_type' => 'percentage',
-                'default_payout_amount' => 100.00,
             ]);
 
         $response->assertStatus(200);
@@ -195,8 +158,6 @@ class RosterMemberManagementTest extends TestCase
         $this->assertDatabaseHas('roster_members', [
             'id' => $rosterMember->id,
             'role' => 'Bass',
-            'default_payout_type' => 'percentage',
-            'default_payout_amount' => 10000,
         ]);
     }
 
@@ -307,19 +268,6 @@ class RosterMemberManagementTest extends TestCase
 
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['email']);
-    }
-
-    #[Test]
-    public function payout_amount_cannot_be_negative()
-    {
-        $response = $this->actingAs($this->owner)
-            ->postJson("/rosters/{$this->roster->id}/members", [
-                'user_id' => $this->member->id,
-                'default_payout_amount' => -100,
-            ]);
-
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['default_payout_amount']);
     }
 
     #[Test]

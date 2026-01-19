@@ -126,18 +126,49 @@
               </label>
             </div>
 
-            <div class="flex items-center gap-2">
-              <Checkbox v-model="localRosterConfig.includeSubstitutes" binary input-id="include-subs" />
-              <label for="include-subs" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-                Include substitutes
-              </label>
+            <div>
+              <label class="block text-sm text-gray-700 dark:text-gray-300 mb-2">Member Type Filter</label>
+              <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                  <RadioButton
+                    v-model="localRosterConfig.memberTypeFilter"
+                    inputId="member-type-all"
+                    value="all"
+                  />
+                  <label for="member-type-all" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                    Include both members and substitutes
+                  </label>
+                </div>
+                <div class="flex items-center gap-2">
+                  <RadioButton
+                    v-model="localRosterConfig.memberTypeFilter"
+                    inputId="member-type-members"
+                    value="members_only"
+                  />
+                  <label for="member-type-members" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                    Members only (exclude substitutes)
+                  </label>
+                </div>
+                <div class="flex items-center gap-2">
+                  <RadioButton
+                    v-model="localRosterConfig.memberTypeFilter"
+                    inputId="member-type-subs"
+                    value="substitutes_only"
+                  />
+                  <label for="member-type-subs" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                    Substitutes only (exclude members)
+                  </label>
+                </div>
+              </div>
             </div>
 
             <div>
               <label class="block text-sm text-gray-700 dark:text-gray-300 mb-1">Filter by roles (optional)</label>
               <MultiSelect
-                v-model="localRosterConfig.filterByRole"
+                v-model="localRosterConfig.filterByRoleId"
                 :options="availableRoles"
+                optionLabel="name"
+                optionValue="id"
                 placeholder="Select roles to include"
                 class="w-full"
                 :showClear="true"
@@ -145,7 +176,7 @@
               >
                 <template #empty>
                   <div class="p-3 text-center text-sm text-gray-500">
-                    No roles found. Add roles to your roster members first.
+                    No roles found. Roles can be managed in your band settings.
                   </div>
                 </template>
               </MultiSelect>
@@ -373,7 +404,7 @@ import Select from 'primevue/select'
 import InputNumber from 'primevue/inputnumber'
 import InputText from 'primevue/inputtext'
 import Checkbox from 'primevue/checkbox'
-import Chips from 'primevue/chips'
+import RadioButton from 'primevue/radiobutton'
 import MultiSelect from 'primevue/multiselect'
 import BaseFlowNode from '../BaseFlowNode.vue'
 import { useFlowNode } from '../useFlowNode'
@@ -407,13 +438,29 @@ const showDialog = ref(false)
 // Local state for dialog
 const localLabel = useSyncedRef('label', 'Payout Group')
 const localSourceType = useSyncedRef('sourceType', 'roster')
-const localRosterConfig = ref({ ...props.data.rosterConfig || {
-  useAttendanceWeighting: true,
-  filterByRole: null,
-  excludeRoles: [],
-  minEventsToQualify: 1,
-  includeSubstitutes: true
-}})
+// Initialize roster config with backwards compatibility
+const initRosterConfig = () => {
+  const defaultConfig = {
+    useAttendanceWeighting: true,
+    filterByRole: null, // Legacy text-based filter (keep for backward compatibility)
+    filterByRoleId: null, // New ID-based filter
+    excludeRoles: [],
+    minEventsToQualify: 1,
+    memberTypeFilter: 'all'
+  }
+
+  const config = { ...defaultConfig, ...props.data.rosterConfig }
+
+  // Backwards compatibility: convert old includeSubstitutes to new memberTypeFilter
+  if ('includeSubstitutes' in config && !('memberTypeFilter' in props.data.rosterConfig)) {
+    config.memberTypeFilter = config.includeSubstitutes ? 'all' : 'members_only'
+    delete config.includeSubstitutes
+  }
+
+  return config
+}
+
+const localRosterConfig = ref(initRosterConfig())
 const localPaymentGroupId = useSyncedRef('paymentGroupId', null)
 const localAllMembersConfig = ref({ ...props.data.allMembersConfig || {
   includeOwners: true,

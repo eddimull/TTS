@@ -22,8 +22,6 @@ class RosterMemberFactory extends Factory
             'email' => $isUser ? null : fake()->optional()->safeEmail(),
             'phone' => fake()->optional()->phoneNumber(),
             'role' => fake()->optional()->randomElement(['Guitar', 'Bass', 'Drums', 'Vocals', 'Keys', 'Saxophone']),
-            'default_payout_type' => 'equal_split',
-            'default_payout_amount' => null,
             'notes' => fake()->optional()->sentence(),
             'is_active' => true,
         ];
@@ -44,21 +42,6 @@ class RosterMemberFactory extends Factory
             'user_id' => null,
             'name' => fake()->name(),
             'email' => fake()->optional()->safeEmail(),
-        ]);
-    }
-
-    public function withFixedPayout(float $amount): static
-    {
-        return $this->state(fn () => [
-            'default_payout_type' => 'fixed',
-            'default_payout_amount' => (int) ($amount * 100), // Convert to cents
-        ]);
-    }
-
-    public function withPercentagePayout(): static
-    {
-        return $this->state(fn () => [
-            'default_payout_type' => 'percentage',
         ]);
     }
 

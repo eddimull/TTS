@@ -19,6 +19,7 @@ class EventMember extends Model
         'email',
         'phone',
         'role',
+        'band_role_id',
         'attendance_status',
         'payout_amount',
         'notes',
@@ -61,6 +62,14 @@ class EventMember extends Model
     }
 
     /**
+     * Get the band role for this event member.
+     */
+    public function bandRole()
+    {
+        return $this->belongsTo(BandRole::class, 'band_role_id');
+    }
+
+    /**
      * Get the display name for this member.
      */
     public function getDisplayNameAttribute(): string
@@ -90,6 +99,24 @@ class EventMember extends Model
         }
 
         return $this->email;
+    }
+
+    /**
+     * Get the role name from BandRole relationship.
+     */
+    public function getRoleNameAttribute(): ?string
+    {
+        // First check if this event member has their own band_role
+        if ($this->bandRole) {
+            return $this->bandRole->name;
+        }
+
+        // If linked to roster member, use their band role
+        if ($this->rosterMember?->bandRole) {
+            return $this->rosterMember->bandRole->name;
+        }
+
+        return null;
     }
 
     /**

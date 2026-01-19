@@ -97,6 +97,14 @@
       <!-- Custom control panel -->
       <Panel position="top-right" class="flex gap-2">
         <Button
+          icon="pi pi-id-card"
+          @click="showRosterPanel = !showRosterPanel"
+          rounded
+          :severity="showRosterPanel ? 'success' : 'secondary'"
+          :text="!showRosterPanel"
+          v-tooltip.left="'Customize Preview Roster'"
+        />
+        <Button
           icon="pi pi-users"
           @click="showPaymentGroupDialog = true"
           rounded
@@ -155,6 +163,16 @@
       <i class="pi pi-check-circle mr-2" />
       Flow saved successfully
     </div>
+
+    <!-- Roster Preview Panel -->
+    <RosterPreviewPanel
+      v-if="showRosterPanel"
+      :band="band"
+      :available-roles="availableRoles"
+      :initial-members="previewRosterMembers"
+      @close="showRosterPanel = false"
+      @update="handleRosterMembersUpdate"
+    />
 
     <!-- Calculation Preview Panel -->
     <div v-if="showPreview && calculationResults" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 w-full max-w-4xl px-4">
@@ -259,6 +277,7 @@ import FlowCalculationPreview from './FlowCalculationPreview.vue'
 import TierConfigDialog from './TierConfigDialog.vue'
 import PaymentGroupDialog from './PaymentGroupDialog.vue'
 import NodeLabelDialog from './NodeLabelDialog.vue'
+import RosterPreviewPanel from './RosterPreviewPanel.vue'
 
 const props = defineProps({
   band: {
@@ -310,6 +329,8 @@ const nodeInsertContext = ref(null)
 const showLabelDialog = ref(false)
 const selectedNodeLabel = ref('')
 const selectedNodeIdForLabel = ref(null)
+const showRosterPanel = ref(false)
+const customPreviewMembers = ref([...props.previewRosterMembers])
 
 // Initialize validation
 const { validateConnection, validate } = useFlowValidation()
@@ -331,11 +352,19 @@ const availableMembers = computed(() => {
   return members
 })
 
+// Handle roster members update
+const handleRosterMembersUpdate = (updatedMembers) => {
+  customPreviewMembers.value = updatedMembers
+  recalculate()
+}
+
 // Manual recalculation function
 const recalculate = () => {
-  // Create context with preview roster members for calculation
+  // Create context with custom preview roster members for calculation
   const context = {
-    eventMembers: props.previewRosterMembers
+    eventMembers: customPreviewMembers.value.length > 0
+      ? customPreviewMembers.value
+      : props.previewRosterMembers
   }
 
   const calculationResult = calculate(nodes.value, edges.value, props.band, context)
@@ -347,7 +376,12 @@ const recalculate = () => {
       calculationResult.updatedNodes.forEach(updatedNode => {
         const existingNode = nodes.value.find(n => n.id === updatedNode.id)
         if (existingNode) {
-          existingNode.data = { ...existingNode.data, ...updatedNode.data }
+          // Merge data, explicitly handling undefined to clear old calculated values
+          const merged = { ...existingNode.data }
+          for (const key in updatedNode.data) {
+            merged[key] = updatedNode.data[key]
+          }
+          existingNode.data = merged
         }
       })
     }
@@ -357,7 +391,12 @@ const recalculate = () => {
       calculationResult.updatedEdges.forEach(updatedEdge => {
         const existingEdge = edges.value.find(e => e.id === updatedEdge.id)
         if (existingEdge) {
-          existingEdge.data = updatedEdge.data
+          // Explicitly copy all properties including undefined
+          const merged = { ...existingEdge.data }
+          for (const key in updatedEdge.data) {
+            merged[key] = updatedEdge.data[key]
+          }
+          existingEdge.data = merged
         }
       })
     }

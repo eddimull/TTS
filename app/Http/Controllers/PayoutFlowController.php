@@ -157,17 +157,19 @@ class PayoutFlowController extends Controller
     }
 
     /**
-     * Extract available roles from band roster members.
+     * Extract available roles from band's configured roles.
      */
     private function extractAvailableRoles(Bands $band): array
     {
-        return $band->rosters
-            ->flatMap(fn($roster) => $roster->members)
-            ->pluck('role')
-            ->filter()
-            ->unique()
-            ->sort()
-            ->values()
+        return $band->bandRoles()
+            ->active()
+            ->ordered()
+            ->get()
+            ->map(fn($role) => [
+                'id' => $role->id,
+                'name' => $role->name,
+                'display_order' => $role->display_order,
+            ])
             ->toArray();
     }
 
@@ -191,6 +193,7 @@ class PayoutFlowController extends Controller
                 'user_id' => $member->user_id,
                 'name' => $member->user?->name ?? $member->name,
                 'role' => $member->role,
+                'band_role_id' => $member->band_role_id,
                 'type' => $member->user_id ? 'member' : 'substitute',
                 'eventsAttended' => 1,
                 'totalEvents' => 1,

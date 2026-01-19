@@ -35,7 +35,7 @@
           Event Lineup ({{ eventMembers.length }})
         </h4>
         <button
-          @click="showAddMemberModal = true"
+          @click="openAddMemberModal"
           class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -70,18 +70,7 @@
               <h5 class="font-semibold text-gray-900 dark:text-white">
                 {{ member.display_name }}
               </h5>
-              <span
-                v-if="member.roster_member_id"
-                class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
-              >
-                From Roster
-              </span>
-              <span
-                v-else
-                class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200"
-              >
-                Sub
-              </span>
+              <PlayerTypeFlag :label="member.roster_member_id ? 'From Roster' : 'Sub'" />
             </div>
             <div class="mt-1 text-sm text-gray-600 dark:text-gray-400">
               <span v-if="member.role">{{ member.role }}</span>
@@ -147,27 +136,51 @@
               </button>
             </div>
 
-            <div class="space-y-4">
-              <!-- Call Lists Section -->
-              <div v-if="Object.keys(callListsByInstrument).length > 0" class="border-b border-gray-200 dark:border-gray-700 pb-4">
+            <!-- Tab Navigation -->
+            <div class="border-b border-gray-200 dark:border-gray-700 mb-4">
+              <nav class="-mb-px flex space-x-8">
                 <button
-                  @click="showCallLists = !showCallLists"
-                  class="flex items-center justify-between w-full text-left"
+                  v-if="Object.keys(callListsByInstrument).length > 0"
+                  @click="activeTab = 'subList'"
+                  :class="[
+                    'py-3 px-1 border-b-2 font-medium text-sm transition-colors',
+                    activeTab === 'subList'
+                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  ]"
                 >
-                  <h4 class="text-sm font-semibold text-gray-900 dark:text-white">
-                    Substitute Call Lists
-                  </h4>
-                  <svg
-                    :class="['w-5 h-5 text-gray-500 transition-transform', showCallLists ? 'rotate-180' : '']"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                  </svg>
+                  Sub List
                 </button>
+                <button
+                  @click="activeTab = 'existingMembers'"
+                  :class="[
+                    'py-3 px-1 border-b-2 font-medium text-sm transition-colors',
+                    activeTab === 'existingMembers'
+                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  ]"
+                >
+                  Existing Members
+                </button>
+                <button
+                  @click="activeTab = 'createNew'"
+                  :class="[
+                    'py-3 px-1 border-b-2 font-medium text-sm transition-colors',
+                    activeTab === 'createNew'
+                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  ]"
+                >
+                  Create New
+                </button>
+              </nav>
+            </div>
 
-                <div v-if="showCallLists" class="mt-3 space-y-3 max-h-64 overflow-y-auto">
+            <!-- Tab Content -->
+            <div class="space-y-4">
+              <!-- Sub List Tab -->
+              <div v-if="activeTab === 'subList' && Object.keys(callListsByInstrument).length > 0">
+                <div class="space-y-3 max-h-96 overflow-y-auto">
                   <div
                     v-for="(subs, instrument) in callListsByInstrument"
                     :key="instrument"
@@ -190,7 +203,7 @@
                           <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-1">
                               <div class="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                {{ sub.roster_member_id ? sub.roster_member.display_name : sub.custom_name }}
+                                {{ sub.roster_member_id && sub.roster_member ? sub.roster_member.display_name : sub.custom_name }}
                               </div>
                               <span
                                 v-if="!sub.roster_member_id"
@@ -214,87 +227,114 @@
                     </div>
                   </div>
                 </div>
-
-                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
                   Click a substitute to add them to this event
                 </p>
               </div>
-              <!-- Divider -->
-              <div v-if="Object.keys(callListsByInstrument).length > 0" class="relative">
-                <div class="absolute inset-0 flex items-center">
-                  <div class="w-full border-t border-gray-200 dark:border-gray-700"></div>
-                </div>
-                <div class="relative flex justify-center text-xs uppercase">
-                  <span class="bg-white dark:bg-slate-800 px-2 text-gray-500 dark:text-gray-400">
-                    Or add manually
-                  </span>
-                </div>
-              </div>
 
-              <!-- Select Existing Roster Member -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  From All Roster Members
-                </label>
+              <!-- Existing Members Tab -->
+              <div v-if="activeTab === 'existingMembers'">
                 <select
-                  v-model="newMember.roster_member_id"
+                  v-model="newMember.user_id"
                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-slate-700 dark:text-white"
-                  @change="handleRosterMemberSelect"
+                  @change="handleBandMemberSelect"
                 >
-                  <option value="">Or enter custom details below</option>
+                  <option value="">-- Select a band member --</option>
                   <option
-                    v-for="rosterMember in availableRosterMembers"
-                    :key="rosterMember.id"
-                    :value="rosterMember.id"
+                    v-for="bandMember in availableBandMembers"
+                    :key="bandMember.id"
+                    :value="bandMember.id"
                   >
-                    {{ rosterMember.name }} - {{ rosterMember.role || 'No role' }}
+                    {{ bandMember.name }}
                   </option>
                 </select>
+                <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                  Select from members already in your band
+                </p>
               </div>
 
-              <!-- Custom Name -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Name <span class="text-red-500">*</span>
-                </label>
-                <input
-                  v-model="newMember.name"
-                  type="text"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-slate-700 dark:text-white"
-                  placeholder="Full name"
-                  :disabled="!!newMember.roster_member_id"
-                />
+              <!-- Create New Tab -->
+              <div v-if="activeTab === 'createNew'" class="space-y-4">
+                <!-- Custom Name -->
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Name <span class="text-red-500">*</span>
+                  </label>
+                  <input
+                    v-model="newMember.name"
+                    type="text"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-slate-700 dark:text-white"
+                    placeholder="Full name"
+                    :disabled="!!newMember.roster_member_id || !!newMember.user_id"
+                  />
+                </div>
+
+                <!-- Role -->
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Role / Instrument
+                  </label>
+                  <select
+                    v-model="newMember.band_role_id"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-slate-700 dark:text-white"
+                    :disabled="!!newMember.roster_member_id || !!newMember.user_id"
+                  >
+                    <option value="">Select a role...</option>
+                    <option
+                      v-for="role in bandRoles"
+                      :key="role.id"
+                      :value="role.id"
+                    >
+                      {{ role.name }}
+                    </option>
+                  </select>
+                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Roles can be managed in your <a :href="route('bands.roles.page', bandId)" target="_blank" class="text-blue-600 hover:underline">band settings</a>
+                  </p>
+                </div>
+
+                <!-- Email -->
+                <div v-if="!newMember.roster_member_id && !newMember.user_id">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Email
+                  </label>
+                  <input
+                    v-model="newMember.email"
+                    type="email"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-slate-700 dark:text-white"
+                    placeholder="email@example.com"
+                  />
+                </div>
+
+                <!-- Phone -->
+                <div v-if="!newMember.roster_member_id && !newMember.user_id">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Phone
+                  </label>
+                  <input
+                    v-model="newMember.phone"
+                    type="tel"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-slate-700 dark:text-white"
+                    placeholder="(555) 123-4567"
+                  />
+                </div>
+
+                <!-- Invite Substitute Checkbox -->
+                <div v-if="!newMember.roster_member_id && !newMember.user_id && newMember.email" class="flex items-center gap-2">
+                  <input
+                    v-model="newMember.invite_substitute"
+                    type="checkbox"
+                    id="invite-sub"
+                    class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <label for="invite-sub" class="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                    Send invitation to create account and join as substitute
+                  </label>
+                </div>
               </div>
 
-              <!-- Role -->
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Role / Instrument
-                </label>
-                <input
-                  v-model="newMember.role"
-                  type="text"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-slate-700 dark:text-white"
-                  placeholder="e.g., Guitar, Vocals"
-                  :disabled="!!newMember.roster_member_id"
-                />
-              </div>
-
-              <!-- Email (optional) -->
-              <div v-if="!newMember.roster_member_id">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Email
-                </label>
-                <input
-                  v-model="newMember.email"
-                  type="email"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-slate-700 dark:text-white"
-                  placeholder="email@example.com"
-                />
-              </div>
-
-              <!-- Add Button -->
-              <div class="flex gap-3 mt-6">
+              <!-- Action Buttons -->
+              <div class="flex gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <button
                   @click="showAddMemberModal = false"
                   class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700"
@@ -319,6 +359,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import PlayerTypeFlag from './PlayerTypeFlag.vue';
 
 const props = defineProps({
   modelValue: {
@@ -336,22 +377,27 @@ const emit = defineEmits(['update:modelValue']);
 const rosters = ref([]);
 const eventMembers = ref([]);
 const allRosterMembers = ref([]);
+const allBandMembers = ref([]);
 const callLists = ref([]);
+const bandRoles = ref([]);
 const showAddMemberModal = ref(false);
-const showCallLists = ref(true);
+const activeTab = ref('subList');
 const newMember = ref({
   roster_member_id: '',
+  user_id: '',
   name: '',
-  role: '',
+  band_role_id: '',
   email: '',
+  phone: '',
+  invite_substitute: false,
 });
 
-const availableRosterMembers = computed(() => {
-  const currentRosterMemberIds = eventMembers.value
-    .filter(m => m.roster_member_id)
-    .map(m => m.roster_member_id);
+const availableBandMembers = computed(() => {
+  const currentUserIds = eventMembers.value
+    .filter(m => m.user_id)
+    .map(m => m.user_id);
 
-  return allRosterMembers.value.filter(rm => !currentRosterMemberIds.includes(rm.id));
+  return allBandMembers.value.filter(bm => !currentUserIds.includes(bm.id));
 });
 
 const callListsByInstrument = computed(() => {
@@ -384,6 +430,8 @@ onMounted(() => {
   loadRosters();
   loadEventMembers();
   loadCallLists();
+  loadBandMembers();
+  loadBandRoles();
   if (props.modelValue.roster_id) {
     loadRosterMembers(props.modelValue.roster_id);
   }
@@ -403,10 +451,17 @@ const loadRosters = async () => {
       }
     });
     rosters.value = response.data.rosters || [];
-    console.log('Loaded rosters:', rosters.value);
+
+    // Auto-select default roster for new events (that don't have an ID yet)
+    if (!props.modelValue.id && !props.modelValue.roster_id) {
+      const defaultRoster = rosters.value.find(r => r.is_default);
+      if (defaultRoster) {
+        const updatedEvent = { ...props.modelValue, roster_id: defaultRoster.id };
+        emit('update:modelValue', updatedEvent);
+      }
+    }
   } catch (error) {
     console.error('Failed to load rosters:', error);
-    console.error('Band ID:', props.bandId);
   }
 };
 
@@ -438,6 +493,28 @@ const loadRosterMembers = async (rosterId) => {
     allRosterMembers.value = response.data.members || [];
   } catch (error) {
     console.error('Failed to load roster members:', error);
+  }
+};
+
+const loadBandMembers = async () => {
+  if (!props.bandId) return;
+
+  try {
+    const response = await axios.get(`/api/bands/${props.bandId}/members`);
+    allBandMembers.value = response.data.members || [];
+  } catch (error) {
+    console.error('Failed to load band members:', error);
+  }
+};
+
+const loadBandRoles = async () => {
+  if (!props.bandId) return;
+
+  try {
+    const response = await axios.get(route('bands.roles.index', props.bandId));
+    bandRoles.value = response.data.roles || [];
+  } catch (error) {
+    console.error('Failed to load band roles:', error);
   }
 };
 
@@ -479,20 +556,29 @@ const handleRosterChange = async (event) => {
   }
 };
 
-const handleRosterMemberSelect = () => {
-  if (newMember.value.roster_member_id) {
-    const rosterMember = allRosterMembers.value.find(
-      rm => rm.id === parseInt(newMember.value.roster_member_id)
+const openAddMemberModal = () => {
+  // Set initial tab based on whether there are call lists
+  if (Object.keys(callListsByInstrument.value).length > 0) {
+    activeTab.value = 'subList';
+  } else {
+    activeTab.value = 'existingMembers';
+  }
+  showAddMemberModal.value = true;
+};
+
+const handleBandMemberSelect = () => {
+  if (newMember.value.user_id) {
+    const bandMember = allBandMembers.value.find(
+      bm => bm.id === parseInt(newMember.value.user_id)
     );
-    if (rosterMember) {
-      newMember.value.name = rosterMember.name;
-      newMember.value.role = rosterMember.role || '';
-      newMember.value.email = rosterMember.email || '';
+    if (bandMember) {
+      newMember.value.name = bandMember.name;
+      newMember.value.email = bandMember.email || '';
+      newMember.value.roster_member_id = ''; // Clear roster selection
     }
   } else {
     // Clear fields when deselecting
     newMember.value.name = '';
-    newMember.value.role = '';
     newMember.value.email = '';
   }
 };
@@ -501,13 +587,20 @@ const addMember = async () => {
   if (!props.modelValue.id || !newMember.value.name) return;
 
   try {
-    await axios.post(`/events/${props.modelValue.id}/members`, {
+    const response = await axios.post(`/events/${props.modelValue.id}/members`, {
       roster_member_id: newMember.value.roster_member_id || null,
+      user_id: newMember.value.user_id || null,
       name: newMember.value.name,
-      role: newMember.value.role,
+      band_role_id: newMember.value.band_role_id || null,
       email: newMember.value.email,
+      phone: newMember.value.phone,
       attendance_status: 'confirmed',
+      invite_substitute: newMember.value.invite_substitute,
     });
+
+    if (response.data.invited) {
+      alert(`Invitation sent to ${newMember.value.email}! They'll be added to the band as a substitute once they create an account.`);
+    }
 
     await loadEventMembers();
     showAddMemberModal.value = false;
@@ -515,9 +608,12 @@ const addMember = async () => {
     // Reset form
     newMember.value = {
       roster_member_id: '',
+      user_id: '',
       name: '',
-      role: '',
+      band_role_id: '',
       email: '',
+      phone: '',
+      invite_substitute: false,
     };
   } catch (error) {
     console.error('Failed to add member:', error);
@@ -561,12 +657,19 @@ const addFromCallList = async (callListEntry) => {
     if (callListEntry.roster_member_id) {
       payload.roster_member_id = callListEntry.roster_member_id;
     } else {
+      // Custom player from call list - invite them!
       payload.name = callListEntry.custom_name;
       payload.email = callListEntry.custom_email;
-      payload.role = callListEntry.instrument; // Use instrument as role
+      payload.phone = callListEntry.custom_phone;
+      payload.band_role_id = callListEntry.band_role_id || null;
+      payload.invite_substitute = true; // Auto-invite custom players from call list
     }
 
-    await axios.post(`/events/${props.modelValue.id}/members`, payload);
+    const response = await axios.post(`/events/${props.modelValue.id}/members`, payload);
+
+    if (response.data.invited) {
+      alert(`Invitation sent to ${callListEntry.custom_email}! They'll be added to the band as a substitute once they create an account.`);
+    }
 
     await loadEventMembers();
   } catch (error) {

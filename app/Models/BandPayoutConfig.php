@@ -410,10 +410,27 @@ class BandPayoutConfig extends Model
             return collect();
         }
 
+        // Calculate total value across all events
+        $totalValue = $events->sum(function ($event) {
+            if ($event->value === null) {
+                return 0;
+            }
+            return is_string($event->value) ? floatval($event->value) : $event->value;
+        });
+
+        // If no events have values, fall back to equal weighting
+        $useValueWeighting = $totalValue > 0;
+
         // Aggregate attendance across all events
         $attendance = [];
 
         foreach ($events as $event) {
+            // Get event value for weighting (convert to float)
+            $eventValue = 0;
+            if ($useValueWeighting && $event->value !== null) {
+                $eventValue = is_string($event->value) ? floatval($event->value) : $event->value;
+            }
+
             foreach ($event->eventMembers as $eventMember) {
                 // Only count members who attended or are confirmed (skip absent/excused)
                 if ($eventMember->isAbsent()) {
@@ -441,24 +458,13 @@ class BandPayoutConfig extends Model
                         ? ($eventMember->rosterMember->isUser() ? 'member' : 'substitute')
                         : ($eventMember->user_id ? 'member' : 'substitute');
 
-                    // Get role/instrument - prioritize event member role, then roster member role
-                    $role = $eventMember->role;
-                    if (!$role && $eventMember->rosterMember) {
-                        $role = $eventMember->rosterMember->role;
-                    }
+                    // Get role/instrument using the role_name accessor which handles fallbacks
+                    $role = $eventMember->role_name;
+                    $bandRoleId = $eventMember->band_role_id;
 
-                    // Fallback: If no role found and rosterMember is null, try to find role from current roster by user_id
-                    if (!$role && !$eventMember->rosterMember && $eventMember->user_id) {
-                        $currentRosterMember = $this->band->rosters()
-                            ->where('is_active', true)
-                            ->with('members')
-                            ->get()
-                            ->flatMap(fn($roster) => $roster->members)
-                            ->firstWhere('user_id', $eventMember->user_id);
-
-                        if ($currentRosterMember) {
-                            $role = $currentRosterMember->role;
-                        }
+                    // Fallback band_role_id from rosterMember if not set directly
+                    if (!$bandRoleId && $eventMember->rosterMember) {
+                        $bandRoleId = $eventMember->rosterMember->band_role_id;
                     }
 
                     $attendance[$key] = [
@@ -466,15 +472,22 @@ class BandPayoutConfig extends Model
                         'user_id' => $eventMember->user_id,
                         'name' => $eventMember->display_name,
                         'role' => $role,
+                        'band_role_id' => $bandRoleId,
                         'type' => $type,
                         'events_attended' => 0,
                         'total_events' => $totalEvents,
+                        'value_attended' => 0, // Track total value of events attended
                         'custom_payout' => null,
                         'custom_payout_sum' => 0,
                     ];
                 }
 
                 $attendance[$key]['events_attended']++;
+
+                // Track value of events attended
+                if ($useValueWeighting) {
+                    $attendance[$key]['value_attended'] += $eventValue;
+                }
 
                 // Track custom payouts (we'll average them or use the most common)
                 if ($eventMember->payout_amount) {
@@ -484,8 +497,13 @@ class BandPayoutConfig extends Model
         }
 
         // Calculate weights and finalize custom payouts
-        return collect($attendance)->map(function ($item) {
-            $item['weight'] = $item['events_attended'] / $item['total_events'];
+        return collect($attendance)->map(function ($item) use ($totalValue, $useValueWeighting) {
+            // Use value-based weighting if events have values, otherwise use count-based
+            if ($useValueWeighting) {
+                $item['weight'] = $totalValue > 0 ? $item['value_attended'] / $totalValue : 0;
+            } else {
+                $item['weight'] = $item['events_attended'] / $item['total_events'];
+            }
 
             // If custom payouts were set, average them across attended events
             if ($item['custom_payout_sum'] > 0) {
@@ -493,6 +511,7 @@ class BandPayoutConfig extends Model
             }
 
             unset($item['custom_payout_sum']);
+            unset($item['value_attended']); // Clean up internal tracking field
 
             return $item;
         })->values();
@@ -503,6 +522,13 @@ class BandPayoutConfig extends Model
      */
     private function calculateFromFlow(float $totalAmount, ?Bookings $booking = null): array
     {
+        // Ensure band relationship is loaded for member access
+        if (!$this->relationLoaded('band')) {
+            $this->load('band.owners', 'band.members');
+        } elseif (!$this->band->relationLoaded('owners') || !$this->band->relationLoaded('members')) {
+            $this->band->load('owners', 'members');
+        }
+
         $nodes = $this->flow_diagram['nodes'] ?? [];
         $edges = $this->flow_diagram['edges'] ?? [];
 
@@ -522,30 +548,55 @@ class BandPayoutConfig extends Model
             $attendanceData = $this->calculateAttendanceWeights($booking);
         }
 
-        // Apply band cut
-        $bandCutNode = collect($nodes)->firstWhere('type', 'bandCut');
-        if ($bandCutNode) {
-            $cutType = $bandCutNode['data']['cutType'] ?? 'none';
-            $cutValue = $bandCutNode['data']['value'] ?? 0;
+        // Band cuts will be calculated during traversal
+        $remainingAmount = $totalAmount;
 
-            if ($cutType === 'percentage') {
-                $result['band_cut'] = ($totalAmount * $cutValue) / 100;
-            } elseif ($cutType === 'fixed') {
-                $result['band_cut'] = $cutValue;
+        // Build adjacency lists (both directions)
+        $adjacency = collect($edges)->groupBy('source'); // outgoing
+        $incomingEdges = collect($edges)->groupBy('target'); // incoming
+
+        // Find income node
+        $incomeNode = collect($nodes)->firstWhere('type', 'income');
+        if (!$incomeNode) {
+            return $result;
+        }
+
+        // Find all reachable nodes from the income node
+        $reachableNodes = collect();
+        $findReachable = function($nodeId) use (&$findReachable, &$reachableNodes, $adjacency) {
+            if ($reachableNodes->contains($nodeId)) return;
+            $reachableNodes->push($nodeId);
+
+            $outgoing = $adjacency->get($nodeId, collect());
+            foreach ($outgoing as $edge) {
+                $findReachable($edge['target']);
+            }
+        };
+        $findReachable($incomeNode['id']);
+
+        // Track nodes with multiple inputs
+        // Only count incoming edges from reachable nodes
+        $nodeInputs = [];
+        foreach ($nodes as $node) {
+            if (!$reachableNodes->contains($node['id'])) continue; // Skip unreachable nodes
+
+            $incoming = $incomingEdges->get($node['id'], collect());
+            $reachableIncoming = $incoming->filter(fn($edge) => $reachableNodes->contains($edge['source']));
+
+            if ($reachableIncoming->count() > 1) {
+                $nodeInputs[$node['id']] = [
+                    'received' => 0,
+                    'amounts' => [],
+                    'expected' => $reachableIncoming->count(),
+                ];
             }
         }
 
-        $result['distributable_amount'] = $totalAmount - $result['band_cut'];
-        $remainingAmount = $result['distributable_amount'];
+        // Traverse from income node
+        $this->traverseFlowNode($incomeNode['id'], $remainingAmount, $nodes, $adjacency, $attendanceData, $result, $nodeInputs);
 
-        // Build adjacency list for traversal
-        $adjacency = collect($edges)->groupBy('source');
-
-        // Find income node and traverse
-        $incomeNode = collect($nodes)->firstWhere('type', 'income');
-        if ($incomeNode) {
-            $this->traverseFlowNode($incomeNode['id'], $remainingAmount, $nodes, $adjacency, $attendanceData, $result);
-        }
+        // Calculate distributable amount after all band cuts
+        $result['distributable_amount'] = $result['total_amount'] - $result['band_cut'];
 
         $result['total_member_payout'] = collect($result['member_payouts'])->sum('amount');
         $result['remaining'] = $result['distributable_amount'] - $result['total_member_payout'];
@@ -556,35 +607,178 @@ class BandPayoutConfig extends Model
     /**
      * Traverse flow nodes recursively
      */
-    private function traverseFlowNode(string $nodeId, float $amount, array $nodes, $adjacency, $attendanceData, array &$result): void
+    private function traverseFlowNode(string $nodeId, float $amount, array $nodes, $adjacency, $attendanceData, array &$result, array &$nodeInputs = [], bool $allocationApplied = false): void
     {
+        // Check if this node has multiple inputs and needs accumulation
+        if (isset($nodeInputs[$nodeId])) {
+            $nodeInputs[$nodeId]['amounts'][] = $amount;
+            $nodeInputs[$nodeId]['received']++;
+
+            // If we haven't received all inputs yet, wait
+            if ($nodeInputs[$nodeId]['received'] < $nodeInputs[$nodeId]['expected']) {
+                return; // Don't process yet, more inputs coming
+            }
+
+            // All inputs received - sum them up
+            $amount = array_sum($nodeInputs[$nodeId]['amounts']);
+        }
+
         $node = collect($nodes)->firstWhere('id', $nodeId);
         if (!$node) return;
+
+        // Bypass deactivated nodes - pass amount through unchanged but still split to multiple outputs
+        if (isset($node['data']['deactivated']) && $node['data']['deactivated']) {
+            $outgoingEdges = $adjacency->get($nodeId, collect());
+            $this->traverseMultipleOutputs($outgoingEdges, $amount, $nodes, $adjacency, $attendanceData, $result, $nodeInputs);
+            return;
+        }
+
+        // Process income nodes (just pass through)
+        if ($node['type'] === 'income') {
+            $outgoingEdges = $adjacency->get($nodeId, collect());
+            $this->traverseMultipleOutputs($outgoingEdges, $amount, $nodes, $adjacency, $attendanceData, $result, $nodeInputs);
+            return;
+        }
+
+        // Process bandCut nodes
+        if ($node['type'] === 'bandCut') {
+            $nodeData = $node['data'];
+
+            // Skip if deactivated
+            if ($nodeData['deactivated'] ?? false) {
+                // Pass through without taking a cut
+                $outgoingEdges = $adjacency->get($nodeId, collect());
+                $this->traverseMultipleOutputs($outgoingEdges, $amount, $nodes, $adjacency, $attendanceData, $result, $nodeInputs);
+                return;
+            }
+
+            // Calculate band cut
+            $cutType = $nodeData['cutType'] ?? 'none';
+            $cutValue = $nodeData['value'] ?? 0;
+            $bandCut = 0;
+
+            if ($cutType === 'percentage') {
+                $bandCut = ($amount * $cutValue) / 100;
+            } elseif ($cutType === 'fixed') {
+                $bandCut = $cutValue;
+            }
+
+            // Accumulate band cut
+            $result['band_cut'] += $bandCut;
+            $amount -= $bandCut;
+
+            // Continue to next nodes
+            $outgoingEdges = $adjacency->get($nodeId, collect());
+            $this->traverseMultipleOutputs($outgoingEdges, $amount, $nodes, $adjacency, $attendanceData, $result, $nodeInputs);
+            return;
+        }
 
         // Process payoutGroup nodes
         if ($node['type'] === 'payoutGroup') {
             $nodeData = $node['data'];
 
-            // Get allocation for this group
-            $allocationType = $nodeData['incomingAllocationType'] ?? 'remainder';
-            $allocationValue = $nodeData['incomingAllocationValue'] ?? 0;
+            // Calculate how much this group should take based on allocation settings
+            $groupAllocation = $amount;
 
-            $groupAllocation = 0;
-            if ($allocationType === 'percentage') {
-                $groupAllocation = ($amount * $allocationValue) / 100;
-            } elseif ($allocationType === 'fixed') {
-                $groupAllocation = $allocationValue;
-            } elseif ($allocationType === 'remainder') {
-                $groupAllocation = $amount;
+            // Only apply allocation if it wasn't already applied by parent (multiple outputs scenario)
+            if (!$allocationApplied) {
+                // Apply incoming allocation if specified (single output scenario)
+                $allocationType = $nodeData['incomingAllocationType'] ?? 'remainder';
+                $allocationValue = $nodeData['incomingAllocationValue'] ?? 0;
+
+                if ($allocationType === 'percentage') {
+                    $groupAllocation = ($amount * $allocationValue) / 100;
+                } elseif ($allocationType === 'fixed') {
+                    $groupAllocation = min($allocationValue, $amount);
+                }
+                // 'remainder' type means take everything available
             }
 
-            // Filter members by role
-            $rosterConfig = $nodeData['rosterConfig'] ?? [];
-            $filterByRole = $rosterConfig['filterByRole'] ?? [];
+            // Get members based on source type
+            $sourceType = $nodeData['sourceType'] ?? 'roster';
+            $membersToDistribute = collect();
 
-            $filteredMembers = $attendanceData->filter(function ($member) use ($filterByRole) {
-                return empty($filterByRole) || in_array($member['role'], $filterByRole);
-            });
+            if ($sourceType === 'allMembers') {
+                // Get all members from band directly
+                $allMembersConfig = $nodeData['allMembersConfig'] ?? [];
+                if ($allMembersConfig['includeOwners'] ?? true) {
+                    foreach ($this->band->owners as $owner) {
+                        $membersToDistribute->push([
+                            'type' => 'owner',
+                            'name' => $owner->name,
+                            'user_id' => $owner->id,
+                            'roster_member_id' => null,
+                            'role' => null,
+                            'band_role_id' => null,
+                            'events_attended' => 1,
+                            'total_events' => 1,
+                        ]);
+                    }
+                }
+                if ($allMembersConfig['includeMembers'] ?? true) {
+                    foreach ($this->band->members as $member) {
+                        $membersToDistribute->push([
+                            'type' => 'member',
+                            'name' => $member->name,
+                            'user_id' => $member->id,
+                            'roster_member_id' => null,
+                            'role' => null,
+                            'band_role_id' => null,
+                            'events_attended' => 1,
+                            'total_events' => 1,
+                        ]);
+                    }
+                }
+                if ($allMembersConfig['includeProduction'] ?? false) {
+                    $productionCount = $allMembersConfig['productionCount'] ?? 0;
+                    for ($i = 0; $i < $productionCount; $i++) {
+                        $membersToDistribute->push([
+                            'type' => 'production',
+                            'name' => "Production Member " . ($i + 1),
+                            'user_id' => null,
+                            'roster_member_id' => null,
+                            'role' => null,
+                            'band_role_id' => null,
+                            'events_attended' => 1,
+                            'total_events' => 1,
+                        ]);
+                    }
+                }
+
+                $filteredMembers = $membersToDistribute;
+            } else {
+                // roster source type - filter from attendance data
+                $rosterConfig = $nodeData['rosterConfig'] ?? [];
+                $filterByRole = $rosterConfig['filterByRole'] ?? [];
+                $filterByRoleId = $rosterConfig['filterByRoleId'] ?? [];
+
+                // Backwards compatibility: convert old includeSubstitutes to new memberTypeFilter
+                if (isset($rosterConfig['includeSubstitutes']) && !isset($rosterConfig['memberTypeFilter'])) {
+                    $memberTypeFilter = $rosterConfig['includeSubstitutes'] ? 'all' : 'members_only';
+                } else {
+                    $memberTypeFilter = $rosterConfig['memberTypeFilter'] ?? 'all';
+                }
+
+                $filteredMembers = $attendanceData->filter(function ($member) use ($filterByRole, $filterByRoleId, $memberTypeFilter) {
+                    // Filter by member type
+                    if ($memberTypeFilter === 'members_only' && $member['type'] === 'substitute') {
+                        return false;
+                    }
+                    if ($memberTypeFilter === 'substitutes_only' && $member['type'] === 'member') {
+                        return false;
+                    }
+
+                    // Filter by role if specified
+                    // Prefer band_role_id filtering (new way), fall back to text role (old way for backward compatibility)
+                    if (!empty($filterByRoleId)) {
+                        return in_array($member['band_role_id'], $filterByRoleId);
+                    } elseif (!empty($filterByRole)) {
+                        return in_array($member['role'], $filterByRole);
+                    }
+
+                    return true; // No role filter specified
+                });
+            }
 
             // Distribute allocation based on distribution mode
             $distributionMode = $nodeData['distributionMode'] ?? 'equal_split';
@@ -593,20 +787,28 @@ class BandPayoutConfig extends Model
             if ($memberCount > 0) {
                 if ($distributionMode === 'fixed') {
                     $fixedAmount = $nodeData['fixedAmountPerMember'] ?? 0;
+                    $totalPaid = 0;
                     foreach ($filteredMembers as $member) {
+                        // Multiply fixed amount by number of events attended
+                        // This implements "per-event" payment (e.g., $100 per event × 2 events = $200)
+                        $eventsAttended = $member['events_attended'] ?? 1;
+                        $memberAmount = $fixedAmount * $eventsAttended;
+
                         $result['member_payouts'][] = [
                             'type' => $member['type'],
                             'name' => $member['name'],
                             'user_id' => $member['user_id'],
                             'roster_member_id' => $member['roster_member_id'],
                             'role' => $member['role'],
-                            'amount' => max($fixedAmount, $this->minimum_payout),
+                            'amount' => max($memberAmount, $this->minimum_payout),
                             'payout_type' => 'fixed',
                             'events_attended' => $member['events_attended'] ?? null,
                             'total_events' => $member['total_events'] ?? null,
+                            'weight' => $member['weight'] ?? null,
                         ];
+                        $totalPaid += $memberAmount;
                     }
-                    $groupAllocation = $fixedAmount * $memberCount;
+                    $groupAllocation = $totalPaid;
                 } elseif ($distributionMode === 'equal_split') {
                     $perMemberAmount = $groupAllocation / $memberCount;
                     foreach ($filteredMembers as $member) {
@@ -620,6 +822,7 @@ class BandPayoutConfig extends Model
                             'payout_type' => 'equal_split',
                             'events_attended' => $member['events_attended'] ?? null,
                             'total_events' => $member['total_events'] ?? null,
+                            'weight' => $member['weight'] ?? null,
                         ];
                     }
                 }
@@ -628,17 +831,90 @@ class BandPayoutConfig extends Model
             // Continue with remaining amount
             $remainingAmount = $amount - $groupAllocation;
 
-            // Traverse outgoing edges
+            // Traverse outgoing edges with multiple output support
             $outgoingEdges = $adjacency->get($nodeId, collect());
-            foreach ($outgoingEdges as $edge) {
-                $this->traverseFlowNode($edge['target'], $remainingAmount, $nodes, $adjacency, $attendanceData, $result);
-            }
+            $this->traverseMultipleOutputs($outgoingEdges, $remainingAmount, $nodes, $adjacency, $attendanceData, $result, $nodeInputs);
         } else {
-            // For non-payoutGroup nodes, just traverse to next node
+            // For non-payoutGroup nodes, traverse to next nodes
             $outgoingEdges = $adjacency->get($nodeId, collect());
-            foreach ($outgoingEdges as $edge) {
-                $this->traverseFlowNode($edge['target'], $amount, $nodes, $adjacency, $attendanceData, $result);
+            $this->traverseMultipleOutputs($outgoingEdges, $amount, $nodes, $adjacency, $attendanceData, $result, $nodeInputs);
+        }
+    }
+
+    /**
+     * Handle multiple outputs from a single node
+     * All allocations are calculated from the SAME input amount
+     */
+    private function traverseMultipleOutputs($edges, float $inputAmount, array $nodes, $adjacency, $attendanceData, array &$result, array &$nodeInputs): void
+    {
+        if ($edges->isEmpty()) {
+            return;
+        }
+
+        if ($edges->count() === 1) {
+            // Single output - pass full amount, let target node handle allocation
+            $edge = $edges->first();
+            // Mark that allocation was NOT pre-applied (allocationApplied = false)
+            $this->traverseFlowNode($edge['target'], $inputAmount, $nodes, $adjacency, $attendanceData, $result, $nodeInputs, false);
+            return;
+        }
+
+        // Multiple outputs - calculate distributions from SAME input
+        $distributions = [];
+        $totalAllocated = 0;
+
+        // Collect allocation info for each target
+        $targets = $edges->map(function ($edge) use ($nodes) {
+            $targetNode = collect($nodes)->firstWhere('id', $edge['target']);
+            return [
+                'edge' => $edge,
+                'allocationType' => $targetNode['data']['incomingAllocationType'] ?? 'remainder',
+                'allocationValue' => $targetNode['data']['incomingAllocationValue'] ?? 0,
+            ];
+        });
+
+        // Separate by allocation type
+        $remainderNodes = $targets->where('allocationType', 'remainder');
+        $fixedNodes = $targets->where('allocationType', 'fixed');
+        $percentageNodes = $targets->where('allocationType', 'percentage');
+
+        // 1. Fixed amounts first (exact amounts)
+        foreach ($fixedNodes as $target) {
+            $amount = min($target['allocationValue'], $inputAmount - $totalAllocated);
+            $distributions[] = [
+                'edge' => $target['edge'],
+                'amount' => $amount,
+            ];
+            $totalAllocated += $amount;
+        }
+
+        // 2. Percentage amounts (from original input)
+        foreach ($percentageNodes as $target) {
+            $amount = ($inputAmount * $target['allocationValue']) / 100;
+            $distributions[] = [
+                'edge' => $target['edge'],
+                'amount' => $amount,
+            ];
+            $totalAllocated += $amount;
+        }
+
+        // 3. Remainder nodes split what's left equally
+        if ($remainderNodes->isNotEmpty()) {
+            $remainingAmount = max(0, $inputAmount - $totalAllocated);
+            $perNode = $remainingAmount / $remainderNodes->count();
+
+            foreach ($remainderNodes as $target) {
+                $distributions[] = [
+                    'edge' => $target['edge'],
+                    'amount' => $perNode,
+                ];
             }
+        }
+
+        // Traverse each branch with its calculated amount
+        // Mark that allocation was pre-applied (allocationApplied = true)
+        foreach ($distributions as $dist) {
+            $this->traverseFlowNode($dist['edge']['target'], $dist['amount'], $nodes, $adjacency, $attendanceData, $result, $nodeInputs, true);
         }
     }
 }

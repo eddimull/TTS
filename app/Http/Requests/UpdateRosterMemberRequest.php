@@ -32,8 +32,7 @@ class UpdateRosterMemberRequest extends FormRequest
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
             'role' => ['nullable', 'string', 'max:100'],
-            'default_payout_type' => ['sometimes', Rule::in(['equal_split', 'fixed', 'percentage'])],
-            'default_payout_amount' => ['nullable', 'numeric', 'min:0'],
+            'band_role_id' => ['nullable', 'exists:band_roles,id'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['boolean'],
         ];
@@ -46,21 +45,6 @@ class UpdateRosterMemberRequest extends FormRequest
     {
         return [
             'email.email' => 'Please provide a valid email address',
-            'default_payout_type.in' => 'Payout type must be equal_split, fixed, or percentage',
-            'default_payout_amount.min' => 'Payout amount cannot be negative',
         ];
-    }
-
-    /**
-     * Prepare the data for validation.
-     */
-    protected function prepareForValidation(): void
-    {
-        // Convert payout amount from dollars to cents if provided
-        if ($this->has('default_payout_amount') && $this->default_payout_amount !== null) {
-            $this->merge([
-                'default_payout_amount' => (int) ($this->default_payout_amount * 100),
-            ]);
-        }
     }
 }

@@ -369,9 +369,6 @@
                   <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 text-center">
                     <span v-if="payout.events_attended !== undefined && payout.total_events !== undefined">
                       {{ payout.events_attended }}/{{ payout.total_events }}
-                      <span class="text-xs text-gray-500 dark:text-gray-500">
-                        ({{ Math.round((payout.weight || 0) * 100) }}%)
-                      </span>
                     </span>
                     <span v-else class="text-gray-400">-</span>
                   </td>

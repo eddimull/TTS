@@ -21,7 +21,7 @@ class RosterController extends Controller
 
         $rosters = $band->rosters()
             ->withCount('members')
-            ->with(['members' => fn($query) => $query->where('is_active', true)->with('user')])
+            ->with(['members' => fn($query) => $query->where('is_active', true)->with(['user', 'bandRole'])])
             ->orderBy('is_default', 'desc')
             ->orderBy('name')
             ->get();
@@ -46,7 +46,7 @@ class RosterController extends Controller
     {
         $this->authorizeViewBand($roster->band);
 
-        $roster->load(['members.user', 'band']);
+        $roster->load(['members.user', 'members.bandRole', 'band']);
 
         return response()->json([
             'roster' => $roster,
@@ -56,9 +56,8 @@ class RosterController extends Controller
                 'name' => $member->display_name,
                 'email' => $member->display_email,
                 'phone' => $member->phone,
-                'role' => $member->role,
-                'default_payout_type' => $member->default_payout_type,
-                'default_payout_amount' => $member->default_payout_amount ? $member->default_payout_amount / 100 : null,
+                'role' => $member->role_name,
+                'band_role_id' => $member->band_role_id,
                 'notes' => $member->notes,
                 'is_active' => $member->is_active,
                 'is_user' => $member->isUser(),
@@ -189,7 +188,7 @@ class RosterController extends Controller
     private function getActiveRosterMembers(Bands $band)
     {
         return $band->rosters()
-            ->with('members.user')
+            ->with(['members.user', 'members.bandRole'])
             ->get()
             ->pluck('members')
             ->flatten()
@@ -202,7 +201,8 @@ class RosterController extends Controller
                 'display_name' => $member->display_name,
                 'display_email' => $member->display_email,
                 'phone' => $member->phone,
-                'role' => $member->role,
+                'role' => $member->role_name,
+                'band_role_id' => $member->band_role_id,
             ]);
     }
 
