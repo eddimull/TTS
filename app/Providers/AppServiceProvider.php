@@ -7,9 +7,11 @@ use App\Services\Stripe\StripeClientWrapper;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
 use App\Models\QuestionnaireComponents;
+use App\Models\Bands;
 use App\Services\GoogleCalendarService;
 use Illuminate\Support\ServiceProvider;
 use App\Observers\QuestionnaireComponentObserver;
+use App\Observers\BandObserver;
 use Google\Client;
 
 class AppServiceProvider extends ServiceProvider
@@ -38,6 +40,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         QuestionnaireComponents::observe(QuestionnaireComponentObserver::class);
+        Bands::observe(BandObserver::class);
         Inertia::share([
             'config' => [
                 'StripeInvoiceURL' => config('services.stripe.invoice_url'),

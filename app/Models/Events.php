@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use App\Casts\Price;
 use App\Casts\TimeCast;
 use App\Formatters\CalendarEventFormatter;
 use Illuminate\Database\Eloquent\Model;
@@ -19,8 +20,15 @@ class Events extends Model implements GoogleCalenderable
 
     protected static function booted()
     {
-        // Automatically sync roster members when roster_id is set or changed
-        static::saved(function ($event) {
+        // Sync roster members when a new event is created with a roster
+        static::created(function ($event) {
+            if ($event->roster_id) {
+                $event->syncRosterMembers();
+            }
+        });
+
+        // Sync roster members when roster_id changes on existing events
+        static::updated(function ($event) {
             if ($event->wasChanged('roster_id') && $event->roster_id) {
                 $event->syncRosterMembers();
             }
@@ -38,12 +46,14 @@ class Events extends Model implements GoogleCalenderable
         'notes',
         'time',
         'roster_id',
+        'value',
     ];
 
     protected $casts = [
         'additional_data' => 'object',
         'date' => 'date:Y-m-d',
         'time' => TimeCast::class,
+        'value' => Price::class,
     ];
 
     public function eventable(): MorphTo
@@ -151,10 +161,20 @@ class Events extends Model implements GoogleCalenderable
             return;
         }
 
+        // Load relationships if not already loaded
+        if (!$this->relationLoaded('eventable')) {
+            $this->load('eventable');
+        }
+
+        if (!$this->relationLoaded('roster')) {
+            $this->load('roster.members');
+        }
+
         // Get the band_id from the eventable (either Booking or BandEvents)
         $bandId = $this->eventable->band_id ?? null;
 
         if (!$bandId) {
+            \Log::warning("Cannot sync roster members for event {$this->id}: band_id not found in eventable");
             return;
         }
 
@@ -165,6 +185,10 @@ class Events extends Model implements GoogleCalenderable
         // Get active roster members
         $rosterMembers = $this->roster->members()->where('is_active', true)->get();
 
+        if ($rosterMembers->isEmpty()) {
+            return;
+        }
+
         // Create event members from roster members
         foreach ($rosterMembers as $rosterMember) {
             EventMember::create([
@@ -172,6 +196,7 @@ class Events extends Model implements GoogleCalenderable
                 'band_id' => $bandId,
                 'roster_member_id' => $rosterMember->id,
                 'user_id' => $rosterMember->user_id,
+                'band_role_id' => $rosterMember->band_role_id,
                 'attendance_status' => 'confirmed',
             ]);
         }
@@ -253,6 +278,7 @@ class Events extends Model implements GoogleCalenderable
                 'eventable_type',
                 'eventable_id',
                 'additional_data',
+                'value',
             ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()

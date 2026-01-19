@@ -148,15 +148,24 @@
       <div class="space-y-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Instrument/Role Name
+            Instrument/Role
           </label>
-          <input
-            v-model="newInstrument"
-            type="text"
-            placeholder="e.g., Guitar, Drums, Oboe"
+          <select
+            v-model="selectedRoleId"
             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-50"
-            @keyup.enter="addInstrument"
           >
+            <option :value="null">Select a role...</option>
+            <option
+              v-for="role in bandRoles"
+              :key="role.id"
+              :value="role.id"
+            >
+              {{ role.name }}
+            </option>
+          </select>
+          <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            Roles can be managed in your <a :href="route('bands.roles.page', band.id)" target="_blank" class="text-blue-600 hover:underline">band settings</a>
+          </p>
         </div>
       </div>
       <template #footer>
@@ -168,8 +177,8 @@
             Cancel
           </button>
           <button
-            @click="addInstrument"
-            :disabled="!newInstrument"
+            @click="addRole"
+            :disabled="!selectedRoleId"
             class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-md transition-colors"
           >
             Add
@@ -183,12 +192,23 @@
       v-model:visible="showAddSubModal"
       modal
       :closable="true"
-      :header="`Add Substitute for ${selectedInstrument}`"
+      :header="`Add Substitute for ${selectedRoleName}`"
       class="w-full max-w-md"
     >
       <div class="space-y-4">
         <!-- Toggle between Roster Member and Custom -->
         <div class="flex gap-2 p-1 bg-gray-100 dark:bg-slate-700 rounded-lg">
+                    <button
+            @click="newSub.is_custom = true"
+            :class="[
+              'flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors',
+              newSub.is_custom
+                ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            ]"
+          >
+            New Player
+          </button>
           <button
             @click="newSub.is_custom = false"
             :class="[
@@ -200,17 +220,7 @@
           >
             From Roster
           </button>
-          <button
-            @click="newSub.is_custom = true"
-            :class="[
-              'flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors',
-              newSub.is_custom
-                ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-            ]"
-          >
-            Custom Player
-          </button>
+
         </div>
 
         <!-- Roster Member Selection -->
@@ -251,7 +261,7 @@
 
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Email (optional)
+              Email <span class="text-red-500">*</span>
             </label>
             <input
               v-model="newSub.custom_email"
@@ -263,7 +273,7 @@
 
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Phone (optional)
+              Phone <span class="text-red-500">*</span>
             </label>
             <input
               v-model="newSub.custom_phone"
@@ -296,7 +306,7 @@
           </button>
           <button
             @click="addSubToCallList"
-            :disabled="!newSub.is_custom ? !newSub.roster_member_id : !newSub.custom_name"
+            :disabled="!newSub.is_custom ? !newSub.roster_member_id : (!newSub.custom_name || !newSub.custom_email || !newSub.custom_phone)"
             class="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-md transition-colors"
           >
             Add to Call List
@@ -347,7 +357,6 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { router } from '@inertiajs/vue3';
 import axios from 'axios';
 import Dialog from 'primevue/dialog';
 import draggable from 'vuedraggable';
@@ -364,11 +373,12 @@ const props = defineProps({
 });
 
 const callLists = ref([]);
+const bandRoles = ref([]);
 const showAddInstrumentModal = ref(false);
 const showAddSubModal = ref(false);
 const showEditNotesModal = ref(false);
-const newInstrument = ref('');
-const selectedInstrument = ref('');
+const selectedRoleId = ref(null);
+const selectedRoleName = ref('');
 const newSub = ref({
   roster_member_id: null,
   custom_name: '',
@@ -400,11 +410,11 @@ const callListsByInstrument = computed(() => {
   return grouped;
 });
 
-// Filter out roster members already in the call list for the selected instrument
+// Filter out roster members already in the call list for the selected role
 const availableRosterMembers = computed(() => {
-  if (!selectedInstrument.value) return props.rosterMembers;
+  if (!selectedRoleName.value) return props.rosterMembers;
 
-  const existingIds = (callListsByInstrument.value[selectedInstrument.value] || [])
+  const existingIds = (callListsByInstrument.value[selectedRoleName.value] || [])
     .map(entry => entry.roster_member_id);
 
   return props.rosterMembers.filter(member => !existingIds.includes(member.id));
@@ -419,24 +429,40 @@ const loadCallLists = async () => {
   }
 };
 
-const addInstrument = () => {
-  if (!newInstrument.value.trim()) return;
+const loadBandRoles = async () => {
+  try {
+    const response = await axios.get(route('bands.roles.index', props.band.id));
+    bandRoles.value = response.data.roles || [];
+  } catch (error) {
+    console.error('Failed to load band roles:', error);
+  }
+};
 
-  selectedInstrument.value = newInstrument.value.trim();
-  newInstrument.value = '';
+const addRole = () => {
+  if (!selectedRoleId.value) return;
+
+  const role = bandRoles.value.find(r => r.id === selectedRoleId.value);
+  if (role) {
+    selectedRoleName.value = role.name;
+  }
+
   showAddInstrumentModal.value = false;
   showAddSubModal.value = true;
 };
 
 const openAddSubModal = (instrument) => {
-  selectedInstrument.value = instrument;
+  // Find the role for this instrument name (backward compatibility)
+  const role = bandRoles.value.find(r => r.name === instrument);
+  selectedRoleName.value = instrument;
+  selectedRoleId.value = role ? role.id : null;
+
   newSub.value = {
     roster_member_id: null,
     custom_name: '',
     custom_email: '',
     custom_phone: '',
     notes: '',
-    is_custom: false,
+    is_custom: true,
   };
   showAddSubModal.value = true;
 };
@@ -444,11 +470,15 @@ const openAddSubModal = (instrument) => {
 const addSubToCallList = async () => {
   // Validate required fields
   if (!newSub.value.is_custom && !newSub.value.roster_member_id) return;
-  if (newSub.value.is_custom && !newSub.value.custom_name) return;
+  if (newSub.value.is_custom && (!newSub.value.custom_name || !newSub.value.custom_email || !newSub.value.custom_phone)) {
+    alert('Please fill in all required fields (Name, Email, and Phone)');
+    return;
+  }
 
   try {
     const payload = {
-      instrument: selectedInstrument.value,
+      band_role_id: selectedRoleId.value,
+      instrument: selectedRoleName.value, // Keep for backward compatibility
       notes: newSub.value.notes,
     };
 
@@ -530,5 +560,6 @@ const onReorder = async (instrument, subs) => {
 
 onMounted(() => {
   loadCallLists();
+  loadBandRoles();
 });
 </script>

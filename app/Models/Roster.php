@@ -75,7 +75,6 @@ class Roster extends Model
             RosterMember::create([
                 'roster_id' => $roster->id,
                 'user_id' => $member->user_id,
-                'default_payout_type' => 'equal_split',
                 'is_active' => true,
             ]);
         }

@@ -144,6 +144,9 @@ class BookingsController extends Controller
 
         $booking->events()->create($event);
 
+        // Set event value to booking price (for first event)
+        $this->redistributeEventValues($booking->fresh());
+
         return redirect()->route('Booking Details', [$band, $booking]);
     }
 
@@ -167,6 +170,10 @@ class BookingsController extends Controller
                 $query->orderBy('date', 'desc');
             },
             'events.eventable',
+            'events.eventMembers.bandRole',
+            'events.eventMembers.rosterMember.bandRole',
+            'events.eventMembers.rosterMember.user',
+            'events.eventMembers.user',
         ]);
         
         // Append calculated financial attributes for frontend consumption
@@ -188,7 +195,8 @@ class BookingsController extends Controller
 
             if ($payoutConfig) {
                 // Calculate payouts with attendance data from all events
-                $payoutResult = $payoutConfig->calculatePayouts($booking->price, null, $booking);
+                // Use sum of event values instead of booking price
+                $payoutResult = $payoutConfig->calculatePayouts($booking->total_event_value, null, $booking);
             }
         }
         
@@ -388,7 +396,7 @@ class BookingsController extends Controller
         $events = $booking->events->map(function ($event) {
             $this->appendLastUpdatedBy($event);
             $this->appendFormattedAttachmentSizes($event);
-            $event->roster_members = $this->formatRosterMembers($event);
+            $event->roster_members = $this->formatRosterMembers($event);            
 
             return $event;
         });
@@ -402,6 +410,7 @@ class BookingsController extends Controller
     public function updateOrCreateEvent(UpdateBookingEventRequest $request, Bands $band, Bookings $booking, Events $event = null)
     {
         $validatedData = $request->validated();
+        $isNewEvent = !$event;
 
         // If $event is null, it means we're creating a new event
         if (!$event)
@@ -414,7 +423,21 @@ class BookingsController extends Controller
 
         // Update or create the event
         $event->fill($validatedData);
+
+        // If creating a new event and no roster_id provided, use the default roster
+        if ($isNewEvent && !isset($validatedData['roster_id'])) {
+            $defaultRoster = $band->defaultRoster;
+            if ($defaultRoster) {
+                $event->roster_id = $defaultRoster->id;
+            }
+        }
+
         $event->save();
+
+        // If creating a new event and no value was provided, redistribute values evenly
+        if ($isNewEvent && !isset($validatedData['value'])) {
+            $this->redistributeEventValues($booking);
+        }
 
         $message = $event->wasRecentlyCreated ? 'Event Created' : 'Event Updated';
 
@@ -424,7 +447,40 @@ class BookingsController extends Controller
     public function deleteEvent(Bands $band, Bookings $booking, Events $event)
     {
         $event->delete();
+
+        // Redistribute values after deletion
+        $this->redistributeEventValues($booking);
+
         return redirect()->back()->with('successMessage', 'Event Deleted');
+    }
+
+    /**
+     * Redistribute the booking price evenly across all events
+     * This ensures each event has a proportional value
+     */
+    private function redistributeEventValues(Bookings $booking): void
+    {
+        $events = $booking->events()->get();
+        $eventCount = $events->count();
+
+        if ($eventCount === 0) {
+            return;
+        }
+
+        // Get the booking price as a float (Price cast returns formatted string)
+        $bookingPrice = is_string($booking->price)
+            ? floatval($booking->price)
+            : $booking->price;
+
+        // Calculate value per event in dollars (Price cast will convert to cents on save)
+        $valuePerEvent = $bookingPrice / $eventCount;
+
+        // Handle fractional cents by rounding
+        foreach ($events as $index => $event) {
+            // Round to 2 decimal places (cents precision)
+            $event->value = round($valuePerEvent, 2);
+            $event->save();
+        }
     }
 
     public function storeInvoice(Bands $band, Bookings $booking, Request $request)
@@ -450,7 +506,9 @@ class BookingsController extends Controller
             'band',
             'eventType',
             'payout.adjustments',
-            'events.eventMembers.rosterMember',
+            'events.eventMembers.bandRole',
+            'events.eventMembers.rosterMember.bandRole',
+            'events.eventMembers.rosterMember.user',
             'events.eventMembers.user',
         ]);
 
@@ -803,12 +861,15 @@ class BookingsController extends Controller
      */
     private function formatRosterMembers(Events $event): \Illuminate\Support\Collection
     {
-        return $event->eventMembers->map(function ($eventMember) use ($event) {
-            $role = $this->resolveEventMemberRole($eventMember, $event);
+        // Ensure relationships are loaded
+        $event->load(['eventMembers.bandRole', 'eventMembers.rosterMember.bandRole', 'eventMembers.user']);
 
+        return $event->eventMembers->map(function ($eventMember) {
             return [
                 'name' => $eventMember->display_name,
-                'role' => $role,
+                'role' => $eventMember->role_name,
+                'band_role_id' => $eventMember->band_role_id,
+                'attendance' => $eventMember->attendance_status,
             ];
         })->sortBy('name')->values();
     }
@@ -853,9 +914,8 @@ class BookingsController extends Controller
             return $booking->payout;
         }
 
-        $baseAmount = is_string($booking->price)
-            ? floatval($booking->price)
-            : $booking->price;
+        // Use sum of event values instead of booking price for payout calculations
+        $baseAmount = $booking->total_event_value;
 
         return $booking->payout()->create([
             'band_id' => $band->id,

@@ -206,6 +206,9 @@ const addNewEvent = () => {
         title: props.booking.name + " Event",
         date: props.booking.date,
         event_type_id: props.booking.event_type_id,
+        eventable: {
+            band_id: props.booking.band_id,
+        },
         additional_data: {
             times: [
                 {

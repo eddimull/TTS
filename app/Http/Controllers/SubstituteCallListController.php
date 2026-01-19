@@ -24,6 +24,7 @@ class SubstituteCallListController extends Controller
                 'id' => $entry->id,
                 'band_id' => $entry->band_id,
                 'instrument' => $entry->instrument,
+                'band_role_id' => $entry->band_role_id,
                 'roster_member_id' => $entry->roster_member_id,
                 'custom_name' => $entry->custom_name,
                 'custom_email' => $entry->custom_email,
@@ -59,20 +60,27 @@ class SubstituteCallListController extends Controller
     public function store(Request $request, Bands $band)
     {
         $validated = $request->validate([
-            'instrument' => 'required|string|max:255',
+            'instrument' => 'nullable|string|max:255',
+            'band_role_id' => 'nullable|exists:band_roles,id',
             'roster_member_id' => 'nullable|exists:roster_members,id',
             'custom_name' => 'required_without:roster_member_id|string|max:255',
-            'custom_email' => 'nullable|email|max:255',
-            'custom_phone' => 'nullable|string|max:50',
+            'custom_email' => 'required_without:roster_member_id|email|max:255',
+            'custom_phone' => 'required_without:roster_member_id|string|max:50',
             'priority' => 'sometimes|integer|min:1',
             'notes' => 'nullable|string',
         ]);
 
         // Auto-assign priority if not provided
         if (!isset($validated['priority'])) {
-            $maxPriority = $band->substituteCallLists()
-                ->where('instrument', $validated['instrument'])
-                ->max('priority') ?? 0;
+            $query = $band->substituteCallLists();
+
+            if ($validated['band_role_id'] ?? null) {
+                $query->where('band_role_id', $validated['band_role_id']);
+            } elseif ($validated['instrument'] ?? null) {
+                $query->where('instrument', $validated['instrument']);
+            }
+
+            $maxPriority = $query->max('priority') ?? 0;
             $validated['priority'] = $maxPriority + 1;
         }
 

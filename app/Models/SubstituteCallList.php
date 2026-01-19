@@ -12,6 +12,7 @@ class SubstituteCallList extends Model
     protected $fillable = [
         'band_id',
         'instrument',
+        'band_role_id',
         'roster_member_id',
         'custom_name',
         'custom_email',
@@ -41,6 +42,14 @@ class SubstituteCallList extends Model
     }
 
     /**
+     * Get the band role for this call list entry.
+     */
+    public function bandRole()
+    {
+        return $this->belongsTo(BandRole::class, 'band_role_id');
+    }
+
+    /**
      * Scope to get call list for a specific instrument/role.
      */
     public function scopeForInstrument($query, string $instrument)
@@ -62,6 +71,14 @@ class SubstituteCallList extends Model
     public function isCustomPlayer(): bool
     {
         return !$this->roster_member_id;
+    }
+
+    /**
+     * Get the instrument name (from BandRole or fallback to text field).
+     */
+    public function getInstrumentNameAttribute(): ?string
+    {
+        return $this->bandRole?->name ?? $this->instrument;
     }
 
     /**

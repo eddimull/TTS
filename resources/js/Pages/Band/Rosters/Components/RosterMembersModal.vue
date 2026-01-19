@@ -161,39 +161,22 @@
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Role / Instrument
                   </label>
-                  <input
-                    v-model="memberForm.role"
-                    type="text"
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white"
-                    placeholder="e.g., Guitar, Vocals, Drums"
-                  />
-                </div>
-
-                <!-- Payout Configuration -->
-                <div class="space-y-3">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Default Payout
-                  </label>
-
                   <select
-                    v-model="memberForm.default_payout_type"
+                    v-model="memberForm.band_role_id"
                     class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white"
                   >
-                    <option value="equal_split">Equal Split</option>
-                    <option value="fixed">Fixed Amount</option>
-                    <option value="percentage">Percentage</option>
+                    <option value="">Select a role...</option>
+                    <option
+                      v-for="role in bandRoles"
+                      :key="role.id"
+                      :value="role.id"
+                    >
+                      {{ role.name }}
+                    </option>
                   </select>
-
-                  <div v-if="memberForm.default_payout_type !== 'equal_split'">
-                    <input
-                      v-model.number="memberForm.default_payout_amount"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-700 dark:text-white"
-                      :placeholder="memberForm.default_payout_type === 'fixed' ? '$0.00' : '0%'"
-                    />
-                  </div>
+                  <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Roles can be managed in your <a :href="route('bands.roles.page', bandId)" target="_blank" class="text-blue-600 hover:underline">band settings</a>
+                  </p>
                 </div>
 
                 <!-- Notes -->
@@ -288,16 +271,6 @@
                       <div v-if="member.phone">
                         <span class="font-medium">Phone:</span> {{ member.phone }}
                       </div>
-                      <div v-if="member.default_payout_type">
-                        <span class="font-medium">Payout:</span>
-                        <span v-if="member.default_payout_type === 'equal_split'">Equal Split</span>
-                        <span v-else-if="member.default_payout_type === 'fixed'">
-                          Fixed ${{ member.default_payout_amount }}
-                        </span>
-                        <span v-else-if="member.default_payout_type === 'percentage'">
-                          {{ member.default_payout_amount }}%
-                        </span>
-                      </div>
                       <div v-if="member.notes" class="text-xs italic">
                         {{ member.notes }}
                       </div>
@@ -360,6 +333,7 @@ export default {
     return {
       members: [],
       bandMembers: [],
+      bandRoles: [],
       showAddForm: false,
       memberForm: {
         type: 'user',
@@ -367,9 +341,7 @@ export default {
         name: '',
         email: '',
         phone: '',
-        role: '',
-        default_payout_type: 'equal_split',
-        default_payout_amount: null,
+        band_role_id: '',
         notes: ''
       },
       memberErrors: {},
@@ -388,6 +360,7 @@ export default {
   mounted() {
     this.loadRosterDetails()
     this.loadBandMembers()
+    this.loadBandRoles()
   },
   methods: {
     loadRosterDetails() {
@@ -410,6 +383,16 @@ export default {
           // Fallback - will need to be implemented in backend
         })
     },
+    loadBandRoles() {
+      // Load band roles for the dropdown
+      axios.get(route('bands.roles.index', this.bandId))
+        .then(response => {
+          this.bandRoles = response.data.roles || []
+        })
+        .catch(error => {
+          console.error('Failed to load band roles:', error)
+        })
+    },
     cancelAdd() {
       this.showAddForm = false
       this.resetMemberForm()
@@ -422,9 +405,7 @@ export default {
         name: '',
         email: '',
         phone: '',
-        role: '',
-        default_payout_type: 'equal_split',
-        default_payout_amount: null,
+        band_role_id: '',
         notes: ''
       }
     },
@@ -435,18 +416,14 @@ export default {
       const data = this.memberForm.type === 'user'
         ? {
             user_id: this.memberForm.user_id,
-            role: this.memberForm.role,
-            default_payout_type: this.memberForm.default_payout_type,
-            default_payout_amount: this.memberForm.default_payout_amount,
+            band_role_id: this.memberForm.band_role_id,
             notes: this.memberForm.notes
           }
         : {
             name: this.memberForm.name,
             email: this.memberForm.email,
             phone: this.memberForm.phone,
-            role: this.memberForm.role,
-            default_payout_type: this.memberForm.default_payout_type,
-            default_payout_amount: this.memberForm.default_payout_amount,
+            band_role_id: this.memberForm.band_role_id,
             notes: this.memberForm.notes
           }
 

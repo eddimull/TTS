@@ -19,9 +19,23 @@ export function useFlowCalculator() {
   const calculate = (nodes, edges, band, context = null) => {
     if (!nodes || nodes.length === 0) return null
 
-    // Create working copies
-    const nodeMap = new Map(nodes.map(n => [n.id, { ...n, data: { ...n.data } }]))
-    const edgeMap = new Map(edges.map(e => [e.id, { ...e }]))
+    // Create working copies and clear calculated values
+    const nodeMap = new Map(nodes.map(n => {
+      const nodeCopy = { ...n, data: { ...n.data } }
+      // Clear calculated values - set to 0 for disconnected nodes
+      nodeCopy.data.input = 0
+      nodeCopy.data.output = 0
+      nodeCopy.data.allocated = 0
+      nodeCopy.data.bandCut = 0
+      nodeCopy.data._visualizationData = null
+      return [n.id, nodeCopy]
+    }))
+    const edgeMap = new Map(edges.map(e => {
+      const edgeCopy = { ...e, data: { ...e.data } }
+      // Clear calculated edge amounts
+      edgeCopy.data.amount = 0
+      return [e.id, edgeCopy]
+    }))
 
     // Find income node (entry point)
     const incomeNode = nodes.find(n => n.type === 'income')
@@ -40,19 +54,70 @@ export function useFlowCalculator() {
       flow: []
     }
 
-    // Build adjacency list for graph traversal
-    const adjacency = new Map()
+    // Build adjacency lists for graph traversal (both directions)
+    const adjacency = new Map() // outgoing edges
+    const incomingEdges = new Map() // incoming edges
+
     edges.forEach(edge => {
+      // Outgoing
       if (!adjacency.has(edge.source)) {
         adjacency.set(edge.source, [])
       }
       adjacency.get(edge.source).push(edge)
+
+      // Incoming
+      if (!incomingEdges.has(edge.target)) {
+        incomingEdges.set(edge.target, [])
+      }
+      incomingEdges.get(edge.target).push(edge)
+    })
+
+    // Find all reachable nodes from the income node
+    const reachableNodes = new Set()
+    const findReachable = (nodeId) => {
+      if (reachableNodes.has(nodeId)) return
+      reachableNodes.add(nodeId)
+
+      const outgoing = adjacency.get(nodeId) || []
+      outgoing.forEach(edge => findReachable(edge.target))
+    }
+    findReachable(incomeNode.id)
+
+    // Track accumulated inputs for nodes with multiple inputs
+    const nodeInputs = new Map() // nodeId -> { received: number, amounts: number[] }
+
+    // Initialize tracking for nodes with multiple inputs
+    // Only count incoming edges from reachable nodes
+    nodes.forEach(node => {
+      if (!reachableNodes.has(node.id)) return // Skip unreachable nodes
+
+      const incoming = incomingEdges.get(node.id) || []
+      const reachableIncoming = incoming.filter(edge => reachableNodes.has(edge.source))
+
+      if (reachableIncoming.length > 1) {
+        nodeInputs.set(node.id, { received: 0, amounts: [], expected: reachableIncoming.length })
+      }
     })
 
     // Traverse graph using DFS
     const visited = new Set()
 
     const traverse = (nodeId, amount, branchContext = {}) => {
+      // Check if this node has multiple inputs and needs accumulation
+      if (nodeInputs.has(nodeId) && !branchContext.fromConditional) {
+        const inputTracker = nodeInputs.get(nodeId)
+        inputTracker.amounts.push(amount)
+        inputTracker.received++
+
+        // If we haven't received all inputs yet, wait
+        if (inputTracker.received < inputTracker.expected) {
+          return 0 // Don't process yet, more inputs coming
+        }
+
+        // All inputs received - sum them up
+        amount = inputTracker.amounts.reduce((sum, val) => sum + val, 0)
+      }
+
       // Allow revisiting nodes if coming from different conditional branch
       const visitKey = branchContext.fromConditional
         ? `${nodeId}-${branchContext.branch}`
@@ -81,17 +146,37 @@ export function useFlowCalculator() {
         }
         nodeMap.set(nodeId, node)
 
-        // Process outgoing edges with unchanged amount
+        // Process outgoing edges - if multiple outputs, still split the amount
         const outgoingEdges = adjacency.get(nodeId) || []
-        for (const edge of outgoingEdges) {
+
+        if (outgoingEdges.length === 0) {
+          return amount
+        }
+
+        if (outgoingEdges.length === 1) {
+          // Single output - pass through unchanged
+          const edge = outgoingEdges[0]
           edgeMap.set(edge.id, {
             ...edge,
             data: { ...edge.data, amount }
           })
-          amount = traverse(edge.target, amount, branchContext)
+          return traverse(edge.target, amount, branchContext)
         }
 
-        return amount
+        // Multiple outputs - split even though deactivated
+        const distributions = calculateMultipleOutputs(outgoingEdges, amount, nodeMap)
+
+        let totalDistributed = 0
+        for (const dist of distributions) {
+          edgeMap.set(dist.edge.id, {
+            ...dist.edge,
+            data: { ...dist.edge.data, amount: dist.amount }
+          })
+          traverse(dist.edge.target, dist.amount, branchContext)
+          totalDistributed += dist.amount
+        }
+
+        return Math.max(0, amount - totalDistributed)
       }
 
       // Process node based on type
@@ -110,7 +195,6 @@ export function useFlowCalculator() {
           const bandCut = calculateBandCut(node.data, amount)
           results.band_cut += bandCut
           amount -= bandCut
-          results.distributable_amount = amount
 
           // Update node with calculated values
           node.data = {
@@ -225,16 +309,41 @@ export function useFlowCalculator() {
       // Process outgoing edges (for non-conditional nodes)
       if (node.type !== 'conditional') {
         const outgoingEdges = adjacency.get(nodeId) || []
-        for (const edge of outgoingEdges) {
-          // Update edge with amount data
+
+        if (outgoingEdges.length === 0) {
+          return amount
+        }
+
+        if (outgoingEdges.length === 1) {
+          // Single output - pass full amount, let target node handle allocation
+          const edge = outgoingEdges[0]
+
           edgeMap.set(edge.id, {
             ...edge,
-            data: { ...edge.data, amount }
+            data: { ...edge.data, amount: amount }
+          })
+          // Mark that allocation was NOT pre-applied
+          return traverse(edge.target, amount, { ...branchContext, allocationApplied: false })
+        }
+
+        // Multiple outputs - need to calculate distributions from SAME input
+        const distributions = calculateMultipleOutputs(outgoingEdges, amount, nodeMap)
+
+        let totalDistributed = 0
+        for (const dist of distributions) {
+          // Update edge with its allocated amount
+          edgeMap.set(dist.edge.id, {
+            ...dist.edge,
+            data: { ...dist.edge.data, amount: dist.amount }
           })
 
-          // Continue traversal
-          amount = traverse(edge.target, amount, branchContext)
+          // Traverse with the allocated amount (allocation was pre-applied by calculateMultipleOutputs)
+          traverse(dist.edge.target, dist.amount, { ...branchContext, allocationApplied: true })
+          totalDistributed += dist.amount
         }
+
+        // Return what's left after all distributions
+        return Math.max(0, amount - totalDistributed)
       }
 
       return amount
@@ -242,6 +351,9 @@ export function useFlowCalculator() {
 
     // Start traversal from income node
     const finalAmount = traverse(incomeNode.id, currentAmount)
+
+    // Calculate distributable amount after all band cuts
+    results.distributable_amount = results.total_amount - results.band_cut
     results.remaining = finalAmount
 
     return {
@@ -249,6 +361,67 @@ export function useFlowCalculator() {
       updatedNodes: Array.from(nodeMap.values()),
       updatedEdges: Array.from(edgeMap.values())
     }
+  }
+
+  /**
+   * Calculate distributions for multiple outputs from the same node
+   * All allocations are calculated from the SAME input amount
+   */
+  const calculateMultipleOutputs = (edges, inputAmount, nodeMap) => {
+    const distributions = []
+    let totalAllocated = 0
+
+    // First pass: collect allocation info for each target
+    const targets = edges.map(edge => {
+      const targetNode = nodeMap.get(edge.target)
+      return {
+        edge,
+        allocationType: targetNode?.data?.incomingAllocationType || 'remainder',
+        allocationValue: targetNode?.data?.incomingAllocationValue || 0
+      }
+    })
+
+    // Count remainder nodes
+    const remainderNodes = targets.filter(t => t.allocationType === 'remainder')
+    const fixedNodes = targets.filter(t => t.allocationType === 'fixed')
+    const percentageNodes = targets.filter(t => t.allocationType === 'percentage')
+
+    // Second pass: calculate allocations
+    // 1. Fixed amounts first (they take exact amounts)
+    for (const target of fixedNodes) {
+      const amount = Math.min(target.allocationValue, inputAmount - totalAllocated)
+      distributions.push({
+        edge: target.edge,
+        amount
+      })
+      totalAllocated += amount
+    }
+
+    // 2. Percentage amounts (calculated from original input)
+    for (const target of percentageNodes) {
+      const amount = (inputAmount * target.allocationValue) / 100
+      distributions.push({
+        edge: target.edge,
+        amount
+      })
+      totalAllocated += amount
+    }
+
+    // 3. Remainder nodes split what's left equally
+    if (remainderNodes.length > 0) {
+      const remainingAmount = Math.max(0, inputAmount - totalAllocated)
+      const perNode = remainingAmount / remainderNodes.length
+
+      for (const target of remainderNodes) {
+        distributions.push({
+          edge: target.edge,
+          amount: perNode
+        })
+        totalAllocated += perNode
+      }
+    }
+
+    return distributions
   }
 
   /**
@@ -370,25 +543,23 @@ export function useFlowCalculator() {
       }
     }
 
-    // Step 2: Calculate how much this group gets from incoming amount
-    let groupAllocation = 0
+    // Step 2: Calculate how much this group should take based on allocation settings
+    let groupAllocation = availableAmount
+
+    // Only apply allocation if it wasn't already applied by parent (multiple outputs scenario)
+    if (!context.allocationApplied) {
+      // Apply incoming allocation if specified (single output scenario)
+      if (incomingAllocationType === 'percentage') {
+        groupAllocation = (availableAmount * (incomingAllocationValue || 100)) / 100
+      } else if (incomingAllocationType === 'fixed') {
+        groupAllocation = Math.min(incomingAllocationValue || 0, availableAmount)
+      }
+      // 'remainder' type means take everything available
+    }
 
     // Special case: if using fixed distribution with fixedAmountPerMember, auto-calculate total needed
     if (distributionMode === 'fixed' && fixedAmountPerMember > 0) {
-      groupAllocation = Math.min(recipients.length * fixedAmountPerMember, availableAmount)
-    } else {
-      // Normal allocation logic
-      switch (incomingAllocationType) {
-        case 'remainder':
-          groupAllocation = availableAmount
-          break
-        case 'percentage':
-          groupAllocation = (availableAmount * (incomingAllocationValue || 0)) / 100
-          break
-        case 'fixed':
-          groupAllocation = Math.min(incomingAllocationValue || 0, availableAmount)
-          break
-      }
+      groupAllocation = Math.min(recipients.length * fixedAmountPerMember, groupAllocation)
     }
 
     // Step 3: Distribute allocation among recipients
@@ -426,8 +597,30 @@ export function useFlowCalculator() {
           const { rosterConfig } = nodeData
 
           context.eventMembers.forEach(member => {
+            // Filter by member type (new memberTypeFilter format)
+            // Backwards compatibility: convert old includeSubstitutes to memberTypeFilter
+            let memberTypeFilter = rosterConfig.memberTypeFilter
+            if (!memberTypeFilter && 'includeSubstitutes' in rosterConfig) {
+              memberTypeFilter = rosterConfig.includeSubstitutes ? 'all' : 'members_only'
+            } else if (!memberTypeFilter) {
+              memberTypeFilter = 'all'
+            }
+
+            // Apply member type filter
+            if (memberTypeFilter === 'members_only' && member.type === 'substitute') {
+              return
+            }
+            if (memberTypeFilter === 'substitutes_only' && member.type !== 'substitute') {
+              return
+            }
+
             // Filter by role if specified
-            if (rosterConfig.filterByRole && rosterConfig.filterByRole.length > 0) {
+            // Prefer filterByRoleId (new ID-based filter), fallback to filterByRole (old text-based filter)
+            if (rosterConfig.filterByRoleId && rosterConfig.filterByRoleId.length > 0) {
+              if (!rosterConfig.filterByRoleId.includes(member.band_role_id)) {
+                return
+              }
+            } else if (rosterConfig.filterByRole && rosterConfig.filterByRole.length > 0) {
               if (!rosterConfig.filterByRole.includes(member.role)) {
                 return
               }
@@ -440,11 +633,6 @@ export function useFlowCalculator() {
 
             // Check minimum events
             if (member.eventsAttended < (rosterConfig.minEventsToQualify || 1)) {
-              return
-            }
-
-            // Exclude substitutes if not included
-            if (!rosterConfig.includeSubstitutes && member.type === 'substitute') {
               return
             }
 

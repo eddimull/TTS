@@ -5,6 +5,7 @@ use App\Http\Controllers\RosterController;
 use App\Http\Controllers\RosterMemberController;
 use App\Http\Controllers\EventMemberController;
 use App\Http\Controllers\SubstituteCallListController;
+use App\Http\Controllers\BandRoleController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Roster management
@@ -15,6 +16,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/rosters/{roster}', [RosterController::class, 'update'])->name('rosters.update');
     Route::delete('/rosters/{roster}', [RosterController::class, 'destroy'])->name('rosters.destroy');
     Route::post('/bands/{band}/rosters/{roster}/set-default', [RosterController::class, 'setDefault'])->name('rosters.setDefault');
+
+    // Band role management
+    Route::get('/bands/{band}/roles/manage', [BandRoleController::class, 'page'])->name('bands.roles.page');
+    Route::get('/bands/{band}/roles', [BandRoleController::class, 'index'])->name('bands.roles.index');
+    Route::post('/bands/{band}/roles', [BandRoleController::class, 'store'])->name('bands.roles.store');
+    Route::patch('/bands/{band}/roles/{role}', [BandRoleController::class, 'update'])->name('bands.roles.update');
+    Route::delete('/bands/{band}/roles/{role}', [BandRoleController::class, 'destroy'])->name('bands.roles.destroy');
+    Route::post('/bands/{band}/roles/reorder', [BandRoleController::class, 'reorder'])->name('bands.roles.reorder');
 
     // Roster member management
     Route::post('/rosters/{roster}/members', [RosterMemberController::class, 'store'])->name('rosters.members.store');

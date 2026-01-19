@@ -14,22 +14,26 @@ class RosterMemberController extends Controller
      */
     public function store(StoreRosterMemberRequest $request, Roster $roster)
     {
-        $member = RosterMember::create([
-            'roster_id' => $roster->id,
-            'user_id' => $request->user_id,
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'role' => $request->role,
-            'default_payout_type' => $request->default_payout_type ?? 'equal_split',
-            'default_payout_amount' => $request->default_payout_amount,
-            'notes' => $request->notes,
-            'is_active' => $request->boolean('is_active', true),
-        ]);
+        $member = RosterMember::withTrashed()->updateOrCreate(
+            [
+                'roster_id' => $roster->id,
+                'user_id' => $request->user_id,
+            ],
+            [
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'role' => $request->role,
+                'band_role_id' => $request->band_role_id,
+                'notes' => $request->notes,
+                'is_active' => $request->boolean('is_active', true),
+                'deleted_at' => null, // Restore if soft-deleted
+            ]
+        );
 
         return response()->json([
             'message' => 'Member added to roster successfully',
-            'member' => $member->load('user'),
+            'member' => $member->load(['user', 'bandRole']),
         ], 201);
     }
 
@@ -42,7 +46,7 @@ class RosterMemberController extends Controller
 
         return response()->json([
             'message' => 'Roster member updated successfully',
-            'member' => $rosterMember->fresh()->load('user'),
+            'member' => $rosterMember->fresh()->load(['user', 'bandRole']),
         ]);
     }
 
@@ -52,7 +56,7 @@ class RosterMemberController extends Controller
     public function destroy(RosterMember $rosterMember)
     {
         // Check authorization - only owners
-        if (!$rosterMember->roster->band->owners->contains('user_id', auth()->id())) {
+        if (!$rosterMember->roster->band->owners()->where('user_id', auth()->id())->exists()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -83,7 +87,7 @@ class RosterMemberController extends Controller
     public function toggleActive(RosterMember $rosterMember)
     {
         // Check authorization - only owners
-        if (!$rosterMember->roster->band->owners->contains('user_id', auth()->id())) {
+        if (!$rosterMember->roster->band->owners()->where('user_id', auth()->id())->exists()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
@@ -92,7 +96,7 @@ class RosterMemberController extends Controller
 
         return response()->json([
             'message' => $rosterMember->is_active ? 'Member activated' : 'Member deactivated',
-            'member' => $rosterMember->fresh()->load('user'),
+            'member' => $rosterMember->fresh()->load(['user', 'bandRole']),
         ]);
     }
 }
