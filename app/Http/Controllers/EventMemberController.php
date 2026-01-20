@@ -4,9 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Events;
 use App\Models\EventMember;
-use App\Models\BandSubs;
 use App\Models\User;
-use App\Services\InvitationServices;
+use App\Services\SubInvitationService;
 use Illuminate\Http\Request;
 
 class EventMemberController extends Controller
@@ -69,40 +68,42 @@ class EventMemberController extends Controller
 
         // Handle substitute invitation if requested and email provided
         if ($validated['invite_substitute'] ?? false) {
-            if (!$validated['email']) {
+            if (!isset($validated['email']) || empty($validated['email'])) {
                 return response()->json([
                     'message' => 'Email is required to invite a substitute'
                 ], 422);
             }
 
-            // Check if user exists by email
-            $existingUser = User::where('email', $validated['email'])->first();
+            // Use the SubInvitationService to send proper sub invitation
+            $subInvitationService = new SubInvitationService();
+            $invitedNewUser = true;
 
-            if ($existingUser) {
-                $userId = $existingUser->id;
+            try {
+                // Create the event_subs invitation record
+                $eventSub = $subInvitationService->inviteSubToEvent(
+                    eventId: $event->id,
+                    bandId: $bandId,
+                    email: $validated['email'],
+                    name: $validated['name'] ?? null,
+                    phone: $validated['phone'] ?? null,
+                    bandRoleId: $validated['band_role_id'] ?? null,
+                    payoutAmount: null, // Can be set later
+                    notes: null
+                );
 
-                // Add to BandSubs if not already added
-                BandSubs::firstOrCreate([
-                    'user_id' => $existingUser->id,
-                    'band_id' => $bandId,
-                ]);
-            } else {
-                // Send invitation to create account and join as substitute
-                $invitationService = new InvitationServices();
-                $invitedNewUser = true;
-
-                // Note: InvitationServices currently only supports owner/member invites
-                // We're using member invite (invite_type_id = 2) for substitutes
-                // The user will need to be manually added to BandSubs after account creation
-                try {
-                    $invitationService->inviteUser($validated['email'], $bandId, false);
-                } catch (\Exception $e) {
-                    \Log::error('Failed to send invitation to substitute', [
-                        'email' => $validated['email'],
-                        'band_id' => $bandId,
-                        'error' => $e->getMessage()
-                    ]);
+                // If user exists, they'll be linked automatically by SubInvitationService
+                $existingUser = User::where('email', $validated['email'])->first();
+                if ($existingUser) {
+                    $userId = $existingUser->id;
+                    $invitedNewUser = false;
                 }
+            } catch (\Exception $e) {
+                \Log::error('Failed to send sub invitation', [
+                    'email' => $validated['email'],
+                    'event_id' => $event->id,
+                    'band_id' => $bandId,
+                    'error' => $e->getMessage()
+                ]);
             }
         }
 
