@@ -13,7 +13,6 @@
         @mouseleave="handleMouseLeave"
       >
         <div class="flex items-center gap-2 bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-full shadow-lg px-3 py-2">
-          <!-- Power Button -->
           <button
             @click.stop="toggleDeactivated"
             class="w-8 h-8 rounded-full flex items-center justify-center hover:bg-orange-500 hover:text-white transition-colors text-gray-700 dark:text-gray-300"
