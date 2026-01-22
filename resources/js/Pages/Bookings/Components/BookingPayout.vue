@@ -146,7 +146,7 @@
           class="flex items-center justify-between text-sm py-1 border-b border-gray-100 dark:border-gray-700 last:border-0"
         >
           <span class="text-gray-700 dark:text-gray-300">
-            {{ payout.name }}
+            {{ payout.name }} - {{ payout.role }}
             <span
               v-if="payout.type"
               class="text-xs text-gray-500 dark:text-gray-500 ml-1"

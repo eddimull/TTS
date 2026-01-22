@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use App\Casts\Price;
 use App\Casts\TimeCast;
 use App\Formatters\CalendarEventFormatter;
-use Ramsey\Uuid\Type\Time;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Interfaces\GoogleCalenderable;
 use App\Models\Traits\GoogleCalendarWritable;
@@ -18,6 +18,23 @@ class Events extends Model implements GoogleCalenderable
 {
     use HasFactory, GoogleCalendarWritable, LogsActivity;
 
+    protected static function booted()
+    {
+        // Sync roster members when a new event is created with a roster
+        static::created(function ($event) {
+            if ($event->roster_id) {
+                $event->syncRosterMembers();
+            }
+        });
+
+        // Sync roster members when roster_id changes on existing events
+        static::updated(function ($event) {
+            if ($event->wasChanged('roster_id') && $event->roster_id) {
+                $event->syncRosterMembers();
+            }
+        });
+    }
+
     protected $fillable = [
         'additional_data',
         'date',
@@ -28,12 +45,15 @@ class Events extends Model implements GoogleCalenderable
         'title',
         'notes',
         'time',
+        'roster_id',
+        'value',
     ];
 
     protected $casts = [
         'additional_data' => 'object',
         'date' => 'date:Y-m-d',
         'time' => TimeCast::class,
+        'value' => Price::class,
     ];
 
     public function eventable(): MorphTo
@@ -109,6 +129,77 @@ class Events extends Model implements GoogleCalenderable
     public function attachments()
     {
         return $this->hasMany(EventAttachment::class, 'event_id');
+    }
+
+    public function roster()
+    {
+        return $this->belongsTo(Roster::class);
+    }
+
+    public function eventMembers()
+    {
+        return $this->hasMany(EventMember::class, 'event_id');
+    }
+
+    public function attendedMembers()
+    {
+        return $this->eventMembers()->attended();
+    }
+
+    public function absentMembers()
+    {
+        return $this->eventMembers()->absent();
+    }
+
+    /**
+     * Sync roster members to event members.
+     * This copies all active members from the assigned roster to this event.
+     */
+    public function syncRosterMembers(): void
+    {
+        if (!$this->roster_id) {
+            return;
+        }
+
+        // Load relationships if not already loaded
+        if (!$this->relationLoaded('eventable')) {
+            $this->load('eventable');
+        }
+
+        if (!$this->relationLoaded('roster')) {
+            $this->load('roster.members');
+        }
+
+        // Get the band_id from the eventable (either Booking or BandEvents)
+        $bandId = $this->eventable->band_id ?? null;
+
+        if (!$bandId) {
+            \Log::warning("Cannot sync roster members for event {$this->id}: band_id not found in eventable");
+            return;
+        }
+
+        // Permanently delete existing event members (including soft-deleted ones)
+        // Use forceDelete to avoid unique constraint violation
+        $this->eventMembers()->withTrashed()->forceDelete();
+
+        // Get active roster members
+        $rosterMembers = $this->roster->members()->where('is_active', true)->get();
+
+        if ($rosterMembers->isEmpty()) {
+            return;
+        }
+
+        // Create event members from roster members
+        foreach ($rosterMembers as $rosterMember) {
+            EventMember::create([
+                'event_id' => $this->id,
+                'band_id' => $bandId,
+                'roster_member_id' => $rosterMember->id,
+                'user_id' => $rosterMember->user_id,
+                'band_role_id' => $rosterMember->band_role_id,
+                'attendance_status' => 'confirmed',
+            ]);
+        }
     }
 
     public function getGoogleEvent(BandCalendars $bandCalendar = null): GoogleEvents|null
@@ -187,6 +278,7 @@ class Events extends Model implements GoogleCalenderable
                 'eventable_type',
                 'eventable_id',
                 'additional_data',
+                'value',
             ])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
