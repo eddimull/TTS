@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\FinancesController;
+use App\Http\Controllers\PayoutFlowController;
 // use App\Http\Controllers\InvoicesController; // Deprecated
 
 Route::middleware(['auth', 'verified'])->prefix('finances')->group(function () {
@@ -15,9 +16,18 @@ Route::middleware(['auth', 'verified'])->prefix('finances')->group(function () {
     // Route::get('/invoices', [InvoicesController::class, 'index'])->name('Invoices');
     // Route::post('/invoices/{proposal:key}/send', [InvoicesController::class, 'create'])->name('Create Invoice');
     Route::get('/payout-calculator', [FinancesController::class, 'payoutCalculator'])->name('Payout Calculator');
-    Route::post('/payout-config/{bandId}', [FinancesController::class, 'storePayoutConfig'])->name('finances.payout.store');
-    Route::put('/payout-config/{bandId}/{configId}', [FinancesController::class, 'updatePayoutConfig'])->name('finances.payout.update');
-    Route::delete('/payout-config/{bandId}/{configId}', [FinancesController::class, 'deletePayoutConfig'])->name('finances.payout.delete');
+    Route::get('/payout-configurations', [FinancesController::class, 'payoutConfigurations'])->name('Payout Configurations');
+
+    // Payout Flow Editor
+    Route::get('/payout-flow/{band}', [PayoutFlowController::class, 'edit'])->name('finances.payoutFlow.edit');
+    Route::post('/payout-flow/{band}/preview', [PayoutFlowController::class, 'preview'])->name('finances.payoutFlow.preview');
+    Route::post('/payout-flow/{band}/validate', [PayoutFlowController::class, 'validateFlow'])->name('finances.payoutFlow.validate');
+
+    Route::post('/payout-config/{bandId}', [FinancesController::class, 'storePayoutConfig'])->name('finances.payoutConfig.store');
+    Route::put('/payout-config/{bandId}/{configId}', [FinancesController::class, 'updatePayoutConfig'])->name('finances.payoutConfig.update');
+    Route::delete('/payout-config/{bandId}/{configId}', [FinancesController::class, 'deletePayoutConfig'])->name('finances.payoutConfig.destroy');
+    Route::post('/payout-config/{bandId}/{configId}/set-active', [FinancesController::class, 'setActivePayoutConfig'])->name('finances.payoutConfig.setActive');
+    Route::post('/payout-config/{bandId}/{configId}/duplicate', [FinancesController::class, 'duplicatePayoutConfig'])->name('finances.payoutConfig.duplicate');
     
     // Payment Groups
     Route::post('/payment-group/{bandId}', [FinancesController::class, 'storePaymentGroup'])->name('finances.paymentGroup.store');

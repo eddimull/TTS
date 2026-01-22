@@ -78,7 +78,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "22.7.0"
+          node-version: "24.11.1"
 
       - name: Restore cache
         uses: actions/cache@v4
@@ -90,6 +90,10 @@ jobs:
             ~/.npm
             **/node_modules
           key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}
+
+      - name: Install NPM dependencies if cache miss
+        if: steps.cache-node-and-composer.outputs.cache-hit != 'true'
+        run: npm ci
 
       - name: Build assets
         env:

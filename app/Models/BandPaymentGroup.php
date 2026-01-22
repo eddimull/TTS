@@ -71,10 +71,10 @@ class BandPaymentGroup extends Model
      * - Fixed: exact dollar amount (taken from group allocation)
      * - Equal Split: share remaining after fixed/percentage members
      */
-    public function calculateGroupPayout(float $distributableAmount): array
+    public function calculateGroupPayout(float $distributableAmount, $attendanceData = null): array
     {
         $members = $this->users()->get();
-        
+
         if ($members->isEmpty()) {
             return [
                 'group_name' => $this->name,
@@ -100,10 +100,20 @@ class BandPaymentGroup extends Model
             }
             // equal_split will be calculated in second pass
 
+            // Get role from attendance data if available
+            $role = null;
+            if ($attendanceData && is_object($attendanceData)) {
+                $attendance = $attendanceData->firstWhere('user_id', $member->id);
+                if ($attendance) {
+                    $role = $attendance['role'] ?? null;
+                }
+            }
+
             $payouts[] = [
                 'user_id' => $member->id,
                 'user_name' => $member->name,
                 'group_name' => $this->name,
+                'role' => $role,
                 'payout_type' => $config['payout_type'],
                 'amount' => $amount,
             ];

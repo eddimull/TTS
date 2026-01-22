@@ -46,6 +46,26 @@ class Bands extends Model
         return $owners->merge($members);
     }
 
+    public function rosters()
+    {
+        return $this->hasMany(Roster::class, 'band_id');
+    }
+
+    public function defaultRoster()
+    {
+        return $this->hasOne(Roster::class, 'band_id')->where('is_default', true);
+    }
+
+    public function bandRoles()
+    {
+        return $this->hasMany(BandRole::class, 'band_id')->where('is_active', true)->orderBy('display_order')->orderBy('name');
+    }
+
+    public function substituteCallLists()
+    {
+        return $this->hasMany(SubstituteCallList::class, 'band_id')->orderBy('instrument')->orderBy('priority');
+    }
+
     public function stripe_accounts()
     {
         return $this->hasOne(StripeAccounts::class, 'band_id');

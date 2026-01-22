@@ -8,6 +8,18 @@
         value="Name"
       />
       <breeze-input
+        v-if="$page.props.invitationName"
+        id="name"
+        v-model="form.name"
+        :value="$page.props.invitationName"
+        type="text"
+        class="mt-1 block w-full"
+        required
+        autofocus
+        autocomplete="name"
+      />
+      <breeze-input
+        v-else
         id="name"
         v-model="form.name"
         type="text"
@@ -121,6 +133,10 @@
             }
         },
         created(){
+            if(this.$page.props.invitationName)
+            {
+                this.form.name = this.$page.props.invitationName
+            }
             if(this.$page.props.invitationEmail)
             {
                 this.form.email = this.$page.props.invitationEmail

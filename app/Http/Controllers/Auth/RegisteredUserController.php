@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use App\Models\Invitations;
+use App\Models\EventSubs;
+use App\Services\SubInvitationService;
 
 class RegisteredUserController extends Controller
 {
@@ -28,16 +30,27 @@ class RegisteredUserController extends Controller
     public function create(Request $request)
     {
         $invitationEmail = null;
-        // If the request has a key, we will use it to get the invitation email
-        // This is used to pre-fill the email field in the registration form
-        // so the registration flow can be reused for both invites and regular registrations
-        if ($request->filled('key'))
-        {
+        $invitationName = null;
+
+        // Check for sub invitation (event_subs)
+        if ($request->filled('invitation')) {
+            $eventSub = EventSubs::where('invitation_key', $request->invitation)
+                ->where('pending', true)
+                ->first();
+
+            if ($eventSub) {
+                $invitationEmail = $eventSub->email;
+                $invitationName = $eventSub->name;
+            }
+        }
+        // Check for legacy invitation (band owner/member)
+        elseif ($request->filled('key')) {
             $invitationEmail = $this->getInvitationEmail($request->key);
         }
 
         return Inertia::render('Auth/Register', [
-            'invitationEmail' => $invitationEmail
+            'invitationEmail' => $invitationEmail,
+            'invitationName' => $invitationName,
         ]);
     }
 
@@ -78,7 +91,21 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        // Handle sub invitations (event_subs)
+        $subInvitations = EventSubs::where('email', $user->email)
+            ->where('pending', true)
+            ->get();
 
+        if ($subInvitations->isNotEmpty()) {
+            $subInvitationService = new SubInvitationService();
+
+            foreach ($subInvitations as $eventSub) {
+                // Accept each sub invitation
+                $subInvitationService->acceptInvitation($eventSub->invitation_key, $user);
+            }
+        }
+
+        // Handle legacy band owner/member invitations
         $invitations = Invitations::where('email', $user->email)->where('pending', true)->get();
 
         foreach ($invitations as $invitation)

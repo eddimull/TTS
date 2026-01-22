@@ -4,15 +4,55 @@
 /*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+/*M!100616 SET @OLD_NOTE_VERBOSITY=@@NOTE_VERBOSITY, NOTE_VERBOSITY=0 */;
+DROP TABLE IF EXISTS `activity_log`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `activity_log` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `log_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `subject_type` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `event` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `subject_id` bigint unsigned DEFAULT NULL,
+  `causer_type` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `causer_id` bigint unsigned DEFAULT NULL,
+  `properties` json DEFAULT NULL,
+  `batch_uuid` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `subject` (`subject_type`,`subject_id`),
+  KEY `causer` (`causer_type`,`causer_id`),
+  KEY `activity_log_log_name_index` (`log_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `band_api_tokens`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `band_api_tokens` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `band_id` bigint unsigned NOT NULL,
+  `token` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `last_used_at` timestamp NULL DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `band_api_tokens_token_unique` (`token`),
+  KEY `band_api_tokens_band_id_is_active_index` (`band_id`,`is_active`),
+  CONSTRAINT `band_api_tokens_band_id_foreign` FOREIGN KEY (`band_id`) REFERENCES `bands` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `band_calendars`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `band_calendars` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `band_id` bigint unsigned NOT NULL,
-  `calendar_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `type` enum('booking','event','public') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'booking',
+  `calendar_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `type` enum('booking','event','public') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'booking',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -101,6 +141,79 @@ CREATE TABLE `band_owners` (
   CONSTRAINT `band_owners_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `band_payment_group_members`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `band_payment_group_members` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `band_payment_group_id` bigint unsigned NOT NULL,
+  `user_id` bigint unsigned NOT NULL,
+  `payout_type` enum('percentage','fixed','equal_split') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `payout_value` decimal(10,2) DEFAULT NULL,
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `band_payment_group_members_band_payment_group_id_user_id_unique` (`band_payment_group_id`,`user_id`),
+  KEY `band_payment_group_members_band_payment_group_id_index` (`band_payment_group_id`),
+  KEY `band_payment_group_members_user_id_index` (`user_id`),
+  CONSTRAINT `band_payment_group_members_band_payment_group_id_foreign` FOREIGN KEY (`band_payment_group_id`) REFERENCES `band_payment_groups` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `band_payment_group_members_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `band_payment_groups`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `band_payment_groups` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `band_id` bigint unsigned NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `default_payout_type` enum('percentage','fixed','equal_split') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'equal_split',
+  `default_payout_value` decimal(10,2) DEFAULT NULL,
+  `display_order` int NOT NULL DEFAULT '0',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `band_payment_groups_band_id_name_unique` (`band_id`,`name`),
+  KEY `band_payment_groups_band_id_index` (`band_id`),
+  KEY `band_payment_groups_band_id_is_active_index` (`band_id`,`is_active`),
+  CONSTRAINT `band_payment_groups_band_id_foreign` FOREIGN KEY (`band_id`) REFERENCES `bands` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `band_payout_configs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `band_payout_configs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `band_id` bigint unsigned NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Default Configuration',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `band_cut_type` enum('percentage','fixed','tiered','none') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'percentage',
+  `band_cut_value` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `band_cut_tier_config` json DEFAULT NULL,
+  `member_payout_type` enum('equal_split','percentage','fixed','tiered') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'equal_split',
+  `tier_config` json DEFAULT NULL,
+  `regular_member_count` int NOT NULL DEFAULT '0',
+  `production_member_count` int NOT NULL DEFAULT '0',
+  `production_member_types` json DEFAULT NULL,
+  `member_specific_config` json DEFAULT NULL,
+  `include_owners` tinyint(1) NOT NULL DEFAULT '1',
+  `include_members` tinyint(1) NOT NULL DEFAULT '1',
+  `minimum_payout` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `flow_diagram` json DEFAULT NULL COMMENT 'Visual flow editor node/edge configuration',
+  `use_payment_groups` tinyint(1) NOT NULL DEFAULT '0',
+  `payment_group_config` json DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `band_payout_configs_band_id_index` (`band_id`),
+  KEY `band_payout_configs_band_id_is_active_index` (`band_id`,`is_active`),
+  CONSTRAINT `band_payout_configs_band_id_foreign` FOREIGN KEY (`band_id`) REFERENCES `bands` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `band_playlist`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -130,6 +243,22 @@ CREATE TABLE `band_songs` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `band_storage_quotas`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `band_storage_quotas` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `band_id` bigint unsigned NOT NULL,
+  `quota_limit` bigint unsigned NOT NULL DEFAULT '5368709120' COMMENT 'Default 5GB',
+  `quota_used` bigint unsigned NOT NULL DEFAULT '0',
+  `last_calculated_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `band_storage_quotas_band_id_unique` (`band_id`),
+  CONSTRAINT `band_storage_quotas_band_id_foreign` FOREIGN KEY (`band_id`) REFERENCES `bands` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `bands`;
@@ -185,7 +314,7 @@ CREATE TABLE `bookings` (
   `author_id` bigint unsigned NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
-  `google_calendar_event_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `google_calendar_event_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `bookings_band_id_foreign` (`band_id`),
   KEY `bookings_event_type_id_foreign` (`event_type_id`),
@@ -202,7 +331,7 @@ CREATE TABLE `calendar_access` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `user_id` bigint unsigned NOT NULL,
   `band_calendar_id` bigint unsigned NOT NULL,
-  `role` enum('reader','writer','owner') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `role` enum('reader','writer','owner') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -288,6 +417,11 @@ CREATE TABLE `contacts` (
   `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `email` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `phone` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `password` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `password_change_required` tinyint(1) NOT NULL DEFAULT '0',
+  `remember_token` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `email_verified_at` timestamp NULL DEFAULT NULL,
+  `can_login` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -342,6 +476,24 @@ CREATE TABLE `editable_contracts` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `event_attachments`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `event_attachments` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `event_id` bigint unsigned NOT NULL,
+  `filename` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `stored_filename` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `mime_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `file_size` bigint unsigned NOT NULL,
+  `disk` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 's3-private',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `event_attachments_event_id_foreign` (`event_id`),
+  CONSTRAINT `event_attachments_event_id_foreign` FOREIGN KEY (`event_id`) REFERENCES `events` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `event_contacts`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -371,6 +523,36 @@ CREATE TABLE `event_distance_for_members` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `event_members`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `event_members` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `event_id` bigint unsigned NOT NULL,
+  `band_id` bigint unsigned NOT NULL,
+  `user_id` bigint unsigned DEFAULT NULL,
+  `roster_member_id` bigint unsigned DEFAULT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `role` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `phone` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `attendance_status` enum('confirmed','attended','absent','excused') COLLATE utf8mb4_unicode_ci DEFAULT 'confirmed',
+  `payout_amount` bigint DEFAULT NULL,
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `event_members_event_id_user_id_unique` (`event_id`,`user_id`),
+  KEY `event_members_band_id_foreign` (`band_id`),
+  KEY `event_members_user_id_foreign` (`user_id`),
+  KEY `event_members_roster_member_id_foreign` (`roster_member_id`),
+  CONSTRAINT `event_members_band_id_foreign` FOREIGN KEY (`band_id`) REFERENCES `bands` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `event_members_event_id_foreign` FOREIGN KEY (`event_id`) REFERENCES `events` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `event_members_roster_member_id_foreign` FOREIGN KEY (`roster_member_id`) REFERENCES `roster_members` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `event_members_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `event_types`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -381,8 +563,10 @@ CREATE TABLE `event_types` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-INSERT INTO `event_types` (`id`, `name`, `created_at`, `updated_at`) VALUES 
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `events`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+INSERT INTO `event_types` (`id`, `name`, `created_at`, `updated_at`) VALUES
 (1, 'Wedding', NOW(), NOW()),
 (2, 'Bar Gig', NOW(), NOW()),
 (3, 'Casino', NOW(), NOW()),
@@ -391,14 +575,13 @@ INSERT INTO `event_types` (`id`, `name`, `created_at`, `updated_at`) VALUES
 (6, 'Festival', NOW(), NOW()),
 (7, 'Private Party', NOW(), NOW()),
 (8, 'Mardi Gras Ball', NOW(), NOW()),
-(9, 'Other', NOW(), NOW());
-/*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `events`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
+(9, 'Other', NOW(), NOW()),
+(10, 'Rehearsal', NOW(), NOW());
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `events` (
   `date` date NOT NULL,
   `event_type_id` bigint unsigned NOT NULL,
+  `roster_id` bigint unsigned DEFAULT NULL,
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `additional_data` json DEFAULT NULL,
   `notes` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
@@ -413,7 +596,9 @@ CREATE TABLE `events` (
   UNIQUE KEY `events_key_unique` (`key`),
   KEY `events_event_type_id_foreign` (`event_type_id`),
   KEY `events_eventable_type_eventable_id_index` (`eventable_type`,`eventable_id`),
-  CONSTRAINT `events_event_type_id_foreign` FOREIGN KEY (`event_type_id`) REFERENCES `event_types` (`id`)
+  KEY `events_roster_id_foreign` (`roster_id`),
+  CONSTRAINT `events_event_type_id_foreign` FOREIGN KEY (`event_type_id`) REFERENCES `event_types` (`id`),
+  CONSTRAINT `events_roster_id_foreign` FOREIGN KEY (`roster_id`) REFERENCES `rosters` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `failed_jobs`;
@@ -431,13 +616,89 @@ CREATE TABLE `failed_jobs` (
   UNIQUE KEY `failed_jobs_uuid_unique` (`uuid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `google_drive_connections`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `google_drive_connections` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` bigint unsigned NOT NULL,
+  `band_id` bigint unsigned NOT NULL,
+  `access_token` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `refresh_token` text COLLATE utf8mb4_unicode_ci,
+  `token_expires_at` timestamp NULL DEFAULT NULL,
+  `google_account_email` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `drive_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `last_synced_at` timestamp NULL DEFAULT NULL,
+  `sync_status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `last_sync_error` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_user_band_email` (`user_id`,`band_id`,`google_account_email`),
+  KEY `google_drive_connections_band_id_is_active_index` (`band_id`,`is_active`),
+  KEY `google_drive_connections_user_id_band_id_index` (`user_id`,`band_id`),
+  CONSTRAINT `google_drive_connections_band_id_foreign` FOREIGN KEY (`band_id`) REFERENCES `bands` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `google_drive_connections_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `google_drive_folders`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `google_drive_folders` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `connection_id` bigint unsigned NOT NULL,
+  `google_folder_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `google_folder_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `google_folder_path` text COLLATE utf8mb4_unicode_ci,
+  `local_folder_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `auto_sync` tinyint(1) NOT NULL DEFAULT '1',
+  `last_synced_at` timestamp NULL DEFAULT NULL,
+  `sync_cursor` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_connection_folder` (`connection_id`,`google_folder_id`),
+  KEY `google_drive_folders_connection_id_google_folder_id_index` (`connection_id`,`google_folder_id`),
+  CONSTRAINT `google_drive_folders_connection_id_foreign` FOREIGN KEY (`connection_id`) REFERENCES `google_drive_connections` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `google_drive_sync_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `google_drive_sync_logs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `connection_id` bigint unsigned NOT NULL,
+  `folder_id` bigint unsigned DEFAULT NULL,
+  `sync_type` enum('manual','scheduled','webhook') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `files_checked` int NOT NULL DEFAULT '0',
+  `files_downloaded` int NOT NULL DEFAULT '0',
+  `files_updated` int NOT NULL DEFAULT '0',
+  `files_deleted` int NOT NULL DEFAULT '0',
+  `files_skipped` int NOT NULL DEFAULT '0',
+  `bytes_transferred` bigint NOT NULL DEFAULT '0',
+  `error_message` text COLLATE utf8mb4_unicode_ci,
+  `error_details` json DEFAULT NULL,
+  `started_at` timestamp NOT NULL,
+  `completed_at` timestamp NULL DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `google_drive_sync_logs_folder_id_foreign` (`folder_id`),
+  KEY `google_drive_sync_logs_connection_id_created_at_index` (`connection_id`,`created_at`),
+  CONSTRAINT `google_drive_sync_logs_connection_id_foreign` FOREIGN KEY (`connection_id`) REFERENCES `google_drive_connections` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `google_drive_sync_logs_folder_id_foreign` FOREIGN KEY (`folder_id`) REFERENCES `google_drive_folders` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `google_events`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
 CREATE TABLE `google_events` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `google_event_id` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `google_eventable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `google_event_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `google_eventable_type` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `google_eventable_id` bigint unsigned NOT NULL,
   `band_calendar_id` int NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
@@ -473,8 +734,150 @@ CREATE TABLE `invoices` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `stripe_id` varchar(254) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `stripe_url` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `convenience_fee` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `jobs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `jobs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `queue` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `payload` longtext COLLATE utf8mb4_unicode_ci NOT NULL,
+  `attempts` tinyint unsigned NOT NULL,
+  `reserved_at` int unsigned DEFAULT NULL,
+  `available_at` int unsigned NOT NULL,
+  `created_at` int unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `jobs_queue_index` (`queue`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `media_associations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `media_associations` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `media_file_id` bigint unsigned NOT NULL,
+  `associable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'App\\Models\\Events or App\\Models\\Bookings',
+  `associable_id` bigint unsigned NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `media_associations_associable_type_associable_id_index` (`associable_type`,`associable_id`),
+  KEY `media_associations_media_file_id_index` (`media_file_id`),
+  CONSTRAINT `media_associations_media_file_id_foreign` FOREIGN KEY (`media_file_id`) REFERENCES `media_files` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `media_file_tags`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `media_file_tags` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `media_file_id` bigint unsigned NOT NULL,
+  `media_tag_id` bigint unsigned NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `media_file_tags_media_file_id_media_tag_id_unique` (`media_file_id`,`media_tag_id`),
+  KEY `media_file_tags_media_tag_id_index` (`media_tag_id`),
+  CONSTRAINT `media_file_tags_media_file_id_foreign` FOREIGN KEY (`media_file_id`) REFERENCES `media_files` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `media_file_tags_media_tag_id_foreign` FOREIGN KEY (`media_tag_id`) REFERENCES `media_tags` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `media_files`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `media_files` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `band_id` bigint unsigned NOT NULL,
+  `user_id` bigint unsigned DEFAULT NULL,
+  `filename` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Original filename',
+  `stored_filename` varchar(500) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Path in S3 with UUID',
+  `mime_type` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `file_size` bigint unsigned NOT NULL COMMENT 'Bytes',
+  `disk` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 's3',
+  `source` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'upload',
+  `google_drive_file_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `drive_connection_id` bigint unsigned DEFAULT NULL,
+  `drive_last_modified` timestamp NULL DEFAULT NULL,
+  `title` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'User-friendly title',
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `media_type` enum('image','video','audio','document','other') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `folder_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Virtual folder path like "Photos/2024"',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `media_files_user_id_foreign` (`user_id`),
+  KEY `media_files_band_id_media_type_index` (`band_id`,`media_type`),
+  KEY `media_files_band_id_created_at_index` (`band_id`,`created_at`),
+  KEY `media_files_band_id_folder_path_index` (`band_id`,`folder_path`),
+  KEY `media_files_drive_connection_id_foreign` (`drive_connection_id`),
+  KEY `media_files_source_band_id_index` (`source`,`band_id`),
+  KEY `media_files_google_drive_file_id_index` (`google_drive_file_id`),
+  FULLTEXT KEY `media_files_filename_title_description_fulltext` (`filename`,`title`,`description`),
+  CONSTRAINT `media_files_band_id_foreign` FOREIGN KEY (`band_id`) REFERENCES `bands` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `media_files_drive_connection_id_foreign` FOREIGN KEY (`drive_connection_id`) REFERENCES `google_drive_connections` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `media_files_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `media_folders`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `media_folders` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `band_id` bigint unsigned NOT NULL,
+  `path` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Full folder path like "Photos/2024"',
+  `created_by` bigint unsigned DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `media_folders_band_id_path_unique` (`band_id`,`path`),
+  KEY `media_folders_created_by_foreign` (`created_by`),
+  KEY `media_folders_band_id_index` (`band_id`),
+  CONSTRAINT `media_folders_band_id_foreign` FOREIGN KEY (`band_id`) REFERENCES `bands` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `media_folders_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `media_shares`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `media_shares` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `media_file_id` bigint unsigned NOT NULL,
+  `token` varchar(64) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Random token for URL',
+  `created_by` bigint unsigned NOT NULL,
+  `expires_at` timestamp NULL DEFAULT NULL COMMENT 'NULL = permanent',
+  `download_limit` int unsigned DEFAULT NULL COMMENT 'NULL = unlimited',
+  `download_count` int unsigned NOT NULL DEFAULT '0',
+  `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Optional password protection',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `media_shares_token_unique` (`token`),
+  KEY `media_shares_media_file_id_foreign` (`media_file_id`),
+  KEY `media_shares_created_by_foreign` (`created_by`),
+  KEY `media_shares_token_is_active_index` (`token`,`is_active`),
+  CONSTRAINT `media_shares_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `media_shares_media_file_id_foreign` FOREIGN KEY (`media_file_id`) REFERENCES `media_files` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `media_tags`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `media_tags` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `band_id` bigint unsigned NOT NULL,
+  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `slug` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `color` varchar(7) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Hex color for UI',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `media_tags_band_id_slug_unique` (`band_id`,`slug`),
+  KEY `media_tags_band_id_name_index` (`band_id`,`name`),
+  CONSTRAINT `media_tags_band_id_foreign` FOREIGN KEY (`band_id`) REFERENCES `bands` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `migrations`;
@@ -485,6 +888,30 @@ CREATE TABLE `migrations` (
   `migration` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `batch` int NOT NULL,
   PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `model_has_permissions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `model_has_permissions` (
+  `permission_id` bigint unsigned NOT NULL,
+  `model_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `model_id` bigint unsigned NOT NULL,
+  PRIMARY KEY (`permission_id`,`model_id`,`model_type`),
+  KEY `model_has_permissions_model_id_model_type_index` (`model_id`,`model_type`),
+  CONSTRAINT `model_has_permissions_permission_id_foreign` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `model_has_roles`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `model_has_roles` (
+  `role_id` bigint unsigned NOT NULL,
+  `model_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `model_id` bigint unsigned NOT NULL,
+  PRIMARY KEY (`role_id`,`model_id`,`model_type`),
+  KEY `model_has_roles_model_id_model_type_index` (`model_id`,`model_type`),
+  CONSTRAINT `model_has_roles_role_id_foreign` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `notifications`;
@@ -536,6 +963,9 @@ CREATE TABLE `payments` (
   `date` datetime DEFAULT NULL,
   `band_id` bigint unsigned NOT NULL,
   `user_id` bigint unsigned DEFAULT NULL,
+  `payer_type` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `payer_id` bigint unsigned DEFAULT NULL,
+  `payment_type` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `status` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'paid',
@@ -543,7 +973,65 @@ CREATE TABLE `payments` (
   PRIMARY KEY (`id`),
   KEY `payments_payable_type_payable_id_index` (`payable_type`,`payable_id`),
   KEY `payments_band_id_foreign` (`band_id`),
+  KEY `payments_payer_type_payer_id_index` (`payer_type`,`payer_id`),
   CONSTRAINT `payments_band_id_foreign` FOREIGN KEY (`band_id`) REFERENCES `bands` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `payout_adjustments`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `payout_adjustments` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `payout_id` bigint unsigned NOT NULL,
+  `created_by` bigint unsigned NOT NULL,
+  `amount` bigint NOT NULL,
+  `description` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `payout_adjustments_created_by_foreign` (`created_by`),
+  KEY `payout_adjustments_payout_id_deleted_at_index` (`payout_id`,`deleted_at`),
+  CONSTRAINT `payout_adjustments_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `payout_adjustments_payout_id_foreign` FOREIGN KEY (`payout_id`) REFERENCES `payouts` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `payouts`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `payouts` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `payable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `payable_id` bigint unsigned NOT NULL,
+  `band_id` bigint unsigned NOT NULL,
+  `payout_config_id` bigint unsigned DEFAULT NULL,
+  `base_amount` bigint NOT NULL,
+  `adjusted_amount` bigint NOT NULL,
+  `calculation_result` json DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `payouts_payable_type_payable_id_index` (`payable_type`,`payable_id`),
+  KEY `payouts_payout_config_id_foreign` (`payout_config_id`),
+  KEY `payouts_payable_type_payable_id_deleted_at_index` (`payable_type`,`payable_id`,`deleted_at`),
+  KEY `payouts_band_id_deleted_at_index` (`band_id`,`deleted_at`),
+  CONSTRAINT `payouts_band_id_foreign` FOREIGN KEY (`band_id`) REFERENCES `bands` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `payouts_payout_config_id_foreign` FOREIGN KEY (`payout_config_id`) REFERENCES `band_payout_configs` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `permissions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `permissions` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `guard_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `permissions_name_guard_name_unique` (`name`,`guard_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `personal_access_tokens`;
@@ -620,15 +1108,14 @@ CREATE TABLE `proposal_phases` (
   `icon` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-INSERT INTO `proposal_phases` (`id`, `name`, `created_at`, `updated_at`, `icon`) VALUES 
+/*!40101 SET character_set_client = @saved_cs_client */;
+INSERT INTO `proposal_phases` (`id`, `name`, `created_at`, `updated_at`, `icon`) VALUES
 (1, 'Draft', NOW(), NOW(), 'fas fa-star'),
 (2, 'Finalized', NOW(), NOW(), 'fas fa-phone'),
 (3, 'proposal sent', NOW(), NOW(), 'fas fa-calendar-alt'),
 (4, 'Approved', NOW(), NOW(), 'fas fa-file-contract'),
 (5, 'contract sent', NOW(), NOW(), 'fas fa-redo'),
 (6, 'contract signed', NOW(), NOW(), 'fas fa-handshake');
-/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `proposals`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -701,6 +1188,140 @@ CREATE TABLE `recurring_proposal_dates` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `rehearsal_associations`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `rehearsal_associations` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `rehearsal_id` bigint unsigned NOT NULL,
+  `associable_type` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `associable_id` bigint unsigned NOT NULL,
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `rehearsal_associations_unique` (`rehearsal_id`,`associable_type`,`associable_id`),
+  KEY `rehearsal_associations_associable_type_associable_id_index` (`associable_type`,`associable_id`),
+  CONSTRAINT `rehearsal_associations_rehearsal_id_foreign` FOREIGN KEY (`rehearsal_id`) REFERENCES `rehearsals` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `rehearsal_schedules`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `rehearsal_schedules` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `band_id` bigint unsigned NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `frequency` enum('daily','weekly','monthly','weekday','custom') COLLATE utf8mb4_unicode_ci DEFAULT 'weekly',
+  `day_of_week` enum('monday','tuesday','wednesday','thursday','friday','saturday','sunday') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `selected_days` json DEFAULT NULL,
+  `day_of_month` tinyint unsigned DEFAULT NULL,
+  `monthly_pattern` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `monthly_weekday` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `default_time` time DEFAULT NULL,
+  `location_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `location_address` text COLLATE utf8mb4_unicode_ci,
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `rehearsal_schedules_band_id_foreign` (`band_id`),
+  CONSTRAINT `rehearsal_schedules_band_id_foreign` FOREIGN KEY (`band_id`) REFERENCES `bands` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `rehearsals`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `rehearsals` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `rehearsal_schedule_id` bigint unsigned NOT NULL,
+  `band_id` bigint unsigned NOT NULL,
+  `venue_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `venue_address` text COLLATE utf8mb4_unicode_ci,
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `is_cancelled` tinyint(1) NOT NULL DEFAULT '0',
+  `additional_data` json DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `rehearsals_rehearsal_schedule_id_foreign` (`rehearsal_schedule_id`),
+  KEY `rehearsals_band_id_index` (`band_id`),
+  CONSTRAINT `rehearsals_band_id_foreign` FOREIGN KEY (`band_id`) REFERENCES `bands` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `rehearsals_rehearsal_schedule_id_foreign` FOREIGN KEY (`rehearsal_schedule_id`) REFERENCES `rehearsal_schedules` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `role_has_permissions`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `role_has_permissions` (
+  `permission_id` bigint unsigned NOT NULL,
+  `role_id` bigint unsigned NOT NULL,
+  PRIMARY KEY (`permission_id`,`role_id`),
+  KEY `role_has_permissions_role_id_foreign` (`role_id`),
+  CONSTRAINT `role_has_permissions_permission_id_foreign` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `role_has_permissions_role_id_foreign` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `roles`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `roles` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `guard_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `roles_name_guard_name_unique` (`name`,`guard_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `roster_members`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `roster_members` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `roster_id` bigint unsigned NOT NULL,
+  `user_id` bigint unsigned DEFAULT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `email` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `phone` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `role` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `default_payout_type` enum('equal_split','fixed','percentage') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'equal_split',
+  `default_payout_amount` bigint DEFAULT NULL,
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `roster_members_roster_id_user_id_unique` (`roster_id`,`user_id`),
+  KEY `roster_members_user_id_foreign` (`user_id`),
+  CONSTRAINT `roster_members_roster_id_foreign` FOREIGN KEY (`roster_id`) REFERENCES `rosters` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `roster_members_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `rosters`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `rosters` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `band_id` bigint unsigned NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `is_default` tinyint(1) NOT NULL DEFAULT '0',
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `rosters_band_id_is_default_index` (`band_id`,`is_default`),
+  CONSTRAINT `rosters_band_id_foreign` FOREIGN KEY (`band_id`) REFERENCES `bands` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `sent_proposal`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -744,10 +1365,12 @@ DROP TABLE IF EXISTS `stripe_customers`;
 CREATE TABLE `stripe_customers` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `stripe_customer_id` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `stripe_account_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `contact_id` bigint unsigned NOT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `stripe_customers_contact_id_stripe_account_id_index` (`contact_id`,`stripe_account_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `stripe_invoice_prices`;
@@ -773,6 +1396,28 @@ CREATE TABLE `stripe_products` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `substitute_call_lists`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `substitute_call_lists` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `band_id` bigint unsigned NOT NULL,
+  `instrument` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `roster_member_id` bigint unsigned DEFAULT NULL,
+  `custom_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `custom_email` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `custom_phone` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `priority` int NOT NULL DEFAULT '1',
+  `notes` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `substitute_call_lists_roster_member_id_foreign` (`roster_member_id`),
+  KEY `substitute_call_lists_band_id_instrument_priority_index` (`band_id`,`instrument`,`priority`),
+  CONSTRAINT `substitute_call_lists_band_id_foreign` FOREIGN KEY (`band_id`) REFERENCES `bands` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `substitute_call_lists_roster_member_id_foreign` FOREIGN KEY (`roster_member_id`) REFERENCES `roster_members` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `upload_types`;
@@ -805,6 +1450,10 @@ CREATE TABLE `user_permissions` (
   `updated_at` timestamp NULL DEFAULT NULL,
   `read_bookings` tinyint(1) NOT NULL DEFAULT '0',
   `write_bookings` tinyint(1) NOT NULL DEFAULT '0',
+  `read_rehearsals` tinyint(1) NOT NULL DEFAULT '1',
+  `write_rehearsals` tinyint(1) NOT NULL DEFAULT '1',
+  `read_media` tinyint(1) NOT NULL DEFAULT '1',
+  `write_media` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -832,6 +1481,34 @@ CREATE TABLE `users` (
   UNIQUE KEY `users_email_unique` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `venue_cache`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `venue_cache` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `place_id` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `address` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `formatted_address` text COLLATE utf8mb4_unicode_ci,
+  `street_address` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `city` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `state` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `zip` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `latitude` decimal(10,7) DEFAULT NULL,
+  `longitude` decimal(10,7) DEFAULT NULL,
+  `raw_data` json DEFAULT NULL,
+  `usage_count` int NOT NULL DEFAULT '1',
+  `last_used_at` timestamp NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `venue_cache_place_id_unique` (`place_id`),
+  KEY `venue_cache_name_index` (`name`),
+  KEY `venue_cache_place_id_index` (`place_id`),
+  KEY `venue_cache_address_index` (`address`),
+  KEY `venue_cache_usage_count_last_used_at_index` (`usage_count`,`last_used_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `webhook_calls`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
@@ -852,9 +1529,10 @@ CREATE TABLE `webhook_calls` (
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 /*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
-/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+/*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
 
 /*M!999999\- enable the sandbox mode */ 
+set autocommit=0;
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (1,'2014_10_12_000000_create_users_table',1);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (2,'2014_10_12_100000_create_password_resets_table',1);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (3,'2019_08_19_000000_create_failed_jobs_table',1);
@@ -958,3 +1636,54 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (100,'2025_08_20_21
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (101,'2025_08_20_220307_remove_calendar_id_from_band',23);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (103,'2025_08_22_095626_calendar_access',24);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (107,'2025_08_23_121426_create_google_events',25);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (108,'2025_08_24_125529_create_jobs_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (109,'2025_10_21_000001_create_rehearsal_schedules_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (110,'2025_10_21_000002_create_rehearsals_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (111,'2025_10_21_000003_create_rehearsal_associations_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (112,'2025_10_21_000004_add_rehearsal_permissions_to_user_permissions',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (113,'2025_10_21_175342_add_day_and_time_to_rehearsal_schedules',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (114,'2025_10_21_180011_add_is_cancelled_to_rehearsals',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (115,'2025_10_22_095748_add_day_of_month_to_rehearsal_schedules_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (116,'2025_10_22_100335_add_monthly_pattern_to_rehearsal_schedules_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (117,'2025_10_22_100836_update_rehearsal_schedules_for_google_calendar_pattern',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (118,'2025_10_27_211329_add_band_id_to_rehearsals_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (119,'2025_10_28_100850_create_activity_log_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (120,'2025_10_28_100851_add_event_column_to_activity_log_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (121,'2025_10_28_100852_add_batch_uuid_column_to_activity_log_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (122,'2025_10_29_141103_create_band_payout_configs_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (123,'2025_10_29_165308_add_member_payout_details_to_band_payout_configs',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (124,'2025_10_29_200000_create_band_payment_groups_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (125,'2025_10_29_200001_create_band_payment_group_members_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (126,'2025_10_29_200002_add_payment_groups_to_band_payout_configs',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (127,'2025_11_10_000001_add_auth_fields_to_contacts_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (128,'2025_11_10_000002_add_stripe_account_id_to_stripe_customers_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (129,'2025_11_12_000001_add_payer_to_payments_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (130,'2025_11_12_115644_add_stripe_url_to_invoices_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (131,'2025_11_13_212325_add_password_change_required_to_contacts_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (132,'2025_11_15_122744_create_band_api_tokens_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (133,'2025_11_15_123853_create_permission_tables',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (134,'2025_11_22_000001_create_payouts_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (135,'2025_11_22_000002_create_payout_adjustments_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (136,'2025_11_22_000003_fix_payout_amount_column_types',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (137,'2025_12_13_000001_create_event_attachments_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (138,'2025_12_16_114146_create_venue_cache_table',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (139,'2025_12_17_120000_create_media_library_tables',27);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (140,'2025_12_17_120001_add_media_permissions_to_user_permissions',27);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (141,'2025_12_17_164541_add_folder_support_to_media_files',28);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (142,'2025_12_17_180000_create_media_folders_table',29);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (147,'2025_12_27_000001_create_google_drive_connections_table',30);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (148,'2025_12_27_000002_create_google_drive_folders_table',30);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (149,'2025_12_27_000003_add_drive_metadata_to_media_files',30);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (150,'2025_12_27_000004_create_google_drive_sync_logs_table',30);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (151,'2026_01_10_000001_create_event_members_table',31);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (152,'2026_01_10_000002_create_rosters_table',32);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (153,'2026_01_10_000003_create_roster_members_table',32);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (155,'2026_01_10_000004_add_roster_id_to_events',33);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (156,'2026_01_10_000005_update_event_members_for_roster_system',34);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (157,'2026_01_10_133806_remove_unique_constraint_from_rosters_table',35);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (158,'2026_01_10_135346_add_pending_to_attendance_status_enum',36);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (159,'2026_01_10_140258_add_role_to_event_members_table',37);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (160,'2026_01_11_180403_create_substitute_call_lists_table',38);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (161,'2026_01_11_213439_add_custom_player_fields_to_substitute_call_lists_table',39);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (162,'2026_01_11_233746_add_flow_diagram_to_band_payout_configs_table',40);
+commit;

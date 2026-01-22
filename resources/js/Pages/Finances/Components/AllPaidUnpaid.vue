@@ -116,6 +116,12 @@
                 {{ moneyFormat(yearTotals.forecast) }}
               </dd>
               <dt class="font-medium text-gray-600 dark:text-gray-50">
+                Band Revenue:
+              </dt>
+              <dd class="text-gray-800 dark:text-white">
+                {{ moneyFormat(yearTotals.net) }}
+              </dd>
+              <dt class="font-medium text-gray-600 dark:text-gray-50">
                 Total bookings:
               </dt>
               <dd class="text-gray-800 dark:text-white">
@@ -172,6 +178,18 @@
                     :class="yearTotalsCurrent.forecast > yearTotals.forecast ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'"
                   >
                     ({{ yearTotalsCurrent.forecast > yearTotals.forecast ? '+' : '' }}{{ moneyFormat(yearTotalsCurrent.forecast - yearTotals.forecast) }})
+                  </span>
+                </dd>
+                <dt class="font-medium text-gray-600 dark:text-gray-50">
+                  Band Revenue:
+                </dt>
+                <dd class="text-gray-800 dark:text-white">
+                  {{ moneyFormat(yearTotalsCurrent.net) }}
+                  <span
+                    v-if="yearTotalsCurrent.net !== yearTotals.net"
+                    :class="yearTotalsCurrent.net > yearTotals.net ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'"
+                  >
+                    ({{ yearTotalsCurrent.net > yearTotals.net ? '+' : '' }}{{ moneyFormat(yearTotalsCurrent.net - yearTotals.net) }})
                   </span>
                 </dd>
                 <dt class="font-medium text-gray-600 dark:text-gray-50">
@@ -366,15 +384,18 @@ const processDataByMonth = (bookings, year) => {
                 unpaid: 0,
                 bookings: 0,
                 forecast: 0,
+                net: 0,
             };
         }
 
         const price = parseFloat(booking.price) || 0;
         const amountPaid = parseFloat(booking.amount_paid) || 0;
+        const netAmount = parseFloat(booking.net_amount) || 0; // Band's revenue (band cut)
 
         dataByMonth[yearMonth].forecast += price;
         dataByMonth[yearMonth].paid += amountPaid;
         dataByMonth[yearMonth].unpaid += Math.max(0, price - amountPaid);
+        dataByMonth[yearMonth].net += netAmount;
         dataByMonth[yearMonth].bookings += 1;
     });
 
@@ -404,9 +425,10 @@ const yearTotals = computed(() => {
             acc.unpaid += month.unpaid;
             acc.bookings += month.bookings;
             acc.forecast += month.forecast;
+            acc.net += month.net;
             return acc;
         },
-        { paid: 0, unpaid: 0, bookings: 0, forecast: 0 }
+        { paid: 0, unpaid: 0, bookings: 0, forecast: 0, net: 0 }
     );
 });
 
@@ -418,9 +440,10 @@ const yearTotalsCurrent = computed(() => {
             acc.unpaid += month.unpaid;
             acc.bookings += month.bookings;
             acc.forecast += month.forecast;
+            acc.net += month.net;
             return acc;
         },
-        { paid: 0, unpaid: 0, bookings: 0, forecast: 0 }
+        { paid: 0, unpaid: 0, bookings: 0, forecast: 0, net: 0 }
     );
 });
 
@@ -459,6 +482,15 @@ const initializeChartData = () => {
             },
             {
                 type: "line",
+                label: "Band Revenue (Snapshot)",
+                borderColor: "#9C27B0",
+                borderWidth: 2,
+                fill: false,
+                data: new Array(12).fill(0),
+                yAxisID: "y-axis-1",
+            },
+            {
+                type: "line",
                 label: "Number of Bookings (Snapshot)",
                 borderColor: "#FFA500",
                 borderWidth: 2,
@@ -487,6 +519,17 @@ const initializeChartData = () => {
                 type: "line",
                 label: "Forecasted Revenue (Current)",
                 borderColor: "#8BC34A",
+                borderWidth: 2,
+                borderDash: [5, 5],
+                fill: false,
+                data: new Array(12).fill(0),
+                yAxisID: "y-axis-1",
+                hidden: true,
+            },
+            {
+                type: "line",
+                label: "Band Revenue (Current)",
+                borderColor: "#CE93D8",
                 borderWidth: 2,
                 borderDash: [5, 5],
                 fill: false,
@@ -599,23 +642,39 @@ const updateChartData = async () => {
         }
     });
 
-    const newLabel3 = isComparing ? "Number of Bookings (Snapshot)" : "Number of Bookings";
+    const newLabel3 = isComparing ? "Band Revenue (Snapshot)" : "Band Revenue";
     if (chart.data.datasets[3].label !== newLabel3) {
         chart.data.datasets[3].label = newLabel3;
         hasChanges = true;
     }
 
     months.forEach((month, index) => {
-        const newValue = processedData.value[`${selectedYear.value}-${month}`]?.bookings || 0;
+        const newValue = processedData.value[`${selectedYear.value}-${month}`]?.net || 0;
         const oldValue = chart.data.datasets[3].data[index] ?? 0;
         if (oldValue !== newValue) {
-            console.log(`Bookings [${month}]: ${oldValue} -> ${newValue}`);
+            console.log(`Net [${month}]: ${oldValue} -> ${newValue}`);
             chart.data.datasets[3].data[index] = newValue;
             hasChanges = true;
         }
     });
 
-    // Update current data (last 4 datasets) and visibility
+    const newLabel4 = isComparing ? "Number of Bookings (Snapshot)" : "Number of Bookings";
+    if (chart.data.datasets[4].label !== newLabel4) {
+        chart.data.datasets[4].label = newLabel4;
+        hasChanges = true;
+    }
+
+    months.forEach((month, index) => {
+        const newValue = processedData.value[`${selectedYear.value}-${month}`]?.bookings || 0;
+        const oldValue = chart.data.datasets[4].data[index] ?? 0;
+        if (oldValue !== newValue) {
+            console.log(`Bookings [${month}]: ${oldValue} -> ${newValue}`);
+            chart.data.datasets[4].data[index] = newValue;
+            hasChanges = true;
+        }
+    });
+
+    // Update current data (last 5 datasets) and visibility
     if (compareWithCurrent.value && snapshotDate.value) {
         console.log('Updating comparison datasets. Sample current data for Jan:',
             processedCurrentData.value[`${selectedYear.value}-01`]);
@@ -624,28 +683,33 @@ const updateChartData = async () => {
             const newPaid = processedCurrentData.value[`${selectedYear.value}-${month}`]?.paid || 0;
             const newUnpaid = processedCurrentData.value[`${selectedYear.value}-${month}`]?.unpaid || 0;
             const newForecast = processedCurrentData.value[`${selectedYear.value}-${month}`]?.forecast || 0;
+            const newNet = processedCurrentData.value[`${selectedYear.value}-${month}`]?.net || 0;
             const newBookings = processedCurrentData.value[`${selectedYear.value}-${month}`]?.bookings || 0;
 
-            if (chart.data.datasets[4].data[index] !== newPaid) {
-                chart.data.datasets[4].data[index] = newPaid;
+            if (chart.data.datasets[5].data[index] !== newPaid) {
+                chart.data.datasets[5].data[index] = newPaid;
                 hasChanges = true;
             }
-            if (chart.data.datasets[5].data[index] !== newUnpaid) {
-                chart.data.datasets[5].data[index] = newUnpaid;
+            if (chart.data.datasets[6].data[index] !== newUnpaid) {
+                chart.data.datasets[6].data[index] = newUnpaid;
                 hasChanges = true;
             }
-            if (chart.data.datasets[6].data[index] !== newForecast) {
-                chart.data.datasets[6].data[index] = newForecast;
+            if (chart.data.datasets[7].data[index] !== newForecast) {
+                chart.data.datasets[7].data[index] = newForecast;
                 hasChanges = true;
             }
-            if (chart.data.datasets[7].data[index] !== newBookings) {
-                chart.data.datasets[7].data[index] = newBookings;
+            if (chart.data.datasets[8].data[index] !== newNet) {
+                chart.data.datasets[8].data[index] = newNet;
+                hasChanges = true;
+            }
+            if (chart.data.datasets[9].data[index] !== newBookings) {
+                chart.data.datasets[9].data[index] = newBookings;
                 hasChanges = true;
             }
         });
 
         // Show comparison datasets if they're hidden
-        [4, 5, 6, 7].forEach(i => {
+        [5, 6, 7, 8, 9].forEach(i => {
             if (chart.data.datasets[i].hidden === true) {
                 chart.data.datasets[i].hidden = false;
                 hasChanges = true;
@@ -653,7 +717,7 @@ const updateChartData = async () => {
         });
     } else {
         // Hide comparison datasets when not comparing
-        [4, 5, 6, 7].forEach(i => {
+        [5, 6, 7, 8, 9].forEach(i => {
             if (chart.data.datasets[i].hidden === false || chart.data.datasets[i].hidden === undefined) {
                 chart.data.datasets[i].hidden = true;
                 hasChanges = true;
@@ -731,7 +795,8 @@ const updateChartOptions = () => {
                             label += ": ";
                         }
                         if (context.parsed.y !== null) {
-                            if (context.datasetIndex < 2) {
+                            // Format as currency for all datasets except "Number of Bookings" (indices 4 and 9)
+                            if (context.datasetIndex !== 4 && context.datasetIndex !== 9) {
                                 label += new Intl.NumberFormat("en-US", {
                                     style: "currency",
                                     currency: "USD",
