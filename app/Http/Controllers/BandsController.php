@@ -327,6 +327,25 @@ class BandsController extends Controller
         });
     }
 
+    public function members(Bands $band)
+    {
+        // Check if user has access to this band
+        if (!$band->everyone()->contains('user_id', auth()->id())) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        // Get all band owners and members
+        $everyone = $band->everyone();
+
+        // Get unique users from owners and members
+        $userIds = $everyone->pluck('user_id')->unique();
+        $users = User::whereIn('id', $userIds)->get(['id', 'name', 'email']);
+
+        return response()->json([
+            'members' => $users
+        ]);
+    }
+
     public function grantCalendarAccess(Request $request, Bands $band)
     {
         $request->validate([

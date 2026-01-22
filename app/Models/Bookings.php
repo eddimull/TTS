@@ -208,6 +208,35 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
     }
 
     /**
+     * Get the total value from all events in this booking
+     * Returns amount in dollars as a float
+     * Falls back to booking price if no events have values
+     */
+    public function getTotalEventValueAttribute(): float
+    {
+        $events = $this->events()->get();
+
+        if ($events->isEmpty()) {
+            return is_string($this->price) ? floatval($this->price) : $this->price;
+        }
+
+        // Sum all event values (convert from cents to dollars)
+        $total = $events->sum(function ($event) {
+            if ($event->value === null) {
+                return 0;
+            }
+            return is_string($event->value) ? floatval($event->value) : $event->value;
+        });
+
+        // If no events have values, fall back to booking price
+        if ($total == 0) {
+            return is_string($this->price) ? floatval($this->price) : $this->price;
+        }
+
+        return $total;
+    }
+
+    /**
      * Get the expected deposit amount (50% of booking price)
      * Returns amount in dollars as a formatted string
      */

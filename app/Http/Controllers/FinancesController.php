@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BandPayoutConfig;
 use App\Services\FinanceServices;
 use App\Services\PaymentGroupService;
 use App\Services\PaymentGroupMemberService;
@@ -11,88 +12,65 @@ use Illuminate\Http\Request;
 
 class FinancesController extends Controller
 {
+    public function __construct(
+        private readonly FinanceServices $financeServices
+    ) {}
+
     public function index()
     {
-        return \redirect()->route('Revenue');
-        // $user = Auth::user();
-        // $bands = $user->bandOwner;
-
-        // $financeServices = new FinanceServices();
-        // $financialData = $this->getFinancialData($bands, $financeServices);
-
-        // return Inertia::render('Finances/Index', $financialData);
+        return redirect()->route('Revenue');
     }
 
     public function paidUnpaid(Request $request)
     {
-        $user = Auth::user();
-
-        $compareWithCurrent = filter_var($request->input('compare_with_current', false), FILTER_VALIDATE_BOOLEAN);
-
-        $financeServices = new FinanceServices();
-
-        // Always get ALL bookings (no snapshot filtering on backend)
-        $bands = $user->bandOwner()->get();
-        $allBookings = $financeServices->getPaidUnpaid($bands, null);
+        $bands = $this->getUserBands();
+        $allBookings = $this->financeServices->getPaidUnpaid($bands, null);
 
         return Inertia::render('Finances/PaidUnpaid', [
             'allBookings' => $allBookings,
             'snapshotDate' => $request->input('snapshot_date'),
-            'compareWithCurrent' => $compareWithCurrent,
+            'compareWithCurrent' => $request->boolean('compare_with_current'),
             'selectedYear' => $request->input('year')
         ]);
     }
 
     public function revenue()
     {
-        $user = Auth::user();
-        $bands = $user->bandOwner;
-
-        $financeServices = new FinanceServices();
-        $financialData = $financeServices->getBandRevenueByYear($bands);
+        $bands = $this->getUserBands();
+        $financialData = $this->financeServices->getBandRevenueByYear($bands);
 
         return Inertia::render('Finances/Revenue', ['revenue' => $financialData]);
     }
 
     public function unpaidServices()
     {
-        $user = Auth::user();
-        $bands = $user->bandOwner;
-
-        $financeServices = new FinanceServices();
-        $unpaid = $financeServices->getUnpaid($bands);
+        $bands = $this->getUserBands();
+        $unpaid = $this->financeServices->getUnpaid($bands);
 
         return Inertia::render('Finances/Unpaid', ['unpaid' => $unpaid]);
     }
 
     public function paidServices()
     {
-        $user = Auth::user();
-        $bands = $user->bandOwner;
-
-        $financeServices = new FinanceServices();
-        $paid = $financeServices->getPaid($bands);
+        $bands = $this->getUserBands();
+        $paid = $this->financeServices->getPaid($bands);
 
         return Inertia::render('Finances/Paid', ['paid' => $paid]);
     }
 
     public function payments()
     {
-        $user = Auth::user();
-        $bands = $user->bandOwner;
-
-        $financeServices = new FinanceServices();
-        $payments = $financeServices->getBandPayments($bands);
+        $bands = $this->getUserBands();
+        $payments = $this->financeServices->getBandPayments($bands);
 
         return Inertia::render('Finances/Payments', ['payments' => $payments]);
     }
 
     public function payoutCalculator()
     {
-        $user = Auth::user();
-        $bands = $user->bandOwner->load([
-            'owners.user', 
-            'members.user', 
+        $bands = $this->getUserBands()->load([
+            'owners.user',
+            'members.user',
             'activePayoutConfig',
             'paymentGroups.users'
         ]);
@@ -100,10 +78,17 @@ class FinancesController extends Controller
         return Inertia::render('Finances/PayoutCalculator', ['bands' => $bands]);
     }
 
-    public function storePaymentGroup(Request $request, $bandId)
+    public function payoutConfigurations()
     {
-        $service = app(PaymentGroupService::class);
-        
+        $bands = $this->getUserBands()->load([
+            'payoutConfigs' => fn($query) => $query->orderBy('is_active', 'desc')->orderBy('updated_at', 'desc')
+        ]);
+
+        return Inertia::render('Finances/PayoutConfigurations', ['bands' => $bands]);
+    }
+
+    public function storePaymentGroup(Request $request, $bandId, PaymentGroupService $service)
+    {
         try {
             $service->create($bandId, $request->all());
             return redirect()->back()->with('success', 'Payment group created successfully!');
@@ -112,10 +97,8 @@ class FinancesController extends Controller
         }
     }
 
-    public function updatePaymentGroup(Request $request, $bandId, $groupId)
+    public function updatePaymentGroup(Request $request, $bandId, $groupId, PaymentGroupService $service)
     {
-        $service = app(PaymentGroupService::class);
-        
         try {
             $service->update($bandId, $groupId, $request->all());
             return redirect()->back()->with('success', 'Payment group updated successfully!');
@@ -124,10 +107,8 @@ class FinancesController extends Controller
         }
     }
 
-    public function deletePaymentGroup($bandId, $groupId)
+    public function deletePaymentGroup($bandId, $groupId, PaymentGroupService $service)
     {
-        $service = app(PaymentGroupService::class);
-        
         try {
             $service->delete($bandId, $groupId);
             return redirect()->back()->with('success', 'Payment group deleted successfully!');
@@ -136,10 +117,8 @@ class FinancesController extends Controller
         }
     }
 
-    public function addUserToPaymentGroup(Request $request, $bandId, $groupId)
+    public function addUserToPaymentGroup(Request $request, $bandId, $groupId, PaymentGroupMemberService $service)
     {
-        $service = app(PaymentGroupMemberService::class);
-        
         try {
             $service->addMember($bandId, $groupId, $request->user_id, $request->only(['payout_type', 'payout_value', 'notes']));
             return redirect()->back()->with('success', 'User added to payment group!');
@@ -148,10 +127,8 @@ class FinancesController extends Controller
         }
     }
 
-    public function removeUserFromPaymentGroup($bandId, $groupId, $userId)
+    public function removeUserFromPaymentGroup($bandId, $groupId, $userId, PaymentGroupMemberService $service)
     {
-        $service = app(PaymentGroupMemberService::class);
-        
         try {
             $service->removeMember($bandId, $groupId, $userId);
             return redirect()->back()->with('success', 'User removed from payment group!');
@@ -160,10 +137,8 @@ class FinancesController extends Controller
         }
     }
 
-    public function updateUserInPaymentGroup(Request $request, $bandId, $groupId, $userId)
+    public function updateUserInPaymentGroup(Request $request, $bandId, $groupId, $userId, PaymentGroupMemberService $service)
     {
-        $service = app(PaymentGroupMemberService::class);
-        
         try {
             $service->updateMember($bandId, $groupId, $userId, $request->only(['payout_type', 'payout_value', 'notes']));
             return redirect()->back()->with('success', 'User payment configuration updated!');
@@ -174,7 +149,7 @@ class FinancesController extends Controller
 
     public function storePayoutConfig(Request $request, $bandId)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'band_cut_type' => 'required|in:percentage,fixed,tiered,none',
             'band_cut_value' => 'required|numeric|min:0',
@@ -191,34 +166,23 @@ class FinancesController extends Controller
             'notes' => 'nullable|string',
             'use_payment_groups' => 'boolean',
             'payment_group_config' => 'nullable|array',
+            'flow_diagram' => 'nullable|array',
         ]);
 
-        // Deactivate other configs if this one is active
         if ($request->is_active) {
-            \App\Models\BandPayoutConfig::where('band_id', $bandId)
-                ->where('is_active', true)
-                ->update(['is_active' => false]);
+            $this->deactivateOtherConfigs($bandId);
         }
 
-        $config = \App\Models\BandPayoutConfig::create([
+        BandPayoutConfig::create([
             'band_id' => $bandId,
-            'name' => $request->name,
+            ...$validated,
             'is_active' => $request->is_active ?? true,
-            'band_cut_type' => $request->band_cut_type,
-            'band_cut_value' => $request->band_cut_value,
-            'band_cut_tier_config' => $request->band_cut_tier_config,
-            'member_payout_type' => $request->member_payout_type,
-            'tier_config' => $request->tier_config,
-            'regular_member_count' => $request->regular_member_count ?? 0,
-            'production_member_count' => $request->production_member_count ?? 0,
-            'production_member_types' => $request->production_member_types,
-            'member_specific_config' => $request->member_specific_config,
-            'include_owners' => $request->include_owners ?? true,
-            'include_members' => $request->include_members ?? true,
-            'minimum_payout' => $request->minimum_payout ?? 0,
-            'notes' => $request->notes,
-            'use_payment_groups' => $request->use_payment_groups ?? false,
-            'payment_group_config' => $request->payment_group_config,
+            'regular_member_count' => $validated['regular_member_count'] ?? 0,
+            'production_member_count' => $validated['production_member_count'] ?? 0,
+            'include_owners' => $validated['include_owners'] ?? true,
+            'include_members' => $validated['include_members'] ?? true,
+            'minimum_payout' => $validated['minimum_payout'] ?? 0,
+            'use_payment_groups' => $validated['use_payment_groups'] ?? false,
         ]);
 
         return redirect()->back()->with('success', 'Payout configuration saved successfully!');
@@ -226,27 +190,22 @@ class FinancesController extends Controller
 
     public function updatePayoutConfig(Request $request, $bandId, $configId)
     {
-        $config = \App\Models\BandPayoutConfig::where('band_id', $bandId)
-            ->where('id', $configId)
-            ->firstOrFail();
+        $config = $this->findPayoutConfig($bandId, $configId);
 
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'band_cut_type' => 'required|in:percentage,fixed,tiered,none',
-            'band_cut_value' => 'required|numeric|min:0',
+        $validated = $request->validate([
+            'name' => 'sometimes|required|string|max:255',
+            'band_cut_type' => 'sometimes|required|in:percentage,fixed,tiered,none',
+            'band_cut_value' => 'sometimes|required|numeric|min:0',
             'band_cut_tier_config' => 'nullable|array',
-            'member_payout_type' => 'required|in:equal_split,percentage,fixed,tiered,member_specific',
+            'member_payout_type' => 'sometimes|required|in:equal_split,percentage,fixed,tiered,member_specific',
             'production_member_types' => 'nullable|array',
-            'use_payment_groups' => 'boolean',
+            'use_payment_groups' => 'sometimes|boolean',
             'payment_group_config' => 'nullable|array',
+            'flow_diagram' => 'nullable|array',
         ]);
 
-        // Deactivate other configs if this one is being activated
         if ($request->is_active && !$config->is_active) {
-            \App\Models\BandPayoutConfig::where('band_id', $bandId)
-                ->where('id', '!=', $configId)
-                ->where('is_active', true)
-                ->update(['is_active' => false]);
+            $this->deactivateOtherConfigs($bandId, $configId);
         }
 
         $config->update($request->all());
@@ -256,12 +215,63 @@ class FinancesController extends Controller
 
     public function deletePayoutConfig($bandId, $configId)
     {
-        $config = \App\Models\BandPayoutConfig::where('band_id', $bandId)
-            ->where('id', $configId)
-            ->firstOrFail();
-
-        $config->delete();
+        $this->findPayoutConfig($bandId, $configId)->delete();
 
         return redirect()->back()->with('success', 'Payout configuration deleted successfully!');
+    }
+
+    public function setActivePayoutConfig($bandId, $configId)
+    {
+        $config = $this->findPayoutConfig($bandId, $configId);
+
+        $this->deactivateOtherConfigs($bandId, $configId);
+        $config->update(['is_active' => true]);
+
+        return redirect()->back()->with('success', 'Payout configuration activated successfully!');
+    }
+
+    public function duplicatePayoutConfig($bandId, $configId)
+    {
+        $original = $this->findPayoutConfig($bandId, $configId);
+
+        $duplicate = $original->replicate();
+        $duplicate->name = $original->name . ' (Copy)';
+        $duplicate->is_active = false;
+        $duplicate->save();
+
+        return redirect()->back()->with('success', 'Payout configuration duplicated successfully!');
+    }
+
+    /**
+     * Get user's owned bands.
+     */
+    private function getUserBands()
+    {
+        return Auth::user()->bandOwner;
+    }
+
+    /**
+     * Find a payout config for the given band.
+     */
+    private function findPayoutConfig($bandId, $configId): BandPayoutConfig
+    {
+        return BandPayoutConfig::where('band_id', $bandId)
+            ->where('id', $configId)
+            ->firstOrFail();
+    }
+
+    /**
+     * Deactivate all other payout configs for a band.
+     */
+    private function deactivateOtherConfigs($bandId, $excludeConfigId = null): void
+    {
+        $query = BandPayoutConfig::where('band_id', $bandId)
+            ->where('is_active', true);
+
+        if ($excludeConfigId) {
+            $query->where('id', '!=', $excludeConfigId);
+        }
+
+        $query->update(['is_active' => false]);
     }
 }

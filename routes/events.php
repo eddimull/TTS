@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\EventsController;
 use App\Http\Controllers\EventAttachmentsController;
+use App\Http\Controllers\EventMembersController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('events')->group(function () {
@@ -31,5 +32,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/attachments/{attachment}', [EventAttachmentsController::class, 'show'])->name('events.attachments.show');
         Route::get('/attachments/{attachment}/download', [EventAttachmentsController::class, 'download'])->name('events.attachments.download');
         Route::delete('/attachments/{attachment}', [EventAttachmentsController::class, 'destroy'])->name('events.attachments.destroy');
+
+        // Event members (absences and substitutes)
+        Route::get('/{event}/members', [EventMembersController::class, 'index'])->name('events.members.index');
+        Route::post('/{event}/members/initialize', [EventMembersController::class, 'initializeFromBand'])->name('events.members.initialize');
+        Route::patch('/{event}/members/{user}/status', [EventMembersController::class, 'updateStatus'])->name('events.members.updateStatus');
+        Route::post('/{event}/members/substitutes', [EventMembersController::class, 'addSubstitute'])->name('events.members.addSubstitute');
+        Route::patch('/{event}/members/substitutes/{eventMember}', [EventMembersController::class, 'updateSubstitute'])->name('events.members.updateSubstitute');
+        Route::delete('/{event}/members/substitutes/{eventMember}', [EventMembersController::class, 'removeSubstitute'])->name('events.members.removeSubstitute');
     });
 });
