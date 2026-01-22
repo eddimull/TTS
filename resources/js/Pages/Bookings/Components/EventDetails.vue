@@ -61,6 +61,18 @@
         </div>
       </SectionCard>
 
+      <!-- Roster Section -->
+      <SectionCard
+        v-if="hasRoster"
+        title="Event Roster"
+        icon="users"1
+        :is-open="openSections.roster"
+        :view-mode="true"
+        @toggle="toggleSection('roster')"
+      >
+        <EventRoster :roster_members="event.roster_members" />
+      </SectionCard>
+
       <!-- Notes Section -->
       <SectionCard
         v-if="event.notes"
@@ -409,6 +421,7 @@ import { router } from '@inertiajs/vue3';
 import Button from 'primevue/button';
 import SectionCard from "./EventEditor/SectionCard.vue";
 import ActivityHistoryModal from "@/Components/ActivityHistoryModal.vue";
+import EventRoster from "./EventRoster.vue";
 import { DateTime } from 'luxon';
 
 const props = defineProps({
@@ -427,6 +440,7 @@ const showHistoryModal = ref(false);
 // Track which sections are open
 const openSections = reactive({
     basicInfo: true,
+    roster: true,
     notes: true,
     timeline: true, // Default open so timeline can auto-scroll
     attire: false,
@@ -457,6 +471,10 @@ onMounted(() => {
 });
 
 // Computed properties for conditional rendering
+const hasRoster = computed(() => {
+    return props.event.roster_members?.length > 0;
+});
+
 const hasTimeline = computed(() => {
     return props.event.additional_data?.times?.length > 0;
 });
