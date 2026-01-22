@@ -91,6 +91,10 @@ jobs:
             **/node_modules
           key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}
 
+      - name: Install NPM dependencies if cache miss
+        if: steps.cache-node-and-composer.outputs.cache-hit != 'true'
+        run: npm ci
+
       - name: Build assets
         env:
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
