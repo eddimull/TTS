@@ -524,9 +524,9 @@ class BandPayoutConfig extends Model
     {
         // Ensure band relationship is loaded for member access
         if (!$this->relationLoaded('band')) {
-            $this->load('band.owners', 'band.members');
+            $this->load('band.owners.user', 'band.members.user');
         } elseif (!$this->band->relationLoaded('owners') || !$this->band->relationLoaded('members')) {
-            $this->band->load('owners', 'members');
+            $this->band->load('owners.user', 'members.user');
         }
 
         $nodes = $this->flow_diagram['nodes'] ?? [];
@@ -655,12 +655,23 @@ class BandPayoutConfig extends Model
             // Calculate band cut
             $cutType = $nodeData['cutType'] ?? 'none';
             $cutValue = $nodeData['value'] ?? 0;
+            $tierConfig = $nodeData['tierConfig'] ?? null;
             $bandCut = 0;
 
             if ($cutType === 'percentage') {
                 $bandCut = ($amount * $cutValue) / 100;
             } elseif ($cutType === 'fixed') {
                 $bandCut = $cutValue;
+            } elseif ($cutType === 'tiered' && $tierConfig && is_array($tierConfig)) {
+                // Find applicable tier based on current amount
+                $applicableTier = $this->findApplicableTier($amount, $tierConfig);
+                if ($applicableTier) {
+                    if (($applicableTier['type'] ?? 'fixed') === 'percentage') {
+                        $bandCut = ($amount * ($applicableTier['value'] ?? 0)) / 100;
+                    } else {
+                        $bandCut = $applicableTier['value'] ?? 0;
+                    }
+                }
             }
 
             // Accumulate band cut
@@ -705,8 +716,8 @@ class BandPayoutConfig extends Model
                     foreach ($this->band->owners as $owner) {
                         $membersToDistribute->push([
                             'type' => 'owner',
-                            'name' => $owner->name,
-                            'user_id' => $owner->id,
+                            'name' => $owner->user->name,
+                            'user_id' => $owner->user->id,
                             'roster_member_id' => null,
                             'role' => null,
                             'band_role_id' => null,
@@ -719,8 +730,8 @@ class BandPayoutConfig extends Model
                     foreach ($this->band->members as $member) {
                         $membersToDistribute->push([
                             'type' => 'member',
-                            'name' => $member->name,
-                            'user_id' => $member->id,
+                            'name' => $member->user->name,
+                            'user_id' => $member->user->id,
                             'roster_member_id' => null,
                             'role' => null,
                             'band_role_id' => null,
