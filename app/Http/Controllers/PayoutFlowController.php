@@ -54,6 +54,11 @@ class PayoutFlowController extends Controller
             $tempConfigData = $this->flowToConfig($validated['nodes'], $validated['edges']);
             $tempConfig = new BandPayoutConfig($tempConfigData);
             $tempConfig->band_id = $band->id;
+            // Preserve the flow diagram so it uses flow-based calculation
+            $tempConfig->flow_diagram = [
+                'nodes' => $validated['nodes'],
+                'edges' => $validated['edges']
+            ];
 
             return response()->json($tempConfig->calculatePayouts($validated['test_amount']));
         } catch (\Exception $e) {
