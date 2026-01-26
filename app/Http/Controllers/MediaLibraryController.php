@@ -364,7 +364,7 @@ class MediaLibraryController extends Controller
             abort(403, 'You do not have permission to view this file');
         }
 
-        if ($media->media_type !== 'image') {
+        if ($media->media_type !== 'image' && $media->media_type !== 'video') {
             abort(404, 'Thumbnail not available for this file type');
         }
 

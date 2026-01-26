@@ -79,11 +79,11 @@ class MediaFile extends Model
     }
 
     /**
-     * Get the thumbnail URL for images
+     * Get the thumbnail URL for images and videos
      */
     public function getThumbnailUrlAttribute()
     {
-        if ($this->media_type === 'image') {
+        if ($this->media_type === 'image' || $this->media_type === 'video') {
             // Check if thumbnail exists
             $thumbnailPath = str_replace(
                 '.' . pathinfo($this->stored_filename, PATHINFO_EXTENSION),
@@ -156,8 +156,8 @@ class MediaFile extends Model
             try {
                 Storage::disk($media->disk)->delete($media->stored_filename);
 
-                // Delete thumbnail if it exists
-                if ($media->media_type === 'image') {
+                // Delete thumbnail if it exists (for images and videos)
+                if ($media->media_type === 'image' || $media->media_type === 'video') {
                     $thumbnailPath = str_replace(
                         '.' . pathinfo($media->stored_filename, PATHINFO_EXTENSION),
                         '_thumb.jpg',

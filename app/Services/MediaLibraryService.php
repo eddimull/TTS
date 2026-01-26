@@ -78,8 +78,8 @@ class MediaLibraryService
             'folder_path' => $additionalData['folder_path'] ?? null,
         ]);
 
-        // Generate thumbnail for images
-        if ($mediaType === 'image') {
+        // Generate thumbnail for images and videos
+        if ($mediaType === 'image' || $mediaType === 'video') {
             $this->generateThumbnail($mediaFile);
         }
 
@@ -164,41 +164,146 @@ class MediaLibraryService
     }
 
     /**
-     * Generate thumbnail for an image
+     * Generate thumbnail for an image or video
      *
      * @param \App\Models\MediaFile $mediaFile
      */
     private function generateThumbnail($mediaFile)
     {
-        // TODO: Implement thumbnail generation using Intervention/Image or GD
-        // For now, this is a placeholder. Install intervention/image package:
-        // composer require intervention/image
-        //
-        // Example implementation:
-        // $thumbnailPath = str_replace(
-        //     '.' . pathinfo($mediaFile->stored_filename, PATHINFO_EXTENSION),
-        //     '_thumb.jpg',
-        //     $mediaFile->stored_filename
-        // );
-        //
-        // try {
-        //     $image = Image::make(Storage::disk($mediaFile->disk)->get($mediaFile->stored_filename));
-        //     $image->fit(400, 400);
-        //
-        //     Storage::disk($mediaFile->disk)->put(
-        //         $thumbnailPath,
-        //         $image->encode('jpg', 85)->__toString()
-        //     );
-        // } catch (\Exception $e) {
-        //     \Log::error('Failed to generate thumbnail', [
-        //         'media_file_id' => $mediaFile->id,
-        //         'error' => $e->getMessage()
-        //     ]);
-        // }
+        $thumbnailPath = str_replace(
+            '.' . pathinfo($mediaFile->stored_filename, PATHINFO_EXTENSION),
+            '_thumb.jpg',
+            $mediaFile->stored_filename
+        );
 
-        \Log::info('Thumbnail generation skipped (not implemented yet)', [
-            'media_file_id' => $mediaFile->id
+        try {
+            \Log::info('Starting thumbnail generation', [
+                'media_file_id' => $mediaFile->id,
+                'media_type' => $mediaFile->media_type,
+                'source_file' => $mediaFile->stored_filename,
+                'thumbnail_path' => $thumbnailPath
+            ]);
+
+            // Verify source file exists
+            if (!Storage::disk($mediaFile->disk)->exists($mediaFile->stored_filename)) {
+                throw new \Exception("Source file not found: {$mediaFile->stored_filename}");
+            }
+
+            if ($mediaFile->media_type === 'video') {
+                // Use FFmpeg for video thumbnails
+                $this->generateVideoThumbnail($mediaFile, $thumbnailPath);
+            } else if ($mediaFile->media_type === 'image') {
+                // Use ImageMagick for image thumbnails
+                $this->generateImageThumbnail($mediaFile, $thumbnailPath);
+            }
+
+            // Verify thumbnail was created
+            if (!Storage::disk($mediaFile->disk)->exists($thumbnailPath)) {
+                throw new \Exception("Thumbnail file was not created");
+            }
+
+            \Log::info('Thumbnail generated successfully', [
+                'media_file_id' => $mediaFile->id,
+                'thumbnail_path' => $thumbnailPath,
+                'size' => Storage::disk($mediaFile->disk)->size($thumbnailPath)
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Thumbnail generation failed', [
+                'media_file_id' => $mediaFile->id,
+                'media_type' => $mediaFile->media_type,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Fallback: generate placeholder thumbnail
+            $this->generatePlaceholderThumbnail($mediaFile, $thumbnailPath);
+        }
+    }
+
+    /**
+     * Generate thumbnail for a video using FFmpeg
+     *
+     * @param \App\Models\MediaFile $mediaFile
+     * @param string $thumbnailPath
+     */
+    private function generateVideoThumbnail($mediaFile, $thumbnailPath)
+    {
+        $ffmpeg = \FFMpeg\FFMpeg::create([
+            'ffmpeg.binaries'  => '/usr/bin/ffmpeg',
+            'ffprobe.binaries' => '/usr/bin/ffprobe',
+            'timeout'          => 3600,
+            'ffmpeg.threads'   => 12,
         ]);
+
+        $video = $ffmpeg->open(Storage::disk($mediaFile->disk)->path($mediaFile->stored_filename));
+
+        // Generate thumbnail at 1 second mark
+        $frame = $video->frame(\FFMpeg\Coordinate\TimeCode::fromSeconds(1));
+        $frame->save(Storage::disk($mediaFile->disk)->path($thumbnailPath));
+    }
+
+    /**
+     * Generate thumbnail for an image using Imagick
+     *
+     * @param \App\Models\MediaFile $mediaFile
+     * @param string $thumbnailPath
+     */
+    private function generateImageThumbnail($mediaFile, $thumbnailPath)
+    {
+        $imagick = new \Imagick(Storage::disk($mediaFile->disk)->path($mediaFile->stored_filename));
+
+        // Resize to max 400x400 maintaining aspect ratio
+        $imagick->thumbnailImage(400, 400, true);
+
+        // Set JPEG quality
+        $imagick->setImageCompressionQuality(85);
+        $imagick->setImageFormat('jpeg');
+
+        // Save the thumbnail
+        $imagick->writeImage(Storage::disk($mediaFile->disk)->path($thumbnailPath));
+        $imagick->clear();
+        $imagick->destroy();
+    }
+
+    /**
+     * Generate a placeholder thumbnail when processing fails
+     *
+     * @param \App\Models\MediaFile $mediaFile
+     * @param string $thumbnailPath
+     */
+    private function generatePlaceholderThumbnail($mediaFile, $thumbnailPath)
+    {
+        try {
+            // Create a simple placeholder image
+            $image = imagecreatetruecolor(640, 360);
+            $bgColor = imagecolorallocate($image, 200, 200, 200);
+            $textColor = imagecolorallocate($image, 100, 100, 100);
+
+            imagefill($image, 0, 0, $bgColor);
+
+            // Add text
+            $text = $mediaFile->media_type === 'video' ? 'VIDEO' : 'IMAGE';
+            imagestring($image, 5, 280, 175, $text, $textColor);
+
+            // Save as JPEG
+            ob_start();
+            imagejpeg($image, null, 80);
+            $imageData = ob_get_clean();
+            imagedestroy($image);
+
+            Storage::disk($mediaFile->disk)->put($thumbnailPath, $imageData);
+
+            \Log::info('Placeholder thumbnail generated', [
+                'media_file_id' => $mediaFile->id,
+                'thumbnail_path' => $thumbnailPath
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to generate placeholder thumbnail', [
+                'media_file_id' => $mediaFile->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     /**
