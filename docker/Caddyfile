@@ -1,0 +1,45 @@
+{
+    # Global Caddy configuration
+    auto_https off
+    admin off
+
+    frankenphp {
+        num_threads 2
+    }
+}
+
+# HTTP server on port 8080
+:8080 {
+    root * /var/www/public
+
+    encode gzip
+
+    # Laravel pretty URLs
+    php_server
+
+    # Logging
+    log {
+        output stdout
+        format console
+        level INFO
+    }
+}
+
+# HTTPS server on port 8443 with self-signed certificate
+:8443 {
+    tls /data/caddy/ssl/cert.crt /data/caddy/ssl/cert.key
+
+    root * /var/www/public
+
+    encode gzip
+
+    # Laravel pretty URLs
+    php_server
+
+    # Logging
+    log {
+        output stdout
+        format console
+        level INFO
+    }
+}
