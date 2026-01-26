@@ -1,0 +1,66 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build artifacts
+public/build/
+public/hot
+
+# Storage and cache
+storage/app/*
+!storage/app/.gitignore
+!storage/app/public
+storage/framework/cache/*
+!storage/framework/cache/.gitignore
+storage/framework/sessions/*
+!storage/framework/sessions/.gitignore
+storage/framework/testing/*
+!storage/framework/testing/.gitignore
+storage/framework/views/*
+!storage/framework/views/.gitignore
+storage/logs/*
+!storage/logs/.gitignore
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Testing
+coverage/
+.phpunit.result.cache
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files (don't need inside container)
+docker-compose.yml
+docker-compose.*.yml
+
+# Documentation that's not needed in the image
+README.md
+*.md
+!CLAUDE.md
+
+# Temporary files
+tmp/
+temp/
+*.log
+
+# Task Master (if present)
+.taskmaster/
+.claude/
+.mcp.json
