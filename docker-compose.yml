@@ -4,15 +4,26 @@ services:
         build:
             context: .
             dockerfile: ./docker/app.dockerfile
+        dns:
+            - 1.1.1.1
+            - 1.0.0.1
         environment:
+            # Puppeteer/Chrome configuration for PDF generation
             PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
             PUPPETEER_EXECUTABLE_PATH: "/usr/bin/google-chrome"
             CHROME_CONFIG_HOME: "/tmp/.config"
             XDG_CONFIG_HOME: "/var/www/@tmp/.chromium"
             XDG_CACHE_HOME: "/var/www/@tmp/.chromium"
+            # Laravel environment (pass through from .env)
+            APP_ENV: "${APP_ENV:-local}"
+            APP_KEY: "${APP_KEY}"
+            APP_DEBUG: "${APP_DEBUG:-true}"
+            # SSL configuration for Caddy
+            SSL_MODE: "off"
         working_dir: /var/www
         volumes:
             - ./:/var/www
+            - ./docker/Caddyfile:/etc/frankenphp/Caddyfile:ro
         networks:
             - sail
         depends_on:
@@ -20,21 +31,8 @@ services:
             - redis
             - selenium
         ports:
-            - 8000:9000
-    web:
-        build:
-            context: .
-            dockerfile: ./docker/web.dockerfile
-        working_dir: /var/www
-        volumes:
-            - ./:/var/www
-        networks:
-            - sail
-        depends_on:
-            - app
-        ports:
-            - 8080:80
-            - 8710:443
+            - 8080:8080
+            - 8710:8443
     mysql:
         image: 'mysql:8.1'
         ports:
@@ -126,13 +124,13 @@ services:
             NGROK_AUTHTOKEN: ${NGROK_AUTHTOKEN}
             NGROK_URL: ${NGROK_URL}
         depends_on:
-            - web
+            - app
         networks:
             - sail
         command:
             - "http"
             - "--url=${NGROK_URL}"
-            - "http://web:80"
+            - "http://app:80"
 
 networks:
     sail:
