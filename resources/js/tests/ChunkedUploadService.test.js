@@ -98,6 +98,10 @@ describe('ChunkedUploadService', () => {
                     filesize: mockFile.size,
                     mime_type: 'video/mp4',
                     total_chunks: 2,
+                }),
+                expect.objectContaining({
+                    timeout: expect.any(Number),
+                    signal: expect.any(Object),
                 })
             );
 
@@ -110,7 +114,12 @@ describe('ChunkedUploadService', () => {
 
             // Verify complete was called
             expect(axios.post).toHaveBeenCalledWith(
-                `/api/chunked-uploads/${uploadId}/complete`
+                `/api/chunked-uploads/${uploadId}/complete`,
+                expect.any(Object),
+                expect.objectContaining({
+                    timeout: expect.any(Number),
+                    signal: expect.any(Object),
+                })
             );
 
             // Verify callbacks
@@ -227,7 +236,11 @@ describe('ChunkedUploadService', () => {
 
             // Verify status was fetched
             expect(axios.get).toHaveBeenCalledWith(
-                `/api/chunked-uploads/${uploadId}`
+                `/api/chunked-uploads/${uploadId}`,
+                expect.objectContaining({
+                    timeout: expect.any(Number),
+                    signal: expect.any(Object),
+                })
             );
 
             // Verify remaining chunks were uploaded
