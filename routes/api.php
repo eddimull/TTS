@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\BookingsController;
 use App\Http\Controllers\Api\EventsController;
 use App\Http\Controllers\ChartsController;
 use App\Http\Controllers\RehearsalController;
+use App\Http\Controllers\ChunkedUploadController;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,6 +42,12 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/charts', [ChartsController::class, 'getChartsForUser']);
     Route::get('/rehearsal/{rehearsal_id}', [RehearsalController::class, 'getRehearsalData'])->name('api.rehearsal.get');
     Route::get('/rehearsal-schedule/{rehearsal_schedule_id}/band/{band_id}', [RehearsalController::class, 'getRehearsalScheduleData'])->name('api.rehearsal-schedule.get');
+
+    // Chunked upload routes
+    Route::post('/chunked-uploads/initiate', [ChunkedUploadController::class, 'initiate'])->name('chunked-uploads.initiate');
+    Route::get('/chunked-uploads/{uploadId}', [ChunkedUploadController::class, 'getStatus'])->name('chunked-uploads.status');
+    Route::post('/chunked-uploads/{uploadId}/chunk', [ChunkedUploadController::class, 'uploadChunk'])->name('chunked-uploads.chunk');
+    Route::post('/chunked-uploads/{uploadId}/complete', [ChunkedUploadController::class, 'complete'])->name('chunked-uploads.complete');
 });
 
 Route::post('/searchLocations', [LocationController::class, 'searchLocations'])->name('searchLocations');

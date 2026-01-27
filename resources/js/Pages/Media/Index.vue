@@ -428,9 +428,10 @@
                     class="pi pi-google text-sm text-blue-500 absolute top-0 right-0 bg-white dark:bg-gray-800 rounded-full p-0.5"
                   />
                 </div>
+                <!-- Use thumbnail for images and videos -->
                 <img
-                  v-else-if="slotProps.data.media_type === 'image'"
-                  :src="slotProps.data.url"
+                  v-else-if="slotProps.data.media_type === 'image' || slotProps.data.media_type === 'video'"
+                  :src="slotProps.data.thumbnail_url || slotProps.data.url"
                   class="w-16 h-16 object-cover rounded cursor-pointer"
                 />
                 <div
@@ -547,7 +548,7 @@
               mode="advanced"
               :multiple="true"
               accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx"
-              :max-file-size="104857600"
+              :max-file-size="maxFileSize"
               :show-upload-button="false"
               :show-cancel-button="false"
               @select="onFileSelect"
@@ -556,6 +557,9 @@
                 <p>Drag and drop files here to upload.</p>
               </template>
             </FileUpload>
+            <small class="text-gray-500">
+              Max file size: 5GB. Files over 100MB will use chunked upload with progress tracking.
+            </small>
           </div>
 
           <!-- Folder selection -->
@@ -617,9 +621,47 @@
           </div>
 
           <!-- Upload progress -->
-          <div v-if="uploading" class="space-y-2">
-            <ProgressBar :value="uploadProgress" />
-            <p class="text-sm text-gray-600">Uploading files...</p>
+          <div v-if="uploading" class="space-y-3">
+            <ProgressBar :value="Math.round(uploadProgress)" />
+            <div class="flex items-center justify-between">
+              <p class="text-sm text-gray-600">
+                <template v-if="isChunkedUpload">
+                  Uploading chunk {{ currentChunk }} of {{ totalChunks }}... ({{ Math.round(uploadProgress) }}%)
+                </template>
+                <template v-else>
+                  Uploading files... ({{ Math.round(uploadProgress) }}%)
+                </template>
+              </p>
+              <Button
+                v-if="isChunkedUpload"
+                label="Cancel"
+                icon="pi pi-times"
+                size="small"
+                severity="danger"
+                text
+                @click="cancelChunkedUpload"
+              />
+            </div>
+          </div>
+
+          <!-- Upload error with retry -->
+          <div v-if="uploadError" class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+            <div class="flex items-start gap-3">
+              <i class="pi pi-exclamation-triangle text-red-600 dark:text-red-400 mt-0.5"></i>
+              <div class="flex-1">
+                <p class="text-sm text-red-800 dark:text-red-200 font-medium">Upload Failed</p>
+                <p class="text-sm text-red-700 dark:text-red-300 mt-1">{{ uploadError }}</p>
+              </div>
+              <Button
+                v-if="isChunkedUpload && currentUploadService"
+                label="Retry"
+                icon="pi pi-refresh"
+                size="small"
+                severity="danger"
+                outlined
+                @click="retryChunkedUpload"
+              />
+            </div>
           </div>
         </div>
 
@@ -787,6 +829,10 @@ import BulkOperationsToolbar from './Components/BulkOperationsToolbar.vue';
 import MediaPreviewDialog from './Components/MediaPreviewDialog.vue';
 import DriveConnectionsPanel from './Components/DriveConnectionsPanel.vue';
 import FolderBreadcrumbs from './Components/FolderBreadcrumbs.vue';
+import { ChunkedUploadService } from '@/services/ChunkedUploadService';
+import { useUploadQueue } from '@/composables/useUploadQueue';
+import { useMediaDragDrop } from '@/composables/useMediaDragDrop';
+import { usePage } from '@inertiajs/vue3';
 import { debounce } from 'lodash';
 
 export default {
@@ -838,13 +884,18 @@ export default {
       moveDestination: null,
       uploading: false,
       uploadProgress: 0,
+      uploadError: null,
+      currentChunk: 0,
+      totalChunks: 0,
+      currentUploadService: null,
+      isChunkedUpload: false,
       newFolderName: '',
       uploadForm: {
         folder_path: null,
         booking_id: null,
         event_id: null,
       },
-      localFilters: { 
+      localFilters: {
         ...this.filters,
         tags: this.parseTagsFilter(this.filters?.tags)
       },
@@ -856,13 +907,54 @@ export default {
         { label: 'Documents', value: 'document' },
         { label: 'Other', value: 'other' }
       ],
-      isDraggingFiles: false,
-      dragCounter: 0,
       isApplyingFilters: false,
-      dragOverFolderCard: null
+      dragOverFolderCard: null,
+      maxFileSize: 5368709120, // 5 GB (supported via chunked upload for files >100MB)
+      isReloadPending: false, // Flag to prevent multiple simultaneous reloads
+      reloadTimeoutId: null // Store timeout ID for cleanup
+    };
+  },
+  setup(props) {
+    const { addFiles, uploadQueue } = useUploadQueue();
+    const page = usePage();
+
+    // Store band_id globally for upload queue
+    if (typeof window !== 'undefined') {
+      window.bandId = null; // Will be set in mounted()
+    }
+
+    // Initialize drag and drop functionality
+    const dragDropState = useMediaDragDrop({
+      canUpload: () => {
+        // Check permissions and that we're not in a synced folder
+        const user = page.props.auth?.user
+        const canWrite = user?.navigation?.Media?.write || false
+
+        // Get current folder from filters
+        const currentFolder = props.filters?.folder_path || null
+        const isSyncedFolder = props.folders?.some(
+          f => f.path === currentFolder && f.is_drive_synced
+        ) || false
+
+        return canWrite && !isSyncedFolder
+      },
+      bandId: props.currentBandId,
+      folderPath: () => props.filters?.folder_path || null,
+      onFilesDropped: (files, folderPath) => {
+        console.log(`Dropped ${files.length} file(s) into folder: ${folderPath || 'root'}`)
+      }
+    });
+
+    return {
+      addFilesToQueue: addFiles,
+      dragDropIsDragging: dragDropState.isDraggingFiles,
+      uploadQueue
     };
   },
   computed: {
+    isDraggingFiles() {
+      return this.dragDropIsDragging;
+    },
     hasFiles() {
       return this.selectedFiles.length > 0;
     },
@@ -953,18 +1045,25 @@ export default {
     this.debouncedSearch = debounce(this.applyFilters, 500);
   },
   mounted() {
-    // Add window-level drag and drop event listeners
-    window.addEventListener('dragenter', this.handleWindowDragEnter);
-    window.addEventListener('dragleave', this.handleWindowDragLeave);
-    window.addEventListener('dragover', this.handleWindowDragOver);
-    window.addEventListener('drop', this.handleWindowDrop);
+    console.log('[Media] Component mounted, adding event listener');
+    // Set global band ID for upload queue
+    window.bandId = this.currentBandId;
+
+    // Remove any existing listener first (in case of improper cleanup)
+    window.removeEventListener('upload-completed', this.handleUploadCompleted);
+
+    // Listen for upload completion events
+    window.addEventListener('upload-completed', this.handleUploadCompleted);
   },
-  unmounted() {
+  beforeUnmount() {
+    console.log('[Media] Component before unmount, removing event listener');
     // Clean up event listeners
-    window.removeEventListener('dragenter', this.handleWindowDragEnter);
-    window.removeEventListener('dragleave', this.handleWindowDragLeave);
-    window.removeEventListener('dragover', this.handleWindowDragOver);
-    window.removeEventListener('drop', this.handleWindowDrop);
+    window.removeEventListener('upload-completed', this.handleUploadCompleted);
+    // Clear any pending reload timeout
+    if (this.reloadTimeoutId) {
+      clearTimeout(this.reloadTimeoutId);
+      this.reloadTimeoutId = null;
+    }
   },
   methods: {
     parseTagsFilter(tags) {
@@ -1012,9 +1111,25 @@ export default {
     async uploadFiles() {
       if (!this.hasFiles) return;
 
-      this.uploading = true;
-      this.uploadProgress = 0;
+      // Add files to upload queue
+      this.addFilesToQueue(
+        this.selectedFiles,
+        this.uploadForm.folder_path
+      );
 
+      // Close dialog and reset
+      this.resetUploadDialog();
+
+      // Show success message
+      this.$toast?.add({
+        severity: 'info',
+        summary: 'Upload Started',
+        detail: `${this.selectedFiles.length} file(s) added to upload queue`,
+        life: 3000
+      });
+    },
+
+    async uploadFilesStandard() {
       const formData = new FormData();
       formData.append('band_id', this.currentBandId);
 
@@ -1045,19 +1160,10 @@ export default {
             this.uploadProgress = Math.round(progress.percentage);
           },
           onSuccess: () => {
-            this.showUploadDialog = false;
-            this.selectedFiles = [];
-            this.uploadForm = {
-              folder_path: null,
-              booking_id: null,
-              event_id: null,
-            };
-            if (this.$refs.fileUpload) {
-              this.$refs.fileUpload.clear();
-            }
+            this.resetUploadDialog();
           },
           onError: (errors) => {
-            alert('Upload failed: ' + Object.values(errors).join(', '));
+            this.uploadError = Object.values(errors).join(', ');
           },
           onFinish: () => {
             this.uploading = false;
@@ -1065,7 +1171,100 @@ export default {
         });
       } catch (error) {
         console.error('Upload error:', error);
+        this.uploadError = error.message || 'Upload failed';
         this.uploading = false;
+      }
+    },
+
+    async uploadFilesChunked(largeFiles) {
+      this.isChunkedUpload = true;
+
+      try {
+        // Upload each large file using chunked upload
+        for (const file of largeFiles) {
+          // Validate file size (5GB max)
+          if (file.size > 5 * 1024 * 1024 * 1024) {
+            this.uploadError = `File "${file.name}" exceeds 5GB limit`;
+            this.uploading = false;
+            this.isChunkedUpload = false;
+            return;
+          }
+
+          this.currentUploadService = new ChunkedUploadService(file, {
+            folderPath: this.uploadForm.folder_path || null,
+            onProgress: (progress) => {
+              this.uploadProgress = progress.percentage;
+              this.currentChunk = progress.uploadedChunks;
+              this.totalChunks = progress.totalChunks;
+            },
+            onError: (error) => {
+              console.error('Chunked upload error:', error);
+              this.uploadError = error.response?.data?.error || error.message || 'Upload failed';
+            },
+            onComplete: (media) => {
+              console.log('Chunked upload complete:', media);
+              // Refresh the page to show new media
+              this.$inertia.reload({ only: ['media', 'quota'] });
+            }
+          });
+
+          await this.currentUploadService.start();
+        }
+
+        // Success - reset dialog
+        this.resetUploadDialog();
+
+      } catch (error) {
+        console.error('Chunked upload error:', error);
+        this.uploadError = error.message || 'Upload failed';
+      } finally {
+        this.uploading = false;
+        this.isChunkedUpload = false;
+        this.currentUploadService = null;
+      }
+    },
+
+    cancelChunkedUpload() {
+      if (this.currentUploadService) {
+        this.currentUploadService.abort();
+        this.uploading = false;
+        this.isChunkedUpload = false;
+        this.uploadError = 'Upload cancelled';
+      }
+    },
+
+    async retryChunkedUpload() {
+      if (this.currentUploadService && this.currentUploadService.uploadId) {
+        this.uploadError = null;
+        this.uploading = true;
+
+        try {
+          await this.currentUploadService.resume();
+          this.resetUploadDialog();
+        } catch (error) {
+          console.error('Retry failed:', error);
+          this.uploadError = error.message || 'Retry failed';
+          this.uploading = false;
+        }
+      }
+    },
+
+    resetUploadDialog() {
+      this.showUploadDialog = false;
+      this.selectedFiles = [];
+      this.uploadProgress = 0;
+      this.uploadError = null;
+      this.currentChunk = 0;
+      this.totalChunks = 0;
+      this.isChunkedUpload = false;
+      this.currentUploadService = null;
+      this.uploadForm = {
+        folder_path: null,
+        booking_id: null,
+        event_id: null,
+      };
+      if (this.$refs.fileUpload) {
+        this.$refs.fileUpload.clear();
       }
     },
     applyFilters() {
@@ -1200,30 +1399,7 @@ export default {
       this.uploadForm.folder_path = this.currentFolder;
       this.showUploadDialog = true;
     },
-    handleWindowDragEnter(e) {
-      // Check if user has write permissions and not in synced folder
-      if (!this.canUploadOrCreate) {
-        return;
-      }
-
-      // Check if dragging files (not dragging media cards for reordering)
-      if (e.dataTransfer.types.includes('Files')) {
-        this.dragCounter++;
-        this.isDraggingFiles = true;
-      }
-    },
-    handleWindowDragLeave(e) {
-      this.dragCounter--;
-      if (this.dragCounter === 0) {
-        this.isDraggingFiles = false;
-      }
-    },
-    handleWindowDragOver(e) {
-      // Prevent default to allow drop
-      if (this.isDraggingFiles) {
-        e.preventDefault();
-      }
-    },    clearFilters() {
+    clearFilters() {
       this.localFilters = {
         search: '',
         media_type: null,
@@ -1239,58 +1415,39 @@ export default {
     getTagStyle(tagId) {
       const tag = this.tags.find(t => t.id === tagId);
       return tag && tag.color ? { backgroundColor: tag.color } : { backgroundColor: '#3B82F6' };
-    },    async handleWindowDrop(e) {
-      e.preventDefault();
-      this.isDraggingFiles = false;
-      this.dragCounter = 0;
+    },
+    handleUploadCompleted(event) {
+      console.log('[Media] Upload completed event received', event.detail);
 
-      // Check if user has write permissions and not in synced folder
-      if (!this.canUploadOrCreate) {
-        return;
+      // Clear any existing timeout
+      if (this.reloadTimeoutId) {
+        clearTimeout(this.reloadTimeoutId);
       }
 
-      const files = Array.from(e.dataTransfer.files);
-      if (files.length === 0) return;
+      // Use a shorter debounce but check if uploads are truly complete
+      this.reloadTimeoutId = setTimeout(() => {
+        // Check if there are any pending or uploading items
+        const hasActiveUploads = this.uploadQueue?.some(
+          item => item.status === 'uploading' || item.status === 'pending'
+        );
 
-      // Upload files to current folder
-      this.uploading = true;
-      this.uploadProgress = 0;
+        if (hasActiveUploads) {
+          console.log('[Media] Uploads still in progress, delaying reload');
+          // Re-schedule check
+          this.handleUploadCompleted(event);
+          return;
+        }
 
-      const formData = new FormData();
-      formData.append('band_id', this.currentBandId);
-
-      // Add current folder path if exists
-      if (this.currentFolder) {
-        formData.append('folder_path', this.currentFolder);
-      }
-
-      files.forEach((file, index) => {
-        formData.append(`files[${index}]`, file);
-      });
-
-      try {
-        await this.$inertia.post(this.route('media.upload'), formData, {
-          forceFormData: true,
-          preserveState: true,
+        console.log('[Media] All uploads complete, executing reload');
+        this.isReloadPending = false;
+        this.$inertia.reload({
+          only: ['media', 'quota', 'subfolders'],
           preserveScroll: true,
-          onProgress: (progress) => {
-            this.uploadProgress = Math.round(progress.percentage);
-          },
-          onSuccess: () => {
-            // Reload to show new files
-          },
-          onError: (errors) => {
-            alert('Upload failed: ' + Object.values(errors).join(', '));
-          },
-          onFinish: () => {
-            this.uploading = false;
-            this.uploadProgress = 0;
-          }
+          preserveState: true
         });
-      } catch (error) {
-        console.error('Upload error:', error);
-        this.uploading = false;
-      }
+      }, 500); // Shorter timeout since we check queue status
+
+      this.isReloadPending = true;
     },
     changeBand(event) {
       // Reload the page with the new band_id

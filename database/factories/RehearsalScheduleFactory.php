@@ -12,12 +12,16 @@ class RehearsalScheduleFactory extends Factory
 
     public function definition()
     {
+        $frequency = $this->faker->randomElement(['weekly', 'biweekly', 'monthly', 'custom']);
+
         return [
             'band_id' => Bands::factory(),
             'name' => 'Weekly Rehearsal',
             'description' => $this->faker->optional()->sentence,
-            'frequency' => $this->faker->randomElement(['weekly', 'biweekly', 'monthly', 'custom']),
-            'day_of_week' => $this->faker->numberBetween(0, 6),
+            'frequency' => $frequency,
+            'day_of_week' => in_array($frequency, ['weekly', 'biweekly'])
+                ? $this->faker->randomElement(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'])
+                : null,
             'selected_days' => null,
             'day_of_month' => null,
             'monthly_pattern' => null,
@@ -53,7 +57,7 @@ class RehearsalScheduleFactory extends Factory
         return $this->state(function (array $attributes) {
             return [
                 'frequency' => 'weekly',
-                'day_of_week' => 3, // Wednesday
+                'day_of_week' => 'wednesday',
             ];
         });
     }
