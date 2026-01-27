@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b5388300c3e4cbf01aa4dc48f3d5e5b7",
+    "content-hash": "f41a3ecc0e7adca8f5e79f9c9e0abe9d",
     "packages": [
         {
             "name": "alexpechkarev/geometry-library",
@@ -2493,6 +2493,85 @@
                 "source": "https://github.com/laravel/framework"
             },
             "time": "2025-10-21T15:15:41+00:00"
+        },
+        {
+            "name": "laravel/horizon",
+            "version": "v5.43.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/laravel/horizon.git",
+                "reference": "2a04285ba83915511afbe987cbfedafdc27fd2de"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/laravel/horizon/zipball/2a04285ba83915511afbe987cbfedafdc27fd2de",
+                "reference": "2a04285ba83915511afbe987cbfedafdc27fd2de",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "ext-pcntl": "*",
+                "ext-posix": "*",
+                "illuminate/contracts": "^9.21|^10.0|^11.0|^12.0",
+                "illuminate/queue": "^9.21|^10.0|^11.0|^12.0",
+                "illuminate/support": "^9.21|^10.0|^11.0|^12.0",
+                "nesbot/carbon": "^2.17|^3.0",
+                "php": "^8.0",
+                "ramsey/uuid": "^4.0",
+                "symfony/console": "^6.0|^7.0",
+                "symfony/error-handler": "^6.0|^7.0",
+                "symfony/polyfill-php83": "^1.28",
+                "symfony/process": "^6.0|^7.0"
+            },
+            "require-dev": {
+                "mockery/mockery": "^1.0",
+                "orchestra/testbench": "^7.55|^8.36|^9.15|^10.8",
+                "phpstan/phpstan": "^1.10|^2.0",
+                "predis/predis": "^1.1|^2.0|^3.0"
+            },
+            "suggest": {
+                "ext-redis": "Required to use the Redis PHP driver.",
+                "predis/predis": "Required when not using the Redis PHP driver (^1.1|^2.0|^3.0)."
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Horizon": "Laravel\\Horizon\\Horizon"
+                    },
+                    "providers": [
+                        "Laravel\\Horizon\\HorizonServiceProvider"
+                    ]
+                },
+                "branch-alias": {
+                    "dev-master": "6.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Laravel\\Horizon\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Taylor Otwell",
+                    "email": "taylor@laravel.com"
+                }
+            ],
+            "description": "Dashboard and code-driven configuration for Laravel queues.",
+            "keywords": [
+                "laravel",
+                "queue"
+            ],
+            "support": {
+                "issues": "https://github.com/laravel/horizon/issues",
+                "source": "https://github.com/laravel/horizon/tree/v5.43.0"
+            },
+            "time": "2026-01-15T15:10:56+00:00"
         },
         {
             "name": "laravel/prompts",
@@ -10611,6 +10690,74 @@
                 "source": "https://github.com/laravel/sail"
             },
             "time": "2025-09-23T13:44:39+00:00"
+        },
+        {
+            "name": "laravel/telescope",
+            "version": "v5.16.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/laravel/telescope.git",
+                "reference": "dc114b94f025b8c16b5eb3194b4ddc0e46d5310c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/laravel/telescope/zipball/dc114b94f025b8c16b5eb3194b4ddc0e46d5310c",
+                "reference": "dc114b94f025b8c16b5eb3194b4ddc0e46d5310c",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "laravel/framework": "^8.37|^9.0|^10.0|^11.0|^12.0",
+                "php": "^8.0",
+                "symfony/console": "^5.3|^6.0|^7.0",
+                "symfony/var-dumper": "^5.0|^6.0|^7.0"
+            },
+            "require-dev": {
+                "ext-gd": "*",
+                "guzzlehttp/guzzle": "^6.0|^7.0",
+                "laravel/octane": "^1.4|^2.0",
+                "orchestra/testbench": "^6.47.1|^7.55|^8.36|^9.15|^10.8",
+                "phpstan/phpstan": "^1.10"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Laravel\\Telescope\\TelescopeServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Laravel\\Telescope\\": "src/",
+                    "Laravel\\Telescope\\Database\\Factories\\": "database/factories/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Taylor Otwell",
+                    "email": "taylor@laravel.com"
+                },
+                {
+                    "name": "Mohamed Said",
+                    "email": "mohamed@laravel.com"
+                }
+            ],
+            "description": "An elegant debug assistant for the Laravel framework.",
+            "keywords": [
+                "debugging",
+                "laravel",
+                "monitoring"
+            ],
+            "support": {
+                "issues": "https://github.com/laravel/telescope/issues",
+                "source": "https://github.com/laravel/telescope/tree/v5.16.1"
+            },
+            "time": "2025-12-30T17:31:31+00:00"
         },
         {
             "name": "mockery/mockery",

@@ -29,36 +29,36 @@
         <!-- Image preview -->
         <img
           v-if="media.media_type === 'image'"
-          :src="media.url"
+          :src="media.thumbnail_url || media.url"
           :alt="media.title"
           class="w-full h-full object-cover"
         />
 
-        <!-- PDF preview -->
+        <!-- PDF preview - show icon instead of loading full PDF -->
         <div
           v-else-if="isPdfFile"
-          class="w-full h-full flex items-center justify-center bg-white"
+          class="w-full h-full flex items-center justify-center bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900 dark:to-red-800"
         >
-          <pdf
-            :src="media.url"
-            :page="1"
-            class="max-w-full max-h-full"
-            style="transform: scale(0.3); transform-origin: center;"
-          />
+          <i class="pi pi-file-pdf text-6xl text-red-500" />
         </div>
 
-        <!-- Video preview -->
+        <!-- Video preview - use thumbnail instead of loading video -->
         <div
           v-else-if="media.media_type === 'video'"
           class="relative w-full h-full bg-black"
         >
-          <video
-            :src="media.url"
+          <img
+            v-if="media.thumbnail_url"
+            :src="media.thumbnail_url"
+            :alt="media.title"
             class="w-full h-full object-cover"
-            muted
-            preload="metadata"
-            @loadeddata="onVideoLoaded"
           />
+          <div
+            v-else
+            class="w-full h-full flex items-center justify-center"
+          >
+            <i class="pi pi-video text-6xl text-gray-400" />
+          </div>
           <!-- Play icon overlay -->
           <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div class="bg-black bg-opacity-50 rounded-full p-4">
@@ -161,7 +161,6 @@ import ContextMenu from 'primevue/contextmenu';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import Checkbox from 'primevue/checkbox';
-import pdf from "@jbtje/vite-vue3pdf";
 
 export default {
   name: 'MediaCard',
@@ -170,8 +169,7 @@ export default {
     ContextMenu,
     Button,
     Tag,
-    Checkbox,
-    pdf
+    Checkbox
   },
   props: {
     media: {

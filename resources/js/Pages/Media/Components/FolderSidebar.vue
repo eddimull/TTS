@@ -83,10 +83,25 @@
               <!-- Spacer for folders without children -->
               <span v-else class="w-3 flex-shrink-0"></span>
 
-              <i :class="isFolderExpanded(folder.path) && folder.has_children ? 'pi pi-folder-open' : 'pi pi-folder'" class="text-sm flex-shrink-0" />
-              <span class="text-sm truncate">{{ folder.name }}</span>
-              <i v-if="folder.is_system" class="pi pi-lock text-xs text-gray-400 flex-shrink-0" v-tooltip.right="'System folder'" />
+              <i
+                v-if="folder.path === 'event_media' || folder.is_event_folder"
+                class="pi pi-share-alt text-sm flex-shrink-0"
+                :class="folder.path === 'event_media' ? 'text-green-600 dark:text-green-400' : 'text-green-500'"
+              />
+              <i
+                v-else
+                :class="isFolderExpanded(folder.path) && folder.has_children ? 'pi pi-folder-open' : 'pi pi-folder'"
+                class="text-sm flex-shrink-0"
+              />
+              <span
+                class="text-sm truncate"
+                :class="folder.path === 'event_media' ? 'font-semibold text-green-700 dark:text-green-300' : ''"
+              >
+                {{ folder.path === 'event_media' ? 'Event Media' : folder.name }}
+              </span>
+              <i v-if="folder.is_system && folder.path !== 'event_media'" class="pi pi-lock text-xs text-gray-400 flex-shrink-0" v-tooltip.right="'System folder'" />
               <i v-if="folder.is_drive_synced" class="pi pi-google text-xs text-blue-500 flex-shrink-0" v-tooltip.right="`Synced from Google Drive: ${folder.drive_folder_name}`" />
+              <i v-if="folder.path === 'event_media' || folder.is_event_folder" class="pi pi-users text-xs text-green-500 dark:text-green-400 flex-shrink-0" v-tooltip.right="'Shared with event contacts'" />
             </div>
             <div class="flex items-center gap-2 ml-2 flex-shrink-0">
               <i v-if="dropLinePosition === 'into-' + folder.path" 

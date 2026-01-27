@@ -4,7 +4,7 @@
     admin off
 
     frankenphp {
-        num_threads 2
+        num_threads 20  # Increased from 2 to handle concurrent uploads
     }
 }
 

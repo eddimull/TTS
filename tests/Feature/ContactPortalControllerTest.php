@@ -905,6 +905,28 @@ class ContactPortalControllerTest extends TestCase
         );
     }
 
+    /**
+     * Test contact can view media page
+     */
+    public function test_contact_can_view_media_page()
+    {
+        $band = Bands::factory()->withOwners()->create();
+        $contact = Contacts::factory()->create([
+            'band_id' => $band->id,
+            'can_login' => true,
+        ]);
+
+        $response = $this->actingAs($contact, 'contact')
+            ->get(route('portal.media'));
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) =>
+            $page->component('Contact/Media')
+                ->has('folders')
+                ->has('totalFiles')
+        );
+    }
+
     protected function tearDown(): void
     {
         Mockery::close();
