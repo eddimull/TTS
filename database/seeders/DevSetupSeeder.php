@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Bands;
 use App\Models\BandOwners;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Role;
 
 class DevSetupSeeder extends Seeder
 {
@@ -41,7 +42,15 @@ class DevSetupSeeder extends Seeder
                 'password' => '$2y$10$9qoA9D9VwXtszzBAF/D4aetJNzpbVI8/5fTtFm.RktK9lCKGSbNcq' // password
             ]
         );
+
+        // Assign site-admin role for Horizon access
+        $siteAdminRole = Role::findOrCreate('site-admin', 'web');
+        if (!$user->hasRole('site-admin')) {
+            $user->assignRole($siteAdminRole);
+        }
+
         $this->command->info('✓ Admin user created: admin@example.com / password');
+        $this->command->info('✓ site-admin role assigned (Horizon access granted)');
 
         // Create test band
         $band = Bands::firstOrCreate(

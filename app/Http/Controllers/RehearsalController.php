@@ -7,6 +7,7 @@ use App\Models\Events;
 use App\Models\Rehearsal;
 use App\Models\EventTypes;
 use App\Models\RehearsalSchedule;
+use App\Services\MediaLibraryService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -139,6 +140,13 @@ class RehearsalController extends Controller
             'key' => Str::uuid(),
         ]);
 
+        // Auto-create media folder for event if portal access is enabled
+        if ($event->enable_portal_media_access) {
+            $mediaService = app(MediaLibraryService::class);
+            $folderPath = $mediaService->createEventFolder($event);
+            $event->update(['media_folder_path' => $folderPath]);
+        }
+
         // Associate with events if provided
         if (!empty($validated['associated_events'])) {
             foreach ($validated['associated_events'] as $eventId) {
@@ -269,6 +277,13 @@ class RehearsalController extends Controller
                 'notes' => $validated['event_notes'] ?? null,
                 'additional_data' => $validated['event_additional_data'] ?? null,
             ]);
+
+            // Create folder if event doesn't have one and portal access is enabled
+            if ($event->enable_portal_media_access && !$event->media_folder_path) {
+                $mediaService = app(MediaLibraryService::class);
+                $folderPath = $mediaService->createEventFolder($event);
+                $event->update(['media_folder_path' => $folderPath]);
+            }
         } else {
             $event = $rehearsal->events()->create([
                 'title' => $validated['event_title'],
@@ -279,6 +294,13 @@ class RehearsalController extends Controller
                 'additional_data' => $validated['event_additional_data'] ?? null,
                 'key' => Str::uuid(),
             ]);
+
+            // Auto-create media folder for new event if portal access is enabled
+            if ($event->enable_portal_media_access) {
+                $mediaService = app(MediaLibraryService::class);
+                $folderPath = $mediaService->createEventFolder($event);
+                $event->update(['media_folder_path' => $folderPath]);
+            }
         }
 
         // Update associations

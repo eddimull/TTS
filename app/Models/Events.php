@@ -47,6 +47,8 @@ class Events extends Model implements GoogleCalenderable
         'time',
         'roster_id',
         'value',
+        'media_folder_path',
+        'enable_portal_media_access',
     ];
 
     protected $casts = [
@@ -54,6 +56,11 @@ class Events extends Model implements GoogleCalenderable
         'date' => 'date:Y-m-d',
         'time' => TimeCast::class,
         'value' => Price::class,
+        'enable_portal_media_access' => 'boolean',
+    ];
+
+    protected $attributes = [
+        'enable_portal_media_access' => true,
     ];
 
     public function eventable(): MorphTo

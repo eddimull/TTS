@@ -46,10 +46,12 @@
       </div>
       
       <input
-        id="everythingSearchInput"
+        :id="instanceId"
         ref="searchInput"
         v-model="searchQuery"
         type="text"
+        name="search"
+        autocomplete="off"
         :placeholder="isOverlay ? 'Search bookings, contacts, events...' : 'Search bookings, contacts, events...'"
         :class="[
           'block w-full pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm',
@@ -429,6 +431,9 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
+// Generate a unique ID for this component instance
+const instanceId = `search-${Math.random().toString(36).substr(2, 9)}`
+
 const searchInput = ref(null)
 const searchQuery = ref('')
 const results = ref({})
@@ -608,6 +613,16 @@ const getStatusClass = (status) => {
   }
   return statusClasses[status?.toLowerCase()] || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
 }
+
+// Expose focus method to parent components
+const focusInput = () => {
+  searchInput.value?.focus()
+  searchInput.value?.click()
+}
+
+defineExpose({
+  focusInput
+})
 
 // Auto-focus when overlay opens
 // onMounted(() => {

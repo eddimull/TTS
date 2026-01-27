@@ -24,6 +24,9 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        // Horizon metrics snapshot (every 5 minutes)
+        $schedule->command('horizon:snapshot')->everyFiveMinutes();
+
         // Check for signed PandaDoc contracts every day in case the webhook failed
         $schedule->command('contracts:check-signed')
             ->dailyAt('11:00');
@@ -48,6 +51,11 @@ class Kernel extends ConsoleKernel
         // Sync all Google Drive folders every 6 hours
         $schedule->job(new \App\Jobs\SyncAllGoogleDriveFolders())
             ->everySixHours()
+            ->onOneServer();
+
+        // Clean up stale chunked uploads older than 24 hours
+        $schedule->job(new \App\Jobs\CleanupStaleChunkedUploads())
+            ->hourly()
             ->onOneServer();
     }
 
