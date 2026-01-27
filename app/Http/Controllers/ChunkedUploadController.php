@@ -141,6 +141,12 @@ class ChunkedUploadController extends Controller
 
             // Merge chunks STREAMING (not loading all into memory)
             $disk = Storage::disk('local');
+
+            // Ensure temp directory exists
+            if (!$disk->exists('temp')) {
+                $disk->makeDirectory('temp');
+            }
+
             $tempFullPath = $disk->path($tempPath);
 
             // Open output file for writing
