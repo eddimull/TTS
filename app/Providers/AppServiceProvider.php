@@ -28,8 +28,13 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->bind(StripeClientInterface::class, function ($app) {
-            return new StripeClientWrapper(); 
+            return new StripeClientWrapper();
         });
+
+        // Register Telescope only in local/development environments
+        if ($this->app->environment('local', 'development') && class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
+            $this->app->register(\App\Providers\TelescopeServiceProvider::class);
+        }
     }
 
     /**
