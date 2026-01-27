@@ -57,3 +57,4 @@ require __DIR__ . '/rosters.php';
 require __DIR__ . '/subs.php';
 
 URL::forceScheme('https');
+Route::get('/healthcheck', fn() => response()->json(['status' => 'ok']))->name('healthcheck');

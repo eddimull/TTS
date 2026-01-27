@@ -80,6 +80,7 @@ describe('ContractEditor', () => {
       global: {
         stubs: {
           EditableContractWYSIWYG: {
+            name: 'EditableContractWYSIWYG',
             template: '<div class="wysiwyg-stub"></div>',
             props: ['initialTerms', 'booking', 'band']
           },
@@ -139,6 +140,7 @@ describe('ContractEditor', () => {
       global: {
         stubs: {
           EditableContractWYSIWYG: {
+            name: 'EditableContractWYSIWYG',
             template: '<div class="wysiwyg"></div>',
             emits: ['save']
           },
@@ -162,6 +164,7 @@ describe('ContractEditor', () => {
       global: {
         stubs: {
           EditableContractWYSIWYG: {
+            name: 'EditableContractWYSIWYG',
             template: '<div class="wysiwyg"></div>',
             emits: ['generate-pdf']
           },
@@ -185,6 +188,7 @@ describe('ContractEditor', () => {
       global: {
         stubs: {
           EditableContractWYSIWYG: {
+            name: 'EditableContractWYSIWYG',
             template: '<div @click="$emit(\'update:terms\', { title: \'Updated\' })">Update</div>',
             emits: ['update:terms']
           },
@@ -210,6 +214,7 @@ describe('ContractEditor', () => {
         stubs: {
           EditableContractWYSIWYG: true,
           SendContractPopup: {
+            name: 'SendContractPopup',
             template: '<div class="popup"></div>',
             props: ['show', 'contacts']
           }
@@ -230,6 +235,7 @@ describe('ContractEditor', () => {
       global: {
         stubs: {
           EditableContractWYSIWYG: {
+            name: 'EditableContractWYSIWYG',
             template: '<div @click="$emit(\'send-contract\')">Send</div>',
             emits: ['send-contract']
           },
@@ -255,6 +261,7 @@ describe('ContractEditor', () => {
         stubs: {
           EditableContractWYSIWYG: true,
           SendContractPopup: {
+            name: 'SendContractPopup',
             template: '<div class="popup"></div>',
             props: ['show', 'contacts'],
             emits: ['confirm']
@@ -300,6 +307,7 @@ describe('ContractEditor', () => {
       global: {
         stubs: {
           EditableContractWYSIWYG: {
+            name: 'EditableContractWYSIWYG',
             template: '<div></div>',
             props: ['initialTerms', 'booking', 'band']
           },

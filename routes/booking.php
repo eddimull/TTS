@@ -30,6 +30,10 @@ Route::middleware(['auth', 'verified'])->group(function ()
         ->name('Booking Events')
         ->middleware('booking.access');
 
+    Route::get('bands/{band}/booking/{booking}/media', [BookingsController::class, 'media'])
+        ->name('Booking Media')
+        ->middleware('booking.access');
+
     Route::get('bands/{band}/booking/{booking}/contacts', [BookingsController::class, 'contacts'])
         ->name('Booking Contacts')
         ->middleware('booking.access');

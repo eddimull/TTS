@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\BookingContacts;
 use App\Services\InvoiceServices;
+use App\Services\MediaLibraryService;
 use App\Events\PaymentWasReceived;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -142,7 +143,14 @@ class BookingsController extends Controller
             $event['additional_data']['public'] = false;
         }
 
-        $booking->events()->create($event);
+        $createdEvent = $booking->events()->create($event);
+
+        // Auto-create media folder for event if portal access is enabled
+        if ($booking->enable_portal_media_access && $createdEvent->enable_portal_media_access) {
+            $mediaService = app(MediaLibraryService::class);
+            $folderPath = $mediaService->createEventFolder($createdEvent);
+            $createdEvent->update(['media_folder_path' => $folderPath]);
+        }
 
         // Set event value to booking price (for first event)
         $this->redistributeEventValues($booking->fresh());
@@ -396,7 +404,7 @@ class BookingsController extends Controller
         $events = $booking->events->map(function ($event) {
             $this->appendLastUpdatedBy($event);
             $this->appendFormattedAttachmentSizes($event);
-            $event->roster_members = $this->formatRosterMembers($event);            
+            $event->roster_members = $this->formatRosterMembers($event);
 
             return $event;
         });
@@ -404,6 +412,57 @@ class BookingsController extends Controller
         return Inertia::render('Bookings/Events', [
             'booking' => $booking,
             'events' => $events
+        ]);
+    }
+
+    public function media(Bands $band, Bookings $booking, MediaLibraryService $mediaLibraryService)
+    {
+        $booking->load(['events']);
+
+        // Get the primary event for this booking (if exists)
+        $event = $booking->events->first();
+
+        // Get media files for this event folder
+        $mediaFiles = [];
+        $eventFolderPath = null;
+        $enablePortalAccess = true;
+
+        if ($event && $event->media_folder_path) {
+            $eventFolderPath = $event->media_folder_path;
+            $enablePortalAccess = $event->enable_portal_media_access ?? true;
+
+            // Get media files in this event folder
+            $mediaFiles = \App\Models\MediaFile::where('band_id', $band->id)
+                ->where('folder_path', $eventFolderPath)
+                ->with(['tags', 'uploader'])
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($media) {
+                    return [
+                        'id' => $media->id,
+                        'filename' => $media->filename,
+                        'title' => $media->title,
+                        'media_type' => $media->media_type,
+                        'file_size' => $media->file_size,
+                        'url' => route('media.serve', $media),
+                        'thumbnail_url' => $media->media_type === 'image' || $media->media_type === 'video'
+                            ? route('media.thumbnail', $media)
+                            : null,
+                        'created_at' => $media->created_at,
+                    ];
+                });
+        }
+
+        return Inertia::render('Bookings/Media', [
+            'booking' => $booking,
+            'band' => $band,
+            'event' => $event ? [
+                'id' => $event->id,
+                'title' => $event->title,
+            ] : null,
+            'mediaFiles' => $mediaFiles,
+            'eventFolderPath' => $eventFolderPath,
+            'enablePortalAccess' => $enablePortalAccess,
         ]);
     }
 
