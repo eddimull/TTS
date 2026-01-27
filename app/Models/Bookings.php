@@ -42,6 +42,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         'contract_option',
         'author_id',
         'notes',
+        'enable_portal_media_access',
     ];
 
     protected $casts = [
@@ -50,6 +51,11 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         'start_time' => 'datetime:H:i',
         'end_time' => 'datetime:H:i',
         'price' => Price::class,
+        'enable_portal_media_access' => 'boolean',
+    ];
+
+    protected $attributes = [
+        'enable_portal_media_access' => true,
     ];
 
     protected $appends = [

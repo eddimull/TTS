@@ -6,9 +6,12 @@ use App\Models\MediaFile;
 use App\Models\MediaFolder;
 use App\Models\BandStorageQuota;
 use App\Models\EventAttachment;
+use App\Models\Events;
+use App\Models\Contacts;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Support\Collection;
 
 class MediaLibraryService
 {
@@ -58,6 +61,19 @@ class MediaLibraryService
             'visibility' => 'private'
         ]);
 
+        // Auto-populate folder_path from event if provided
+        if (!empty($additionalData['event_id']) && empty($additionalData['folder_path'])) {
+            $event = Events::find($additionalData['event_id']);
+            if ($event && $event->media_folder_path) {
+                $additionalData['folder_path'] = $event->media_folder_path;
+            }
+        }
+
+        // Auto-detect event_id from folder_path if not explicitly provided
+        if (empty($additionalData['event_id']) && !empty($additionalData['folder_path'])) {
+            $additionalData['event_id'] = $this->getEventIdFromFolderPath($additionalData['folder_path']);
+        }
+
         // Create folder record if uploading to a folder
         if (!empty($additionalData['folder_path'])) {
             $this->createFolder($band->id, $additionalData['folder_path'], $userId);
@@ -78,14 +94,31 @@ class MediaLibraryService
             'folder_path' => $additionalData['folder_path'] ?? null,
         ]);
 
-        // Generate thumbnail for images
-        if ($mediaType === 'image') {
+        // Create associations if event_id or booking_id provided
+        if (!empty($additionalData['event_id']) || !empty($additionalData['booking_id'])) {
+            $this->createAssociations(
+                $mediaFile,
+                $additionalData['booking_id'] ?? null,
+                $additionalData['event_id'] ?? null
+            );
+        }
+
+        // Generate thumbnail for images and videos
+        if ($mediaType === 'image' || $mediaType === 'video') {
             $this->generateThumbnail($mediaFile);
         }
 
         // Update quota
         $quota->quota_used += $file->getSize();
         $quota->save();
+
+        // Clear folder caches after upload
+        $this->clearMediaCaches($band->id);
+
+        // Queue notification for event folder uploads
+        if (!empty($additionalData['event_id'])) {
+            $this->queueEventMediaNotification($additionalData['event_id']);
+        }
 
         return $mediaFile;
     }
@@ -98,9 +131,9 @@ class MediaLibraryService
      */
     private function validateFile($file)
     {
-        $maxSize = 100 * 1024 * 1024; // 100MB
+        $maxSize = 1000 * 1024 * 1024; // 1000MB
         if ($file->getSize() > $maxSize) {
-            throw new \Exception('File size exceeds maximum allowed (100MB)');
+            throw new \Exception('File size exceeds maximum allowed (1GB)');
         }
 
         $allowedMimes = [
@@ -164,41 +197,304 @@ class MediaLibraryService
     }
 
     /**
-     * Generate thumbnail for an image
+     * Generate thumbnail for an image or video
      *
      * @param \App\Models\MediaFile $mediaFile
      */
-    private function generateThumbnail($mediaFile)
+    public function generateThumbnail($mediaFile)
     {
-        // TODO: Implement thumbnail generation using Intervention/Image or GD
-        // For now, this is a placeholder. Install intervention/image package:
-        // composer require intervention/image
-        //
-        // Example implementation:
-        // $thumbnailPath = str_replace(
-        //     '.' . pathinfo($mediaFile->stored_filename, PATHINFO_EXTENSION),
-        //     '_thumb.jpg',
-        //     $mediaFile->stored_filename
-        // );
-        //
-        // try {
-        //     $image = Image::make(Storage::disk($mediaFile->disk)->get($mediaFile->stored_filename));
-        //     $image->fit(400, 400);
-        //
-        //     Storage::disk($mediaFile->disk)->put(
-        //         $thumbnailPath,
-        //         $image->encode('jpg', 85)->__toString()
-        //     );
-        // } catch (\Exception $e) {
-        //     \Log::error('Failed to generate thumbnail', [
-        //         'media_file_id' => $mediaFile->id,
-        //         'error' => $e->getMessage()
-        //     ]);
-        // }
+        $thumbnailPath = str_replace(
+            '.' . pathinfo($mediaFile->stored_filename, PATHINFO_EXTENSION),
+            '_thumb.jpg',
+            $mediaFile->stored_filename
+        );
 
-        \Log::info('Thumbnail generation skipped (not implemented yet)', [
-            'media_file_id' => $mediaFile->id
-        ]);
+        try {
+            \Log::info('Starting thumbnail generation', [
+                'media_file_id' => $mediaFile->id,
+                'media_type' => $mediaFile->media_type,
+                'source_file' => $mediaFile->stored_filename,
+                'thumbnail_path' => $thumbnailPath
+            ]);
+
+            if ($mediaFile->media_type === 'video') {
+                // Use FFmpeg for video thumbnails
+                $this->generateVideoThumbnail($mediaFile, $thumbnailPath);
+            } else if ($mediaFile->media_type === 'image') {
+                // Use ImageMagick for image thumbnails
+                $this->generateImageThumbnail($mediaFile, $thumbnailPath);
+            }
+
+            // Log success (note: we don't verify thumbnail exists to avoid S3 timing issues)
+            \Log::info('Thumbnail generated successfully', [
+                'media_file_id' => $mediaFile->id,
+                'thumbnail_path' => $thumbnailPath
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Thumbnail generation failed', [
+                'media_file_id' => $mediaFile->id,
+                'media_type' => $mediaFile->media_type,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Fallback: generate placeholder thumbnail
+            $this->generatePlaceholderThumbnail($mediaFile, $thumbnailPath);
+        }
+    }
+
+    /**
+     * Generate thumbnail for a video using FFmpeg
+     *
+     * @param \App\Models\MediaFile $mediaFile
+     * @param string $thumbnailPath
+     */
+    private function generateVideoThumbnail($mediaFile, $thumbnailPath)
+    {
+        $disk = Storage::disk($mediaFile->disk);
+        $tempVideoPath = null;
+        $tempThumbPath = null;
+
+        try {
+            // For S3/remote storage, download to temp location first
+            if ($mediaFile->disk !== 'local') {
+                $tempVideoPath = sys_get_temp_dir() . '/' . uniqid('video_') . '.' . pathinfo($mediaFile->stored_filename, PATHINFO_EXTENSION);
+                $tempThumbPath = sys_get_temp_dir() . '/' . uniqid('thumb_') . '.jpg';
+
+                \Log::info('Downloading video from S3 for thumbnail generation', [
+                    'source' => $mediaFile->stored_filename,
+                    'temp_path' => $tempVideoPath,
+                    'expected_size' => $mediaFile->file_size
+                ]);
+
+                // Download video from S3 to temp location using stream for large files
+                // Retry a few times in case S3 needs time to make the file available
+                $stream = null;
+                $maxAttempts = 3;
+                for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+                    $stream = $disk->readStream($mediaFile->stored_filename);
+                    if ($stream !== false && $stream !== null) {
+                        break;
+                    }
+
+                    if ($attempt < $maxAttempts) {
+                        \Log::info('Stream open failed, retrying...', [
+                            'attempt' => $attempt,
+                            'max_attempts' => $maxAttempts
+                        ]);
+                        sleep(2); // Wait 2 seconds before retry
+                    }
+                }
+
+                if ($stream === false || $stream === null) {
+                    throw new \Exception("Failed to open stream from S3 after {$maxAttempts} attempts: {$mediaFile->stored_filename}");
+                }
+
+                $localStream = fopen($tempVideoPath, 'w');
+                if ($localStream === false) {
+                    fclose($stream);
+                    throw new \Exception("Failed to open local file for writing: {$tempVideoPath}");
+                }
+
+                $bytesWritten = stream_copy_to_stream($stream, $localStream);
+                fclose($stream);
+                fclose($localStream);
+
+                // Verify download
+                if (!file_exists($tempVideoPath)) {
+                    throw new \Exception("Failed to create temp video file at: {$tempVideoPath}");
+                }
+
+                $fileSize = filesize($tempVideoPath);
+                \Log::info('Video downloaded to temp location', [
+                    'temp_path' => $tempVideoPath,
+                    'bytes_written' => $bytesWritten,
+                    'file_size' => $fileSize,
+                    'expected_size' => $mediaFile->file_size
+                ]);
+
+                if ($fileSize === 0) {
+                    throw new \Exception("Downloaded video file is empty");
+                }
+
+                $sourceVideoPath = $tempVideoPath;
+                $outputThumbPath = $tempThumbPath;
+            } else {
+                // Local storage - use direct paths
+                $sourceVideoPath = $disk->path($mediaFile->stored_filename);
+                $outputThumbPath = $disk->path($thumbnailPath);
+            }
+
+            \Log::info('Attempting to open video with FFmpeg', [
+                'path' => $sourceVideoPath,
+                'exists' => file_exists($sourceVideoPath),
+                'readable' => is_readable($sourceVideoPath)
+            ]);
+
+            // Generate thumbnail using FFmpeg
+            $ffmpeg = \FFMpeg\FFMpeg::create([
+                'ffmpeg.binaries'  => '/usr/bin/ffmpeg',
+                'ffprobe.binaries' => '/usr/bin/ffprobe',
+                'timeout'          => 3600,
+                'ffmpeg.threads'   => 12,
+            ]);
+
+            $video = $ffmpeg->open($sourceVideoPath);
+            $frame = $video->frame(\FFMpeg\Coordinate\TimeCode::fromSeconds(1));
+            $frame->save($outputThumbPath);
+
+            \Log::info('FFmpeg thumbnail generated', [
+                'output_path' => $outputThumbPath,
+                'exists' => file_exists($outputThumbPath)
+            ]);
+
+            // For S3/remote storage, upload thumbnail back
+            if ($mediaFile->disk !== 'local') {
+                if (!file_exists($tempThumbPath)) {
+                    throw new \Exception("Thumbnail was not created at: {$tempThumbPath}");
+                }
+                $disk->put($thumbnailPath, file_get_contents($tempThumbPath));
+                \Log::info('Thumbnail uploaded to S3', ['path' => $thumbnailPath]);
+            }
+        } finally {
+            // Clean up temp files
+            if ($tempVideoPath && file_exists($tempVideoPath)) {
+                unlink($tempVideoPath);
+            }
+            if ($tempThumbPath && file_exists($tempThumbPath)) {
+                unlink($tempThumbPath);
+            }
+        }
+    }
+
+    /**
+     * Generate thumbnail for an image using Imagick
+     *
+     * @param \App\Models\MediaFile $mediaFile
+     * @param string $thumbnailPath
+     */
+    private function generateImageThumbnail($mediaFile, $thumbnailPath)
+    {
+        $disk = Storage::disk($mediaFile->disk);
+        $tempImagePath = null;
+        $tempThumbPath = null;
+
+        try {
+            // For S3/remote storage, download to temp location first
+            if ($mediaFile->disk !== 'local') {
+                $tempImagePath = sys_get_temp_dir() . '/' . uniqid('image_') . '.' . pathinfo($mediaFile->stored_filename, PATHINFO_EXTENSION);
+                $tempThumbPath = sys_get_temp_dir() . '/' . uniqid('thumb_') . '.jpg';
+
+                // Download image from S3 to temp location using stream for large files
+                // Retry a few times in case S3 needs time to make the file available
+                $stream = null;
+                $maxAttempts = 3;
+                for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+                    $stream = $disk->readStream($mediaFile->stored_filename);
+                    if ($stream !== false && $stream !== null) {
+                        break;
+                    }
+
+                    if ($attempt < $maxAttempts) {
+                        \Log::info('Stream open failed for image, retrying...', [
+                            'attempt' => $attempt,
+                            'max_attempts' => $maxAttempts
+                        ]);
+                        sleep(2); // Wait 2 seconds before retry
+                    }
+                }
+
+                if ($stream === false || $stream === null) {
+                    throw new \Exception("Failed to open stream from S3 after {$maxAttempts} attempts: {$mediaFile->stored_filename}");
+                }
+
+                $localStream = fopen($tempImagePath, 'w');
+                if ($localStream === false) {
+                    fclose($stream);
+                    throw new \Exception("Failed to open local file for writing: {$tempImagePath}");
+                }
+
+                stream_copy_to_stream($stream, $localStream);
+                fclose($stream);
+                fclose($localStream);
+
+                $sourceImagePath = $tempImagePath;
+                $outputThumbPath = $tempThumbPath;
+            } else {
+                // Local storage - use direct paths
+                $sourceImagePath = $disk->path($mediaFile->stored_filename);
+                $outputThumbPath = $disk->path($thumbnailPath);
+            }
+
+            // Generate thumbnail using Imagick
+            $imagick = new \Imagick($sourceImagePath);
+
+            // Resize to max 400x400 maintaining aspect ratio
+            $imagick->thumbnailImage(400, 400, true);
+
+            // Set JPEG quality
+            $imagick->setImageCompressionQuality(85);
+            $imagick->setImageFormat('jpeg');
+
+            // Save the thumbnail
+            $imagick->writeImage($outputThumbPath);
+            $imagick->clear();
+            $imagick->destroy();
+
+            // For S3/remote storage, upload thumbnail back
+            if ($mediaFile->disk !== 'local') {
+                $disk->put($thumbnailPath, file_get_contents($tempThumbPath));
+            }
+        } finally {
+            // Clean up temp files
+            if ($tempImagePath && file_exists($tempImagePath)) {
+                unlink($tempImagePath);
+            }
+            if ($tempThumbPath && file_exists($tempThumbPath)) {
+                unlink($tempThumbPath);
+            }
+        }
+    }
+
+    /**
+     * Generate a placeholder thumbnail when processing fails
+     *
+     * @param \App\Models\MediaFile $mediaFile
+     * @param string $thumbnailPath
+     */
+    private function generatePlaceholderThumbnail($mediaFile, $thumbnailPath)
+    {
+        try {
+            // Create a simple placeholder image
+            $image = imagecreatetruecolor(640, 360);
+            $bgColor = imagecolorallocate($image, 200, 200, 200);
+            $textColor = imagecolorallocate($image, 100, 100, 100);
+
+            imagefill($image, 0, 0, $bgColor);
+
+            // Add text
+            $text = $mediaFile->media_type === 'video' ? 'VIDEO' : 'IMAGE';
+            imagestring($image, 5, 280, 175, $text, $textColor);
+
+            // Save as JPEG
+            ob_start();
+            imagejpeg($image, null, 80);
+            $imageData = ob_get_clean();
+            imagedestroy($image);
+
+            Storage::disk($mediaFile->disk)->put($thumbnailPath, $imageData);
+
+            \Log::info('Placeholder thumbnail generated', [
+                'media_file_id' => $mediaFile->id,
+                'thumbnail_path' => $thumbnailPath
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Failed to generate placeholder thumbnail', [
+                'media_file_id' => $mediaFile->id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     /**
@@ -431,24 +727,91 @@ class MediaLibraryService
      */
     public function getSubfoldersOf($bandId, $parentPath = null)
     {
-        // Get all folder paths
-        $allPaths = MediaFile::where('band_id', $bandId)
-            ->whereNotNull('folder_path')
-            ->distinct()
-            ->pluck('folder_path');
+        // Cache subfolder data for 5 minutes
+        $cacheKey = "subfolders_{$bandId}_" . ($parentPath ?: 'root');
 
-        // Also get defined empty folders
-        $definedPaths = \App\Models\MediaFolder::where('band_id', $bandId)
-            ->pluck('path');
+        return \Cache::remember($cacheKey, 300, function () use ($bandId, $parentPath) {
+            // Special handling for Event Media virtual folder
+            if ($parentPath === 'event_media') {
+                // Get all event folder paths for this band
+                $eventFolderPaths = Events::whereNotNull('media_folder_path')
+                    ->where(function ($query) use ($bandId) {
+                        // Events from Bookings
+                        $query->where('eventable_type', 'App\\Models\\Bookings')
+                            ->whereIn('eventable_id', function ($subQuery) use ($bandId) {
+                                $subQuery->select('id')
+                                    ->from('bookings')
+                                    ->where('band_id', $bandId);
+                            })
+                            // Events from BandEvents
+                            ->orWhere(function ($q) use ($bandId) {
+                                $q->where('eventable_type', 'App\\Models\\BandEvents')
+                                    ->whereIn('eventable_id', function ($subQuery) use ($bandId) {
+                                        $subQuery->select('id')
+                                            ->from('band_events')
+                                            ->where('band_id', $bandId);
+                                    });
+                            });
+                    })
+                    ->pluck('media_folder_path')
+                    ->unique();
 
-        $allPaths = $allPaths->merge($definedPaths)->unique();
+                // Extract just the top-level folders (years) from event paths
+                $subfolders = [];
+                foreach ($eventFolderPaths as $path) {
+                    if (empty($path)) continue;
 
-        // Get Google Drive folder syncs for this band
-        $driveSyncedFolders = \App\Models\GoogleDriveFolder::whereHas('connection', function ($query) use ($bandId) {
-            $query->where('band_id', $bandId);
-        })
-        ->get()
-        ->keyBy('local_folder_path');
+                    // Event paths are like "2026/01/event-name"
+                    // We want to show just the year level: "2026"
+                    if (str_contains($path, '/')) {
+                        $firstLevel = explode('/', $path)[0];
+                        $subfolders[$firstLevel] = $firstLevel;
+                    }
+                }
+
+                // Build result with file counts for each year folder
+                $result = [];
+                foreach (array_unique($subfolders) as $folderPath) {
+                    // Count all files in this year's event folders
+                    $fileCount = MediaFile::where('band_id', $bandId)
+                        ->where('folder_path', 'LIKE', $folderPath . '/%')
+                        ->count();
+
+                    $result[] = [
+                        'path' => $folderPath,
+                        'name' => $folderPath,
+                        'file_count' => $fileCount,
+                        'is_folder' => true,
+                        'is_drive_synced' => false,
+                        'drive_folder_name' => null,
+                        'is_event_folder' => true,
+                    ];
+                }
+
+                // Sort by name (year) descending so newest first
+                usort($result, fn($a, $b) => strcmp($b['name'], $a['name']));
+
+                return $result;
+            }
+
+            // Get all folder paths
+            $allPaths = MediaFile::where('band_id', $bandId)
+                ->whereNotNull('folder_path')
+                ->distinct()
+                ->pluck('folder_path');
+
+            // Also get defined empty folders
+            $definedPaths = \App\Models\MediaFolder::where('band_id', $bandId)
+                ->pluck('path');
+
+            $allPaths = $allPaths->merge($definedPaths)->unique();
+
+            // Get Google Drive folder syncs for this band
+            $driveSyncedFolders = \App\Models\GoogleDriveFolder::whereHas('connection', function ($query) use ($bandId) {
+                $query->where('band_id', $bandId);
+            })
+            ->get()
+            ->keyBy('local_folder_path');
 
         $subfolders = [];
 
@@ -482,29 +845,57 @@ class MediaLibraryService
             }
         }
 
-        // Get file counts for each subfolder
-        $result = [];
-        foreach (array_unique($subfolders) as $folderPath) {
-            $fileCount = MediaFile::where('band_id', $bandId)
-                ->where('folder_path', 'LIKE', $folderPath . '%')
-                ->count();
+        // Get file counts for all subfolders in a single query
+        $uniqueSubfolders = array_unique($subfolders);
 
+        // Build a single query with OR conditions for all folders
+        $fileCounts = [];
+        if (!empty($uniqueSubfolders)) {
+            $query = MediaFile::where('band_id', $bandId)
+                ->select('folder_path', DB::raw('count(*) as count'))
+                ->groupBy('folder_path');
+
+            // Add conditions to match each subfolder and its children
+            $query->where(function($q) use ($uniqueSubfolders) {
+                foreach ($uniqueSubfolders as $folderPath) {
+                    $q->orWhere('folder_path', 'LIKE', $folderPath . '%');
+                }
+            });
+
+            $counts = $query->get()->keyBy('folder_path');
+
+            // Sum up counts for each folder (including children)
+            foreach ($uniqueSubfolders as $folderPath) {
+                $total = 0;
+                foreach ($counts as $path => $item) {
+                    if (str_starts_with($path, $folderPath)) {
+                        $total += $item->count;
+                    }
+                }
+                $fileCounts[$folderPath] = $total;
+            }
+        }
+
+        // Build result array
+        $result = [];
+        foreach ($uniqueSubfolders as $folderPath) {
             $folderName = basename($folderPath);
 
             $result[] = [
                 'path' => $folderPath,
                 'name' => $folderName,
-                'file_count' => $fileCount,
+                'file_count' => $fileCounts[$folderPath] ?? 0,
                 'is_folder' => true,
                 'is_drive_synced' => isset($driveSyncedFolders[$folderPath]),
                 'drive_folder_name' => $driveSyncedFolders[$folderPath]->google_folder_name ?? null,
             ];
         }
 
-        // Sort by name
-        usort($result, fn($a, $b) => strcasecmp($a['name'], $b['name']));
+            // Sort by name
+            usort($result, fn($a, $b) => strcasecmp($a['name'], $b['name']));
 
-        return $result;
+            return $result;
+        });
     }
 
     public function getFolders($bandId)
@@ -531,6 +922,30 @@ class MediaLibraryService
         ->get()
         ->keyBy('local_folder_path');
 
+        // Get event folder paths for this band
+        // Query events that belong to bookings or band_events for this band
+        $eventFolderPaths = Events::whereNotNull('media_folder_path')
+            ->where(function ($query) use ($bandId) {
+                // Events from Bookings
+                $query->where('eventable_type', 'App\\Models\\Bookings')
+                    ->whereIn('eventable_id', function ($subQuery) use ($bandId) {
+                        $subQuery->select('id')
+                            ->from('bookings')
+                            ->where('band_id', $bandId);
+                    })
+                    // Events from BandEvents
+                    ->orWhere(function ($q) use ($bandId) {
+                        $q->where('eventable_type', 'App\\Models\\BandEvents')
+                            ->whereIn('eventable_id', function ($subQuery) use ($bandId) {
+                                $subQuery->select('id')
+                                    ->from('band_events')
+                                    ->where('band_id', $bandId);
+                            });
+                    });
+            })
+            ->pluck('media_folder_path')
+            ->toArray();
+
         // Merge both lists
         $allFolders = [];
 
@@ -541,6 +956,7 @@ class MediaLibraryService
                 'file_count' => $folder->file_count,
                 'is_drive_synced' => isset($driveSyncedFolders[$path]),
                 'drive_folder_name' => $driveSyncedFolders[$path]->google_folder_name ?? null,
+                'is_event_folder' => in_array($path, $eventFolderPaths),
             ];
         }
 
@@ -552,6 +968,7 @@ class MediaLibraryService
                     'file_count' => 0,
                     'is_drive_synced' => isset($driveSyncedFolders[$folder->path]),
                     'drive_folder_name' => $driveSyncedFolders[$folder->path]->google_folder_name ?? null,
+                    'is_event_folder' => in_array($folder->path, $eventFolderPaths),
                 ];
             }
         }
@@ -566,6 +983,7 @@ class MediaLibraryService
                     'is_system' => true,
                     'is_drive_synced' => false,
                     'drive_folder_name' => null,
+                    'is_event_folder' => $systemFolder === 'event_media',
                 ];
             } else {
                 // Mark existing folder as system folder and add system file counts
@@ -578,7 +996,18 @@ class MediaLibraryService
         ksort($allFolders);
 
         // Build hierarchical tree structure
-        return $this->buildFolderTree(array_values($allFolders));
+        $tree = $this->buildFolderTree(array_values($allFolders));
+
+        // Mark event_media as having children if there are any event folders
+        $hasEventFolders = !empty($eventFolderPaths);
+        foreach ($tree as &$folder) {
+            if ($folder['path'] === 'event_media' && $hasEventFolders) {
+                $folder['has_children'] = true;
+            }
+        }
+        unset($folder); // Break reference
+
+        return $tree;
     }
 
     /**
@@ -589,40 +1018,85 @@ class MediaLibraryService
      */
     protected function getSystemFolderCounts($bandId)
     {
-        $counts = [
-            'charts' => 0,
-            'contracts' => 0,
-            'event_uploads' => 0,
-        ];
+        // Cache system folder counts for 10 minutes to reduce query load
+        return \Cache::remember("system_folder_counts_{$bandId}", 600, function () use ($bandId) {
+            $counts = [
+                'charts' => 0,
+                'contracts' => 0,
+                'event_uploads' => 0,
+                'event_media' => 0,
+            ];
 
-        // Count chart files
-        $counts['charts'] = DB::table('chart_uploads')
-            ->join('charts', 'chart_uploads.chart_id', '=', 'charts.id')
-            ->where('charts.band_id', $bandId)
-            ->count();
+            // Count chart files
+            $counts['charts'] = DB::table('chart_uploads')
+                ->join('charts', 'chart_uploads.chart_id', '=', 'charts.id')
+                ->where('charts.band_id', $bandId)
+                ->count();
 
-        // Count event upload files (event_attachments)
-        $counts['event_uploads'] = EventAttachment::whereHas('event', function ($query) use ($bandId) {
-            $query->whereHasMorph('eventable', ['App\Models\Bookings', 'App\Models\BandEvents'], function ($q) use ($bandId) {
-                $q->where('band_id', $bandId);
-            });
-        })->count();
+            // Count event upload files (event_attachments)
+            $counts['event_uploads'] = EventAttachment::whereIn('event_id', function ($query) use ($bandId) {
+                $query->select('id')
+                    ->from('events')
+                    ->where(function ($q) use ($bandId) {
+                        // Events from Bookings
+                        $q->where('eventable_type', 'App\\Models\\Bookings')
+                            ->whereIn('eventable_id', function ($subQuery) use ($bandId) {
+                                $subQuery->select('id')
+                                    ->from('bookings')
+                                    ->where('band_id', $bandId);
+                            })
+                            // Events from BandEvents
+                            ->orWhere(function ($sq) use ($bandId) {
+                                $sq->where('eventable_type', 'App\\Models\\BandEvents')
+                                    ->whereIn('eventable_id', function ($subQuery) use ($bandId) {
+                                        $subQuery->select('id')
+                                            ->from('band_events')
+                                            ->where('band_id', $bandId);
+                                    });
+                            });
+                    });
+            })->count();
 
-        // Media files are already counted in the main query, but count any in 'media' folder
-        // This is already handled by the media_files query above
+            // Booking contracts (from bookings table)
+            $bookingContractsCount = DB::table('bookings')
+                ->join('contracts', 'bookings.id', '=', 'contracts.contractable_id')
+                ->where('band_id', $bandId)
+                ->where('contracts.contractable_type', 'App\\Models\\Bookings')
+                ->whereNotNull('asset_url')
+                ->count();
 
+            $counts['contracts'] = $bookingContractsCount;
 
-        // Booking contracts (from bookings table)
-        $bookingContractsCount = DB::table('bookings')
-            ->join('contracts', 'bookings.id', '=', 'contracts.contractable_id')
-            ->where('band_id', $bandId)
-            ->where('contracts.contractable_type', 'App\\Models\\Bookings')
-            ->whereNotNull('asset_url')
-            ->count();
+            // Count event media files (files in event-specific folders)
+            $counts['event_media'] = MediaFile::where('band_id', $bandId)
+                ->whereNotNull('folder_path')
+                ->whereIn('folder_path', function ($query) use ($bandId) {
+                    $query->select('media_folder_path')
+                        ->from('events')
+                        ->whereNotNull('media_folder_path')
+                        ->where(function ($q) use ($bandId) {
+                            // Events from Bookings
+                            $q->where('eventable_type', 'App\\Models\\Bookings')
+                                ->whereIn('eventable_id', function ($subQuery) use ($bandId) {
+                                    $subQuery->select('id')
+                                        ->from('bookings')
+                                        ->where('band_id', $bandId);
+                                })
+                                // Events from BandEvents
+                                ->orWhere(function ($sq) use ($bandId) {
+                                    $sq->where('eventable_type', 'App\\Models\\BandEvents')
+                                        ->whereIn('eventable_id', function ($subQuery) use ($bandId) {
+                                            $subQuery->select('id')
+                                                ->from('band_events')
+                                                ->where('band_id', $bandId);
+                                        });
+                                });
+                        });
+                })
+                ->count();
 
-        $counts['contracts'] = $bookingContractsCount;
-
-        return $counts;
+            return $counts;
+        });
     }
 
     /**
@@ -651,6 +1125,7 @@ class MediaLibraryService
                         'is_system' => false,
                         'is_drive_synced' => false,
                         'drive_folder_name' => null,
+                        'is_event_folder' => false,
                         'children' => []
                     ];
                 }
@@ -661,6 +1136,7 @@ class MediaLibraryService
                     $current[$part]['is_system'] = $folder['is_system'] ?? false;
                     $current[$part]['is_drive_synced'] = $folder['is_drive_synced'] ?? false;
                     $current[$part]['drive_folder_name'] = $folder['drive_folder_name'] ?? null;
+                    $current[$part]['is_event_folder'] = $folder['is_event_folder'] ?? false;
                 }
 
                 $current = &$current[$part]['children'];
@@ -787,6 +1263,9 @@ class MediaLibraryService
             })
             ->delete();
 
+        // Clear folder caches
+        $this->clearMediaCaches($bandId);
+
         return $fileCount;
     }
 
@@ -807,9 +1286,14 @@ class MediaLibraryService
             $this->createFolder($bandId, $folderPath, $userId);
         }
 
-        return MediaFile::whereIn('id', $mediaIds)
+        $updated = MediaFile::whereIn('id', $mediaIds)
             ->where('band_id', $bandId)
             ->update(['folder_path' => $folderPath]);
+
+        // Clear folder caches
+        $this->clearMediaCaches($bandId);
+
+        return $updated;
     }
 
     /**
@@ -858,5 +1342,215 @@ class MediaLibraryService
                 'associable_id' => $eventId,
             ]);
         }
+    }
+
+    /**
+     * Clear media-related caches for a band
+     *
+     * @param int $bandId
+     * @return void
+     */
+    protected function clearMediaCaches($bandId)
+    {
+        // Clear folder list cache
+        \Cache::forget("media_folders_{$bandId}");
+
+        // Clear system folder counts
+        \Cache::forget("system_folder_counts_{$bandId}");
+
+        // Clear all subfolder caches (pattern-based)
+        $patterns = ["subfolders_{$bandId}_root"];
+
+        // Try to clear some common subfolder paths
+        // Note: This won't catch all possibilities, but covers most common cases
+        foreach ($patterns as $pattern) {
+            \Cache::forget($pattern);
+        }
+    }
+
+    /**
+     * Create a media folder for an event
+     * Generates folder path: {year}/{month}/{event-slug}
+     *
+     * @param Events $event
+     * @return string The folder path that was created
+     */
+    public function createEventFolder(Events $event): string
+    {
+        // Generate folder path
+        $year = $event->date->format('Y');
+        $month = $event->date->format('m');
+
+        // Sanitize event name
+        $eventName = $this->sanitizeEventName($event);
+        $slug = Str::slug($eventName);
+
+        // Handle duplicate slugs by checking existing folders
+        $basePath = "{$year}/{$month}";
+        $folderPath = "{$basePath}/{$slug}";
+        $counter = 1;
+
+        $bandId = $event->eventable->band_id;
+
+        while (MediaFolder::where('band_id', $bandId)->where('path', $folderPath)->exists()) {
+            $folderPath = "{$basePath}/{$slug}-{$counter}";
+            $counter++;
+        }
+
+        // Create the folder using existing method
+        $this->createFolder($bandId, $folderPath, $event->eventable->author_id ?? 1);
+
+        return $folderPath;
+    }
+
+    /**
+     * Get all media files for a specific event
+     *
+     * @param Events $event
+     * @return Collection
+     */
+    public function getEventMedia(Events $event): Collection
+    {
+        $bandId = $event->eventable->band_id;
+
+        // Get media by folder_path or by association
+        return MediaFile::where('band_id', $bandId)
+            ->where(function ($query) use ($event) {
+                // Match by folder path if set
+                if ($event->media_folder_path) {
+                    $query->where('folder_path', $event->media_folder_path)
+                          ->orWhere('folder_path', 'LIKE', $event->media_folder_path . '/%');
+                }
+
+                // Or match by media association
+                $query->orWhereHas('associations', function ($assocQuery) use ($event) {
+                    $assocQuery->where('associable_type', 'App\\Models\\Events')
+                               ->where('associable_id', $event->id);
+                });
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    /**
+     * Get all media accessible to a contact based on their bookings
+     *
+     * @param Contacts $contact
+     * @return Collection
+     */
+    public function getContactAccessibleMedia(Contacts $contact): Collection
+    {
+        // Get all bookings for this contact
+        $bookings = $contact->bookings;
+
+        if ($bookings->isEmpty()) {
+            return collect([]);
+        }
+
+        $bandId = $contact->band_id;
+        $bookingIds = $bookings->pluck('id')->toArray();
+
+        // Get all events from these bookings
+        $events = Events::where('eventable_type', 'App\\Models\\Bookings')
+            ->whereIn('eventable_id', $bookingIds)
+            ->where('enable_portal_media_access', true)
+            ->get();
+
+        $eventIds = $events->pluck('id')->toArray();
+        $folderPaths = $events->whereNotNull('media_folder_path')
+            ->pluck('media_folder_path')
+            ->toArray();
+
+        // Get media files that are either:
+        // 1. In folders belonging to these events
+        // 2. Associated with these events
+        // 3. Associated with the bookings directly
+        return MediaFile::where('band_id', $bandId)
+            ->where(function ($query) use ($folderPaths, $eventIds, $bookingIds) {
+                // Match by folder paths
+                if (!empty($folderPaths)) {
+                    $query->where(function ($folderQuery) use ($folderPaths) {
+                        foreach ($folderPaths as $path) {
+                            $folderQuery->orWhere('folder_path', $path)
+                                        ->orWhere('folder_path', 'LIKE', $path . '/%');
+                        }
+                    });
+                }
+
+                // Match by associations
+                $query->orWhereHas('associations', function ($assocQuery) use ($eventIds, $bookingIds) {
+                    $assocQuery->where(function ($q) use ($eventIds) {
+                        $q->where('associable_type', 'App\\Models\\Events')
+                          ->whereIn('associable_id', $eventIds);
+                    })->orWhere(function ($q) use ($bookingIds) {
+                        $q->where('associable_type', 'App\\Models\\Bookings')
+                          ->whereIn('associable_id', $bookingIds);
+                    });
+                });
+            })
+            ->with(['associations'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    /**
+     * Sanitize event name for folder naming
+     *
+     * @param Events $event
+     * @return string
+     */
+    protected function sanitizeEventName(Events $event): string
+    {
+        // Use event title if available
+        if (!empty($event->title)) {
+            return Str::limit($event->title, 50, '');
+        }
+
+        // Fallback to event ID
+        return "Event-{$event->id}";
+    }
+
+    /**
+     * Find event ID from a folder path if it's an event media folder.
+     *
+     * @param string $folderPath
+     * @return int|null
+     */
+    public function getEventIdFromFolderPath(string $folderPath): ?int
+    {
+        if (empty($folderPath)) {
+            return null;
+        }
+
+        // Check if this folder path matches any event's media_folder_path
+        $event = Events::where('media_folder_path', $folderPath)->first();
+
+        return $event?->id;
+    }
+
+    /**
+     * Queue notification for event media upload with batching
+     *
+     * @param int $eventId
+     * @return void
+     */
+    public function queueEventMediaNotification(int $eventId): void
+    {
+        // Store timestamp in cache to track latest upload
+        $cacheKey = "event_media_upload_notification:{$eventId}";
+        $timestamp = time();
+
+        // Update cache with new timestamp (overwrites previous)
+        // Cache for longer than notification delay to ensure job can read it
+        $delayMinutes = config('services.media.upload_notification_delay', 5);
+        \Illuminate\Support\Facades\Cache::put($cacheKey, $timestamp, now()->addMinutes($delayMinutes + 10));
+
+        // Dispatch job with current timestamp
+        \App\Jobs\NotifyContactsOfMediaUpload::dispatch($eventId, $timestamp);
+
+        \Illuminate\Support\Facades\Log::info("Queued media upload notification for event {$eventId}", [
+            'timestamp' => $timestamp,
+            'delay_minutes' => $delayMinutes,
+        ]);
     }
 }

@@ -41,6 +41,7 @@
           >
             <div class="flex-1 max-w-2xl mx-auto">
               <SearchComponent
+                ref="overlaySearchComponent"
                 :is-overlay="true"
                 @close="closeSearch"
               />
@@ -495,6 +496,9 @@
         </div>
       </main>
     </div>
+
+    <!-- Global Upload Queue Widget -->
+    <UploadQueueWidget />
   </div>
 </template>
 
@@ -507,6 +511,7 @@ import BreezeNavLink from "@/Components/NavLink";
 import BreezeResponsiveNavLink from "@/Components/ResponsiveNavLink";
 import SearchComponent from "@/Components/Search/SearchComponent.vue";
 import NavDropdown from "@/Components/NavDropdown.vue";
+import UploadQueueWidget from "@/Components/UploadQueueWidget.vue";
 import NavAccordion from "@/Components/NavAccordion.vue";
 import Toast from "primevue/toast";
 import axios from "axios";
@@ -526,6 +531,7 @@ export default {
         NavDropdown,
         NavAccordion,
         Toast,
+        UploadQueueWidget,
     },
     props: {
         navSuffix: {
@@ -626,15 +632,12 @@ export default {
         toggleSearch() {
             this.searchActive = !this.searchActive;
             if (this.searchActive) {
-            const input = document.getElementById('everythingSearchInput');
-            if (input) {
-                try {
-                    input.focus();
-                        input.click();
-                    } catch (e) {
-                        console.error('Direct DOM focus error:', e);
+                // Use Vue.nextTick to ensure the component is rendered before focusing
+                this.$nextTick(() => {
+                    if (this.$refs.overlaySearchComponent) {
+                        this.$refs.overlaySearchComponent.focusInput();
                     }
-                }
+                });
             }
         },
 

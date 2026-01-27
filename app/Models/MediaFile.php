@@ -25,9 +25,10 @@ class MediaFile extends Model
         'folder_path',
     ];
 
-    protected $appends = ['url', 'formatted_size', 'thumbnail_url'];
-
-    protected $with = ['tags', 'uploader'];
+    // Removed global appends and eager loading for performance
+    // These will be controlled explicitly in API resources
+    // protected $appends = ['url', 'formatted_size', 'thumbnail_url'];
+    // protected $with = ['tags', 'uploader'];
 
     /**
      * Get the band that owns the media file
@@ -79,21 +80,15 @@ class MediaFile extends Model
     }
 
     /**
-     * Get the thumbnail URL for images
+     * Get the thumbnail URL for images and videos
      */
     public function getThumbnailUrlAttribute()
     {
-        if ($this->media_type === 'image') {
-            // Check if thumbnail exists
-            $thumbnailPath = str_replace(
-                '.' . pathinfo($this->stored_filename, PATHINFO_EXTENSION),
-                '_thumb.jpg',
-                $this->stored_filename
-            );
-
-            if (Storage::disk($this->disk)->exists($thumbnailPath)) {
-                return url('/media/' . $this->id . '/thumbnail');
-            }
+        if ($this->media_type === 'image' || $this->media_type === 'video') {
+            // Don't check if thumbnail exists - just return the URL
+            // The thumbnail route will handle missing thumbnails gracefully
+            // This avoids making S3 API calls for every media file loaded
+            return url('/media/' . $this->id . '/thumbnail');
         }
 
         return null;
@@ -156,8 +151,8 @@ class MediaFile extends Model
             try {
                 Storage::disk($media->disk)->delete($media->stored_filename);
 
-                // Delete thumbnail if it exists
-                if ($media->media_type === 'image') {
+                // Delete thumbnail if it exists (for images and videos)
+                if ($media->media_type === 'image' || $media->media_type === 'video') {
                     $thumbnailPath = str_replace(
                         '.' . pathinfo($media->stored_filename, PATHINFO_EXTENSION),
                         '_thumb.jpg',

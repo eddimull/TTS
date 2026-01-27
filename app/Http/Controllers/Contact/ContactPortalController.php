@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Services\ContactPaymentService;
+use App\Services\MediaLibraryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -409,5 +410,220 @@ class ContactPortalController extends Controller
             $filePath,
             basename($filePath)
         );
+    }
+
+    /**
+     * Show media gallery for contact's events
+     */
+    public function media()
+    {
+        $contact = Auth::guard('contact')->user();
+        $mediaService = app(MediaLibraryService::class);
+
+        // Get all media accessible to this contact
+        $media = $mediaService->getContactAccessibleMedia($contact);
+
+        // Group media by folder/event for organized display
+        $folders = $media->groupBy('folder_path')->map(function ($files, $path) use ($contact) {
+            $firstFile = $files->first();
+
+            // Try to get the event for this folder
+            $event = null;
+            if ($path) {
+                $event = \App\Models\Events::where('media_folder_path', $path)
+                    ->whereHas('eventable', function ($query) use ($contact) {
+                        $query->where('eventable_type', 'App\\Models\\Bookings')
+                            ->whereHas('contacts', function ($q) use ($contact) {
+                                $q->where('contacts.id', $contact->id);
+                            });
+                    })
+                    ->with('eventable')
+                    ->first();
+            }
+
+            return [
+                'path' => $path,
+                'name' => $event ? $event->title : ($path ? basename($path) : 'Uncategorized'),
+                'event_date' => $event ? $event->date->format('M j, Y') : null,
+                'event_id' => $event?->id,
+                'booking_name' => $event?->eventable?->name,
+                'file_count' => $files->count(),
+                'thumbnail_url' => $firstFile->media_type === 'image' || $firstFile->media_type === 'video'
+                    ? route('portal.media.thumbnail', $firstFile->id)
+                    : null,
+                'files' => $files->map(function ($file) {
+                    return [
+                        'id' => $file->id,
+                        'filename' => $file->filename,
+                        'media_type' => $file->media_type,
+                        'file_size' => $file->file_size,
+                        'created_at' => $file->created_at->format('M j, Y'),
+                        'is_image' => $file->media_type === 'image',
+                        'is_video' => $file->media_type === 'video',
+                        'thumbnail_url' => $file->media_type === 'image' || $file->media_type === 'video'
+                            ? route('portal.media.thumbnail', $file->id)
+                            : null,
+                        'url' => route('portal.media.serve', $file->id),
+                        'download_url' => route('portal.media.download', $file->id),
+                    ];
+                })->values(),
+            ];
+        })->values();
+
+        return Inertia::render('Contact/Media', [
+            'folders' => $folders,
+            'totalFiles' => $media->count(),
+        ]);
+    }
+
+    /**
+     * Download a media file (with contact permission check)
+     */
+    public function downloadMedia($mediaId)
+    {
+        $contact = Auth::guard('contact')->user();
+        $mediaService = app(MediaLibraryService::class);
+
+        // Get all accessible media for this contact
+        $accessibleMedia = $mediaService->getContactAccessibleMedia($contact);
+
+        // Check if this media file is in the accessible list
+        $mediaFile = $accessibleMedia->firstWhere('id', $mediaId);
+
+        if (!$mediaFile) {
+            abort(403, 'You do not have permission to access this file.');
+        }
+
+        // Stream the file from storage
+        $disk = $mediaFile->disk ?? config('filesystems.default');
+
+        if (!\Storage::disk($disk)->exists($mediaFile->stored_filename)) {
+            abort(404, 'File not found.');
+        }
+
+        return \Storage::disk($disk)->download(
+            $mediaFile->stored_filename,
+            $mediaFile->filename
+        );
+    }
+
+    /**
+     * Serve a media file thumbnail (with contact permission check)
+     */
+    public function serveMediaThumbnail($mediaId)
+    {
+        $contact = Auth::guard('contact')->user();
+        $mediaService = app(MediaLibraryService::class);
+
+        // Get all accessible media for this contact
+        $accessibleMedia = $mediaService->getContactAccessibleMedia($contact);
+
+        // Check if this media file is in the accessible list
+        $mediaFile = $accessibleMedia->firstWhere('id', $mediaId);
+
+        if (!$mediaFile) {
+            abort(403, 'You do not have permission to access this file.');
+        }
+
+        if ($mediaFile->media_type !== 'image' && $mediaFile->media_type !== 'video') {
+            abort(404, 'Thumbnail not available for this file type');
+        }
+
+        $disk = $mediaFile->disk ?? config('filesystems.default');
+        $thumbnailPath = str_replace(
+            '.' . pathinfo($mediaFile->stored_filename, PATHINFO_EXTENSION),
+            '_thumb.jpg',
+            $mediaFile->stored_filename
+        );
+
+        // Generate ETag based on media ID and updated_at timestamp
+        $etag = md5($mediaFile->id . '-' . $mediaFile->updated_at->timestamp);
+        $lastModified = $mediaFile->updated_at->format('D, d M Y H:i:s') . ' GMT';
+
+        // Check if client has cached version
+        $ifNoneMatch = request()->header('If-None-Match');
+        $ifModifiedSince = request()->header('If-Modified-Since');
+
+        if ($ifNoneMatch === $etag || $ifModifiedSince === $lastModified) {
+            return response('', 304)
+                ->header('ETag', $etag)
+                ->header('Last-Modified', $lastModified)
+                ->header('Cache-Control', 'public, max-age=2592000, immutable');
+        }
+
+        try {
+            // If thumbnail doesn't exist, serve the original file
+            if (!\Storage::disk($disk)->exists($thumbnailPath)) {
+                $file = \Storage::disk($disk)->get($mediaFile->stored_filename);
+                return response($file)
+                    ->header('Content-Type', $mediaFile->mime_type)
+                    ->header('Cache-Control', 'public, max-age=2592000, immutable')
+                    ->header('ETag', $etag)
+                    ->header('Last-Modified', $lastModified);
+            }
+
+            $file = \Storage::disk($disk)->get($thumbnailPath);
+
+            return response($file)
+                ->header('Content-Type', 'image/jpeg')
+                ->header('Cache-Control', 'public, max-age=2592000, immutable')
+                ->header('ETag', $etag)
+                ->header('Last-Modified', $lastModified);
+        } catch (\Exception $e) {
+            abort(404, 'Thumbnail not found');
+        }
+    }
+
+    /**
+     * Serve a media file for inline viewing (with contact permission check)
+     */
+    public function serveMedia($mediaId)
+    {
+        $contact = Auth::guard('contact')->user();
+        $mediaService = app(MediaLibraryService::class);
+
+        // Get all accessible media for this contact
+        $accessibleMedia = $mediaService->getContactAccessibleMedia($contact);
+
+        // Check if this media file is in the accessible list
+        $mediaFile = $accessibleMedia->firstWhere('id', $mediaId);
+
+        if (!$mediaFile) {
+            abort(403, 'You do not have permission to access this file.');
+        }
+
+        $disk = $mediaFile->disk ?? config('filesystems.default');
+
+        if (!\Storage::disk($disk)->exists($mediaFile->stored_filename)) {
+            abort(404, 'File not found.');
+        }
+
+        // Generate ETag based on media ID and updated_at timestamp
+        $etag = md5($mediaFile->id . '-' . $mediaFile->updated_at->timestamp);
+        $lastModified = $mediaFile->updated_at->format('D, d M Y H:i:s') . ' GMT';
+
+        // Check if client has cached version
+        $ifNoneMatch = request()->header('If-None-Match');
+        $ifModifiedSince = request()->header('If-Modified-Since');
+
+        if ($ifNoneMatch === $etag || $ifModifiedSince === $lastModified) {
+            return response('', 304)
+                ->header('ETag', $etag)
+                ->header('Last-Modified', $lastModified)
+                ->header('Cache-Control', 'public, max-age=2592000, immutable');
+        }
+
+        try {
+            $file = \Storage::disk($disk)->get($mediaFile->stored_filename);
+
+            return response($file)
+                ->header('Content-Type', $mediaFile->mime_type)
+                ->header('Content-Disposition', 'inline; filename="' . $mediaFile->filename . '"')
+                ->header('Cache-Control', 'public, max-age=2592000, immutable')
+                ->header('ETag', $etag)
+                ->header('Last-Modified', $lastModified);
+        } catch (\Exception $e) {
+            abort(404, 'File not found');
+        }
     }
 }
