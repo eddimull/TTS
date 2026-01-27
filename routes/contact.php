@@ -54,6 +54,12 @@ Route::middleware('auth:contact')->group(function () {
     // Contract download
     Route::get('/booking/{booking}/contract', [ContactPortalController::class, 'downloadContract'])->name('portal.booking.contract');
 
+    // Media gallery
+    Route::get('/media', [ContactPortalController::class, 'media'])->name('portal.media');
+    Route::get('/media/{media}/download', [ContactPortalController::class, 'downloadMedia'])->name('portal.media.download');
+    Route::get('/media/{media}/thumbnail', [ContactPortalController::class, 'serveMediaThumbnail'])->name('portal.media.thumbnail');
+    Route::get('/media/{media}/serve', [ContactPortalController::class, 'serveMedia'])->name('portal.media.serve');
+
     // Payment callbacks
     Route::get('/payment/success', [ContactPortalController::class, 'paymentSuccess'])->name('portal.payment.success');
     Route::get('/payment/cancelled', [ContactPortalController::class, 'paymentCancelled'])->name('portal.payment.cancelled');

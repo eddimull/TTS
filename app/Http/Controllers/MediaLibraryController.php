@@ -14,6 +14,7 @@ use App\Http\Requests\Media\BulkMoveRequest;
 use App\Http\Requests\Media\CreateFolderRequest;
 use App\Http\Requests\Media\RenameFolderRequest;
 use App\Http\Requests\Media\DeleteFolderRequest;
+use App\Http\Resources\MediaFileResource;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -28,9 +29,14 @@ class MediaLibraryController extends Controller
 
     public function index(Request $request)
     {
+        $startTime = microtime(true);
+        \Log::info('[PERF] Media index started');
+
         $user = Auth::user();
         $bands = $user->bands();
         $currentBandId = $request->get('band_id', $bands->first()->id ?? null);
+
+        \Log::info('[PERF] Basic setup', ['elapsed' => round((microtime(true) - $startTime) * 1000, 2) . 'ms']);
 
         if (!$currentBandId) {
             return redirect()->route('dashboard')
@@ -45,9 +51,14 @@ class MediaLibraryController extends Controller
 
         // Check if viewing a system folder
         $folderPath = $filters['folder_path'] ?? null;
-        if ($folderPath && in_array($folderPath, ['charts', 'contracts', 'event_uploads'])) {
-            // Get system folder files
-            $systemFiles = $this->mediaService->getSystemFolderFiles($currentBandId, $folderPath, $filters);
+        if ($folderPath && in_array($folderPath, ['charts', 'contracts', 'event_uploads', 'event_media'])) {
+            // Special case for event_media - show subfolders only, no files directly
+            if ($folderPath === 'event_media') {
+                $systemFiles = collect([]);
+            } else {
+                // Get system folder files
+                $systemFiles = $this->mediaService->getSystemFolderFiles($currentBandId, $folderPath, $filters);
+            }
 
             // Manual pagination for system files
             $page = $request->get('page', 1);
@@ -62,6 +73,8 @@ class MediaLibraryController extends Controller
                 $page,
                 ['path' => $request->url(), 'query' => $request->query()]
             );
+
+            // System files are already in simple array format, no need for resource transformation
         } else {
             // Regular media files
             \Log::info('Before search', [
@@ -77,24 +90,24 @@ class MediaLibraryController extends Controller
                 'bindings' => $mediaQuery->getBindings()
             ]);
 
+            // Explicitly eager load only what we need
+            $mediaQuery->with(['tags:id,name,color', 'uploader:id,name']);
+
             $media = $mediaQuery->paginate(24)->withQueryString();
 
-            // DEBUG: Log what we're returning
-            \Log::info('Media Index Debug - After paginate', [
-                'folder_path' => $filters['folder_path'] ?? 'NULL',
-                'media_count' => $media->count(),
-                'total' => $media->total(),
-                'items' => $media->items(),
-                'files' => $media->pluck('id', 'filename')->toArray()
-            ]);
+            \Log::info('[PERF] Media paginated', ['elapsed' => round((microtime(true) - $startTime) * 1000, 2) . 'ms']);
+
+            // Manually transform the collection using the resource
+            $media->getCollection()->transform(fn ($item) => MediaFileResource::make($item)->resolve());
+
+            \Log::info('[PERF] Media transformed', ['elapsed' => round((microtime(true) - $startTime) * 1000, 2) . 'ms']);
         }
 
-        $tags = MediaTag::where('band_id', $currentBandId)
-            ->withCount('mediaFiles')
-            ->orderBy('name')
-            ->get();
-
-        $folders = $this->mediaService->getFolders($currentBandId);
+        // Use cached folder data to avoid multiple queries
+        $cacheKey = "media_folders_{$currentBandId}";
+        $folders = \Cache::remember($cacheKey, 300, function () use ($currentBandId) {
+            return $this->mediaService->getFolders($currentBandId);
+        });
 
         // Get subfolders for current path (for inline display)
         $subfolders = $this->mediaService->getSubfoldersOf($currentBandId, $folderPath);
@@ -104,37 +117,50 @@ class MediaLibraryController extends Controller
             ['quota_limit' => 5368709120, 'quota_used' => 0]
         );
 
-        $currentBand = Bands::find($currentBandId);
-        $bookings = $currentBand->bookings()
-            ->select('id', 'name', 'date')
-            ->orderBy('date', 'desc')
-            ->limit(100)
-            ->get()
-            ->map(fn($booking) => [
-                'id' => $booking->id,
-                'name' => $booking->name,
-                'date' => $booking->date,
-            ]);
+        // Lazy load these to reduce initial page load queries
+        $tags = Inertia::lazy(fn () =>
+            MediaTag::where('band_id', $currentBandId)
+                ->withCount('mediaFiles')
+                ->orderBy('name')
+                ->get()
+        );
 
-        $events = \App\Models\Events::whereHas('eventable', function ($query) use ($currentBandId) {
-            $query->where('band_id', $currentBandId);
-        })
-            ->select('id', 'title', 'date')
-            ->orderBy('date', 'desc')
-            ->limit(100)
-            ->get()
-            ->map(fn($event) => [
-                'id' => $event->id,
-                'name' => $event->title,
-                'date' => $event->date,
-            ]);
+        $bookings = Inertia::lazy(fn () =>
+            Bands::find($currentBandId)->bookings()
+                ->select('id', 'name', 'date')
+                ->orderBy('date', 'desc')
+                ->limit(100)
+                ->get()
+                ->map(fn($booking) => [
+                    'id' => $booking->id,
+                    'name' => $booking->name,
+                    'date' => $booking->date,
+                ])
+        );
+
+        $events = Inertia::lazy(fn () =>
+            \App\Models\Events::whereHas('eventable', function ($query) use ($currentBandId) {
+                $query->where('band_id', $currentBandId);
+            })
+                ->select('id', 'title', 'date')
+                ->orderBy('date', 'desc')
+                ->limit(100)
+                ->get()
+                ->map(fn($event) => [
+                    'id' => $event->id,
+                    'name' => $event->title,
+                    'date' => $event->date,
+                ])
+        );
 
         // Get Google Drive connections for this band
         $driveConnections = GoogleDriveConnection::where('band_id', $currentBandId)
             ->with(['user:id,name', 'folders'])
             ->get();
 
-        return Inertia::render('Media/Index', [
+        \Log::info('[PERF] All data loaded', ['elapsed' => round((microtime(true) - $startTime) * 1000, 2) . 'ms']);
+
+        $response = Inertia::render('Media/Index', [
             'media' => $media,
             'tags' => $tags,
             'folders' => $folders,
@@ -153,6 +179,10 @@ class MediaLibraryController extends Controller
             'events' => $events,
             'driveConnections' => $driveConnections,
         ]);
+
+        \Log::info('[PERF] Response created', ['elapsed' => round((microtime(true) - $startTime) * 1000, 2) . 'ms']);
+
+        return $response;
     }
 
     public function upload(UploadMediaRequest $request)
@@ -166,7 +196,7 @@ class MediaLibraryController extends Controller
                     $band,
                     $file,
                     Auth::id(),
-                    $request->only(['title', 'description', 'folder_path'])
+                    $request->only(['title', 'description', 'folder_path', 'event_id', 'booking_id'])
                 );
 
                 if ($request->tags) {
@@ -201,10 +231,17 @@ class MediaLibraryController extends Controller
             abort(403, 'You do not have permission to view this media');
         }
 
+        // Explicitly load all relationships needed for detail view
         $media->load(['tags', 'uploader', 'associations.associable', 'shares']);
 
+        // Manually append computed attributes for detail view
+        $mediaData = $media->toArray();
+        $mediaData['url'] = $media->url;
+        $mediaData['thumbnail_url'] = $media->thumbnail_url;
+        $mediaData['formatted_size'] = $media->formatted_size;
+
         return Inertia::render('Media/Show', [
-            'media' => $media,
+            'media' => $mediaData,
             'canEdit' => $user->canWrite('media', $media->band_id)
         ]);
     }
@@ -241,13 +278,30 @@ class MediaLibraryController extends Controller
             abort(403, 'You do not have permission to view this file');
         }
 
+        // Generate ETag based on media ID and updated_at timestamp
+        $etag = md5($media->id . '-' . $media->updated_at->timestamp);
+        $lastModified = $media->updated_at->format('D, d M Y H:i:s') . ' GMT';
+
+        // Check if client has cached version
+        $ifNoneMatch = request()->header('If-None-Match');
+        $ifModifiedSince = request()->header('If-Modified-Since');
+
+        if ($ifNoneMatch === $etag || $ifModifiedSince === $lastModified) {
+            return response('', 304)
+                ->header('ETag', $etag)
+                ->header('Last-Modified', $lastModified)
+                ->header('Cache-Control', 'public, max-age=2592000, immutable'); // 30 days
+        }
+
         try {
             $file = Storage::disk($media->disk)->get($media->stored_filename);
 
             return response($file)
                 ->header('Content-Type', $media->mime_type)
                 ->header('Content-Disposition', 'inline; filename="' . $media->filename . '"')
-                ->header('Cache-Control', 'public, max-age=3600');
+                ->header('Cache-Control', 'public, max-age=2592000, immutable')
+                ->header('ETag', $etag)
+                ->header('Last-Modified', $lastModified);
         } catch (\Exception $e) {
             \Log::error('Failed to serve media file', [
                 'media_id' => $media->id,
@@ -374,19 +428,38 @@ class MediaLibraryController extends Controller
             $media->stored_filename
         );
 
+        // Generate ETag based on media ID and updated_at timestamp
+        $etag = md5($media->id . '-' . $media->updated_at->timestamp);
+        $lastModified = $media->updated_at->format('D, d M Y H:i:s') . ' GMT';
+
+        // Check if client has cached version
+        $ifNoneMatch = request()->header('If-None-Match');
+        $ifModifiedSince = request()->header('If-Modified-Since');
+
+        if ($ifNoneMatch === $etag || $ifModifiedSince === $lastModified) {
+            return response('', 304)
+                ->header('ETag', $etag)
+                ->header('Last-Modified', $lastModified)
+                ->header('Cache-Control', 'public, max-age=2592000, immutable'); // 30 days
+        }
+
         try {
             if (!Storage::disk($media->disk)->exists($thumbnailPath)) {
                 $file = Storage::disk($media->disk)->get($media->stored_filename);
                 return response($file)
                     ->header('Content-Type', $media->mime_type)
-                    ->header('Cache-Control', 'public, max-age=3600');
+                    ->header('Cache-Control', 'public, max-age=2592000, immutable')
+                    ->header('ETag', $etag)
+                    ->header('Last-Modified', $lastModified);
             }
 
             $file = Storage::disk($media->disk)->get($thumbnailPath);
 
             return response($file)
                 ->header('Content-Type', 'image/jpeg')
-                ->header('Cache-Control', 'public, max-age=3600');
+                ->header('Cache-Control', 'public, max-age=2592000, immutable')
+                ->header('ETag', $etag)
+                ->header('Last-Modified', $lastModified);
         } catch (\Exception $e) {
             abort(404, 'Thumbnail not found');
         }

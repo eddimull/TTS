@@ -475,6 +475,12 @@
             >
               View Invoices →
             </Link>
+            <Link
+              :href="route('portal.media')"
+              class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 font-medium"
+            >
+              View Event Media →
+            </Link>
           </div>
         </div>
       </main>
