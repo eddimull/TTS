@@ -62,8 +62,8 @@ class MediaLibraryTest extends TestCase
         $response->assertInertia(fn ($page) =>
             $page->component('Media/Index')
                 ->has('media')
-                ->has('tags')
                 ->has('quota')
+                // Note: 'tags' is lazy-loaded and not part of initial response
         );
     }
 
@@ -674,9 +674,6 @@ class MediaLibraryTest extends TestCase
 
         // When viewing "Live test folder/Whatever/53y53y", should see "44444"
         $subfolders = $service->getSubfoldersOf($this->band->id, 'Live test folder/Whatever/53y53y');
-
-        dump('Subfolders found:', $subfolders);
-        dump('All folder paths in DB:', MediaFile::where('band_id', $this->band->id)->pluck('folder_path')->toArray());
 
         $this->assertCount(1, $subfolders, 'Should find the "44444" subfolder');
         $this->assertEquals('44444', $subfolders[0]['name']);
