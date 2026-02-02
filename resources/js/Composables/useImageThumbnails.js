@@ -39,22 +39,17 @@ export function useImageThumbnails() {
         'transition-all',
         'duration-200',
         'inline-block',
-        'border-2',
         'border-gray-200',
         'dark:border-gray-600',
         'hover:border-blue-400',
         'dark:hover:border-blue-500',
-        'mr-3',
-        'mb-3'
       );
 
-      // Force max-height via inline style to ensure it's respected
-      img.style.maxHeight = '300px';
       img.style.maxWidth = '100%';
 
       // Wrap image in a container for overlay effect
       const wrapper = document.createElement('div');
-      wrapper.className = 'thumbnail-wrapper inline-block relative mr-3 mb-3 group';
+      wrapper.className = 'thumbnail-wrapper inline-block relative group m-0 p-0';
       wrapper.style.display = 'inline-block';
       wrapper.style.maxWidth = '100%';
 
