@@ -1,10 +1,12 @@
 <template>
-  <img
-    :src="iconSource"
-    class="inline-block px-3"
-    style="height:40px; width:auto"
-    :title="type"
-  > 
+  <div class="flex items-center justify-center" style="width: 60px; height: 40px;">
+    <img
+      :src="iconSource"
+      class="max-w-full max-h-full"
+      style="object-fit: contain;"
+      :title="type"
+    >
+  </div>
 </template>
 <script>
 const prefix = 'gigIcons/';
