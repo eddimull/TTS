@@ -52,11 +52,17 @@ class BandEditPermissionsTest extends TestCase
         $band = Bands::factory()->hasOwner()->create();
         $owner = $band->owners->first()->user;
         $timestamp = Carbon::now()->timestamp;
-        $response = $this->actingAs($owner)->patch("/bands/$band->id", [
-            'name' => 'New Band Name',
-            'site_name' => "site_name_$timestamp",
-        ]);
-        $response->assertRedirect("/bands");
+
+        // Set the referer to simulate coming from the edit page
+        $response = $this->actingAs($owner)
+            ->from("/bands/{$band->id}/edit/details")
+            ->patch("/bands/$band->id", [
+                'name' => 'New Band Name',
+                'site_name' => "site_name_$timestamp",
+            ]);
+
+        // Should redirect back to the edit page
+        $response->assertRedirect("/bands/{$band->id}/edit/details");
         $this->assertDatabaseHas('bands', [
             'id' => $band->id,
             'name' => 'New Band Name',
