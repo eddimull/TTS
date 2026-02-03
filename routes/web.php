@@ -50,7 +50,6 @@ require __DIR__ . '/finances.php';
 require __DIR__ . '/images.php';
 require __DIR__ . '/media.php';
 require __DIR__ . '/notifications.php';
-require __DIR__ . '/proposals.php';
 require __DIR__ . '/questionnaire.php';
 require __DIR__ . '/rehearsals.php';
 require __DIR__ . '/rosters.php';

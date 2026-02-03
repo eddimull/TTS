@@ -3,7 +3,6 @@
 namespace App\Http\Traits;
 
 use App\Models\Contacts;
-use App\Mail\PaymentMade;
 use App\Services\PdfGeneratorService;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Http;
@@ -14,15 +13,6 @@ use Illuminate\Support\Facades\Storage;
 
 trait BookingTraits
 {
-    public function sendReceipt()
-    {
-        $contacts = $this->proposal->ProposalContacts;
-        foreach ($contacts as $contact)
-        {
-            Mail::to($contact->email)->send(new PaymentMade($this));
-        }
-    }
-
     public function getPaymentPdf()
     {
         $renderedView = view('pdf.bookingPayment', ['booking' => $this])->render();
