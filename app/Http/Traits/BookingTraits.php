@@ -7,6 +7,7 @@ use App\Mail\PaymentMade;
 use App\Services\PdfGeneratorService;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use App\Http\Requests\BookingContact;
 use Illuminate\Support\Facades\Storage;
@@ -32,6 +33,18 @@ trait BookingTraits
 
     public function getContractPdf(Contacts $contact = null): string
     {
+        // Log contract generation attempt
+        Log::info('Contract generation started', [
+            'booking_id' => $this->id,
+            'booking_name' => $this->name,
+            'band_id' => $this->band->id,
+            'band_name' => $this->band->name,
+            'contact_id' => $contact?->id ?? $this->contacts->first()?->id,
+        ]);
+
+        // Validate band has required address fields
+        $this->validateBandAddressData();
+
         $logoPath = str_replace('/images/', '', $this->band->logo);
 
         if (is_null($contact))
@@ -53,7 +66,56 @@ trait BookingTraits
 
         $pdfService = app(PdfGeneratorService::class);
 
-        return $pdfService->generateFromHtml($renderedView, 'Legal', true);
+        $pdf = $pdfService->generateFromHtml($renderedView, 'Legal', true);
+
+        // Log successful generation
+        Log::info('Contract generated successfully', [
+            'booking_id' => $this->id,
+            'band_id' => $this->band->id,
+            'pdf_size' => strlen($pdf),
+        ]);
+
+        return $pdf;
+    }
+
+    /**
+     * Validate that the band has the required address data for contract generation
+     *
+     * @throws \InvalidArgumentException
+     */
+    protected function validateBandAddressData(): void
+    {
+        $requiredFields = [
+            'name' => 'band name',
+            'address' => 'street address',
+            'city' => 'city',
+            'state' => 'state',
+            'zip' => 'zip code'
+        ];
+
+        $missingFields = [];
+
+        foreach ($requiredFields as $field => $label) {
+            if (empty($this->band->$field)) {
+                $missingFields[] = $label;
+            }
+        }
+
+        if (!empty($missingFields)) {
+            $errorMessage = "Band '{$this->band->name}' is missing required fields for contract generation: " .
+                implode(', ', $missingFields) .
+                ". Please update the band's address information before generating a contract.";
+
+            // Log validation failure
+            Log::warning('Contract generation validation failed', [
+                'booking_id' => $this->id,
+                'band_id' => $this->band->id,
+                'band_name' => $this->band->name,
+                'missing_fields' => $missingFields,
+            ]);
+
+            throw new \InvalidArgumentException($errorMessage);
+        }
     }
 
     public function storeContractPdf(string $contractPdf)

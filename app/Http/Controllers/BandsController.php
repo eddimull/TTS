@@ -184,6 +184,10 @@ class BandsController extends Controller
         $band = Bands::find($id);
         $validation_rules = [
             'name' => 'required',
+            'address' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:255',
+            'state' => 'nullable|string|max:2',
+            'zip' => 'nullable|string|max:10',
         ];
         if ($band->site_name != $request->site_name)
         {
@@ -195,10 +199,14 @@ class BandsController extends Controller
 
         $band->name = $request->name;
         $band->site_name = $request->site_name;
+        $band->address = $request->address;
+        $band->city = $request->city;
+        $band->state = $request->state;
+        $band->zip = $request->zip;
 
         $band->save();
 
-        return redirect()->route('bands')->with('successMessage', $band->name . ' was successfully updated');
+        return redirect()->back()->with('successMessage', $band->name . ' was successfully updated');
     }
     public function deleteMember(Bands $band, User $user)
     {
