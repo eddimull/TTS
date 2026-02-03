@@ -29,9 +29,7 @@
           :band="band"
           :form="form"
           :loading="loading"
-          :url-warn="urlWarn"
           @update-band="updateBand"
-          @update-form="updateForm"
           @upload-logo="uploadLogo"
         />
 
@@ -116,7 +114,6 @@ export default {
   },
   data() {
     return {
-      urlWarn: false,
       syncing: false,
       showInstructions: false,
       activePanel: this.getInitialPanel(),
@@ -186,7 +183,11 @@ export default {
       form: {
         name: this.band.name,
         site_name: this.band.site_name,
-        calendar_id: this.band.calendar_id
+        calendar_id: this.band.calendar_id,
+        address: this.band.address || '',
+        city: this.band.city || '',
+        state: this.band.state || '',
+        zip: this.band.zip || ''
       }
     }
   },
@@ -257,30 +258,15 @@ export default {
       }
     },
 
-    // Form update methods
-    updateForm(field, value) {
-      this.form[field] = value;
-      if (field === 'site_name') {
-        this.filter();
-      }
-    },
-    filter() {
-      if (this.form.site_name.length > 0) {
-        let message = this.form.site_name;
-        let urlsafeName = message.replace(/[^aA-zZ0-9\-_]/gm, "")
-        this.urlWarn = urlsafeName !== this.form.site_name
-        this.form.site_name = urlsafeName;
-      }
-    },
-
     // Details methods
     updateBand() {
       const bandID = this.band.id;
       this.loading = true;
-      this.$inertia.patch('/bands/' + bandID, this.form)
-        .then(() => {
+      this.$inertia.patch('/bands/' + bandID, this.form, {
+        onFinish: () => {
           this.loading = false;
-        })
+        }
+      })
     },
     uploadLogo(event) {
       console.log(event.files);

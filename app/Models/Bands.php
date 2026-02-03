@@ -16,7 +16,7 @@ class Bands extends Model
         return 'id';
     }
 
-    protected $fillable = ['name', 'site_name'];
+    protected $fillable = ['name', 'site_name', 'address', 'city', 'state', 'zip'];
 
     public function owner()
     {
@@ -247,6 +247,20 @@ class Bands extends Model
     public function activeApiTokens()
     {
         return $this->apiTokens()->where('is_active', true);
+    }
+
+    /**
+     * Get the formatted full address for the band
+     */
+    public function getFullAddressAttribute()
+    {
+        $parts = array_filter([
+            $this->address,
+            $this->city,
+            $this->state ? $this->state . ' ' . $this->zip : $this->zip,
+        ]);
+
+        return implode(', ', $parts);
     }
 
     /**

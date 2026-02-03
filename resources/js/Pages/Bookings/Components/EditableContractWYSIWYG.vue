@@ -90,14 +90,14 @@
         <div class="mb-2">
           <ul>
             <li>{{ band.name }}</li>
-            <li>200 St Michael St</li>
-            <li>Lafayette, LA 70508</li>
+            <li>{{ band.address }}</li>
+            <li>{{ band.city }}, {{ band.state }} {{ band.zip }}</li>
           </ul>
         </div>
         <p class="mb-2">
           Buyer shall pay the remaining gross compensation of <span class="font-bold">${{ (booking.price / 2).toFixed(2) }}</span> at least ten (10) days before Performance. <strong>If Buyer elects to pay via check, money order, or cashier's check,
-            payment shall be made to Three Thirty Seven and must be received at least ten (10) days prior to Performance. If Buyer elects to pay via Invoice, Venmo, or credit card,
-            payment shall be made to Three Thirty Seven ten (10) days prior to the Performance. (Additional fees may apply to credit card payments.)</strong> In the event that Buyer requests
+            payment shall be made to {{ band.name }} and must be received at least ten (10) days prior to Performance. If Buyer elects to pay via Invoice, Venmo, or credit card,
+            payment shall be made to {{ band.name }} ten (10) days prior to the Performance. (Additional fees may apply to credit card payments.)</strong> In the event that Buyer requests
           that Artist perform past the end time set forth in this Agreement, and Artist chooses to continue performing, Buyer shall pay Artist <span
             :title="`(price/duration) x 1.5 = (${booking.price} / ${booking.duration}) * 1.5 = $${((booking.price / booking.duration)*1.5).toFixed(2)}`"
             class="font-bold cursor-help"
