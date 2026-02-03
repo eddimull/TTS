@@ -56,8 +56,8 @@
             <div class="mb-3">
                 <ul>
                     <li>{{ $proposal['band']['name'] }}</li>
-                    <li>200 St Michael St</li>
-                    <li>Lafayette, LA 70506</li>
+                    <li>{{ $proposal['band']['address'] }}</li>
+                    <li>{{ $proposal['band']['city'] }}, {{ $proposal['band']['state'] }} {{ $proposal['band']['zip'] }}</li>
                 </ul>
             </div>
             <p class="mb-3">
