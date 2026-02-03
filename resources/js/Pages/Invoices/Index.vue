@@ -42,7 +42,7 @@
               </div>
             </template>
             <template #empty>
-              No Completed Proposals.
+              No Completed Bookings.
             </template>
             <Column
               field="name"
@@ -80,12 +80,12 @@
 
     <card-modal
       v-if="showModal"
-      ref="proposalModal"
+      ref="bookingModal"
       :show-save="false"
       @closing="toggleModal()"
     >
       <template #header>
-        <h1>{{ activeProposal.name }}</h1>
+        <h1>{{ activeBooking.name }}</h1>
       </template>
       <template #body>
         <div>
@@ -99,7 +99,7 @@
           class="flex-auto"
         >
           <button
-            v-show="!activeProposal.event_id"
+            v-show="!activeBooking.event_id"
             type="button"
             class="mx-2 bg-green-500 hover:bg-green-600 px-4 py-2 rounded text-white focus:outline-none"
             @click="writeToCalendar()"
@@ -123,9 +123,9 @@
     </card-modal>
     <card-modal
       v-if="showInvoiceModal"
-      ref="proposalCreateInvoice"
+      ref="bookingCreateInvoice"
       :save-text="'Create Invoice'"
-      :show-save="parseFloat(activeProposal.amountLeft) >= 0"
+      :show-save="parseFloat(activeBooking.amountLeft) >= 0"
       @save="sendInvoice"
       @closing="toggleInvoiceModal()"
     >
@@ -168,7 +168,7 @@ export default {
         return {
             showModal: false,
             showInvoiceModal: false,
-            activeProposal: {},
+            activeBooking: {},
             activeBandSite: "",
             filters1: null,
             showFields: [
@@ -202,7 +202,7 @@ export default {
                     subProperty: "image_url",
                 },
             ],
-            proposalData: {
+            bookingData: {
                 name: "",
                 date: DateTime.now().set({ hour: 19, minute: 0 }).plus({ months: 1 }).toJSDate(),
                 event_type_id: 0,
@@ -285,40 +285,40 @@ export default {
         createInvoice(proposal) {
             proposal.buyer_pays_convenience = true;
 
-            this.activeProposal = proposal;
+            this.activeBooking = proposal;
             this.showInvoiceModal = true;
         },
         sendInvoice() {
             this.$inertia.post(
-                "/finances/invoices/" + this.activeProposal.key + "/send",
+                "/finances/invoices/" + this.activeBooking.key + "/send",
                 {
-                    amount: this.activeProposal.amount,
-                    contact_id: this.activeProposal.contact_id,
+                    amount: this.activeBooking.amount,
+                    contact_id: this.activeBooking.contact_id,
                     buyer_pays_convenience:
-                        this.activeProposal.buyer_pays_convenience,
+                        this.activeBooking.buyer_pays_convenience,
                 }
             );
         },
         toggleModal() {
             this.showModal = !this.showModal;
         },
-        selectProposal(proposal) {
+        selectBooking(proposal) {
             for (const i in proposal.data.invoices) {
                 proposal.data.invoices[i].created_at = DateTime.fromISO(
                     proposal.data.invoices[i].created_at
                 ).toLocaleString(DateTime.DATETIME_HUGE);
             }
-            this.activeProposal = proposal.data;
+            this.activeBooking = proposal.data;
             this.showModal = true;
         },
-        gotoProposal() {
+        gotoBooking() {
             this.$inertia.get(
-                "/proposals/" + this.activeProposal.key + "/edit"
+                "/bookings/" + this.activeBooking.key + "/edit"
             );
         },
         writeToCalendar() {
             this.$inertia.post(
-                "/proposals/" + this.activeProposal.key + "/writeToCalendar"
+                "/bookings/" + this.activeBooking.key + "/writeToCalendar"
             );
         },
         clearFilter1() {
