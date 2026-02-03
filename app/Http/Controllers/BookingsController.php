@@ -333,7 +333,20 @@ class BookingsController extends Controller
 
     public function downloadContract(Bands $band, Bookings $booking)
     {
-        $contractPDF = $booking->getContractPdf();
+        try {
+            $contractPDF = $booking->getContractPdf();
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'error' => 'Band address incomplete',
+                'message' => $e->getMessage()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Contract generation failed',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+
         if ($contractPDF === null)
         {
             // Handle the error, e.g., return an error response

@@ -196,8 +196,18 @@ class ContractsController extends Controller
                 ->withInput();
         }
 
-        $contractPdf = $booking->getContractPdf($contact);
-        $booking->storeContractPdf($contractPdf);
+        try {
+            $contractPdf = $booking->getContractPdf($contact);
+            $booking->storeContractPdf($contractPdf);
+        } catch (\InvalidArgumentException $e) {
+            return redirect()->back()
+                ->withErrors(['Band address incomplete' => $e->getMessage()])
+                ->withInput();
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->withErrors(['Contract generation failed' => $e->getMessage()])
+                ->withInput();
+        }
 
         // Refresh to get the updated contract with asset_url populated
         $booking->refresh();

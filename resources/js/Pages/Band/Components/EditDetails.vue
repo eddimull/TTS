@@ -5,33 +5,21 @@
     @submit.prevent="updateBand"
   >
     <!-- Band Name -->
-    <div class="mb-6">
-      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        Band Name
-      </label>
-      <input
-        :value="form.name"
-        type="text"
-        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-        placeholder="Enter band name"
-        required
-        @input="updateName"
-      >
-    </div>
+    <TextInput
+      v-model="form.name"
+      name="name"
+      label="Band Name"
+      placeholder="Enter band name"
+    />
 
     <!-- Site Name -->
-    <div class="mb-6">
-      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        Page Name (URL)
-      </label>
-      <input
-        :value="form.site_name"
-        type="text"
-        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+    <div>
+      <TextInput
+        v-model="form.site_name"
+        name="site_name"
+        label="Page Name (URL)"
         placeholder="band_name"
-        pattern="([a-zA-z0-9\-_]+)"
-        @input="updateSiteName"
-      >
+      />
       <p
         v-if="urlWarn"
         class="mt-1 text-sm text-red-600 dark:text-red-400"
@@ -68,6 +56,65 @@
           class="w-full"
           @uploader="uploadLogo"
         />
+      </div>
+    </div>
+
+    <!-- Address Section -->
+    <div class="border-t border-gray-200 dark:border-gray-600 pt-6 mb-6">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+        Band Address
+      </h3>
+      <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+        <p class="text-sm text-blue-800 dark:text-blue-200">
+          <strong>Required for contracts:</strong> This address will appear on all contracts and payment information sent to clients. All fields are required.
+        </p>
+      </div>
+
+      <!-- Street Address with Autocomplete -->
+      <div class="mb-4">
+        <LocationAutocomplete
+          v-model="form.address"
+          name="band_address"
+          label="Street Address *"
+          placeholder="Start typing an address..."
+          @location-selected="handleAddressSelected"
+        />
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Start typing to search for your band's address
+        </p>
+      </div>
+
+      <!-- City, State, Zip -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        <!-- City -->
+        <div class="md:col-span-1">
+          <TextInput
+            v-model="form.city"
+            name="city"
+            label="City *"
+            placeholder="Auto-filled from address"
+          />
+        </div>
+
+        <!-- State -->
+        <div class="md:col-span-1">
+          <TextInput
+            v-model="form.state"
+            name="state"
+            label="State *"
+            placeholder="LA"
+          />
+        </div>
+
+        <!-- Zip Code -->
+        <div class="md:col-span-1">
+          <TextInput
+            v-model="form.zip"
+            name="zip"
+            label="Zip Code *"
+            placeholder="70506"
+          />
+        </div>
       </div>
     </div>
 
@@ -147,11 +194,15 @@
 
 <script>
 import FileUpload from 'primevue/fileupload';
+import LocationAutocomplete from '@/Components/LocationAutocomplete.vue';
+import TextInput from '@/Components/TextInput.vue';
 
 export default {
   name: 'EditDetails',
   components: {
     FileUpload,
+    LocationAutocomplete,
+    TextInput,
   },
   props: {
     band: {
@@ -165,25 +216,82 @@ export default {
     loading: {
       type: Boolean,
       default: false
-    },
-    urlWarn: {
-      type: Boolean,
-      default: false
     }
   },
-  emits: ['update-band', 'update-form', 'upload-logo',],
+  emits: ['update-band', 'upload-logo'],
+  data() {
+    return {
+      urlWarn: false
+    }
+  },
+  watch: {
+    'form.site_name': {
+      handler(value) {
+        if (value && value.length > 0) {
+          let message = value;
+          let urlsafeName = message.replace(/[^aA-zZ0-9\-_]/gm, "")
+          this.urlWarn = urlsafeName !== value
+          if (urlsafeName !== value) {
+            this.form.site_name = urlsafeName;
+          }
+        }
+      }
+    }
+  },
   methods: {
     updateBand() {
       this.$emit('update-band');
     },
-    updateName(event) {
-      this.$emit('update-form', 'name', event.target.value);
-    },
-    updateSiteName(event) {
-      this.$emit('update-form', 'site_name', event.target.value);
-    },
     uploadLogo(event) {
       this.$emit('upload-logo', event);
+    },
+    handleAddressSelected(locationData) {
+      // Parse Google Places API response to extract address components
+      const result = locationData.result;
+
+      if (!result || !result.address_components) {
+        console.error('Invalid location data', locationData);
+        return;
+      }
+
+      // Helper function to extract address component
+      const getAddressComponent = (type) => {
+        const component = result.address_components.find(comp =>
+          comp.types.includes(type)
+        );
+        return component ? component.long_name : '';
+      };
+
+      const getAddressComponentShort = (type) => {
+        const component = result.address_components.find(comp =>
+          comp.types.includes(type)
+        );
+        return component ? component.short_name : '';
+      };
+
+      // Extract street address (street_number + route)
+      const streetNumber = getAddressComponent('street_number');
+      const route = getAddressComponent('route');
+      const streetAddress = [streetNumber, route].filter(Boolean).join(' ');
+
+      // Extract other components
+      const city = getAddressComponent('locality') || getAddressComponent('sublocality');
+      const state = getAddressComponentShort('administrative_area_level_1');
+      const zip = getAddressComponent('postal_code');
+
+      // Update all form fields
+      if (streetAddress) {
+        this.form.address = streetAddress;
+      }
+      if (city) {
+        this.form.city = city;
+      }
+      if (state) {
+        this.form.state = state;
+      }
+      if (zip) {
+        this.form.zip = zip;
+      }
     }
   }
 }

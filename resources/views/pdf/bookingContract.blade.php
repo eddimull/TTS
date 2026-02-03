@@ -46,8 +46,8 @@
         <div class="mb-3">
             <ul>
                 <li>{{ $booking->band->name }}</li>
-                <li>200 St Michael St</li>
-                <li>Lafayette, LA 70506</li>
+                <li>{{ $booking->band->address }}</li>
+                <li>{{ $booking->band->city }}, {{ $booking->band->state }} {{ $booking->band->zip }}</li>
             </ul>
         </div>
         <p class="mb-3">
