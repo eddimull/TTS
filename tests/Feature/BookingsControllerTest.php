@@ -386,6 +386,10 @@ class BookingsControllerTest extends TestCase
         Storage::disk('s3')->put('default.png', 'fake image content');
 
         $this->band->logo = '/images/default.png';
+        $this->band->address = '123 Test St';
+        $this->band->city = 'Test City';
+        $this->band->state = 'LA';
+        $this->band->zip = '70506';
         $this->band->save();
 
         $contacts = Contacts::factory()->count(2)->create();
@@ -412,6 +416,10 @@ class BookingsControllerTest extends TestCase
         Storage::disk('s3')->put('default.png', 'fake image content');
 
         $this->band->logo = '/images/default.png';
+        $this->band->address = '123 Test St';
+        $this->band->city = 'Test City';
+        $this->band->state = 'LA';
+        $this->band->zip = '70506';
         $this->band->save();
 
         $contacts = Contacts::factory()->count(2)->create();
