@@ -18,7 +18,7 @@
         @row-click="gotoPayments"
       >
         <Column
-          field="proposal.name"
+          field="booking.name"
           header="Contract Name"
           :sortable="true"
         />
@@ -64,8 +64,8 @@ export default {
           this.payments = this.$page.props.payments;
         },
         gotoPayments(event){
-            const proposal = event.data.proposal;
-            window.location = '/proposals/' + proposal.key + '/payments';
+            const booking = event.data.booking;
+            window.location = '/bookings/' + booking.key + '/payments';
 
         }
     }

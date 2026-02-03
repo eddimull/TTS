@@ -103,7 +103,7 @@ const downloadReceipt = () => {
 };
 
 const deletePayment = (payment) => {
-    //   inertia.delete(`/proposals/${props.proposal.key}/deletePayment/${payment.id}`, {
+    //   inertia.delete(`/bookings/${props.booking.key}/deletePayment/${payment.id}`, {
     //     preserveScroll: true
     //   })
 };
