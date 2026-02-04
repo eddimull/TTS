@@ -10,6 +10,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', [EventsController::class, 'index'])->name('events');
         Route::get('/create', [EventsController::class, 'create'])->name('events.create');
         Route::post('/', [EventsController::class, 'store'])->name('events.store');
+        Route::get('/{key}', [EventsController::class, 'show'])->name('events.show');
         Route::get('/{key}/edit', [EventsController::class, 'edit'])->name('events.edit');
         Route::get('/{key}/advance', [EventsController::class, 'advance'])->name('events.advance');
         Route::get('/{key}/history', [EventsController::class, 'history'])->name('events.history');
