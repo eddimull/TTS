@@ -174,12 +174,64 @@ class EventsController extends Controller
     /**
      * Display the specified resource.
      *
-     * @param  int  $id
+     * @param  string|int  $keyOrId  Event key (UUID) or ID (for backwards compatibility)
      * @return \Illuminate\Http\Response
      */
-    public function show($id)
+    public function show($keyOrId)
     {
-        //
+        // Try to find by key first, then by ID for backwards compatibility
+        if (is_numeric($keyOrId)) {
+            $event = Events::where('id', $keyOrId)->orWhere('key', $keyOrId)->firstOrFail();
+        } else {
+            $event = Events::where('key', $keyOrId)->firstOrFail();
+        }
+
+        // Load all necessary relationships for comprehensive view
+        $event->load([
+            'eventable.band.colorways',
+            'eventable.contacts',
+            'type',
+            'attachments',
+            'eventMembers.bandRole',
+            'eventMembers.rosterMember.bandRole',
+            'eventMembers.user',
+            'roster'
+        ]);
+
+        // Format roster members
+        $event->roster_members = $event->eventMembers->map(function ($eventMember) {
+            return [
+                'name' => $eventMember->display_name,
+                'role' => $eventMember->role_name,
+                'band_role_id' => $eventMember->band_role_id,
+                'attendance' => $eventMember->attendance_status,
+            ];
+        })->sortBy('name')->values();
+
+        // Get user's payout if they're on the roster
+        $userPayout = null;
+        if($event->eventable->payout)
+        {
+            $userPayout = $event->eventable->payout->getPayoutAmountForUser(Auth::user());
+        }
+
+        // Format attachment sizes
+        if ($event->attachments) {
+            $event->attachments->each(function ($attachment) {
+                $attachment->formatted_size = $attachment->formattedSize;
+            });
+        }
+
+        // Check user permissions for this event's band
+        $band = $event->eventable->band;
+        $canEdit = Auth::user()->canWrite('events', $band->id);
+
+        return Inertia::render('Events/Show', [
+            'event' => $event,
+            'canEdit' => $canEdit,
+            'band' => $band,
+            'userPayout' => $userPayout,
+        ]);
     }
 
     /**
