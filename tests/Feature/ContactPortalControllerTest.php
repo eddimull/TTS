@@ -6,7 +6,10 @@ use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\EventTypes;
+use App\Models\MediaFile;
 use App\Models\Payments;
+use App\Models\Rehearsal;
+use App\Models\RehearsalSchedule;
 use App\Models\StripeAccounts;
 use App\Models\User;
 use App\Services\ContactPaymentService;
@@ -924,6 +927,93 @@ class ContactPortalControllerTest extends TestCase
             $page->component('Contact/Media')
                 ->has('folders')
                 ->has('totalFiles')
+        );
+    }
+
+    /**
+     * Test media page handles rehearsal events without contacts relationship
+     * This reproduces the bug: "Call to undefined method App\Models\Rehearsal::contacts()"
+     *
+     * The bug occurs when a booking's media folder path matches a rehearsal event's media_folder_path,
+     * and the code tries to query all events with that path (including rehearsals).
+     */
+    public function test_media_page_handles_rehearsal_events_without_error()
+    {
+        $band = Bands::factory()->withOwners()->create();
+        $contact = Contacts::factory()->create([
+            'band_id' => $band->id,
+            'can_login' => true,
+        ]);
+
+        // Use a shared folder path that will be used by both booking and rehearsal
+        $sharedFolderPath = 'band-' . $band->id . '/shared-media';
+
+        // Create a booking with contact and media
+        $booking = Bookings::factory()->create([
+            'band_id' => $band->id,
+            'date' => now()->addDays(7),
+            'enable_portal_media_access' => true,
+        ]);
+        $booking->contacts()->attach($contact->id, ['is_primary' => true]);
+
+        // Create an event linked to the booking with the shared folder path
+        $bookingEvent = \App\Models\Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking->id,
+            'title' => 'Booking Event with Media',
+            'date' => $booking->date,
+            'time' => '19:00:00',
+            'media_folder_path' => $sharedFolderPath,  // Same path as rehearsal
+            'enable_portal_media_access' => true,
+        ]);
+
+        // Create a media file in the shared folder for the booking
+        // The folder_path is what links it to the booking event
+        // Let the factory create its own user to avoid foreign key issues
+        MediaFile::factory()->image()->create([
+            'band_id' => $band->id,
+            'folder_path' => $sharedFolderPath,
+            'filename' => 'test-photo.jpg',
+        ]);
+
+        // Create a rehearsal (which does NOT have contacts relationship)
+        $rehearsalSchedule = \App\Models\RehearsalSchedule::factory()->create([
+            'band_id' => $band->id,
+            'name' => 'Weekly Rehearsal',
+            'frequency' => 'weekly',
+        ]);
+
+        $rehearsal = \App\Models\Rehearsal::factory()->create([
+            'band_id' => $band->id,
+            'rehearsal_schedule_id' => $rehearsalSchedule->id,
+        ]);
+
+        // Create a rehearsal event with the SAME media_folder_path
+        // This is what triggers the bug - when querying events by folder_path,
+        // both booking and rehearsal events match, and the code tries to call contacts() on Rehearsal
+        \App\Models\Events::factory()->create([
+            'eventable_type' => \App\Models\Rehearsal::class,
+            'eventable_id' => $rehearsal->id,
+            'title' => 'Rehearsal Event',
+            'date' => now()->addDays(3),
+            'time' => '18:00:00',
+            'media_folder_path' => $sharedFolderPath,  // Same path as booking!
+            'enable_portal_media_access' => true,
+        ]);
+
+        // When the contact views the media page, it should not crash
+        // The bug manifests when the code tries to find events for the folder path
+        // and encounters the rehearsal event without a contacts() relationship
+        $response = $this->actingAs($contact, 'contact')
+            ->get(route('portal.media'));
+
+        // Should succeed and show the booking's media
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) =>
+            $page->component('Contact/Media')
+                ->has('folders')
+                ->where('folders.0.path', $sharedFolderPath)
+                ->where('folders.0.file_count', 1)
         );
     }
 
