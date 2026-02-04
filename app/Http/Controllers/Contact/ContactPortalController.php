@@ -431,11 +431,10 @@ class ContactPortalController extends Controller
             $event = null;
             if ($path) {
                 $event = \App\Models\Events::where('media_folder_path', $path)
-                    ->whereHas('eventable', function ($query) use ($contact) {
-                        $query->where('eventable_type', 'App\\Models\\Bookings')
-                            ->whereHas('contacts', function ($q) use ($contact) {
-                                $q->where('contacts.id', $contact->id);
-                            });
+                    ->whereHasMorph('eventable', [\App\Models\Bookings::class], function ($query) use ($contact) {
+                        $query->whereHas('contacts', function ($q) use ($contact) {
+                            $q->where('contacts.id', $contact->id);
+                        });
                     })
                     ->with('eventable')
                     ->first();
