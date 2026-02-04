@@ -85,15 +85,6 @@ class Bands extends Model
         return $this->invitations()->where('pending', '=', '1');
     }
 
-    public function proposals()
-    {
-        return $this->hasMany(Proposals::class, 'band_id')->orderBy('created_at', 'desc');
-    }
-    public function completedProposals()
-    {
-        return $this->hasMany(Proposals::class, 'band_id')->where('phase_id', '=', '6')->with(['invoices', 'payments'])->orderBy('name', 'asc');
-    }
-
     public function completedBookings()
     {
         return $this->hasMany(Bookings::class, 'band_id')->where('status', '=', 'confirmed')->with(['payments'])->orderBy('name', 'asc');

@@ -4,7 +4,6 @@ namespace App\Services;
 
 use Error;
 use Illuminate\Support\Carbon;
-use App\Models\ProposalPayments;
 use Illuminate\Support\Facades\DB;
 
 class FinanceServices
@@ -124,47 +123,4 @@ class FinanceServices
         return $bands;
     }
 
-    function makePayment($proposal, $paymentName, $amount, $date)
-    {
-        try
-        {
-
-            $payment = ProposalPayments::create([
-                'proposal_id' => $proposal->id,
-                'name' => $paymentName,
-                'amount' => $amount,
-                'paymentDate' => Carbon::parse($date)
-            ]);
-            if ($proposal->amountLeft == '0.00')
-            {
-                $proposal->paid = true;
-                $proposal->save();
-            }
-            return $payment;
-        }
-        catch (\Exception $e)
-        {
-            return back()->withError($e->getMessage())->withInput();
-        }
-    }
-
-    function removePayment($proposal, $payment)
-    {
-        try
-        {
-
-            $payment->delete();
-
-            if ($proposal->amountLeft !== '0.00')
-            {
-                $proposal->paid = false;
-                $proposal->save();
-            }
-            return true;
-        }
-        catch (\Exception $e)
-        {
-            return back()->withError($e->getMessage())->withInput();
-        }
-    }
 }

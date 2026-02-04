@@ -161,32 +161,6 @@ class FinanceServicesTest extends TestCase
         $this->assertCount(3, $result[0]->payments);
     }
 
-    public function testMakePayment()
-    {
-        $proposal = Proposals::factory()->create(['price' => 10000]);
-        $paymentName = 'Test Payment';
-        $amount = 5000;
-        $date = now();
-
-        $payment = $this->financeServices->makePayment($proposal, $paymentName, $amount, $date);
-
-        $this->assertInstanceOf(ProposalPayments::class, $payment);
-        $this->assertEquals($paymentName, $payment->name);
-        $this->assertEquals($amount, $payment->amount);
-        $this->assertEquals($date->toDateString(), $payment->paymentDate->toDateString());
-    }
-
-    public function testRemovePayment()
-    {
-        $proposal = Proposals::factory()->create(['price' => 10000]);
-        $payment = ProposalPayments::factory()->create(['proposal_id' => $proposal->id, 'amount' => 5000]);
-
-        $result = $this->financeServices->removePayment($proposal, $payment);
-
-        $this->assertTrue($result);
-        $this->assertDatabaseMissing('proposal_payments', ['id' => $payment->id]);
-    }
-
     public function testGetPaidUnpaidWithSnapshotDate()
     {
         $band = Bands::factory()->create();
