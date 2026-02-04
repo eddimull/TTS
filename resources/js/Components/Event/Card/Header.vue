@@ -10,8 +10,8 @@
         <card-icon :type="type" />
       </div>
       <div class="flex flex-col -mr-20">
-        <div class="font-bold break-words">
-          {{ name }}
+        <div class="underline font-bold break-words">
+          <Link :href="`/events/${eventkey}`">{{ name }}</Link>
         </div>
         <div class="text-gray-400 text-sm font-bold">
           {{ parsedDate.date }}

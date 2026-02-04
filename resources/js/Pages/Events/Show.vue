@@ -1,5 +1,5 @@
 <template>
-  <Container class="md:container md:mx-auto">
+  <Container class="md:container md:mx-auto bg-transparent dark:bg-transparent">
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
       <!-- Compact Header -->
       <Card class="mb-4">
