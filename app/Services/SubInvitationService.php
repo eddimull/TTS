@@ -108,9 +108,9 @@ class SubInvitationService
                 'emailHeader' => 'Sub Invited',
                 'text' => $message,
                 'route' => 'events.show',
-                'routeParams' => $event->id,
+                'routeParams' => $event->key,
                 'actionText' => 'View Event',
-                'url' => '/events/' . $event->id,
+                'url' => '/events/' . $event->key,
             ]));
         }
     }

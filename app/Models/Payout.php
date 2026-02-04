@@ -77,4 +77,13 @@ class Payout extends Model
         $amount = $this->adjusted_amount;
         return is_string($amount) ? floatval($amount) : $amount;
     }
+
+    /**
+     * Get the payout amount for one user
+     */
+    public function getPayoutAmountForUser(User $user): float
+    {
+        $calculationResult = $this->calculation_result;
+        return round(\collect($calculationResult['member_payouts'])->firstWhere('user_id', $user->id)['amount'] ?? 0.0, 2);
+    }
 }
