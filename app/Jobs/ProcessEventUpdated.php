@@ -44,11 +44,43 @@ class ProcessEventUpdated implements ShouldQueue
 
     public function writeToGoogleCalendar($calendar)
     {
+        if (!$calendar) {
+            Log::warning("No calendar provided for event ID: {$this->event->id}");
+            return;
+        }
+
         try {
+            // Check if event already exists
+            $existingGoogleEvent = $this->event->getGoogleEvent($calendar);
+
+            if ($existingGoogleEvent) {
+                Log::info("Updating existing Google Calendar event for Event ID: {$this->event->id}, Google Event ID: {$existingGoogleEvent->google_event_id}, Calendar: {$calendar->type}");
+            } else {
+                Log::info("Creating new Google Calendar event for Event ID: {$this->event->id}, Calendar: {$calendar->type}");
+            }
+
+            // Write to Google Calendar (trait handles update vs insert)
             $event = $this->event->writeToGoogleCalendar($calendar);
+
+            if (!$event || !$event->id) {
+                throw new \Exception("Google Calendar API returned invalid event");
+            }
+
+            // Store the relationship
             $this->event->storeGoogleEventId($calendar, $event->id);
+
+            Log::info("Successfully synced Event ID: {$this->event->id} with Google Event ID: {$event->id}, Calendar: {$calendar->type}");
+
         } catch (\Exception $e) {
-            Log::error('Failed to update event in calendar: ' . $e->getMessage());
+            Log::error("Failed to sync Event ID: {$this->event->id} to calendar: " . $e->getMessage(), [
+                'event_id' => $this->event->id,
+                'calendar_id' => $calendar->id ?? 'unknown',
+                'calendar_type' => $calendar->type ?? 'unknown',
+                'exception' => $e->getTraceAsString()
+            ]);
+
+            // Re-throw critical errors
+            throw $e;
         }
     }
 
