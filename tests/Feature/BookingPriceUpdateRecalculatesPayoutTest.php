@@ -42,6 +42,7 @@ class BookingPriceUpdateRecalculatesPayoutTest extends TestCase
             'price' => 4145, 
             'event_type_id' => $this->eventType->id,
             'date' => now()->addDays(10),
+            'status' => 'confirmed'
         ]);
 
         // Create 2 events for the booking
@@ -113,6 +114,7 @@ class BookingPriceUpdateRecalculatesPayoutTest extends TestCase
             'price' => 3000,
             'event_type_id' => $this->eventType->id,
             'date' => now()->addDays(10),
+            'status' => 'confirmed'
         ]);
 
 
@@ -160,6 +162,7 @@ class BookingPriceUpdateRecalculatesPayoutTest extends TestCase
             'price' => 2000,
             'event_type_id' => $this->eventType->id,
             'date' => now()->addDays(10),
+            'status' => 'confirmed'
         ]);
 
         $event = Events::factory()->create([
