@@ -3,15 +3,15 @@
 namespace App\Jobs;
 
 use App\Models\Bookings;
-use App\Models\GoogleEvents;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Foundation\Bus\Dispatchable;
 
-class ProcessBookingCreated implements ShouldQueue
+class ProcessBookingCreated implements ShouldQueue, ShouldBeUniqueUntilProcessing
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -22,10 +22,19 @@ class ProcessBookingCreated implements ShouldQueue
         $this->booking = $booking;
     }
 
+    public function uniqueId(): string
+    {
+        return 'booking-created-' . $this->booking->id;
+    }
+
     public function handle()
     {
+        Log::info('ProcessBookingCreated job started for booking ID: ' . $this->booking->id);
+
+        $this->booking->refresh();
+        Log::debug('Refreshed booking from database');
+
         try {
-            Log::info('Processing booking creation for booking ID: ' . $this->booking->id);
             $event = $this->booking->writeToGoogleCalendar($this->booking->band->bookingCalendar);
             Log::info('Created Google Calendar event with ID: ' . $event->id);
             $this->booking->storeGoogleEventId($this->booking->band->bookingCalendar, $event->id);

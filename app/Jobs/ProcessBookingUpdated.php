@@ -9,9 +9,10 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Foundation\Bus\Dispatchable;
 
-class ProcessBookingUpdated implements ShouldQueue
+class ProcessBookingUpdated implements ShouldQueue, ShouldBeUniqueUntilProcessing
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -24,10 +25,18 @@ class ProcessBookingUpdated implements ShouldQueue
         $this->originalData = $originalData;
     }
 
+    public function uniqueId(): string
+    {
+        return 'booking-updated-' . $this->booking->id;
+    }
+
     public function handle()
     {
-        Log::info('Processing booking update for booking ID: ' . $this->booking->id);
-        // Update calendar event
+        Log::info('ProcessBookingUpdated job started for booking ID: ' . $this->booking->id);
+
+        $this->booking->refresh();
+        Log::debug('Refreshed booking from database');
+
         $this->writeToGoogleCalendar($this->booking->band->bookingCalendar);
         $this->SendNotification();
     }
@@ -40,7 +49,6 @@ class ProcessBookingUpdated implements ShouldQueue
         }
 
         try {
-            // Check if booking already exists
             $existingGoogleEvent = $this->booking->getGoogleEvent($calendar);
 
             if ($existingGoogleEvent) {
@@ -49,14 +57,12 @@ class ProcessBookingUpdated implements ShouldQueue
                 Log::info("Creating new Google Calendar event for Booking ID: {$this->booking->id}, Calendar: {$calendar->type}");
             }
 
-            // Write to Google Calendar (trait handles update vs insert)
             $event = $this->booking->writeToGoogleCalendar($calendar);
 
             if (!$event || !$event->id) {
                 throw new \Exception("Google Calendar API returned invalid event");
             }
 
-            // Store the relationship
             $this->booking->storeGoogleEventId($calendar, $event->id);
 
             Log::info("Successfully synced Booking ID: {$this->booking->id} with Google Event ID: {$event->id}, Calendar: {$calendar->type}");
@@ -69,7 +75,6 @@ class ProcessBookingUpdated implements ShouldQueue
                 'exception' => $e->getTraceAsString()
             ]);
 
-            // Re-throw critical errors
             throw $e;
         }
     }

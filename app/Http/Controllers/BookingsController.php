@@ -223,7 +223,14 @@ class BookingsController extends Controller
 
     public function update(UpdateBookingsRequest $request, Bands $band, Bookings $booking)
     {
+        $originalPrice = $booking->price;
         $booking->update($request->validated());
+
+        if ($booking->wasChanged('price')) {
+            \Log::info("Booking price changed from {$originalPrice} to {$booking->price} for booking ID: {$booking->id}, redistributing event values");
+            $this->redistributeEventValues($booking);
+        }
+
         return redirect()->back()->with('successMessage', "$booking->name has been updated.");
     }
 
@@ -548,10 +555,20 @@ class BookingsController extends Controller
         $valuePerEvent = $bookingPrice / $eventCount;
 
         // Handle fractional cents by rounding
+        // Use saveQuietly to prevent observer firing (avoid duplicate calendar syncs)
         foreach ($events as $index => $event) {
             // Round to 2 decimal places (cents precision)
             $event->value = round($valuePerEvent, 2);
-            $event->save();
+            $event->saveQuietly();
+        }
+
+        if ($booking->payout) {
+            $newBaseAmount = $booking->fresh()->total_event_value;
+            $booking->payout->update(['base_amount' => $newBaseAmount]);
+
+            $booking->payout->recalculateAdjustedAmount();
+
+            \Log::info("Updated payout base_amount to {$newBaseAmount} for booking ID: {$booking->id}");
         }
     }
 
@@ -754,7 +771,7 @@ class BookingsController extends Controller
         
         // Verify contact belongs to this booking
         if (!$booking->contacts->contains($contact->id)) {
-            abort(403, 'Contact not associated with this booking.');
+            abort(404, 'Contact not associated with this booking.');
         }
 
         // Disable login access
