@@ -11,9 +11,10 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Foundation\Bus\Dispatchable;
 
-class ProcessEventUpdated implements ShouldQueue
+class ProcessEventUpdated implements ShouldQueue, ShouldBeUniqueUntilProcessing
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -27,8 +28,18 @@ class ProcessEventUpdated implements ShouldQueue
         $this->originalData = $originalData;
     }
 
+    public function uniqueId(): string
+    {
+        return 'event-updated-' . $this->event->id;
+    }
+
     public function handle()
     {
+        Log::info('ProcessEventUpdated job started for event ID: ' . $this->event->id);
+
+        $this->event->refresh();
+        Log::debug('Refreshed event from database, current title: ' . ($this->event->title ?? 'N/A'));
+
         $this->writeToGoogleCalendar($this->event->getGoogleCalendar());
 
         if ($this->event->additional_data && is_object($this->event->additional_data) && isset($this->event->additional_data->public) && $this->event->additional_data->public) {
@@ -36,7 +47,6 @@ class ProcessEventUpdated implements ShouldQueue
             $this->writeToGoogleCalendar($this->event->getPublicGoogleCalendar());
         }
 
-        // Recalculate distances if event was updated (venue might have changed)
         CalculateEventDistances::dispatch($this->event);
 
         $this->SendNotification();
@@ -50,7 +60,6 @@ class ProcessEventUpdated implements ShouldQueue
         }
 
         try {
-            // Check if event already exists
             $existingGoogleEvent = $this->event->getGoogleEvent($calendar);
 
             if ($existingGoogleEvent) {
@@ -59,14 +68,12 @@ class ProcessEventUpdated implements ShouldQueue
                 Log::info("Creating new Google Calendar event for Event ID: {$this->event->id}, Calendar: {$calendar->type}");
             }
 
-            // Write to Google Calendar (trait handles update vs insert)
             $event = $this->event->writeToGoogleCalendar($calendar);
 
             if (!$event || !$event->id) {
                 throw new \Exception("Google Calendar API returned invalid event");
             }
 
-            // Store the relationship
             $this->event->storeGoogleEventId($calendar, $event->id);
 
             Log::info("Successfully synced Event ID: {$this->event->id} with Google Event ID: {$event->id}, Calendar: {$calendar->type}");

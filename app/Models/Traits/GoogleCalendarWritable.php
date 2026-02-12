@@ -20,54 +20,63 @@ trait GoogleCalendarWritable
 
         $googleCalendarService = app(GoogleCalendarService::class);
 
-        // Check for existing event for THIS specific calendar
-        $existingGoogleEvent = $this->getGoogleEvent($bandCalendar);
+        // Use a cache lock to prevent race conditions between concurrent jobs
+        $lockKey = 'gcal_write_lock:' . get_class($this) . ':' . $this->id . ':' . $bandCalendar->id;
+        $lock = \Cache::lock($lockKey, 10); 
 
-        if ($existingGoogleEvent && $existingGoogleEvent->google_event_id) {
-            // Update existing event
-            \Log::debug("Updating existing Google Calendar event {$existingGoogleEvent->google_event_id} for " . get_class($this) . " ID: {$this->id}");
+        try {
+            if ($lock->block(5)) {
+                \Log::debug("Acquired lock for " . get_class($this) . " ID: {$this->id}, calendar: {$bandCalendar->id}");
 
-            try {
-                return $googleCalendarService->updateEvent(
-                    $bandCalendar->calendar_id,
-                    $existingGoogleEvent->google_event_id,
-                    $this->getEventData()
-                );
-            } catch (\Exception $e) {
-                \Log::warning("Failed to update event {$existingGoogleEvent->google_event_id}, checking if event exists in Google: " . $e->getMessage());
+                $existingGoogleEvent = $this->getGoogleEvent($bandCalendar);
 
-                // Event might have been deleted in Google Calendar
-                // Remove stale reference
-                $existingGoogleEvent->delete();
-            }
-        }
+                if ($existingGoogleEvent && $existingGoogleEvent->google_event_id) {
 
-        // DEFENSIVE CHECK: For Events model, check if ANY GoogleEvents record exists for this event
-        // This prevents creating duplicates when called with different calendar IDs
-        if (get_class($this) === 'App\\Models\\Events') {
-            $anyExistingEvent = $this->googleEvents()
-                ->where('band_calendar_id', $bandCalendar->id)
-                ->first();
+                    \Log::debug("Updating existing Google Calendar event {$existingGoogleEvent->google_event_id} for " . get_class($this) . " ID: {$this->id}");
 
-            if ($anyExistingEvent && $anyExistingEvent->google_event_id) {
-                \Log::info("Found existing Google Calendar event for Event ID {$this->id} in calendar {$bandCalendar->id}, updating instead of inserting");
+                    try {
+                        $result = $googleCalendarService->updateEvent(
+                            $bandCalendar->calendar_id,
+                            $existingGoogleEvent->google_event_id,
+                            $this->getEventData()
+                        );
+                        $lock->release();
+                        return $result;
+                    } catch (\Exception $e) {
+                        \Log::warning("Failed to update event {$existingGoogleEvent->google_event_id}, checking if event exists in Google: " . $e->getMessage());
 
-                try {
+                        $existingGoogleEvent->delete();
+                    }
+                }
+
+                \Log::info("Creating new Google Calendar event for " . get_class($this) . " ID: {$this->id} in calendar {$bandCalendar->id}");
+                $result = $googleCalendarService->insertEvent($bandCalendar->calendar_id, $this->getEventData());
+                $lock->release();
+                return $result;
+
+            } else {
+
+                \Log::warning("Could not acquire lock for " . get_class($this) . " ID: {$this->id}, calendar: {$bandCalendar->id}. Another job may be processing this event.");
+
+                sleep(1);
+                $existingGoogleEvent = $this->getGoogleEvent($bandCalendar);
+
+                if ($existingGoogleEvent && $existingGoogleEvent->google_event_id) {
+                    \Log::info("Event was created by another job, updating instead");
                     return $googleCalendarService->updateEvent(
                         $bandCalendar->calendar_id,
-                        $anyExistingEvent->google_event_id,
+                        $existingGoogleEvent->google_event_id,
                         $this->getEventData()
                     );
-                } catch (\Exception $e) {
-                    \Log::warning("Failed to update found event, will create new: " . $e->getMessage());
-                    $anyExistingEvent->delete();
                 }
-            }
-        }
 
-        // Create new event - confirmed no existing event found
-        \Log::info("Creating new Google Calendar event for " . get_class($this) . " ID: {$this->id} in calendar {$bandCalendar->id}");
-        return $googleCalendarService->insertEvent($bandCalendar->calendar_id, $this->getEventData());
+                \Log::warning("Proceeding with insert after lock timeout for " . get_class($this) . " ID: {$this->id}");
+                return $googleCalendarService->insertEvent($bandCalendar->calendar_id, $this->getEventData());
+            }
+        } catch (\Exception $e) {
+            $lock->release();
+            throw $e;
+        }
     }
 
     public function deleteFromGoogleCalendar(BandCalendars $bandCalendar = null): bool
@@ -93,7 +102,6 @@ trait GoogleCalendarWritable
 
     protected function existsInGoogleCalendar(BandCalendars $bandCalendar): bool
     {
-        // Logic to check if the event exists in Google Calendar
         return !is_null($this->getGoogleEvent($bandCalendar));
     }
 
