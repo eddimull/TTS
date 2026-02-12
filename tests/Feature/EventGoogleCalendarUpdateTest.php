@@ -54,7 +54,7 @@ class EventGoogleCalendarUpdateTest extends TestCase
 
     public function test_updating_event_updates_not_creates_calendar_event()
     {
-        // Mock Google Calendar Service
+        
         $mockService = Mockery::mock(GoogleCalendarService::class);
         $this->app->instance(GoogleCalendarService::class, $mockService);
 
@@ -112,7 +112,7 @@ class EventGoogleCalendarUpdateTest extends TestCase
 
     public function test_event_edit_with_existing_calendar_entry()
     {
-        // Mock Google Calendar Service
+        
         $mockService = Mockery::mock(GoogleCalendarService::class);
         $this->app->instance(GoogleCalendarService::class, $mockService);
 
@@ -161,7 +161,7 @@ class EventGoogleCalendarUpdateTest extends TestCase
 
     public function test_event_edit_creates_entry_if_none_exists()
     {
-        // Mock Google Calendar Service
+        
         $mockService = Mockery::mock(GoogleCalendarService::class);
         $this->app->instance(GoogleCalendarService::class, $mockService);
 
@@ -196,7 +196,7 @@ class EventGoogleCalendarUpdateTest extends TestCase
 
     public function test_defensive_check_prevents_duplicate_on_calendar_type_mismatch()
     {
-        // Mock Google Calendar Service
+        
         $mockService = Mockery::mock(GoogleCalendarService::class);
         $this->app->instance(GoogleCalendarService::class, $mockService);
 
@@ -247,7 +247,7 @@ class EventGoogleCalendarUpdateTest extends TestCase
 
     public function test_creates_separate_events_for_different_calendars()
     {
-        // Mock Google Calendar Service
+        
         $mockService = Mockery::mock(GoogleCalendarService::class);
         $this->app->instance(GoogleCalendarService::class, $mockService);
 
