@@ -603,4 +603,217 @@ class PayoutFlowCalculationTest extends TestCase
         // Members get all $8500
         $this->assertEquals(8500, $result['total_member_payout']);
     }
+
+    /**
+     * Test simple case: payout group with 0 members in equal_split mode
+     * When a payout group has 0 members, it should pass the full amount forward
+     */
+    public function test_payout_group_with_zero_members_equal_split()
+    {
+        $config = $this->createPayoutConfig([
+            'nodes' => [
+                [
+                    'id' => 'income-1',
+                    'type' => 'income',
+                    'data' => ['amount' => 1000, 'label' => 'Income']
+                ],
+                [
+                    'id' => 'payout-empty',
+                    'type' => 'payoutGroup',
+                    'data' => [
+                        'label' => 'Empty Group',
+                        'sourceType' => 'allMembers',
+                        'allMembersConfig' => [
+                            'includeOwners' => false,  // No members
+                            'includeMembers' => false,
+                            'includeProduction' => false,
+                        ],
+                        'incomingAllocationType' => 'percentage',
+                        'incomingAllocationValue' => 50,  // Would take 50% if there were members
+                        'distributionMode' => 'equal_split',
+                    ]
+                ],
+                [
+                    'id' => 'payout-downstream',
+                    'type' => 'payoutGroup',
+                    'data' => [
+                        'label' => 'Downstream',
+                        'sourceType' => 'allMembers',
+                        'allMembersConfig' => [
+                            'includeOwners' => true,
+                            'includeMembers' => false,
+                            'includeProduction' => false,
+                        ],
+                        'incomingAllocationType' => 'remainder',
+                        'distributionMode' => 'equal_split',
+                    ]
+                ]
+            ],
+            'edges' => [
+                ['source' => 'income-1', 'target' => 'payout-empty'],
+                ['source' => 'payout-empty', 'target' => 'payout-downstream'],
+            ]
+        ]);
+
+        $result = $config->calculatePayouts(1000);
+
+        // Empty group has 0 members, so it consumes nothing
+        // Downstream should get the full $1000
+        $this->assertEquals(1000, $result['total_member_payout']);
+        $this->assertEquals(1, count($result['member_payouts']));
+        $this->assertEquals(1000, $result['member_payouts'][0]['amount']);
+    }
+
+    /**
+     * Test edge case: payout group with 0 members should not consume any allocation
+     * When a fixed payout group has 0 members, the amount allocated to that group
+     * should remain as "remaining" and NOT be passed to downstream percentage-based groups
+     */
+    public function test_payout_group_with_zero_members_fixed_allocation()
+    {
+        // Create 2 additional users to simulate the scenario
+        $productionUser1 = User::factory()->create(['name' => 'Production 1']);
+        $productionUser2 = User::factory()->create(['name' => 'Production 2']);
+
+        // Add them as band members (not owners)
+        $this->band->members()->create(['user_id' => $productionUser1->id]);
+        $this->band->members()->create(['user_id' => $productionUser2->id]);
+
+        $config = $this->createPayoutConfig([
+            'nodes' => [
+                [
+                    'id' => 'income-1',
+                    'type' => 'income',
+                    'data' => ['amount' => 10000, 'label' => 'Income']
+                ],
+                [
+                    'id' => 'bandcut-1',
+                    'type' => 'bandCut',
+                    'data' => [
+                        'cutType' => 'tiered',
+                        'tierConfig' => [
+                            ['min' => 0, 'max' => 2500, 'type' => 'fixed', 'value' => 0],
+                            ['min' => 2500, 'max' => 5000, 'type' => 'fixed', 'value' => 250],
+                            ['min' => 5000, 'max' => 7500, 'type' => 'fixed', 'value' => 750],
+                            ['min' => 7500, 'max' => 10000, 'type' => 'fixed', 'value' => 1125],
+                            ['min' => 10000, 'max' => 12500, 'type' => 'fixed', 'value' => 2000],
+                        ],
+                        'label' => 'Band Cut'
+                    ]
+                ],
+                [
+                    'id' => 'payout-production',
+                    'type' => 'payoutGroup',
+                    'data' => [
+                        'label' => 'Production',
+                        'sourceType' => 'allMembers',
+                        'allMembersConfig' => [
+                            'includeOwners' => false,
+                            'includeMembers' => true,
+                            'includeProduction' => false,
+                        ],
+                        'incomingAllocationType' => 'remainder',
+                        'distributionMode' => 'fixed',
+                        'fixedAmountPerMember' => 350,
+                    ]
+                ],
+                [
+                    'id' => 'payout-photographer',
+                    'type' => 'payoutGroup',
+                    'data' => [
+                        'label' => 'Photographer',
+                        'sourceType' => 'allMembers',
+                        'allMembersConfig' => [
+                            'includeOwners' => false,  // No owners
+                            'includeMembers' => false, // No members
+                            'includeProduction' => false,
+                        ],
+                        'incomingAllocationType' => 'remainder',
+                        'distributionMode' => 'fixed',
+                        'fixedAmountPerMember' => 350,  // Would charge $350 if there were members
+                    ]
+                ],
+                [
+                    'id' => 'payout-performer',
+                    'type' => 'payoutGroup',
+                    'data' => [
+                        'label' => 'Performer',
+                        'sourceType' => 'allMembers',
+                        'allMembersConfig' => [
+                            'includeOwners' => true,
+                            'includeMembers' => false,
+                            'includeProduction' => false,
+                        ],
+                        'incomingAllocationType' => 'percentage',
+                        'incomingAllocationValue' => 90,
+                        'distributionMode' => 'equal_split',
+                    ]
+                ],
+                [
+                    'id' => 'bandcut-final',
+                    'type' => 'bandCut',
+                    'data' => [
+                        'cutType' => 'percentage',
+                        'value' => 100,  // Take remaining 10%
+                        'label' => 'Final Band Cut'
+                    ]
+                ]
+            ],
+            'edges' => [
+                ['source' => 'income-1', 'target' => 'bandcut-1'],
+                ['source' => 'bandcut-1', 'target' => 'payout-production'],
+                ['source' => 'payout-production', 'target' => 'payout-photographer'],
+                ['source' => 'payout-photographer', 'target' => 'payout-performer'],
+                ['source' => 'payout-performer', 'target' => 'bandcut-final'],
+            ]
+        ]);
+
+        $result = $config->calculatePayouts(10000);
+
+        // Income: $10,000
+        // Band Cut (tiered): $1,125
+        // After band cut: $8,875
+
+        // Production (2 members × $350): $700
+        // After production: $8,175
+
+        // Photographer (0 members): $0 allocated, $0 consumed (no members)
+        // After photographer: $8,175 passed forward (full amount since no members)
+
+        // Performer (90% of $8,175): $7,357.50
+        // After performer: $817.50 remaining (10% of $8,175)
+
+        // Final Band Cut (100% of $817.50): $817.50
+
+        // Band cut accumulates: initial tier cut + final 100% of remainder
+        $this->assertEquals(1942.50, $result['band_cut'], 'Total band cut should be $1,125 + $817.50');
+        $this->assertEquals(8057.50, $result['distributable_amount'], 'Distributable = Total - Band Cut');
+
+        // Check individual group payouts
+        $productionPayouts = collect($result['member_payouts'])->where('name', 'Production 1')
+            ->merge(collect($result['member_payouts'])->where('name', 'Production 2'));
+        $this->assertEquals(2, $productionPayouts->count(), 'Should have 2 production members');
+        $this->assertEquals(700, $productionPayouts->sum('amount'), 'Production total should be $700');
+
+        // Performer should get 90% of what's left after production
+        // Since photographer had 0 members, it didn't consume anything
+        // So: ($8,875 - $700) × 90% = $8,175 × 90% = $7,357.50
+        $performerPayouts = collect($result['member_payouts'])->where('name', $this->owner->name);
+        $this->assertEquals(1, $performerPayouts->count(), 'Should have 1 performer (owner)');
+
+        // THIS IS THE KEY ASSERTION - Performer should get 90% of $8,175 since Photographer consumed nothing
+        $performerAmount = $performerPayouts->first()['amount'];
+        $this->assertEquals(7357.50, $performerAmount,
+            'Performer should get 90% of $8,175 (after $700 production, photographer consumed $0 due to 0 members)');
+
+        // Total member payout should be $700 (production) + $7,357.50 (performer) = $8,057.50
+        $this->assertEquals(8057.50, $result['total_member_payout'],
+            'Total member payout should be production + performer only');
+
+        // Remaining should be $0 because the final band cut takes all remaining
+        // distributable_amount ($8,057.50) = total_amount ($10,000) - band_cut ($1,942.50)
+        // remaining = distributable_amount - total_member_payout = $8,057.50 - $8,057.50 = $0
+        $this->assertEquals(0, $result['remaining'],
+            'Remaining should be $0 after final band cut takes everything');
+    }
 }

@@ -795,7 +795,10 @@ class BandPayoutConfig extends Model
             $distributionMode = $nodeData['distributionMode'] ?? 'equal_split';
             $memberCount = $filteredMembers->count();
 
-            if ($memberCount > 0) {
+            // If there are no members, don't consume any allocation - pass full amount forward
+            if ($memberCount === 0) {
+                $groupAllocation = 0;
+            } elseif ($memberCount > 0) {
                 if ($distributionMode === 'fixed') {
                     $fixedAmount = $nodeData['fixedAmountPerMember'] ?? 0;
                     $totalPaid = 0;
