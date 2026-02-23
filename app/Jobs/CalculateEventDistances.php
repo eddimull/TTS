@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Models\Events;
 use App\Models\EventDistanceForMembers;
+use App\Models\EventMember;
 use App\Models\State;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Queue\SerializesModels;
@@ -17,10 +18,12 @@ class CalculateEventDistances implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     protected $event;
+    protected bool $force;
 
-    public function __construct(Events $event)
+    public function __construct(Events $event, bool $force = false)
     {
         $this->event = $event;
+        $this->force = $force;
     }
 
     public function handle()
@@ -55,14 +58,28 @@ class CalculateEventDistances implements ShouldQueue
             $ownerUsers = $bandOwners->map(fn($bo) => $bo->user)->filter();
             $allUsers = $memberUsers->merge($ownerUsers)->unique('id');
 
+            // Pre-load all EventMember attendance records for this event in one query
+            $attendanceByUser = EventMember::where('event_id', $this->event->id)
+                ->whereNotNull('user_id')
+                ->get()
+                ->keyBy('user_id');
+
             foreach ($allUsers as $user) {
-                // Check if user has a complete address
-                if (!$this->hasCompleteAddress($user)) {
-                    Log::info('User ID ' . $user->id . ' has incomplete address, skipping distance calculation');
+                // Skip if user was absent or excused from this event
+                $attendance = $attendanceByUser->get($user->id);
+                if ($attendance && $attendance->isAbsent()) {
+                    Log::info('User ID ' . $user->id . ' was absent from event ' . $this->event->id . ', skipping distance calculation');
                     continue;
                 }
 
-                $this->calculateDistanceForMember($user, $eventAddress);
+                // Resolve origin: user address with band address fallback
+                $origin = $this->resolveOrigin($user, $band);
+                if ($origin === null) {
+                    Log::info('User ID ' . $user->id . ' and band ID ' . $band->id . ' have no usable address, skipping distance calculation');
+                    continue;
+                }
+
+                $this->calculateDistanceForMember($user, $eventAddress, $origin);
             }
 
             Log::info('Distance calculation completed for event ID: ' . $this->event->id);
@@ -97,15 +114,26 @@ class CalculateEventDistances implements ShouldQueue
         return null;
     }
 
-    protected function hasCompleteAddress($user): bool
+    /**
+     * Resolve the origin address for a user, falling back to the band's address.
+     */
+    protected function resolveOrigin($user, $band): ?string
     {
-        return !empty($user->Address1) 
-            && !empty($user->City) 
-            && !empty($user->StateID) 
-            && !empty($user->Zip);
+        if (!empty($user->Address1) && !empty($user->City) && !empty($user->StateID) && !empty($user->Zip)) {
+            $state = State::where('state_id', $user->StateID)->first();
+            if ($state) {
+                return $user->Address1 . ' ' . $user->City . ', ' . $state->state_name . ' ' . $user->Zip;
+            }
+        }
+
+        if ($band && !empty($band->address) && !empty($band->city) && !empty($band->state) && !empty($band->zip)) {
+            return $band->address . ' ' . $band->city . ' ' . $band->state . ' ' . $band->zip;
+        }
+
+        return null;
     }
 
-    protected function calculateDistanceForMember($member, array $eventAddress)
+    protected function calculateDistanceForMember($member, array $eventAddress, string $userAddress)
     {
         try {
             // Get or create distance record
@@ -113,8 +141,8 @@ class CalculateEventDistances implements ShouldQueue
                 ->where('user_id', $member->id)
                 ->first();
 
-            // Only recalculate if doesn't exist or event was updated after last calculation
-            if ($mileage && $mileage->miles && $mileage->created_at >= $this->event->updated_at) {
+            // Only recalculate if doesn't exist, event was updated after last calculation, or force flag is set
+            if (!$this->force && $mileage && $mileage->miles && $mileage->created_at >= $this->event->updated_at) {
                 Log::info('Distance already calculated for user ' . $member->id . ' and event ' . $this->event->id);
                 return;
             }
@@ -124,15 +152,6 @@ class CalculateEventDistances implements ShouldQueue
                 $mileage->event_id = $this->event->id;
                 $mileage->user_id = $member->id;
             }
-
-            // Get user's state for proper address formatting
-            $userState = State::where('state_id', $member->StateID)->first();
-            if (!$userState) {
-                Log::info('User state not found for user ID ' . $member->id);
-                return;
-            }
-
-            $userAddress = $member->Address1 . ' ' . $member->City . ', ' . $userState->state_name . ' ' . $member->Zip;
 
             // Call Google Maps Distance Matrix API
             $response = \GoogleMaps::load('distancematrix')
