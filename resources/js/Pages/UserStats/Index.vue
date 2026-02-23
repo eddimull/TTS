@@ -310,6 +310,94 @@
           </div>
         </div>
 
+        <!-- Mileage Breakdown by Year -->
+        <div
+          v-if="stats.travel.by_year && stats.travel.by_year.length > 0"
+          class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-lg"
+        >
+          <div class="p-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+              My Mileage Breakdown
+            </h3>
+            <div class="space-y-4">
+              <div
+                v-for="yearData in stats.travel.by_year"
+                :key="yearData.year"
+                class="border border-gray-200 dark:border-gray-700 rounded-lg"
+              >
+                <!-- Year Header -->
+                <button
+                  class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex items-center justify-between rounded-lg min-w-0"
+                  :class="{ 'rounded-b-none': expandedMileageYears.includes(yearData.year) }"
+                  @click="toggleMileageYear(yearData.year)"
+                >
+                  <div class="flex items-center space-x-4 min-w-0">
+                    <svg
+                      class="h-5 w-5 text-gray-500 transition-transform"
+                      :class="{ 'rotate-90': expandedMileageYears.includes(yearData.year) }"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+                    <span class="text-lg font-semibold text-gray-900 dark:text-white">
+                      {{ yearData.year }}
+                    </span>
+                    <span class="text-sm text-gray-500 dark:text-gray-400">
+                      {{ yearData.event_count }} {{ yearData.event_count === 1 ? 'event' : 'events' }}
+                    </span>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-lg font-semibold text-blue-600 dark:text-blue-400">
+                      {{ yearData.total_miles.toLocaleString() }} mi
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400">
+                      {{ yearData.total_hours }} hrs
+                    </div>
+                  </div>
+                </button>
+
+                <!-- Year Detail -->
+                <div
+                  v-if="expandedMileageYears.includes(yearData.year)"
+                  class="px-4 py-3 border-t border-gray-200 dark:border-gray-700 grid grid-cols-3 gap-4 text-center"
+                >
+                  <div>
+                    <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                      {{ yearData.total_miles.toLocaleString() }}
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Miles Traveled
+                    </div>
+                  </div>
+                  <div>
+                    <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                      {{ yearData.total_hours }}
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Hours Driving
+                    </div>
+                  </div>
+                  <div>
+                    <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                      {{ yearData.event_count }}
+                    </div>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      Events Attended
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Map Section -->
         <div
           v-if="stats.locations.length > 0"
@@ -446,7 +534,8 @@ export default {
     return {
       yearChart: null,
       bandChart: null,
-      expandedYears: []
+      expandedYears: [],
+      expandedMileageYears: []
     }
   },
 
@@ -475,6 +564,15 @@ export default {
         this.expandedYears.splice(index, 1)
       } else {
         this.expandedYears.push(year)
+      }
+    },
+
+    toggleMileageYear(year) {
+      const index = this.expandedMileageYears.indexOf(year)
+      if (index > -1) {
+        this.expandedMileageYears.splice(index, 1)
+      } else {
+        this.expandedMileageYears.push(year)
       }
     },
 
