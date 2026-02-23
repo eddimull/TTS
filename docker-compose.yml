@@ -130,13 +130,20 @@ services:
         command:
             - "http"
             - "--url=${NGROK_URL}"
-            - "http://app:80"
+            - "http://app:8080"
     horizon:
         build:
             context: .
             dockerfile: ./docker/app.dockerfile
         command: php artisan horizon
         working_dir: /var/www
+        environment:
+            # Puppeteer/Chrome configuration for PDF generation
+            PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
+            PUPPETEER_EXECUTABLE_PATH: "/usr/bin/google-chrome"
+            CHROME_CONFIG_HOME: "/tmp/.config"
+            XDG_CONFIG_HOME: "/var/www/@tmp/.chromium"
+            XDG_CACHE_HOME: "/var/www/@tmp/.chromium"
         volumes:
             - ./:/var/www
         networks:
