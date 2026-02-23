@@ -377,6 +377,9 @@ class UserStatsService
         $mileageService = new MileageService();
         Auth::setUser($this->user);
 
+        // Collect all attended events with their band name for per-event detail rows
+        $attendedEventsMeta = collect(); // [event_id => ['event' => ..., 'band_name' => ...]]
+
         foreach ($allBands as $band) {
             $joinDate = $bandJoinDates[$band->id];
 
@@ -403,6 +406,10 @@ class UserStatsService
             });
 
             $validEventIds = array_merge($validEventIds, $attendedEvents->pluck('id')->toArray());
+
+            foreach ($attendedEvents as $event) {
+                $attendedEventsMeta->put($event->id, ['event' => $event, 'band_name' => $band->name]);
+            }
 
             // Calculate mileage for attended events that don't have a cached distance yet,
             // falling back to band address if the user has no address on file
@@ -434,38 +441,53 @@ class UserStatsService
         $totalMiles = $distances->sum('miles');
         $totalMinutes = $distances->sum('minutes');
 
-        // Build per-year breakdown using event dates
-        $eventsByYear = Events::whereIn('id', $uniqueEventIds)
-            ->get(['id', 'date'])
-            ->keyBy('id');
-
         $distancesByEventId = $distances->keyBy('event_id');
 
+        // Build per-year breakdown with per-event detail rows
         $yearStats = [];
         foreach ($uniqueEventIds as $eventId) {
-            $event = $eventsByYear->get($eventId);
-            if (!$event) {
+            $meta = $attendedEventsMeta->get($eventId);
+            if (!$meta) {
                 continue;
             }
+            $event = $meta['event'];
             $year = $event->date->year;
+            $dist = $distancesByEventId->get($eventId);
+
+            $eventable = $event->eventable;
+            $venueName = $eventable->venue_name ?? null;
+            $venueAddress = $eventable->venue_address
+                ?? (isset($eventable->address_street)
+                    ? trim($eventable->address_street . ' ' . ($eventable->city ?? '') . ' ' . ($eventable->zip ?? ''))
+                    : null);
+
             if (!isset($yearStats[$year])) {
-                $yearStats[$year] = ['miles' => 0, 'minutes' => 0, 'event_count' => 0];
+                $yearStats[$year] = ['miles' => 0, 'minutes' => 0, 'event_count' => 0, 'events' => []];
             }
             $yearStats[$year]['event_count']++;
-            $dist = $distancesByEventId->get($eventId);
             if ($dist) {
                 $yearStats[$year]['miles'] += $dist->miles;
                 $yearStats[$year]['minutes'] += $dist->minutes;
             }
+            $yearStats[$year]['events'][] = [
+                'date'          => $event->date->format('Y-m-d'),
+                'title'         => $event->title,
+                'band_name'     => $meta['band_name'],
+                'venue_name'    => $venueName ?? 'TBD',
+                'venue_address' => $venueAddress ?? '',
+                'miles'         => $dist ? round((float) $dist->miles, 1) : null,
+                'hours'         => $dist ? round($dist->minutes / 60, 1) : null,
+            ];
         }
 
         $byYear = collect($yearStats)
             ->map(function ($data, $year) {
                 return [
-                    'year' => $year,
-                    'total_miles' => (int) $data['miles'],
+                    'year'        => $year,
+                    'total_miles' => round($data['miles'], 1),
                     'total_hours' => round($data['minutes'] / 60, 1),
                     'event_count' => $data['event_count'],
+                    'events'      => collect($data['events'])->sortByDesc('date')->values()->toArray(),
                 ];
             })
             ->sortByDesc('year')
@@ -473,11 +495,11 @@ class UserStatsService
             ->toArray();
 
         return [
-            'total_miles' => (int) $totalMiles,
+            'total_miles'   => round((float) $totalMiles, 1),
             'total_minutes' => (int) $totalMinutes,
-            'total_hours' => round($totalMinutes / 60, 1),
-            'event_count' => count($uniqueEventIds),
-            'by_year' => $byYear,
+            'total_hours'   => round($totalMinutes / 60, 1),
+            'event_count'   => count($uniqueEventIds),
+            'by_year'       => $byYear,
         ];
     }
 
