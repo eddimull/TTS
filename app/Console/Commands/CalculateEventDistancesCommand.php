@@ -64,15 +64,16 @@ class CalculateEventDistancesCommand extends Command
         $processed = 0;
         $queued = 0;
         $useQueue = $this->option('queue');
+        $force = (bool) $this->option('force');
 
         foreach ($events as $event) {
             if ($useQueue) {
                 // Dispatch to queue
-                CalculateEventDistances::dispatch($event);
+                CalculateEventDistances::dispatch($event, $force);
                 $queued++;
             } else {
                 // Run synchronously
-                $job = new CalculateEventDistances($event);
+                $job = new CalculateEventDistances($event, $force);
                 $job->handle();
                 $processed++;
             }

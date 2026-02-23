@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\Events;
 use App\Models\EventDistanceForMembers;
+use App\Services\MileageService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 
@@ -372,38 +374,110 @@ class UserStatsService
             $bandJoinDates[$band->id] = $this->getUserJoinDate($band);
         }
 
+        $mileageService = new MileageService();
+        Auth::setUser($this->user);
+
         foreach ($allBands as $band) {
             $joinDate = $bandJoinDates[$band->id];
 
-            // Get events for this band after the user joined (only past events)
+            // Get full event models with eventables so MileageService can read venue addresses.
+            // Also eager-load the user's EventMember record to check attendance.
             $bandEvents = Events::whereHasMorph('eventable', [\App\Models\Bookings::class, \App\Models\BandEvents::class], function ($query) use ($band) {
                 $query->where('band_id', $band->id);
             })
+            ->with([
+                'eventable',
+                'eventMembers' => function ($query) {
+                    $query->where('user_id', $this->user->id);
+                },
+            ])
             ->where('date', '>=', $joinDate)
             ->where('date', '<=', Carbon::now()) // Only count past events
-            ->pluck('id')
-            ->toArray();
+            ->get();
 
-            $validEventIds = array_merge($validEventIds, $bandEvents);
+            // Exclude events where the user was marked absent or excused.
+            // If the event has no roster (no EventMember record), the user attended.
+            $attendedEvents = $bandEvents->filter(function ($event) {
+                $member = $event->eventMembers->first();
+                return $member === null || !$member->isAbsent();
+            });
+
+            $validEventIds = array_merge($validEventIds, $attendedEvents->pluck('id')->toArray());
+
+            // Calculate mileage for attended events that don't have a cached distance yet,
+            // falling back to band address if the user has no address on file
+            $attendedEventIds = $attendedEvents->pluck('id')->toArray();
+            $cachedDistances = EventDistanceForMembers::where('user_id', $this->user->id)
+                ->whereIn('event_id', $attendedEventIds)
+                ->whereNotNull('miles')
+                ->get()
+                ->keyBy('event_id');
+
+            $eventsNeedingDistance = $attendedEvents->filter(function ($event) use ($cachedDistances) {
+                $existing = $cachedDistances->get($event->id);
+                return $existing === null || $existing->created_at < $event->updated_at;
+            });
+
+            if ($eventsNeedingDistance->isNotEmpty()) {
+                $mileageService->handle($eventsNeedingDistance, $band);
+            }
         }
+
+        $uniqueEventIds = array_unique($validEventIds);
 
         // Get distances only for valid events with distance tracking
         $distances = EventDistanceForMembers::where('user_id', $this->user->id)
-            ->whereIn('event_id', $validEventIds)
+            ->whereIn('event_id', $uniqueEventIds)
             ->whereNotNull('miles')
             ->get();
 
         $totalMiles = $distances->sum('miles');
         $totalMinutes = $distances->sum('minutes');
 
-        // Count all valid events (not just those with distance tracking)
-        $eventCount = count(array_unique($validEventIds));
+        // Build per-year breakdown using event dates
+        $eventsByYear = Events::whereIn('id', $uniqueEventIds)
+            ->get(['id', 'date'])
+            ->keyBy('id');
+
+        $distancesByEventId = $distances->keyBy('event_id');
+
+        $yearStats = [];
+        foreach ($uniqueEventIds as $eventId) {
+            $event = $eventsByYear->get($eventId);
+            if (!$event) {
+                continue;
+            }
+            $year = $event->date->year;
+            if (!isset($yearStats[$year])) {
+                $yearStats[$year] = ['miles' => 0, 'minutes' => 0, 'event_count' => 0];
+            }
+            $yearStats[$year]['event_count']++;
+            $dist = $distancesByEventId->get($eventId);
+            if ($dist) {
+                $yearStats[$year]['miles'] += $dist->miles;
+                $yearStats[$year]['minutes'] += $dist->minutes;
+            }
+        }
+
+        $byYear = collect($yearStats)
+            ->map(function ($data, $year) {
+                return [
+                    'year' => $year,
+                    'total_miles' => (int) $data['miles'],
+                    'total_hours' => round($data['minutes'] / 60, 1),
+                    'event_count' => $data['event_count'],
+                ];
+            })
+            ->sortByDesc('year')
+            ->values()
+            ->toArray();
 
         return [
             'total_miles' => (int) $totalMiles,
             'total_minutes' => (int) $totalMinutes,
             'total_hours' => round($totalMinutes / 60, 1),
-            'event_count' => $eventCount,
+            'event_count' => count($uniqueEventIds),
+            'by_year' => $byYear,
         ];
     }
 
