@@ -292,4 +292,145 @@ class PaymentNotificationsTest extends TestCase
             return true;
         });
     }
+
+    /**
+     * A payment logged via the finances page submits a dollar amount (e.g. 4250).
+     * The Price cast multiplies by 100 for storage, then divides by 100 on read.
+     * The email view must NOT divide by 100 again.
+     */
+    public function test_finances_payment_email_shows_correct_dollar_amount()
+    {
+        $owner = User::factory()->create(['emailNotifications' => true]);
+        $band = Bands::factory()->create();
+        BandOwners::create(['band_id' => $band->id, 'user_id' => $owner->id]);
+
+        $booking = Bookings::factory()->forBand($band)->create([
+            'name' => 'Corporate Gig',
+            'price' => 4250, // $4,250.00
+        ]);
+
+        $contact = Contacts::factory()->create(['email' => 'client@example.com']);
+        $booking->contacts()->attach($contact->id, ['role' => 'client', 'is_primary' => true]);
+
+        // Finances page submits dollar value — Price cast stores as cents
+        $this->actingAs($owner)->post(
+            "/bands/{$band->id}/booking/{$booking->id}/finances",
+            [
+                'name' => 'Deposit',
+                'date' => now(),
+                'amount' => 4250,
+                'status' => 'paid',
+                'payment_type' => PaymentType::Cash->value,
+                'band_id' => $band->id,
+            ]
+        );
+
+        $payment = $booking->payments()->latest()->first();
+
+        // Price cast must return dollars, not cents
+        $this->assertEquals('4250.00', $payment->amount,
+            'Price cast should return $4,250.00 not 425000 cents'
+        );
+
+        $rendered = view('email.payment', [
+            'performance' => $payment->payable->name,
+            'amount'      => $payment->amount,
+            'balance'     => $payment->payable->amountLeft,
+        ])->render();
+
+        $this->assertStringContainsString('4,250.00', $rendered,
+            'Email should show $4,250.00 — not $42.50 from double-dividing by 100'
+        );
+        $this->assertStringNotContainsString('42.50', $rendered,
+            'Email must not show $42.50'
+        );
+    }
+
+    /**
+     * A portal payment comes in from Stripe as cents (e.g. 425000).
+     * ContactPaymentService divides by 100 before create(), then the Price cast
+     * multiplies by 100 for storage and divides by 100 on read.
+     * The email view must NOT divide by 100 again.
+     */
+    public function test_portal_payment_email_shows_correct_dollar_amount()
+    {
+        $band = Bands::factory()->create();
+        $booking = Bookings::factory()->forBand($band)->create([
+            'name' => 'Corporate Gig',
+            'price' => 4250, // $4,250.00
+        ]);
+
+        $contact = Contacts::factory()->create(['email' => 'client@example.com']);
+        $booking->contacts()->attach($contact->id, ['role' => 'client', 'is_primary' => true]);
+
+        // ContactPaymentService::processSuccessfulPayment() divides Stripe cents by 100
+        // before passing to create(), mirroring the finances page path
+        $stripeAmountInCents = 425000;
+        $payment = $booking->payments()->create([
+            'name' => $booking->name . ' - Portal Payment',
+            'amount' => $stripeAmountInCents / 100, // $4,250.00 — Price cast stores as cents
+            'status' => 'paid',
+            'date' => now(),
+            'band_id' => $band->id,
+            'payer_type' => 'App\\Models\\Contacts',
+            'payer_id' => $contact->id,
+            'payment_type' => 'portal',
+        ]);
+
+        $payment = $payment->fresh();
+
+        // Price cast must return dollars, not cents
+        $this->assertEquals('4250.00', $payment->amount,
+            'Price cast should return $4,250.00 not 425000 cents'
+        );
+
+        $rendered = view('email.payment', [
+            'performance' => $payment->payable->name,
+            'amount'      => $payment->amount,
+            'balance'     => $payment->payable->amountLeft,
+        ])->render();
+
+        $this->assertStringContainsString('4,250.00', $rendered,
+            'Email should show $4,250.00 — not $42.50 from double-dividing by 100'
+        );
+        $this->assertStringNotContainsString('42.50', $rendered,
+            'Email must not show $42.50'
+        );
+    }
+
+    public function test_remaining_balance_in_email_is_correct_after_partial_payment()
+    {
+        $owner = User::factory()->create(['emailNotifications' => true]);
+        $band = Bands::factory()->create();
+        BandOwners::create(['band_id' => $band->id, 'user_id' => $owner->id]);
+
+        $booking = Bookings::factory()->forBand($band)->create(['price' => 4250]);
+
+        $booking->payments()->create([
+            'name' => 'Partial Payment',
+            'amount' => 1000, // $1,000.00
+            'status' => 'paid',
+            'date' => now(),
+            'band_id' => $band->id,
+        ]);
+
+        $booking = $booking->fresh();
+
+        $this->assertEquals('3250.00', $booking->amountLeft,
+            'amountLeft should be $3,250.00 after a $1,000 payment on a $4,250 booking'
+        );
+
+        $rendered = view('email.payment', [
+            'performance' => $booking->name,
+            'amount'      => '1000.00',
+            'balance'     => $booking->amountLeft,
+        ])->render();
+
+        $this->assertStringContainsString('3,250.00', $rendered,
+            'Remaining balance in email should show $3,250.00 not $32.50'
+        );
+        $this->assertStringNotContainsString('32.50', $rendered,
+            'Email must not show $32.50 from double-dividing the balance by 100'
+        );
+    }
 }

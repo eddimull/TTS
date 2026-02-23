@@ -21,11 +21,11 @@
             </tr>
             <tr>
                 <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6;"><strong>Payment Amount:</strong></td>
-                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; text-align: right;">${{ number_format($amount / 100, 2) }}</td>
+                <td style="padding: 8px 0; border-bottom: 1px solid #dee2e6; text-align: right;">${{ number_format($amount, 2) }}</td>
             </tr>
             <tr>
                 <td style="padding: 8px 0;"><strong>Remaining Balance:</strong></td>
-                <td style="padding: 8px 0; text-align: right;">${{ number_format($balance / 100, 2) }}</td>
+                <td style="padding: 8px 0; text-align: right;">${{ number_format($balance, 2) }}</td>
             </tr>
         </table>
     </div>
