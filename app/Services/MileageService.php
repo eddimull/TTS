@@ -56,7 +56,7 @@ class MileageService{
                 }
 
                 if (isset($response->rows[0]->elements[0]->distance->text)) {
-                    $mileage->miles = preg_replace('/\D/', '', $response->rows[0]->elements[0]->distance->text);
+                    $mileage->miles = (float) preg_replace('/[^\d.]/', '', $response->rows[0]->elements[0]->distance->text);
 
                     $durationText = $response->rows[0]->elements[0]->duration->text;
                     if(str_contains($durationText,'hours'))
