@@ -91,22 +91,22 @@ class CalculateEventDistances implements ShouldQueue
     protected function getEventAddress(): ?array
     {
         $eventable = $this->event->eventable;
-        
-        // Try to get address from eventable (Booking or BandEvent)
-        if (isset($eventable->venue_address) && isset($eventable->venue_name)) {
+
+        // Bookings: single venue_address string
+        if (!empty($eventable->venue_address)) {
             return [
                 'address' => $eventable->venue_address,
-                'name' => $eventable->venue_name,
+                'name'    => $eventable->venue_name ?? 'Event Venue',
             ];
         }
 
-        // For legacy BandEvents with separate fields
-        if (isset($eventable->address_street) && isset($eventable->city) && isset($eventable->state_id) && isset($eventable->zip)) {
+        // Legacy BandEvents: split address fields
+        if (!empty($eventable->address_street) && !empty($eventable->city) && !empty($eventable->state_id) && !empty($eventable->zip)) {
             $state = State::where('state_id', $eventable->state_id)->first();
             if ($state) {
                 return [
                     'address' => $eventable->address_street . ' ' . $eventable->city . ', ' . $state->state_name . ' ' . $eventable->zip,
-                    'name' => $eventable->venue_name ?? 'Event Venue',
+                    'name'    => $eventable->venue_name ?? 'Event Venue',
                 ];
             }
         }
@@ -200,8 +200,8 @@ class CalculateEventDistances implements ShouldQueue
                 return;
             }
 
-            // Extract miles from distance text (e.g., "123 mi" -> 123)
-            $mileage->miles = (int) preg_replace('/\D/', '', $element->distance->text);
+            // Extract miles from distance text (e.g., "96.3 mi" -> 96.3)
+            $mileage->miles = (float) preg_replace('/[^\d.]/', '', $element->distance->text);
 
             // Parse duration - handle "X hours Y mins", "X hour Y mins", or "Y mins"
             $durationText = $element->duration->text;

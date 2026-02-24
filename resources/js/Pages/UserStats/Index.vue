@@ -363,35 +363,79 @@
                   </div>
                 </button>
 
-                <!-- Year Detail -->
+                <!-- Events Table -->
                 <div
                   v-if="expandedMileageYears.includes(yearData.year)"
-                  class="px-4 py-3 border-t border-gray-200 dark:border-gray-700 grid grid-cols-3 gap-4 text-center"
+                  class="overflow-x-auto"
                 >
-                  <div>
-                    <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                      {{ yearData.total_miles.toLocaleString() }}
-                    </div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Miles Traveled
-                    </div>
-                  </div>
-                  <div>
-                    <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                      {{ yearData.total_hours }}
-                    </div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Hours Driving
-                    </div>
-                  </div>
-                  <div>
-                    <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                      {{ yearData.event_count }}
-                    </div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Events Attended
-                    </div>
-                  </div>
+                  <DataTable
+                    :value="yearData.events"
+                    responsive-layout="scroll"
+                    striped-rows
+                  >
+                    <Column
+                      field="date"
+                      header="Date"
+                      :sortable="true"
+                    >
+                      <template #body="slotProps">
+                        {{ formatDate(slotProps.data.date) }}
+                      </template>
+                    </Column>
+                    <Column
+                      field="title"
+                      header="Event"
+                      :sortable="true"
+                    >
+                      <template #body="slotProps">
+                        <div class="font-medium">
+                          {{ slotProps.data.title }}
+                        </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400">
+                          {{ slotProps.data.band_name }}
+                        </div>
+                      </template>
+                    </Column>
+                    <Column
+                      field="venue_name"
+                      header="Venue"
+                      :sortable="true"
+                    >
+                      <template #body="slotProps">
+                        <div>{{ slotProps.data.venue_name }}</div>
+                        <div
+                          v-if="slotProps.data.venue_address"
+                          class="text-xs text-gray-500 dark:text-gray-400"
+                        >
+                          {{ slotProps.data.venue_address }}
+                        </div>
+                      </template>
+                    </Column>
+                    <Column
+                      field="miles"
+                      header="Miles"
+                      :sortable="true"
+                    >
+                      <template #body="slotProps">
+                        <div class="text-right text-blue-600 dark:text-blue-400 font-semibold">
+                          {{ slotProps.data.miles !== null ? slotProps.data.miles + ' mi' : '—' }}
+                        </div>
+                        <div
+                          v-if="slotProps.data.hours !== null"
+                          class="text-xs text-right text-gray-500 dark:text-gray-400"
+                        >
+                          {{ slotProps.data.hours }} hrs
+                        </div>
+                      </template>
+                    </Column>
+                    <template #empty>
+                      <div class="text-center py-4">
+                        <p class="text-gray-500">
+                          No events for this year.
+                        </p>
+                      </div>
+                    </template>
+                  </DataTable>
                 </div>
               </div>
             </div>
