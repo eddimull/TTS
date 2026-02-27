@@ -452,11 +452,10 @@ class BandPayoutConfig extends Model
                     // Determine member type:
                     // - Has rosterMember + isUser() → 'member' (regular band member)
                     // - Has rosterMember + NOT isUser() → 'substitute' (roster sub/guest)
-                    // - No rosterMember + has user_id → 'member' (registered user added directly)
-                    // - No rosterMember + no user_id → 'substitute' (custom name sub)
+                    // - No rosterMember → 'substitute' (added directly as sub, even if a registered user)
                     $type = $eventMember->rosterMember
                         ? ($eventMember->rosterMember->isUser() ? 'member' : 'substitute')
-                        : ($eventMember->user_id ? 'member' : 'substitute');
+                        : 'substitute';
 
                     // Get role/instrument using the role_name accessor which handles fallbacks
                     $role = $eventMember->role_name;
