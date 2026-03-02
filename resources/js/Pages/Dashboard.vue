@@ -8,33 +8,40 @@
         &nbsp;
     </div>
     <div class="col-span-2">
-      <!-- Scroll to Load Older Indicator (shows when near top) -->
+      <!-- Load Older Events Button (non-touch devices only) -->
       <div
-        v-show="showScrollLoadIndicator && !isLoadingOlder"
-        class="flex items-center justify-center mb-4 transition-all duration-300"
-        :style="{ 
-          opacity: scrollLoadOpacity
-        }"
+        v-if="!isTouchDevice && canLoadMore"
+        class="flex items-center justify-center mb-4"
       >
-        <div class="bg-blue-600 dark:bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+        <button
+          :disabled="isLoadingOlder"
+          class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 text-sm font-medium transition-colors duration-200"
+          @click="loadOlderEvents"
+        >
           <svg
+            v-if="isLoadingOlder"
+            class="animate-spin h-5 w-5"
             xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5 animate-bounce"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <svg
+            v-else
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M5 10l7-7m0 0l7 7m-7-7v18"
-            />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
           </svg>
-          <span class="text-sm font-medium">Scroll up to load older events</span>
-        </div>
+          {{ isLoadingOlder ? 'Loading...' : 'Load older events' }}
+        </button>
       </div>
-      
+
       <!-- Pull to Refresh Indicator (shows in the gap) -->
       <div
         v-show="(pullDistance > 0 || !isPulling) && !isLoadingOlder"
@@ -162,80 +169,80 @@
   </div>
 
   <!-- Floating Action Buttons -->
-  <transition name="fade">
-    <div
-      v-if="showBackToTop"
-      class="fixed bottom-8 right-8 z-50 flex flex-col gap-3"
+  <!-- Search button is always visible on mobile; others appear after scrolling -->
+  <div class="fixed bottom-8 right-8 z-50 flex flex-col gap-3">
+    <!-- Upcoming Music Button (Mobile only, always visible) -->
+    <button
+      v-if="upcomingCharts.length > 0"
+      class="lg:hidden relative p-4 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110"
+      aria-label="View upcoming music"
+      @click="showMusicModal = true"
     >
-      <!-- Upcoming Music Button (Mobile only) -->
-      <button
-        v-if="upcomingCharts.length > 0"
-        class="lg:hidden relative p-4 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110"
-        aria-label="View upcoming music"
-        @click="showMusicModal = true"
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-6 w-6"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        <!-- Count Badge -->
-        <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center border-2 border-white">
-          {{ upcomingCharts.length }}
-        </span>
-      </button>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center border-2 border-white">
+        {{ upcomingCharts.length }}
+      </span>
+    </button>
 
-      <!-- Search Button -->
-      <button
-        class="p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110"
-        aria-label="Search events"
-        @click="showSearchModal = true"
+    <!-- Search Button (always visible on mobile, visible after scroll on desktop) -->
+    <button
+      v-if="isTouchDevice || showBackToTop"
+      class="p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110"
+      aria-label="Search events"
+      @click="showSearchModal = true"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-6 w-6"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-          />
-        </svg>
-      </button>
-      
-      <!-- Back to Today Button -->
-      <button
-        class="p-4 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110"
-        :aria-label="scrollDirection === 'down' ? 'Jump to today (scroll down)' : 'Jump to today (scroll up)'"
-        @click="scrollToToday()"
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        />
+      </svg>
+    </button>
+
+    <!-- Back to Today Button (always visible on mobile, visible after scroll on desktop) -->
+    <button
+      v-if="isTouchDevice || showBackToTop"
+      :disabled="todayIsVisible"
+      class="p-4 text-white rounded-full shadow-lg transition-all duration-300"
+      :class="todayIsVisible
+        ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'
+        : 'bg-green-600 hover:bg-green-700 hover:scale-110'"
+      :aria-label="scrollDirection === 'down' ? 'Jump to today (scroll down)' : 'Jump to today (scroll up)'"
+      @click="scrollToToday()"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-6 w-6 transition-transform duration-500 ease-in-out"
+        :class="{ 'rotate-180': scrollDirection === 'up' }"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
       >
-        <!-- Single arrow that rotates based on direction -->
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-6 w-6 transition-transform duration-500 ease-in-out"
-          :class="{ 'rotate-180': scrollDirection === 'up' }"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M19 14l-7 7m0 0l-7-7m7 7V3"
-          />
-        </svg>
-      </button>
-    </div>
-  </transition>
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M19 14l-7 7m0 0l-7-7m7 7V3"
+        />
+      </svg>
+    </button>
+  </div>
 
   <!-- Search Modal -->
   <transition name="fade">
@@ -384,9 +391,8 @@
     import UpcomingCharts from '../Components/Dashboard/UpcomingCharts.vue'
     import RehearsalEditorModal from '../Components/Rehearsal/RehearsalEditorModal.vue'
     import { nextTick, onMounted, onUnmounted, ref } from 'vue';
-    import { router, usePage } from '@inertiajs/vue3';
-import { pull } from 'lodash'
-    
+    import { router } from '@inertiajs/vue3';
+
     const props = defineProps({
       events: {
         type: Array,
@@ -406,8 +412,6 @@ import { pull } from 'lodash'
       layout: BreezeAuthenticatedLayout,
     })
 
-    const page = usePage();
-
     // Create a local reactive copy of events that we can mutate
     const localEvents = ref([...props.events]);
 
@@ -422,6 +426,10 @@ import { pull } from 'lodash'
     // Back to top button state
     const showBackToTop = ref(false);
     const scrollDirection = ref('down'); // 'up' or 'down' - indicates direction to today
+    const todayIsVisible = ref(false); // true when today's event is already in the viewport
+
+    // Intersection Observer for today element
+    let todayObserver = null;
     
     // Go to date/month state
     const selectedDate = ref('');
@@ -436,60 +444,61 @@ import { pull } from 'lodash'
 
     // Scroll tracking
     let scrollTimeout = null;
-    let lastScrollY = 0;
 
     // Pull to refresh state
     let touchStartY = 0;
     let touchCurrentY = 0;
-    const pullThreshold = 80; // Distance in pixels to trigger refresh
+    const pullThreshold = Math.round(window.innerHeight / 2);
     const pullDistance = ref(0); // Visual feedback for pull distance
     const isPulling = ref(false); // Track if user is actively pulling
+    const isTouchDevice = ref(false); // Reactive so template can conditionally render
 
-    // Scroll to load state
-    const showScrollLoadIndicator = ref(false);
-    const scrollLoadOpacity = ref(0);
-    const scrollLoadThreshold = 300; // Distance from top to start showing indicator
-    const scrollLoadTrigger = 50; // Distance from top to trigger load
-
-    // Infinite scroll state
+    // Load older events state
     const isLoadingOlder = ref(false);
     const canLoadMore = ref(true);
     const oldestEventDate = ref(null);
-    const hasLoadedOlderEvents = ref(false);
-    const isInitialized = ref(false);
 
     const gotoDate = (identifier) => {
       const el = document.querySelector(`#event_${identifier}`);
-      
-      // If element doesn't exist, skip (elements not rendered yet)
+
       if (!el) {
         return;
       }
-      
-      const header = document.querySelector('nav'); // Adjust this selector to match your header
-      
-      // Get the actual header height
-      const headerHeight = header ? header.offsetHeight : 0;
-      
-      // Add a small additional padding if desired
-      const additionalPadding = 0; 
-      const offset = headerHeight + additionalPadding;
-      
-      const elementPosition = el.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.scrollY - offset;
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: "smooth"
-      })
-      if(history.pushState) {
-          history.pushState(null, null, `#event_${identifier}`);
+
+      if (history.pushState) {
+        history.pushState(null, null, `#event_${identifier}`);
+      } else {
+        location.hash = `#event_${identifier}`;
       }
-      else {
-          location.hash = `#event_${identifier}`;
-      }
-      
-      // Close the search modal if it's open
+
       showSearchModal.value = false;
+
+      const nav = document.querySelector('nav');
+      const header = document.querySelector('header');
+      const stickyHeight = (nav ? nav.offsetHeight : 0) + (header ? header.offsetHeight : 0);
+
+      el.style.scrollMarginTop = `${stickyHeight}px`;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      // Images loading after the initial scroll shift the layout and push the target
+      // out of position. Watch the document body for size changes and re-snap
+      // the element into place each time, until things stabilize.
+      let lastHeight = document.documentElement.scrollHeight;
+      let stabilizeTimer = null;
+
+      const resizeObserver = new ResizeObserver(() => {
+        const newHeight = document.documentElement.scrollHeight;
+        if (newHeight !== lastHeight) {
+          lastHeight = newHeight;
+          el.scrollIntoView({ behavior: 'instant', block: 'start' });
+        }
+
+        // Disconnect after 3s — by then all images should have loaded
+        clearTimeout(stabilizeTimer);
+        stabilizeTimer = setTimeout(() => resizeObserver.disconnect(), 3000);
+      });
+
+      resizeObserver.observe(document.body);
     };
 
     const scrollToEventFromChart = (eventId) => {
@@ -501,79 +510,63 @@ import { pull } from 'lodash'
       gotoDate(eventId);
     };
 
-    const scrollToTop = () => {
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
-    };
+    const observeTodayEvent = () => {
+      // Tear down any existing observer first
+      if (todayObserver) {
+        todayObserver.disconnect();
+        todayObserver = null;
+      }
 
-    const updateScrollDirection = () => {
-      // Find the first event that is today or in the future
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const todayOrFutureEvent = localEvents.value.find(event => {
         const eventDate = new Date(event.date);
         eventDate.setHours(0, 0, 0, 0);
         return eventDate >= today;
       });
-      
+
       if (!todayOrFutureEvent) {
-        scrollDirection.value = 'up'; // All events are in the past
+        scrollDirection.value = 'up';
+        todayIsVisible.value = false;
         return;
       }
-      
-      // Get the position of the "today" event
+
       const el = document.querySelector(`#event_${todayOrFutureEvent.id || todayOrFutureEvent.key}`);
-      if (el) {
-        const rect = el.getBoundingClientRect();
-        const viewportMiddle = window.innerHeight / 2;
-        
-        // If the "today" event is below the middle of the viewport, we need to scroll down
-        // If it's above, we need to scroll up
-        scrollDirection.value = rect.top > viewportMiddle ? 'down' : 'up';
-      }
+      if (!el) return;
+
+      // Set initial direction based on element position before observer fires
+      const rect = el.getBoundingClientRect();
+      scrollDirection.value = rect.top > window.innerHeight / 2 ? 'down' : 'up';
+
+      todayObserver = new IntersectionObserver(([entry]) => {
+        todayIsVisible.value = entry.isIntersecting;
+        if (!entry.isIntersecting) {
+          // Element is offscreen — determine which direction it went
+          scrollDirection.value = entry.boundingClientRect.top > 0 ? 'down' : 'up';
+        }
+      }, { threshold: 0 });
+
+      todayObserver.observe(el);
     };
 
     const scrollToToday = () => {
-      // Find the first event that is today or in the future
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const todayOrFutureEvent = localEvents.value.find(event => {
         const eventDate = new Date(event.date);
         eventDate.setHours(0, 0, 0, 0);
         return eventDate >= today;
       });
-      
+
       if (todayOrFutureEvent) {
         gotoDate(todayOrFutureEvent.id || todayOrFutureEvent.key);
       } else {
-        // If no future events, just scroll to the bottom
         window.scrollTo({
           top: document.documentElement.scrollHeight,
           behavior: 'smooth'
         });
-      }
-    };
-
-    const jumpToMonth = () => {
-      if (!selectedDate.value) return;
-      
-      const [year, month] = selectedDate.value.split('-');
-      const targetDate = new Date(year, month - 1, 1);
-      
-      // Find the first event in the selected month
-      const eventInMonth = localEvents.value.find(event => {
-        const eventDate = new Date(event.date);
-        return eventDate.getFullYear() === targetDate.getFullYear() && 
-               eventDate.getMonth() === targetDate.getMonth();
-      });
-      
-      if (eventInMonth) {
-        gotoDate(eventInMonth.id || eventInMonth.key);
-        showSearchModal.value = false;
       }
     };
 
@@ -616,77 +609,67 @@ import { pull } from 'lodash'
     };
 
     const handleScroll = () => {
+      if (isTouchDevice.value) return;
       const currentScrollY = window.scrollY;
-      
+
       // Show/hide back to top button
       showBackToTop.value = currentScrollY > 300;
-      
-      // Update scroll direction based on position relative to "today"
-      updateScrollDirection();
-      
-      // Handle scroll-to-load-older indicator and trigger
-      if (isInitialized.value && canLoadMore.value && !isLoadingOlder.value) {
-        // Show indicator when within threshold distance from top
-        if (currentScrollY <= scrollLoadThreshold) {
-          showScrollLoadIndicator.value = true;
-          // Calculate opacity based on distance from top (closer = more opaque)
-          scrollLoadOpacity.value = Math.min(1, (scrollLoadThreshold - currentScrollY) / scrollLoadThreshold);
-          
-          // Trigger load when very close to top
-          if (currentScrollY <= scrollLoadTrigger && lastScrollY > scrollLoadTrigger) {
-            loadOlderEvents();
-          }
-        } else {
-          showScrollLoadIndicator.value = false;
-          scrollLoadOpacity.value = 0;
-        }
-      } else {
-        showScrollLoadIndicator.value = false;
-        scrollLoadOpacity.value = 0;
-      }
-      
-      // Update last scroll position for next comparison
-      lastScrollY = currentScrollY;
-      
+
       // Debounce hash update on scroll
       if (scrollTimeout) {
         clearTimeout(scrollTimeout);
       }
-      
+
       scrollTimeout = setTimeout(() => {
         updateHashOnScroll();
       }, 150);
     };
 
+    const pullDeadZone = 12; // px the finger must move down before pull UI activates
+
     const handleTouchStart = (e) => {
+      isTouchDevice.value = true;
       if (window.scrollY === 0) {
         touchStartY = e.touches[0].clientY;
         pullDistance.value = 0;
-        isPulling.value = true; // Start pulling - disable transitions
+        // Don't set isPulling yet — wait for intentional downward movement
       }
     };
 
     const handleTouchMove = (e) => {
-      if (!isInitialized.value || isLoadingOlder.value || !canLoadMore.value) {
+      if (isLoadingOlder.value || !canLoadMore.value || touchStartY === 0) {
         return;
       }
 
-      if (touchStartY > 0) {
-        touchCurrentY = e.touches[0].clientY;
-        const distance = touchCurrentY - touchStartY;
-        
-        // Always update pull distance based on current touch position
-        // This allows dragging back up to reduce the distance even after threshold is met
-        pullDistance.value = Math.max(0, distance);
+      touchCurrentY = e.touches[0].clientY;
+      const distance = touchCurrentY - touchStartY;
+
+      // Ignore upward swipes and tiny movements (dead zone filters accidental triggers)
+      if (distance < pullDeadZone) {
+        if (distance <= 0) {
+          // Finger moved up — cancel any in-progress pull
+          isPulling.value = false;
+          pullDistance.value = 0;
+        }
+        return;
       }
 
-      if(pullDistance.value >= pullThreshold) {
-        touchStartY = e.touches[0].clientY - pullThreshold;
+      // Committed to a pull gesture
+      isPulling.value = true;
+      pullDistance.value = Math.max(0, distance - pullDeadZone);
+
+      if (pullDistance.value >= pullThreshold) {
+        touchStartY = e.touches[0].clientY - pullThreshold - pullDeadZone;
       }
     };
 
     const handleTouchEnd = () => {
-      if (!isInitialized.value || isLoadingOlder.value || !canLoadMore.value) {
+      // Update FAB visibility after touch settles
+      setTimeout(() => {
+        showBackToTop.value = window.scrollY > 300;
+      }, 100);
+
+      if (isLoadingOlder.value || !canLoadMore.value) {
         touchStartY = 0;
         touchCurrentY = 0;
         isPulling.value = false;
@@ -725,9 +708,9 @@ import { pull } from 'lodash'
     const updateHashOnScroll = () => {
       if (!localEvents.value.length) return;
       
-      const header = document.querySelector('nav');
-      const headerHeight = header ? header.offsetHeight : 0;
-      const offset = headerHeight + 100; // Add some buffer
+      const nav = document.querySelector('nav');
+      const header = document.querySelector('header');
+      const offset = (nav ? nav.offsetHeight : 0) + (header ? header.offsetHeight : 0);
       
       // Find the event that's currently in view
       for (const event of localEvents.value) {
@@ -759,6 +742,8 @@ import { pull } from 'lodash'
       
       // Check if this is a virtual rehearsal (not yet saved)
       if (event.is_virtual && !event.eventable_id) {
+
+        
         // This is a schedule-generated rehearsal that hasn't been saved yet
         // We'll create a new rehearsal from this virtual event
         try {
@@ -880,15 +865,13 @@ import { pull } from 'lodash'
 
           // Update the oldest event date
           oldestEventDate.value = data.events[0].date;
-          
-          // Mark that we've loaded older events
-          hasLoadedOlderEvents.value = true;
 
-          // After DOM updates, restore scroll position
+          // After DOM updates, restore scroll position and re-observe today element
           nextTick(() => {
             const newScrollHeight = document.documentElement.scrollHeight;
             const heightDifference = newScrollHeight - currentScrollHeight;
             window.scrollTo(0, currentScrollY + heightDifference);
+            observeTodayEvent();
           });
         } else {
           // No more events to load
@@ -902,6 +885,9 @@ import { pull } from 'lodash'
     };
 
     onMounted(()=> {
+      // Detect touch capability upfront so the button renders immediately for non-touch devices
+      isTouchDevice.value = window.matchMedia('(pointer: coarse)').matches;
+
       // Add scroll listener
       window.addEventListener('scroll', handleScroll);
 
@@ -915,27 +901,21 @@ import { pull } from 'lodash'
         oldestEventDate.value = localEvents.value[0].date;
       }
 
-      // Initialize scroll direction
+      // Start observing the today element
       nextTick(() => {
-        updateScrollDirection();
+        observeTodayEvent();
       });
 
       // Handle initial hash navigation - wait for DOM to be fully rendered
       if(window.location.hash.includes('event_'))
       {
         const identifier = window.location.hash.replace('#event_','');
-        // Wait for nextTick to ensure Vue has rendered, then add extra delay for DOM to settle
         nextTick(() => {
           setTimeout(()=>{
             gotoDate(identifier);
-          }, 150) // scroll to the item that includes the offset after DOM is ready
+          }, 150)
         })
       }
-
-      // Mark as initialized after a short delay to prevent immediate loading
-      setTimeout(() => {
-        isInitialized.value = true;
-      }, 500);
     })
 
     onUnmounted(() => {
@@ -949,6 +929,10 @@ import { pull } from 'lodash'
 
       if (scrollTimeout) {
         clearTimeout(scrollTimeout);
+      }
+
+      if (todayObserver) {
+        todayObserver.disconnect();
       }
     });
 </script>
