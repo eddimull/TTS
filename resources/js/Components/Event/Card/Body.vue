@@ -420,6 +420,8 @@
                       :src="getAttachmentShowUrl(attachment)"
                       :alt="attachment.filename"
                       loading="lazy"
+                      width="200"
+                      height="150"
                       class="block max-w-[200px] max-h-[150px] object-cover rounded-lg border-2 border-gray-200 dark:border-gray-600 group-hover:border-blue-400 dark:group-hover:border-blue-500 shadow-md group-hover:shadow-xl transition-all duration-200"
                     >
                     <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 rounded-lg flex items-center justify-center pointer-events-none">

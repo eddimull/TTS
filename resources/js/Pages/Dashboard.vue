@@ -460,36 +460,45 @@
 
     const gotoDate = (identifier) => {
       const el = document.querySelector(`#event_${identifier}`);
-      
-      // If element doesn't exist, skip (elements not rendered yet)
+
       if (!el) {
         return;
       }
-      
-      const header = document.querySelector('nav'); // Adjust this selector to match your header
-      
-      // Get the actual header height
-      const headerHeight = header ? header.offsetHeight : 0;
-      
-      // Add a small additional padding if desired
-      const additionalPadding = 0; 
-      const offset = headerHeight + additionalPadding;
-      
-      const elementPosition = el.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.scrollY - offset;
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: "smooth"
-      })
-      if(history.pushState) {
-          history.pushState(null, null, `#event_${identifier}`);
+
+      if (history.pushState) {
+        history.pushState(null, null, `#event_${identifier}`);
+      } else {
+        location.hash = `#event_${identifier}`;
       }
-      else {
-          location.hash = `#event_${identifier}`;
-      }
-      
-      // Close the search modal if it's open
+
       showSearchModal.value = false;
+
+      const nav = document.querySelector('nav');
+      const header = document.querySelector('header');
+      const stickyHeight = (nav ? nav.offsetHeight : 0) + (header ? header.offsetHeight : 0);
+
+      el.style.scrollMarginTop = `${stickyHeight}px`;
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      // Images loading after the initial scroll shift the layout and push the target
+      // out of position. Watch the document body for size changes and re-snap
+      // the element into place each time, until things stabilize.
+      let lastHeight = document.documentElement.scrollHeight;
+      let stabilizeTimer = null;
+
+      const resizeObserver = new ResizeObserver(() => {
+        const newHeight = document.documentElement.scrollHeight;
+        if (newHeight !== lastHeight) {
+          lastHeight = newHeight;
+          el.scrollIntoView({ behavior: 'instant', block: 'start' });
+        }
+
+        // Disconnect after 3s — by then all images should have loaded
+        clearTimeout(stabilizeTimer);
+        stabilizeTimer = setTimeout(() => resizeObserver.disconnect(), 3000);
+      });
+
+      resizeObserver.observe(document.body);
     };
 
     const scrollToEventFromChart = (eventId) => {
@@ -699,9 +708,9 @@
     const updateHashOnScroll = () => {
       if (!localEvents.value.length) return;
       
-      const header = document.querySelector('nav');
-      const headerHeight = header ? header.offsetHeight : 0;
-      const offset = headerHeight + 100; // Add some buffer
+      const nav = document.querySelector('nav');
+      const header = document.querySelector('header');
+      const offset = (nav ? nav.offsetHeight : 0) + (header ? header.offsetHeight : 0);
       
       // Find the event that's currently in view
       for (const event of localEvents.value) {
