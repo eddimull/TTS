@@ -169,80 +169,80 @@
   </div>
 
   <!-- Floating Action Buttons -->
-  <transition name="fade">
-    <div
-      v-if="showBackToTop"
-      class="fixed bottom-8 right-8 z-50 flex flex-col gap-3"
+  <!-- Search button is always visible on mobile; others appear after scrolling -->
+  <div class="fixed bottom-8 right-8 z-50 flex flex-col gap-3">
+    <!-- Upcoming Music Button (Mobile only, always visible) -->
+    <button
+      v-if="upcomingCharts.length > 0"
+      class="lg:hidden relative p-4 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110"
+      aria-label="View upcoming music"
+      @click="showMusicModal = true"
     >
-      <!-- Upcoming Music Button (Mobile only) -->
-      <button
-        v-if="upcomingCharts.length > 0"
-        class="lg:hidden relative p-4 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110"
-        aria-label="View upcoming music"
-        @click="showMusicModal = true"
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-6 w-6"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        <!-- Count Badge -->
-        <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center border-2 border-white">
-          {{ upcomingCharts.length }}
-        </span>
-      </button>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center border-2 border-white">
+        {{ upcomingCharts.length }}
+      </span>
+    </button>
 
-      <!-- Search Button -->
-      <button
-        class="p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110"
-        aria-label="Search events"
-        @click="showSearchModal = true"
+    <!-- Search Button (always visible on mobile, visible after scroll on desktop) -->
+    <button
+      v-if="isTouchDevice || showBackToTop"
+      class="p-4 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110"
+      aria-label="Search events"
+      @click="showSearchModal = true"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-6 w-6"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-6 w-6"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-          />
-        </svg>
-      </button>
-      
-      <!-- Back to Today Button -->
-      <button
-        class="p-4 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg transition-all duration-300 hover:scale-110"
-        :aria-label="scrollDirection === 'down' ? 'Jump to today (scroll down)' : 'Jump to today (scroll up)'"
-        @click="scrollToToday()"
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        />
+      </svg>
+    </button>
+
+    <!-- Back to Today Button (always visible on mobile, visible after scroll on desktop) -->
+    <button
+      v-if="isTouchDevice || showBackToTop"
+      :disabled="todayIsVisible"
+      class="p-4 text-white rounded-full shadow-lg transition-all duration-300"
+      :class="todayIsVisible
+        ? 'bg-gray-400 dark:bg-gray-600 cursor-not-allowed'
+        : 'bg-green-600 hover:bg-green-700 hover:scale-110'"
+      :aria-label="scrollDirection === 'down' ? 'Jump to today (scroll down)' : 'Jump to today (scroll up)'"
+      @click="scrollToToday()"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        class="h-6 w-6 transition-transform duration-500 ease-in-out"
+        :class="{ 'rotate-180': scrollDirection === 'up' }"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
       >
-        <!-- Single arrow that rotates based on direction -->
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="h-6 w-6 transition-transform duration-500 ease-in-out"
-          :class="{ 'rotate-180': scrollDirection === 'up' }"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M19 14l-7 7m0 0l-7-7m7 7V3"
-          />
-        </svg>
-      </button>
-    </div>
-  </transition>
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M19 14l-7 7m0 0l-7-7m7 7V3"
+        />
+      </svg>
+    </button>
+  </div>
 
   <!-- Search Modal -->
   <transition name="fade">
@@ -391,7 +391,7 @@
     import UpcomingCharts from '../Components/Dashboard/UpcomingCharts.vue'
     import RehearsalEditorModal from '../Components/Rehearsal/RehearsalEditorModal.vue'
     import { nextTick, onMounted, onUnmounted, ref } from 'vue';
-    import { router, usePage } from '@inertiajs/vue3';
+    import { router } from '@inertiajs/vue3';
 
     const props = defineProps({
       events: {
@@ -412,8 +412,6 @@
       layout: BreezeAuthenticatedLayout,
     })
 
-    const page = usePage();
-
     // Create a local reactive copy of events that we can mutate
     const localEvents = ref([...props.events]);
 
@@ -428,6 +426,10 @@
     // Back to top button state
     const showBackToTop = ref(false);
     const scrollDirection = ref('down'); // 'up' or 'down' - indicates direction to today
+    const todayIsVisible = ref(false); // true when today's event is already in the viewport
+
+    // Intersection Observer for today element
+    let todayObserver = null;
     
     // Go to date/month state
     const selectedDate = ref('');
@@ -499,79 +501,63 @@
       gotoDate(eventId);
     };
 
-    const scrollToTop = () => {
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
-    };
+    const observeTodayEvent = () => {
+      // Tear down any existing observer first
+      if (todayObserver) {
+        todayObserver.disconnect();
+        todayObserver = null;
+      }
 
-    const updateScrollDirection = () => {
-      // Find the first event that is today or in the future
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const todayOrFutureEvent = localEvents.value.find(event => {
         const eventDate = new Date(event.date);
         eventDate.setHours(0, 0, 0, 0);
         return eventDate >= today;
       });
-      
+
       if (!todayOrFutureEvent) {
-        scrollDirection.value = 'up'; // All events are in the past
+        scrollDirection.value = 'up';
+        todayIsVisible.value = false;
         return;
       }
-      
-      // Get the position of the "today" event
+
       const el = document.querySelector(`#event_${todayOrFutureEvent.id || todayOrFutureEvent.key}`);
-      if (el) {
-        const rect = el.getBoundingClientRect();
-        const viewportMiddle = window.innerHeight / 2;
-        
-        // If the "today" event is below the middle of the viewport, we need to scroll down
-        // If it's above, we need to scroll up
-        scrollDirection.value = rect.top > viewportMiddle ? 'down' : 'up';
-      }
+      if (!el) return;
+
+      // Set initial direction based on element position before observer fires
+      const rect = el.getBoundingClientRect();
+      scrollDirection.value = rect.top > window.innerHeight / 2 ? 'down' : 'up';
+
+      todayObserver = new IntersectionObserver(([entry]) => {
+        todayIsVisible.value = entry.isIntersecting;
+        if (!entry.isIntersecting) {
+          // Element is offscreen — determine which direction it went
+          scrollDirection.value = entry.boundingClientRect.top > 0 ? 'down' : 'up';
+        }
+      }, { threshold: 0 });
+
+      todayObserver.observe(el);
     };
 
     const scrollToToday = () => {
-      // Find the first event that is today or in the future
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const todayOrFutureEvent = localEvents.value.find(event => {
         const eventDate = new Date(event.date);
         eventDate.setHours(0, 0, 0, 0);
         return eventDate >= today;
       });
-      
+
       if (todayOrFutureEvent) {
         gotoDate(todayOrFutureEvent.id || todayOrFutureEvent.key);
       } else {
-        // If no future events, just scroll to the bottom
         window.scrollTo({
           top: document.documentElement.scrollHeight,
           behavior: 'smooth'
         });
-      }
-    };
-
-    const jumpToMonth = () => {
-      if (!selectedDate.value) return;
-      
-      const [year, month] = selectedDate.value.split('-');
-      const targetDate = new Date(year, month - 1, 1);
-      
-      // Find the first event in the selected month
-      const eventInMonth = localEvents.value.find(event => {
-        const eventDate = new Date(event.date);
-        return eventDate.getFullYear() === targetDate.getFullYear() && 
-               eventDate.getMonth() === targetDate.getMonth();
-      });
-      
-      if (eventInMonth) {
-        gotoDate(eventInMonth.id || eventInMonth.key);
-        showSearchModal.value = false;
       }
     };
 
@@ -619,9 +605,6 @@
 
       // Show/hide back to top button
       showBackToTop.value = currentScrollY > 300;
-
-      // Update scroll direction based on position relative to "today"
-      updateScrollDirection();
 
       // Debounce hash update on scroll
       if (scrollTimeout) {
@@ -672,6 +655,11 @@
     };
 
     const handleTouchEnd = () => {
+      // Update FAB visibility after touch settles
+      setTimeout(() => {
+        showBackToTop.value = window.scrollY > 300;
+      }, 100);
+
       if (isLoadingOlder.value || !canLoadMore.value) {
         touchStartY = 0;
         touchCurrentY = 0;
@@ -869,11 +857,12 @@
           // Update the oldest event date
           oldestEventDate.value = data.events[0].date;
 
-          // After DOM updates, restore scroll position
+          // After DOM updates, restore scroll position and re-observe today element
           nextTick(() => {
             const newScrollHeight = document.documentElement.scrollHeight;
             const heightDifference = newScrollHeight - currentScrollHeight;
             window.scrollTo(0, currentScrollY + heightDifference);
+            observeTodayEvent();
           });
         } else {
           // No more events to load
@@ -903,9 +892,9 @@
         oldestEventDate.value = localEvents.value[0].date;
       }
 
-      // Initialize scroll direction
+      // Start observing the today element
       nextTick(() => {
-        updateScrollDirection();
+        observeTodayEvent();
       });
 
       // Handle initial hash navigation - wait for DOM to be fully rendered
@@ -931,6 +920,10 @@
 
       if (scrollTimeout) {
         clearTimeout(scrollTimeout);
+      }
+
+      if (todayObserver) {
+        todayObserver.disconnect();
       }
     });
 </script>
