@@ -8,33 +8,40 @@
         &nbsp;
     </div>
     <div class="col-span-2">
-      <!-- Scroll to Load Older Indicator (shows when near top) -->
+      <!-- Load Older Events Button (non-touch devices only) -->
       <div
-        v-show="showScrollLoadIndicator && !isLoadingOlder"
-        class="flex items-center justify-center mb-4 transition-all duration-300"
-        :style="{ 
-          opacity: scrollLoadOpacity
-        }"
+        v-if="!isTouchDevice && canLoadMore"
+        class="flex items-center justify-center mb-4"
       >
-        <div class="bg-blue-600 dark:bg-blue-500 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2">
+        <button
+          :disabled="isLoadingOlder"
+          class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 text-sm font-medium transition-colors duration-200"
+          @click="loadOlderEvents"
+        >
           <svg
+            v-if="isLoadingOlder"
+            class="animate-spin h-5 w-5"
             xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5 animate-bounce"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <svg
+            v-else
+            xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
           >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              d="M5 10l7-7m0 0l7 7m-7-7v18"
-            />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
           </svg>
-          <span class="text-sm font-medium">Scroll up to load older events</span>
-        </div>
+          {{ isLoadingOlder ? 'Loading...' : 'Load older events' }}
+        </button>
       </div>
-      
+
       <!-- Pull to Refresh Indicator (shows in the gap) -->
       <div
         v-show="(pullDistance > 0 || !isPulling) && !isLoadingOlder"
@@ -385,8 +392,7 @@
     import RehearsalEditorModal from '../Components/Rehearsal/RehearsalEditorModal.vue'
     import { nextTick, onMounted, onUnmounted, ref } from 'vue';
     import { router, usePage } from '@inertiajs/vue3';
-import { pull } from 'lodash'
-    
+
     const props = defineProps({
       events: {
         type: Array,
@@ -436,27 +442,19 @@ import { pull } from 'lodash'
 
     // Scroll tracking
     let scrollTimeout = null;
-    let lastScrollY = 0;
 
     // Pull to refresh state
     let touchStartY = 0;
     let touchCurrentY = 0;
-    const pullThreshold = 80; // Distance in pixels to trigger refresh
+    const pullThreshold = Math.round(window.innerHeight / 2);
     const pullDistance = ref(0); // Visual feedback for pull distance
     const isPulling = ref(false); // Track if user is actively pulling
+    const isTouchDevice = ref(false); // Reactive so template can conditionally render
 
-    // Scroll to load state
-    const showScrollLoadIndicator = ref(false);
-    const scrollLoadOpacity = ref(0);
-    const scrollLoadThreshold = 300; // Distance from top to start showing indicator
-    const scrollLoadTrigger = 50; // Distance from top to trigger load
-
-    // Infinite scroll state
+    // Load older events state
     const isLoadingOlder = ref(false);
     const canLoadMore = ref(true);
     const oldestEventDate = ref(null);
-    const hasLoadedOlderEvents = ref(false);
-    const isInitialized = ref(false);
 
     const gotoDate = (identifier) => {
       const el = document.querySelector(`#event_${identifier}`);
@@ -616,77 +614,65 @@ import { pull } from 'lodash'
     };
 
     const handleScroll = () => {
+      if (isTouchDevice.value) return;
       const currentScrollY = window.scrollY;
-      
+
       // Show/hide back to top button
       showBackToTop.value = currentScrollY > 300;
-      
+
       // Update scroll direction based on position relative to "today"
       updateScrollDirection();
-      
-      // Handle scroll-to-load-older indicator and trigger
-      if (isInitialized.value && canLoadMore.value && !isLoadingOlder.value) {
-        // Show indicator when within threshold distance from top
-        if (currentScrollY <= scrollLoadThreshold) {
-          showScrollLoadIndicator.value = true;
-          // Calculate opacity based on distance from top (closer = more opaque)
-          scrollLoadOpacity.value = Math.min(1, (scrollLoadThreshold - currentScrollY) / scrollLoadThreshold);
-          
-          // Trigger load when very close to top
-          if (currentScrollY <= scrollLoadTrigger && lastScrollY > scrollLoadTrigger) {
-            loadOlderEvents();
-          }
-        } else {
-          showScrollLoadIndicator.value = false;
-          scrollLoadOpacity.value = 0;
-        }
-      } else {
-        showScrollLoadIndicator.value = false;
-        scrollLoadOpacity.value = 0;
-      }
-      
-      // Update last scroll position for next comparison
-      lastScrollY = currentScrollY;
-      
+
       // Debounce hash update on scroll
       if (scrollTimeout) {
         clearTimeout(scrollTimeout);
       }
-      
+
       scrollTimeout = setTimeout(() => {
         updateHashOnScroll();
       }, 150);
     };
 
+    const pullDeadZone = 12; // px the finger must move down before pull UI activates
+
     const handleTouchStart = (e) => {
+      isTouchDevice.value = true;
       if (window.scrollY === 0) {
         touchStartY = e.touches[0].clientY;
         pullDistance.value = 0;
-        isPulling.value = true; // Start pulling - disable transitions
+        // Don't set isPulling yet — wait for intentional downward movement
       }
     };
 
     const handleTouchMove = (e) => {
-      if (!isInitialized.value || isLoadingOlder.value || !canLoadMore.value) {
+      if (isLoadingOlder.value || !canLoadMore.value || touchStartY === 0) {
         return;
       }
 
-      if (touchStartY > 0) {
-        touchCurrentY = e.touches[0].clientY;
-        const distance = touchCurrentY - touchStartY;
-        
-        // Always update pull distance based on current touch position
-        // This allows dragging back up to reduce the distance even after threshold is met
-        pullDistance.value = Math.max(0, distance);
+      touchCurrentY = e.touches[0].clientY;
+      const distance = touchCurrentY - touchStartY;
+
+      // Ignore upward swipes and tiny movements (dead zone filters accidental triggers)
+      if (distance < pullDeadZone) {
+        if (distance <= 0) {
+          // Finger moved up — cancel any in-progress pull
+          isPulling.value = false;
+          pullDistance.value = 0;
+        }
+        return;
       }
 
-      if(pullDistance.value >= pullThreshold) {
-        touchStartY = e.touches[0].clientY - pullThreshold;
+      // Committed to a pull gesture
+      isPulling.value = true;
+      pullDistance.value = Math.max(0, distance - pullDeadZone);
+
+      if (pullDistance.value >= pullThreshold) {
+        touchStartY = e.touches[0].clientY - pullThreshold - pullDeadZone;
       }
     };
 
     const handleTouchEnd = () => {
-      if (!isInitialized.value || isLoadingOlder.value || !canLoadMore.value) {
+      if (isLoadingOlder.value || !canLoadMore.value) {
         touchStartY = 0;
         touchCurrentY = 0;
         isPulling.value = false;
@@ -759,6 +745,8 @@ import { pull } from 'lodash'
       
       // Check if this is a virtual rehearsal (not yet saved)
       if (event.is_virtual && !event.eventable_id) {
+
+        
         // This is a schedule-generated rehearsal that hasn't been saved yet
         // We'll create a new rehearsal from this virtual event
         try {
@@ -880,9 +868,6 @@ import { pull } from 'lodash'
 
           // Update the oldest event date
           oldestEventDate.value = data.events[0].date;
-          
-          // Mark that we've loaded older events
-          hasLoadedOlderEvents.value = true;
 
           // After DOM updates, restore scroll position
           nextTick(() => {
@@ -902,6 +887,9 @@ import { pull } from 'lodash'
     };
 
     onMounted(()=> {
+      // Detect touch capability upfront so the button renders immediately for non-touch devices
+      isTouchDevice.value = window.matchMedia('(pointer: coarse)').matches;
+
       // Add scroll listener
       window.addEventListener('scroll', handleScroll);
 
@@ -924,18 +912,12 @@ import { pull } from 'lodash'
       if(window.location.hash.includes('event_'))
       {
         const identifier = window.location.hash.replace('#event_','');
-        // Wait for nextTick to ensure Vue has rendered, then add extra delay for DOM to settle
         nextTick(() => {
           setTimeout(()=>{
             gotoDate(identifier);
-          }, 150) // scroll to the item that includes the offset after DOM is ready
+          }, 150)
         })
       }
-
-      // Mark as initialized after a short delay to prevent immediate loading
-      setTimeout(() => {
-        isInitialized.value = true;
-      }, 500);
     })
 
     onUnmounted(() => {
