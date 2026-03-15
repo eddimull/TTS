@@ -14,7 +14,9 @@ use App\Enums\PaymentType;
 use Illuminate\Http\Request;
 use App\Services\FinanceServices;
 use App\Services\InvoiceServices;
+use App\Services\PdfGeneratorService;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Queue;
 use App\Http\Controllers\StripeWebhookController;
 
 class StripeWebhookControllerTest extends TestCase
@@ -29,6 +31,12 @@ class StripeWebhookControllerTest extends TestCase
         $this->controller = new StripeWebhookController();
         $this->financeServicesMock = Mockery::mock(FinanceServices::class);
         $this->app->instance(FinanceServices::class, $this->financeServicesMock);
+
+        $pdfMock = Mockery::mock(PdfGeneratorService::class);
+        $pdfMock->shouldReceive('generateFromHtml')->andReturn('%PDF-1.4 fake');
+        $pdfMock->shouldReceive('fromUrl')->andReturnSelf();
+        $pdfMock->shouldReceive('pdf')->andReturn('%PDF-1.4 fake');
+        $this->app->instance(PdfGeneratorService::class, $pdfMock);
     }
 
     protected function tearDown(): void

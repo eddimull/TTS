@@ -44,10 +44,11 @@ class BandsFactory extends Factory
     {
         return $this->afterCreating(function (Bands $band)
         {
-            BandOwners::factory()->create([
-                'band_id' => $band->id,
-                'user_id' => User::factory()->create()->id
-            ]);
+            $user = User::factory()->create();
+            BandOwners::factory()->create(['band_id' => $band->id, 'user_id' => $user->id]);
+            setPermissionsTeamId($band->id);
+            $user->assignRole('band-owner');
+            setPermissionsTeamId(0);
         });
     }
 
@@ -56,10 +57,11 @@ class BandsFactory extends Factory
         return $this->afterCreating(function (Bands $band) use ($count)
         {
             for ($i = 0; $i < $count; $i++) {
-                BandOwners::factory()->create([
-                    'band_id' => $band->id,
-                    'user_id' => User::factory()->create()->id
-                ]);
+                $user = User::factory()->create();
+                BandOwners::factory()->create(['band_id' => $band->id, 'user_id' => $user->id]);
+                setPermissionsTeamId($band->id);
+                $user->assignRole('band-owner');
+                setPermissionsTeamId(0);
             }
         });
     }

@@ -28,7 +28,7 @@ class BookingsPolicy
 
     public function store(User $user, Bands $band)
     {
-        return $band->owners->contains('user_id', $user->id) || $user->permissionsForBand($band->id)->write_bookings;
+        return $user->canWrite('bookings', $band->id);
     }
 
     public function update(User $user, Bookings $booking)

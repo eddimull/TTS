@@ -9,7 +9,6 @@ use Tests\TestCase;
 use App\Models\Bands;
 use App\Models\User;
 use App\Models\BandOwners;
-use App\Models\userPermissions;
 
 class CanEditMemberPermissionsTest extends TestCase
 {
@@ -30,49 +29,38 @@ class CanEditMemberPermissionsTest extends TestCase
         $this->setupBandAndUser();
         $randomUser = User::factory()->create();
 
-
-        $response = $this->actingAs($randomUser)->post('/permissions/' . $this->band->id . '/' . $this->member->id,[
-            'permissions'=>[
-                'read_colors'=> true,
-                'write_colors'=> true
-            ]
+        $response = $this->actingAs($randomUser)->post('/permissions/' . $this->band->id . '/' . $this->member->id, [
+            'permissions' => [
+                'read:colors' => true,
+                'write:colors' => true,
+            ],
         ]);
         $response->assertStatus(403);
-        $this->assertDatabaseMissing('user_permissions',[
 
-                'user_id'=>$this->member->id,
-                'band_id'=>$this->band->id,
-                'read_colors'=>true,
-                'write_colors'=>true
-
-        ]);
+        setPermissionsTeamId($this->band->id);
+        $this->assertFalse($this->member->hasPermissionTo('read:colors'));
+        $this->assertFalse($this->member->hasPermissionTo('write:colors'));
+        setPermissionsTeamId(0);
     }
-    /**
-     * A basic feature test example.
-     *
-     * @return void
-     */
+
     public function test_canUpdatePermissionsAsBandOwner()
     {
         $this->setupBandAndUser();
 
-
-        $response = $this->actingAs($this->user)->post('/permissions/' . $this->band->id . '/' . $this->member->id,[
-            'permissions'=>[
-                'read_colors'=> true,
-                'write_colors'=> true
-            ]
+        $response = $this->actingAs($this->user)->post('/permissions/' . $this->band->id . '/' . $this->member->id, [
+            'permissions' => [
+                'read:colors' => true,
+                'write:colors' => true,
+            ],
         ]);
         $response->assertStatus(302);
         $response->assertSessionHasNoErrors();
         $response->assertSessionHas('successMessage');
-        $this->assertDatabaseHas('user_permissions',[
 
-                'user_id'=>$this->member->id,
-                'band_id'=>$this->band->id,
-                'read_colors'=>true,
-                'write_colors'=>true
-
-        ]);
+        setPermissionsTeamId($this->band->id);
+        $this->member->unsetRelation('permissions');
+        $this->assertTrue($this->member->hasPermissionTo('read:colors'));
+        $this->assertTrue($this->member->hasPermissionTo('write:colors'));
+        setPermissionsTeamId(0);
     }
 }
