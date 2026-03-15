@@ -13,14 +13,14 @@ use App\Models\Bands;
 use App\Notifications\TTSNotification;
 
 class InvitationServices{
-    public function inviteUser(string $email, int $bandid, $owner = false)
+    public function inviteUser(string $email, int $bandid, bool $isOwner = false)
     {
         $verbage = [
             'type' => 'owner',
             'language' => 'an owner'
         ];
 
-        if(!$owner)
+        if(!$isOwner)
         {
             $verbage = [
                 'type' => 'member',
@@ -31,7 +31,7 @@ class InvitationServices{
         $invite = Invitations::create([
             'email'=>$email,
             'band_id'=>$bandid,
-            'invite_type_id'=>$owner ? 1 : 2
+            'invite_type_id'=>$isOwner ? 1 : 2
         ]);
 
         $author = Auth::user();
@@ -46,12 +46,15 @@ class InvitationServices{
                 return back()->withErrors('User is already ' . $verbage['language'] .'.');
             }
 
-            if($owner)
+            if($isOwner)
             {
                 BandOwners::firstOrCreate([
                     'user_id' => $user->id,
                     'band_id' => $invite->band_id
                 ]);
+                setPermissionsTeamId($invite->band_id);
+                $user->assignRole('band-owner');
+                setPermissionsTeamId(null);
             }
             else
             {
@@ -59,6 +62,7 @@ class InvitationServices{
                     'user_id' => $user->id,
                     'band_id' => $invite->band_id
                 ]);
+                $user->assignBandMemberDefaults($invite->band_id);
             }
            
             $details = [
@@ -76,7 +80,7 @@ class InvitationServices{
                 ]));
             }
             
-            Mail::to($user->email)->send(new Invitation($invite->key,$band,$owner));
+            Mail::to($user->email)->send(new Invitation($invite->key,$band,$isOwner));
         }
         else
         {
@@ -95,7 +99,7 @@ class InvitationServices{
                 'url'=>'/bands/' . $band->id . '/edit'
                 ]));
             }
-            Mail::to($invite->email)->send(new Invitation($invite->key,$band,$owner));
+            Mail::to($invite->email)->send(new Invitation($invite->key,$band,$isOwner));
         }
        
 

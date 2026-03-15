@@ -31,7 +31,7 @@ class SubNeverBecomesBandMemberTest extends TestCase
         // Create test data
         $this->band = Bands::factory()->create(['name' => 'Test Band']);
         $this->owner = User::factory()->create();
-
+        setPermissionsTeamId(0);
         BandOwners::create([
             'user_id' => $this->owner->id,
             'band_id' => $this->band->id
