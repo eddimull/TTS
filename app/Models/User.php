@@ -7,6 +7,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Enums\BandResource;
 use App\Models\Charts;
 use App\Models\userPermissions;
 use Illuminate\Support\Carbon;
@@ -97,10 +98,11 @@ class User extends Authenticatable
             return true;
         }
 
-        $permissions = $this->permissionsForBand($bandId);
-        $permissionKey = 'read_' . $resource;
+        setPermissionsTeamId($bandId);
+        $result = $this->hasPermissionTo('read:' . $resource);
+        setPermissionsTeamId(0);
 
-        return (bool)($permissions->{$permissionKey} ?? false);
+        return $result;
     }
 
     /**
@@ -112,10 +114,11 @@ class User extends Authenticatable
             return true;
         }
 
-        $permissions = $this->permissionsForBand($bandId);
-        $permissionKey = 'write_' . $resource;
+        setPermissionsTeamId($bandId);
+        $result = $this->hasPermissionTo('write:' . $resource);
+        setPermissionsTeamId(0);
 
-        return (bool)($permissions->{$permissionKey} ?? false);
+        return $result;
     }
 
     public function charts()
@@ -167,55 +170,33 @@ class User extends Authenticatable
 
     public function getNav()
     {
-        $availableNav = [
-            'Events' => ['read' => false, 'write' => false],
-            'Proposals' => ['read' => false, 'write' => false],
-            'Invoices' => ['read' => false, 'write' => false],
-            'Colors' => ['read' => false, 'write' => false],
-            'Charts' => ['read' => false, 'write' => false],
-            'Bookings' => ['read' => false, 'write' => false],
-            'Rehearsals' => ['read' => false, 'write' => false],
-            'Media' => ['read' => false, 'write' => false]
-        ];
+        $nav = collect(BandResource::cases())
+            ->mapWithKeys(fn($r) => [$r->label() => ['read' => false, 'write' => false]])
+            ->all();
 
+        foreach ($this->bands() as $band) {
+            setPermissionsTeamId($band->id);
 
-        if (count($this->bandOwner) > 0) //no need to check anything else. They should have access to all the stuff for their band
-        {
-            return [
-                'Events' => ['read' => true, 'write' => true],
-                'Proposals' => ['read' => true, 'write' => true],
-                'Invoices' => ['read' => true, 'write' => true],
-                'Colors' => ['read' => true, 'write' => true],
-                'Charts' => ['read' => true, 'write' => true],
-                'Bookings' => ['read' => true, 'write' => true],
-                'Rehearsals' => ['read' => true, 'write' => true],
-                'Media' => ['read' => true, 'write' => true]
-            ];
-        }
-        $bands = $this->bandMember;
+            if ($this->hasRole('band-owner')) {
+                setPermissionsTeamId(0);
+                return collect(BandResource::cases())
+                    ->mapWithKeys(fn($r) => [$r->label() => ['read' => true, 'write' => true]])
+                    ->all();
+            }
 
-        foreach ($bands as $band)
-        {
-            $permissions = $this->permissionsForBand($band->id);
-
-            foreach ($availableNav as $key => $navItem)
-            {
-                $resourceKey = strtolower($key);
-                
-                // Check read permission
-                if (!$navItem['read'] && $permissions['read_' . $resourceKey])
-                {
-                    $availableNav[$key]['read'] = true;
+            foreach (BandResource::cases() as $resource) {
+                if (!$nav[$resource->label()]['read']) {
+                    $nav[$resource->label()]['read'] = $this->hasPermissionTo($resource->readPermission());
                 }
-                
-                // Check write permission
-                if (!$navItem['write'] && $permissions['write_' . $resourceKey])
-                {
-                    $availableNav[$key]['write'] = true;
+                if (!$nav[$resource->label()]['write']) {
+                    $nav[$resource->label()]['write'] = $this->hasPermissionTo($resource->writePermission());
                 }
             }
         }
-        return $availableNav;
+
+        setPermissionsTeamId(0);
+
+        return $nav;
     }
 
     public function notifications()
