@@ -43,11 +43,13 @@ class DevSetupSeeder extends Seeder
             ]
         );
 
-        // Assign site-admin role for Horizon access
+        // Assign site-admin role for Horizon access (team_id=0 = global)
+        setPermissionsTeamId(0);
         $siteAdminRole = Role::findOrCreate('site-admin', 'web');
         if (!$user->hasRole('site-admin')) {
             $user->assignRole($siteAdminRole);
         }
+        setPermissionsTeamId(null);
 
         $this->command->info('✓ Admin user created: admin@example.com / password');
         $this->command->info('✓ site-admin role assigned (Horizon access granted)');

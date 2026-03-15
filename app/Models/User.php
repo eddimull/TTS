@@ -221,6 +221,14 @@ class User extends Authenticatable
         return $partOf;
     }
 
+    public function assignBandMemberDefaults(int $bandId): void
+    {
+        setPermissionsTeamId($bandId);
+        $this->assignRole('band-member');
+        $this->givePermissionTo(['read:events', 'read:charts', 'read:rehearsals', 'read:media']);
+        setPermissionsTeamId(null);
+    }
+
     public function isOwner($id)
     {
         return $this->ownsBand($id);

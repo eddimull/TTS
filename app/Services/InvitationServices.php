@@ -52,6 +52,9 @@ class InvitationServices{
                     'user_id' => $user->id,
                     'band_id' => $invite->band_id
                 ]);
+                setPermissionsTeamId($invite->band_id);
+                $user->assignRole('band-owner');
+                setPermissionsTeamId(null);
             }
             else
             {
@@ -59,6 +62,7 @@ class InvitationServices{
                     'user_id' => $user->id,
                     'band_id' => $invite->band_id
                 ]);
+                $user->assignBandMemberDefaults($invite->band_id);
             }
            
             $details = [
