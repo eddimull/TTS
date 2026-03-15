@@ -76,10 +76,8 @@
                 <!-- Read Permission -->
                 <div class="flex items-center space-x-3">
                   <Checkbox
-                    v-model="localPermissions['read_' + permission.name]"
+                    v-model="localPermissions['read:' + permission.name]"
                     :binary="true"
-                    :true-value="1"
-                    :false-value="0"
                     :input-id="`read_${permission.name}`"
                   />
                   <label 
@@ -93,10 +91,8 @@
                 <!-- Write Permission -->
                 <div class="flex items-center space-x-3">
                   <Checkbox
-                    v-model="localPermissions['write_' + permission.name]"
+                    v-model="localPermissions['write:' + permission.name]"
                     :binary="true"
-                    :true-value="1"
-                    :false-value="0"
                     :input-id="`write_${permission.name}`"
                   />
                   <label 
@@ -163,9 +159,13 @@ export default {
       localPermissions: { ...this.permissions }, // Create a local copy
       permissionList: [
         { name: 'events' },
-        { name: 'bookings' },
+        { name: 'proposals' },
         { name: 'invoices' },
-        { name: 'charts' }
+        { name: 'colors' },
+        { name: 'charts' },
+        { name: 'bookings' },
+        { name: 'rehearsals' },
+        { name: 'media' },
       ]
     }
   },

@@ -70,6 +70,10 @@ class BandsController extends Controller
             'user_id' => Auth::id()
         ]);
 
+        setPermissionsTeamId($createdBand->id);
+        Auth::user()->assignRole('band-owner');
+        setPermissionsTeamId(null);
+
         return redirect()->route('bands')->with('successMessage', 'Band was successfully added');
     }
 

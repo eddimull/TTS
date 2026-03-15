@@ -18,6 +18,8 @@ class UserPermissionsController extends Controller
      */
     public function index(Bands $band, User $user)
     {
+        abort_unless($user->isPartOfBand($band->id), 403);
+
         setPermissionsTeamId($band->id);
 
         $permissions = collect(BandResource::cases())
@@ -50,6 +52,8 @@ class UserPermissionsController extends Controller
      */
     public function store(Bands $band, User $user, Request $request)
     {
+        abort_unless($user->isPartOfBand($band->id), 403);
+
         $incoming = $request->permissions ?? [];
 
         $grant = [];
