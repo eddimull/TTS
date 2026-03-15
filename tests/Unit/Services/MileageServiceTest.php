@@ -56,8 +56,7 @@ class MileageServiceTest extends TestCase
     // resolveOrigin
     // -------------------------------------------------------------------------
 
-    /** @test */
-    public function it_resolves_origin_from_user_address()
+    public function test_resolves_origin_from_user_address()
     {
         $service = new MileageService();
         $origin = $this->callProtected($service, 'resolveOrigin', [$this->user, $this->band]);
@@ -68,8 +67,7 @@ class MileageServiceTest extends TestCase
         $this->assertStringContainsString('60601', $origin);
     }
 
-    /** @test */
-    public function it_falls_back_to_band_address_when_user_has_no_address()
+    public function test_falls_back_to_band_address_when_user_has_no_address()
     {
         $userWithNoAddress = User::factory()->create([
             'Address1' => null,
@@ -88,8 +86,7 @@ class MileageServiceTest extends TestCase
         $this->assertStringContainsString('60602', $origin);
     }
 
-    /** @test */
-    public function it_returns_null_when_neither_user_nor_band_has_address()
+    public function test_returns_null_when_neither_user_nor_band_has_address()
     {
         $userWithNoAddress = User::factory()->create([
             'Address1' => null,
@@ -114,8 +111,7 @@ class MileageServiceTest extends TestCase
     // resolveDestination
     // -------------------------------------------------------------------------
 
-    /** @test */
-    public function it_resolves_destination_from_booking_venue_address()
+    public function test_resolves_destination_from_booking_venue_address()
     {
         $booking = Bookings::factory()->create([
             'band_id'       => $this->band->id,
@@ -136,8 +132,7 @@ class MileageServiceTest extends TestCase
         $this->assertEquals('789 Venue St, Springfield, IL 62701', $destination);
     }
 
-    /** @test */
-    public function it_returns_null_destination_when_booking_has_no_venue_address()
+    public function test_returns_null_destination_when_booking_has_no_venue_address()
     {
         $booking = Bookings::factory()->create([
             'band_id'       => $this->band->id,
@@ -157,8 +152,7 @@ class MileageServiceTest extends TestCase
         $this->assertNull($destination);
     }
 
-    /** @test */
-    public function it_resolves_destination_from_band_event_split_address_fields()
+    public function test_resolves_destination_from_band_event_split_address_fields()
     {
         DB::table('states')->insert([
             'state_id'   => 99,
@@ -194,8 +188,7 @@ class MileageServiceTest extends TestCase
     // handle — skips when no usable origin
     // -------------------------------------------------------------------------
 
-    /** @test */
-    public function it_skips_calculation_when_no_origin_can_be_resolved()
+    public function test_skips_calculation_when_no_origin_can_be_resolved()
     {
         $userWithNoAddress = User::factory()->create([
             'Address1' => null,
@@ -236,8 +229,7 @@ class MileageServiceTest extends TestCase
     // handle — uses cached distance record
     // -------------------------------------------------------------------------
 
-    /** @test */
-    public function it_uses_cached_distance_and_does_not_call_api_when_record_is_fresh()
+    public function test_uses_cached_distance_and_does_not_call_api_when_record_is_fresh()
     {
         $booking = Bookings::factory()->create([
             'band_id'       => $this->band->id,
@@ -274,8 +266,7 @@ class MileageServiceTest extends TestCase
     // UserStatsService integration — mileage by year
     // -------------------------------------------------------------------------
 
-    /** @test */
-    public function it_sums_mileage_correctly_across_multiple_events()
+    public function test_sums_mileage_correctly_across_multiple_events()
     {
         DB::table('band_members')->insert([
             'user_id'    => $this->user->id,
@@ -316,8 +307,7 @@ class MileageServiceTest extends TestCase
         $this->assertEquals(2, $stats['travel']['event_count']);
     }
 
-    /** @test */
-    public function it_breaks_mileage_down_by_year()
+    public function test_breaks_mileage_down_by_year()
     {
         DB::table('band_members')->insert([
             'user_id'    => $this->user->id,
@@ -359,8 +349,7 @@ class MileageServiceTest extends TestCase
         $this->assertEquals(1, $year2023['event_count']);
     }
 
-    /** @test */
-    public function it_excludes_absent_events_from_mileage_total()
+    public function test_excludes_absent_events_from_mileage_total()
     {
         DB::table('band_members')->insert([
             'user_id'    => $this->user->id,
@@ -402,8 +391,7 @@ class MileageServiceTest extends TestCase
         $this->assertEquals(1, $stats['travel']['event_count']);
     }
 
-    /** @test */
-    public function it_excludes_excused_events_from_mileage_total()
+    public function test_excludes_excused_events_from_mileage_total()
     {
         DB::table('band_members')->insert([
             'user_id'    => $this->user->id,
@@ -435,8 +423,7 @@ class MileageServiceTest extends TestCase
         $this->assertEquals(0, $stats['travel']['event_count']);
     }
 
-    /** @test */
-    public function it_includes_event_with_no_event_member_record_as_attended()
+    public function test_includes_event_with_no_event_member_record_as_attended()
     {
         DB::table('band_members')->insert([
             'user_id'    => $this->user->id,
@@ -462,8 +449,7 @@ class MileageServiceTest extends TestCase
         $this->assertEquals(1, $stats['travel']['event_count']);
     }
 
-    /** @test */
-    public function it_does_not_count_another_users_distance_records()
+    public function test_does_not_count_another_users_distance_records()
     {
         $otherUser = User::factory()->create();
 
@@ -490,8 +476,7 @@ class MileageServiceTest extends TestCase
         $this->assertEquals(0, $stats['travel']['total_miles']);
     }
 
-    /** @test */
-    public function it_returns_empty_by_year_when_no_distances_recorded()
+    public function test_returns_empty_by_year_when_no_distances_recorded()
     {
         DB::table('band_members')->insert([
             'user_id'    => $this->user->id,

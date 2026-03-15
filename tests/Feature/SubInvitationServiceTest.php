@@ -33,7 +33,7 @@ class SubInvitationServiceTest extends TestCase
         $this->artisan('db:seed', ['--class' => 'SubRolesPermissionsSeeder']);
 
         $this->subInvitationService = new SubInvitationService();
-
+        \setPermissionsTeamId(0);
         // Create test data
         $this->band = Bands::factory()->create(['name' => 'Test Band']);
         $this->owner = User::factory()->create();

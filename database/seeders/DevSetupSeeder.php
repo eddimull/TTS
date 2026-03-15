@@ -64,6 +64,13 @@ class DevSetupSeeder extends Seeder
             'band_id' => $band->id
         ]);
 
+        // Assign band-owner role scoped to this band (team)
+        setPermissionsTeamId($band->id);
+        if (!$user->hasRole('band-owner')) {
+            $user->assignRole('band-owner');
+        }
+        setPermissionsTeamId(0);
+
         $this->command->info('✓ Test Band created with admin as owner');
         $this->command->newLine();
 

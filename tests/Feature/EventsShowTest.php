@@ -8,7 +8,6 @@ use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\Events;
 use App\Models\EventTypes;
-use App\Models\userPermissions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class EventsShowTest extends TestCase
@@ -131,11 +130,9 @@ class EventsShowTest extends TestCase
         ]);
 
         // Give write permissions
-        userPermissions::create([
-            'user_id' => $member->id,
-            'band_id' => $this->band->id,
-            'write_events' => true,
-        ]);
+        setPermissionsTeamId($this->band->id);
+        $member->givePermissionTo('write:events');
+        setPermissionsTeamId(0);
 
         $response = $this->actingAs($member)
             ->get(route('events.show', $this->event->key));

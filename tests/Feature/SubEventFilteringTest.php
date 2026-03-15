@@ -29,6 +29,9 @@ class SubEventFilteringTest extends TestCase
         // Create sub role and permissions
         $this->artisan('db:seed', ['--class' => 'SubRolesPermissionsSeeder']);
 
+        // Sub role is global (not band-scoped); use team_id=0 for global role assignments
+        setPermissionsTeamId(0);
+
         $this->userEventsService = new UserEventsService();
 
         // Create test band and owner
@@ -285,7 +288,6 @@ class SubEventFilteringTest extends TestCase
     {
         $sub = User::factory()->create();
         $sub->assignRole('sub');
-
         // Create events at different dates
         $booking1 = Bookings::factory()->create(['band_id' => $this->band->id]);
         $pastEvent = Events::factory()->create([
