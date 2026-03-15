@@ -44,8 +44,8 @@ class RegisteredUserController extends Controller
             }
         }
         // Check for legacy invitation (band owner/member)
-        elseif ($request->filled('key')) {
-            $invitationEmail = $this->getInvitationEmail($request->key);
+        elseif ($request->route('key')) {
+            $invitationEmail = $this->getInvitationEmail($request->route('key'));
         }
 
         return Inertia::render('Auth/Register', [
