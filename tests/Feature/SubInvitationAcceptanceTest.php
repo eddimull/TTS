@@ -25,7 +25,7 @@ class SubInvitationAcceptanceTest extends TestCase
 
         // Create sub role and permissions
         $this->artisan('db:seed', ['--class' => 'SubRolesPermissionsSeeder']);
-
+        setPermissionsTeamId(0);
         // Create test data
         $this->band = Bands::factory()->create(['name' => 'Test Band']);
         $this->owner = User::factory()->create();

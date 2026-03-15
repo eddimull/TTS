@@ -32,7 +32,7 @@ class CanWriteCharts
         }
 
 
-        if(!Auth::user()->canWriteCharts($band_id))
+        if(!Auth::user()->canWrite('charts', $band_id))
         {
             return redirect(RouteServiceProvider::HOME)
             ->withErrors('You do not have permission to create charts');

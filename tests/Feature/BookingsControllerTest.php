@@ -11,7 +11,6 @@ use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\Payments;
 use App\Enums\PaymentType;
-use App\Models\userPermissions;
 use App\Services\PdfGeneratorService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
@@ -99,12 +98,9 @@ class BookingsControllerTest extends TestCase
     {
         $duration = 2;
         \Illuminate\Support\Facades\DB::beginTransaction();
-        userPermissions::create([
-            'user_id' => $this->member->id,
-            'band_id' => $this->band->id,
-            'read_bookings' => true,
-            'write_bookings' => true,
-        ]);
+        setPermissionsTeamId($this->band->id);
+        $this->member->givePermissionTo(['read:bookings', 'write:bookings']);
+        setPermissionsTeamId(0);
 
 
         $bookingData = Bookings::factory()->duration($duration)->make(['band_id' => $this->band->id])->toArray();

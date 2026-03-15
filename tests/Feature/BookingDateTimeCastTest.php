@@ -8,7 +8,6 @@ use App\Models\User;
 use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\EventTypes;
-use App\Models\userPermissions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class BookingDateTimeCastTest extends TestCase
@@ -29,12 +28,9 @@ class BookingDateTimeCastTest extends TestCase
 
         $this->band->owners()->create(['user_id' => $this->user->id]);
 
-        userPermissions::create([
-            'user_id' => $this->user->id,
-            'band_id' => $this->band->id,
-            'read_bookings' => true,
-            'write_bookings' => true,
-        ]);
+        setPermissionsTeamId($this->band->id);
+        $this->user->givePermissionTo(['read:bookings', 'write:bookings']);
+        setPermissionsTeamId(0);
     }
 
     public function test_booking_creation_with_same_day_times()
