@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BreakController;
 use App\Http\Controllers\CaptainController;
 use App\Http\Controllers\LiveSessionController;
 use App\Http\Controllers\SetlistController;
@@ -30,4 +31,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/setlist/sessions/{id}/suggest', [SetlistSuggestionController::class, 'suggest'])->name('setlists.suggest');
     Route::post('/setlist/sessions/{id}/accept-suggestion', [SetlistSuggestionController::class, 'accept'])->name('setlists.acceptSuggestion');
     Route::post('/setlist/sessions/{id}/queuing-next', [SetlistSuggestionController::class, 'queuingNext'])->name('setlists.queuingNext');
+    Route::post('/setlist/sessions/{id}/replace-next', [SetlistSuggestionController::class, 'replaceNext'])->name('setlists.replaceNext');
+
+    // Break management
+    Route::post('/setlist/sessions/{id}/break', [BreakController::class, 'start'])->name('setlists.break.start');
+    Route::post('/setlist/sessions/{id}/break/resume', [BreakController::class, 'resume'])->name('setlists.break.resume');
 });

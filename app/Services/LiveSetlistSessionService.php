@@ -116,6 +116,26 @@ class LiveSetlistSessionService
         });
     }
 
+    public function replaceNextSong(LiveSetlistSession $session, int $songId, User $user): LiveSetlistQueue
+    {
+        return DB::transaction(function () use ($session, $songId, $user) {
+            $entry = $session->pendingQueue()
+                ->where('type', 'song')
+                ->where('position', '>', $session->current_position)
+                ->firstOrFail();
+
+            $entry->update(['song_id' => $songId]);
+
+            $this->log($session, $entry, $user, 'accept_suggestion', ['song_id' => $songId, 'replaced' => true]);
+
+            $entry->load('song.leadSinger');
+
+            broadcast(new SetlistQueueUpdated($session, $this->formatQueue($session)));
+
+            return $entry;
+        });
+    }
+
     public function next(LiveSetlistSession $session, User $user): void
     {
         DB::transaction(function () use ($session, $user) {
@@ -129,8 +149,9 @@ class LiveSetlistSessionService
                 $this->log($session, $current, $user, 'next');
             }
 
-            // Find next pending song
+            // Find next pending song (skip break entries)
             $next = $session->pendingQueue()
+                ->where('type', 'song')
                 ->where('position', '>', $session->current_position)
                 ->first();
 
@@ -180,6 +201,7 @@ class LiveSetlistSessionService
             }
 
             $next = $session->pendingQueue()
+                ->where('type', 'song')
                 ->where('position', '>', $session->current_position)
                 ->first();
 
@@ -217,6 +239,7 @@ class LiveSetlistSessionService
             }
 
             $next = $session->pendingQueue()
+                ->where('type', 'song')
                 ->where('position', '>', $session->current_position)
                 ->first();
 
@@ -294,6 +317,67 @@ class LiveSetlistSessionService
         broadcast(new SetlistCaptainChanged($session, $target->id, 'demoted'));
     }
 
+    public function startBreak(LiveSetlistSession $session, User $user): void
+    {
+        DB::transaction(function () use ($session, $user) {
+            $maxPosition = $session->queue()->max('position') ?? 0;
+
+            $breakEntry = LiveSetlistQueue::create([
+                'session_id' => $session->id,
+                'type' => 'break',
+                'position' => $maxPosition + 1,
+                'status' => 'pending',
+            ]);
+
+            $session->update([
+                'status' => 'break',
+                'break_started_at' => now(),
+            ]);
+
+            $this->log($session, $breakEntry, $user, 'session_break_start');
+
+            broadcast(new SetlistSessionStateChanged($session));
+            broadcast(new SetlistQueueUpdated($session, $this->formatQueue($session)));
+        });
+    }
+
+    public function resumeFromBreak(LiveSetlistSession $session, int $songId, User $user): void
+    {
+        DB::transaction(function () use ($session, $songId, $user) {
+            // Mark the break queue entry as played
+            $session->queue()
+                ->where('type', 'break')
+                ->where('status', 'pending')
+                ->update(['status' => 'played', 'played_at' => now()]);
+
+            // Insert the locked-in song as the next queue entry
+            $maxPosition = $session->queue()->max('position') ?? 0;
+            $position = $maxPosition + 1;
+
+            $entry = LiveSetlistQueue::create([
+                'session_id' => $session->id,
+                'type' => 'song',
+                'song_id' => $songId,
+                'position' => $position,
+                'status' => 'pending',
+            ]);
+
+            $session->update([
+                'status' => 'active',
+                'after_break' => true,
+                'break_started_at' => null,
+                'current_position' => $position,
+            ]);
+
+            $this->log($session, $entry, $user, 'session_break_resume', ['song_id' => $songId]);
+
+            $entry->load('song.leadSinger');
+
+            broadcast(new SetlistSessionStateChanged($session));
+            broadcast(new SetlistQueueUpdated($session, $this->formatQueue($session)));
+        });
+    }
+
     public function end(LiveSetlistSession $session, User $user): void
     {
         $session->update(['status' => 'completed', 'ended_at' => now()]);
@@ -305,6 +389,8 @@ class LiveSetlistSessionService
     {
         return $session->queue()->with('song.leadSinger')->get()->map(fn($e) => [
             'id' => $e->id,
+            'type' => $e->type ?? 'song',
+            'song_id' => $e->song_id,
             'position' => $e->position,
             'status' => $e->status,
             'title' => $e->display_title,

@@ -121,7 +121,7 @@ PROMPT;
      * Suggest the single best next song for a live dynamic session.
      * Returns a song ID, or null if nothing suitable.
      */
-    public function suggestNext(Events $event, array $availableSongs, array $playedSongs, array $reactionLog): ?int
+    public function suggestNext(Events $event, array $availableSongs, array $playedSongs, array $reactionLog, bool $afterBreak = false): ?int
     {
         $context = $this->buildEventContext($event);
         $songList = $this->buildSongList($availableSongs);
@@ -139,6 +139,12 @@ PROMPT;
             $r['reaction']
         ))->implode("\n") ?: 'None yet';
 
+        $afterBreakSection = $afterBreak
+            ? "\nPOST-BREAK ENERGY RESET: The band is returning from a set break. Choose a high-energy, crowd-engaging song to re-energize the room. Prioritize uptempo songs (higher BPM), strong crowd favourites, or songs that previously received positive reactions. Do NOT start with a slow or low-energy song.\n"
+            : '';
+
+        $excludeSection = '';
+
         $prompt = <<<PROMPT
 You are a professional band manager choosing the next song for a live performance already in progress.
 
@@ -149,7 +155,7 @@ SONGS ALREADY PLAYED THIS SHOW: {$playedText}
 
 CROWD REACTIONS SO FAR:
 {$reactionsText}
-
+{$afterBreakSection}{$excludeSection}
 AVAILABLE SONGS (format: ID | Title – Artist | Key | Genre | BPM | Lead singer | Transitions into):
 {$songList}
 
@@ -157,7 +163,7 @@ Choose the single best next song to play right now. Consider:
 1. ENERGY FLOW: Match or build on the current crowd energy based on reactions. After thumbs-down songs, shift genre or tempo. After thumbs-up, stay in a similar vibe or build higher.
 2. VARIETY: Do not repeat genres or lead singers back-to-back unless the crowd reaction strongly warrants it.
 3. EVENT CONTEXT: Respect the event type, venue, and any special notes.
-4. TRANSITIONS: If the last played song has a "Transitions into" field pointing to an available song, strongly prefer that song.
+4. TRANSITIONS: The "Transitions into" field is informational only — transitions are enforced before you are called, so ignore this field when choosing.
 5. EXCLUSIONS: Any artists, songs, or genres mentioned as excluded in the event notes are ABSOLUTE — never suggest them.
 
 Return ONLY a valid JSON array containing the single chosen song ID. Example: [42]
