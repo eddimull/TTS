@@ -1,0 +1,44 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Song extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'band_id',
+        'title',
+        'artist',
+        'song_key',
+        'genre',
+        'bpm',
+        'notes',
+        'lead_singer_id',
+        'transition_song_id',
+        'active',
+    ];
+
+    protected $casts = [
+        'active' => 'boolean',
+        'bpm' => 'integer',
+    ];
+
+    public function band()
+    {
+        return $this->belongsTo(Bands::class, 'band_id');
+    }
+
+    public function leadSinger()
+    {
+        return $this->belongsTo(RosterMember::class, 'lead_singer_id');
+    }
+
+    public function transitionSong()
+    {
+        return $this->belongsTo(Song::class, 'transition_song_id');
+    }
+}

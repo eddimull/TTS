@@ -12,6 +12,7 @@ enum BandResource: string
     case Bookings = 'bookings';
     case Rehearsals = 'rehearsals';
     case Media = 'media';
+    case Songs = 'songs';
 
     public function readPermission(): string
     {

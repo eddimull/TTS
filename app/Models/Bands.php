@@ -230,6 +230,11 @@ class Bands extends Model
         return $this->hasMany(BandPaymentGroup::class, 'band_id')->where('is_active', true)->orderBy('display_order');
     }
 
+    public function songs()
+    {
+        return $this->hasMany(Song::class, 'band_id')->orderBy('title');
+    }
+
     public function apiTokens()
     {
         return $this->hasMany(BandApiToken::class, 'band_id')->orderBy('created_at', 'desc');
