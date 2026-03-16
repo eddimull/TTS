@@ -25,6 +25,8 @@ class SetlistSessionStateChanged implements ShouldBroadcastNow
         return [
             'status' => $this->session->status,
             'current_position' => $this->session->current_position,
+            'break_started_at' => $this->session->break_started_at?->toIso8601String(),
+            'after_break' => (bool) $this->session->after_break,
         ];
     }
 }

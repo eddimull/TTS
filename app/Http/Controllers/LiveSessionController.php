@@ -66,7 +66,7 @@ class LiveSessionController extends Controller
             abort(403);
         }
 
-        if ($event->liveSetlistSession()->whereIn('status', ['active', 'paused'])->exists()) {
+        if ($event->liveSetlistSession()->whereIn('status', ['active', 'paused', 'break'])->exists()) {
             return response()->json(['error' => 'A session is already in progress.'], 422);
         }
 
@@ -85,7 +85,7 @@ class LiveSessionController extends Controller
     public function end(string $key): JsonResponse
     {
         $event = Events::where('key', $key)->firstOrFail();
-        $session = $event->liveSetlistSession()->whereIn('status', ['active', 'paused'])->firstOrFail();
+        $session = $event->liveSetlistSession()->whereIn('status', ['active', 'paused', 'break'])->firstOrFail();
 
         if (!$session->isCaptain(Auth::user())) {
             abort(403, 'Only captains can end the session.');
@@ -106,6 +106,8 @@ class LiveSessionController extends Controller
             'is_dynamic' => $session->is_dynamic,
             'current_position' => $session->current_position,
             'started_at' => $session->started_at,
+            'break_started_at' => $session->break_started_at?->toIso8601String(),
+            'after_break' => (bool) $session->after_break,
             'queue' => $service->formatQueue($session),
             'captains' => $session->captains->map(fn($c) => [
                 'user_id' => $c->user_id,

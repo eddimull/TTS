@@ -10,6 +10,7 @@ class LiveSetlistQueue extends Model
 
     protected $fillable = [
         'session_id',
+        'type',
         'song_id',
         'custom_title',
         'custom_artist',

@@ -15,13 +15,19 @@ class LiveSetlistSession extends Model
         'current_position',
         'started_at',
         'ended_at',
+        'after_break',
+        'break_started_at',
+        'rejected_song_ids',
     ];
 
     protected $casts = [
         'is_dynamic' => 'boolean',
+        'after_break' => 'boolean',
         'current_position' => 'integer',
         'started_at' => 'datetime',
         'ended_at' => 'datetime',
+        'break_started_at' => 'datetime',
+        'rejected_song_ids' => 'array',
     ];
 
     public function event()
@@ -74,12 +80,14 @@ class LiveSetlistSession extends Model
     {
         return $this->queue()
             ->where('position', $this->current_position)
+            ->where('type', 'song')
             ->first();
     }
 
     public function nextSong(): ?LiveSetlistQueue
     {
         return $this->pendingQueue()
+            ->where('type', 'song')
             ->where('position', '>', $this->current_position)
             ->first();
     }
