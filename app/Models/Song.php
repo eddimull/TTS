@@ -41,4 +41,14 @@ class Song extends Model
     {
         return $this->belongsTo(Song::class, 'transition_song_id');
     }
+
+    public function setlistSongs()
+    {
+        return $this->hasMany(SetlistSong::class, 'song_id');
+    }
+
+    public function queueEntries()
+    {
+        return $this->hasMany(LiveSetlistQueue::class, 'song_id');
+    }
 }

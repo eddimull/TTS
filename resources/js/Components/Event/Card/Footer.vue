@@ -1,12 +1,12 @@
 <template>
-  <div 
-    v-if="!isRehearsal" 
-    class="mt-4 pt-3 grid place-items-center border-t border-gray-200"
+  <div
+    v-if="!isRehearsal"
+    class="mt-4 pt-3 flex items-center justify-center gap-6 border-t border-gray-200"
   >
-    <a :href="advanceLink">
+    <a :href="advanceLink" class="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        class="h-6 w-6 inline-block"
+        class="h-5 w-5"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -19,6 +19,14 @@
         />
       </svg>
       Advance
+    </a>
+    <a :href="setlistLink" class="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100">
+      <i class="pi pi-list-check h-5 w-5" />
+      Setlist
+    </a>
+    <a v-if="liveLink" :href="liveLink" class="flex items-center gap-1 text-sm font-semibold text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 animate-pulse">
+      <i class="pi pi-circle-fill text-xs" />
+      Join Live
     </a>
   </div>
   <div 
@@ -58,6 +66,25 @@ export default {
             } catch (e) {
                 console.warn('Could not generate advance route:', e);
                 return '#';
+            }
+        },
+        setlistLink() {
+            const key = this.event.key || this.event['key'];
+            if (!key) return '#';
+            try {
+                return this.route('setlists.show', {'key': key});
+            } catch (e) {
+                return '#';
+            }
+        },
+        liveLink() {
+            if (!this.event.live_session_id) return null;
+            const key = this.event.key || this.event['key'];
+            if (!key) return null;
+            try {
+                return this.route('setlists.live', {'key': key});
+            } catch (e) {
+                return null;
             }
         }
     }

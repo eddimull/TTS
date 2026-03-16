@@ -55,6 +55,7 @@ require __DIR__ . '/rehearsals.php';
 require __DIR__ . '/rosters.php';
 require __DIR__ . '/subs.php';
 require __DIR__ . '/songs.php';
+require __DIR__ . '/setlists.php';
 
 URL::forceScheme('https');
 Route::get('/healthcheck', fn() => response()->json(['status' => 'ok']))->name('healthcheck');
