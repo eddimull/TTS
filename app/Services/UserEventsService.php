@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\BandEvents;
 use App\Models\Events;
+use App\Models\LiveSetlistSession;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
@@ -117,7 +118,28 @@ class UserEventsService
             // Re-sort by date
             $events = $events->sortBy('date')->values();
         }
-        
+
+        // Attach active live session info so the card footer can show a "Join" link
+        $eventIds = $events->pluck('id')->filter()->unique()->values()->all();
+        if (!empty($eventIds)) {
+            $liveSessions = LiveSetlistSession::whereIn('event_id', $eventIds)
+                ->whereIn('status', ['active', 'paused'])
+                ->get()
+                ->keyBy('event_id');
+
+            $events = $events->map(function ($event) use ($liveSessions) {
+                $id = is_array($event) ? ($event['id'] ?? null) : ($event->id ?? null);
+                if ($id && $liveSessions->has($id)) {
+                    if (is_array($event)) {
+                        $event['live_session_id'] = $liveSessions[$id]->id;
+                    } else {
+                        $event->live_session_id = $liveSessions[$id]->id;
+                    }
+                }
+                return $event;
+            });
+        }
+
         return $events;
     }
 

@@ -364,6 +364,25 @@
         position="top-left"
         group="tl"
       />
+      <!-- Live setlist join notification -->
+      <Toast position="top-center" group="setlist-live" @close="onSetlistToastClose">
+        <template #message="slotProps">
+          <div class="flex flex-col gap-2 w-full">
+            <div class="flex items-center gap-2">
+              <i class="pi pi-music text-red-500 text-lg" />
+              <span class="font-semibold text-gray-900 dark:text-gray-50">{{ slotProps.message.summary }}</span>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400">{{ slotProps.message.detail }}</p>
+            <a
+              :href="slotProps.message.data.liveUrl"
+              class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-lg transition-colors"
+            >
+              <i class="pi pi-play" />
+              Join Live Session
+            </a>
+          </div>
+        </template>
+      </Toast>
       <Toast
         position="bottom-left"
         group="bl"
@@ -589,6 +608,15 @@ export default {
                 }));
         }
     },
+    mounted() {
+        this.subscribeToUserChannel();
+    },
+    beforeUnmount() {
+        const userId = this.$page.props.auth?.user?.id;
+        if (userId && window.Echo) {
+            window.Echo.leave(`App.Models.User.${userId}`);
+        }
+    },
     onUpdated() {
         this.toast();
     },
@@ -615,6 +643,30 @@ export default {
         fetchUserData() {
             this.fetchNavigation();
             this.fetchNotifications();
+        },
+
+        subscribeToUserChannel() {
+            const userId = this.$page.props.auth?.user?.id;
+            if (!userId || !window.Echo) return;
+
+            window.Echo.private(`App.Models.User.${userId}`)
+                .listen('.SetlistSessionStarted', (e) => {
+                    console.log('[Layout] SetlistSessionStarted received', e);
+                    this.$toast.add({
+                        severity: 'info',
+                        summary: `${e.event_title} is live!`,
+                        detail: 'The setlist session has started.',
+                        group: 'setlist-live',
+                        life: 60000,
+                        data: { liveUrl: route('setlists.live', e.event_key) },
+                    });
+                });
+
+            console.log('[Layout] Subscribed to App.Models.User.' + userId);
+        },
+
+        onSetlistToastClose() {
+            // nothing needed, just allows the template close to work
         },
 
         markAllAsRead() {
