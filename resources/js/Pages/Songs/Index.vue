@@ -169,7 +169,14 @@
           <!-- Genre -->
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Genre</label>
-            <InputText v-model="form.genre" class="w-full" placeholder="e.g. Rock, Jazz" />
+            <Dropdown
+              v-model="form.genre"
+              :options="allGenres"
+              placeholder="Select a genre"
+              show-clear
+              editable
+              class="w-full"
+            />
           </div>
 
           <!-- BPM -->
@@ -264,6 +271,7 @@ export default {
     band: { type: Object, default: null },
     songs: { type: Array, default: () => [] },
     rosterMembers: { type: Array, default: () => [] },
+    genres: { type: Array, default: () => [] },
     availableBands: { type: Array, default: () => [] },
     canWrite: { type: Boolean, default: false },
   },
@@ -303,6 +311,11 @@ export default {
       }
 
       return list;
+    },
+
+    allGenres() {
+      const fromSongs = this.songs.map(s => s.genre).filter(Boolean);
+      return [...new Set([...this.genres, ...fromSongs])].sort();
     },
 
     rosterMemberOptions() {

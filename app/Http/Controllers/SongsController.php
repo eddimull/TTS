@@ -11,6 +11,11 @@ use Inertia\Response as InertiaResponse;
 
 class SongsController extends Controller
 {
+    private const GENRES = [
+        'Blues', 'Country', 'Funk', 'Hip Hop', 'Jazz', 'Latin',
+        'Pop', 'R&B', 'Rock', 'Soul',
+    ];
+
     public function index(Request $request): InertiaResponse
     {
         $user = Auth::user();
@@ -22,6 +27,7 @@ class SongsController extends Controller
                 'band' => null,
                 'songs' => [],
                 'rosterMembers' => [],
+                'genres' => self::GENRES,
                 'availableBands' => [],
                 'canWrite' => false,
             ]);
@@ -29,7 +35,7 @@ class SongsController extends Controller
 
         $band = Bands::findOrFail($currentBandId);
 
-        if (!$band->everyone()->contains('user_id', $user->id)) {
+        if (!$band->everyone()->contains('user_id', $user->id) && !$user->isSubOfBand($band->id)) {
             abort(403, 'Unauthorized');
         }
 
@@ -53,6 +59,7 @@ class SongsController extends Controller
             'band' => $band,
             'songs' => $songs,
             'rosterMembers' => $rosterMembers,
+            'genres' => self::GENRES,
             'availableBands' => $bands->map(fn($b) => ['id' => $b->id, 'name' => $b->name]),
             'canWrite' => $user->canWrite('songs', $band->id),
         ]);
@@ -119,4 +126,5 @@ class SongsController extends Controller
 
         return response()->json(['message' => 'Song deleted successfully']);
     }
+
 }
