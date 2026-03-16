@@ -163,7 +163,21 @@
           <!-- Key -->
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Key</label>
-            <InputText v-model="form.song_key" class="w-full" placeholder="e.g. D min, G maj" />
+            <div class="flex gap-2">
+              <Dropdown
+                v-model="form.keyNote"
+                :options="keyNotes"
+                placeholder="Note"
+                show-clear
+                class="flex-1"
+              />
+              <Dropdown
+                v-model="form.keyMode"
+                :options="keyModes"
+                placeholder="maj/min"
+                class="w-28"
+              />
+            </div>
           </div>
 
           <!-- Genre -->
@@ -285,6 +299,8 @@ export default {
       deleting: false,
       editingSong: null,
       form: this.emptyForm(),
+      keyNotes: ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'],
+      keyModes: ['maj', 'min'],
     };
   },
 
@@ -337,13 +353,23 @@ export default {
       return {
         title: '',
         artist: '',
-        song_key: '',
+        keyNote: null,
+        keyMode: null,
         genre: '',
         bpm: null,
         notes: '',
         lead_singer_id: null,
         transition_song_id: null,
         active: true,
+      };
+    },
+
+    parseSongKey(songKey) {
+      if (!songKey) return { keyNote: null, keyMode: null };
+      const parts = songKey.trim().split(/\s+/);
+      return {
+        keyNote: parts[0] ?? null,
+        keyMode: parts[1] ?? null,
       };
     },
 
@@ -359,10 +385,12 @@ export default {
 
     openEditDialog(song) {
       this.editingSong = song;
+      const { keyNote, keyMode } = this.parseSongKey(song.song_key);
       this.form = {
         title: song.title ?? '',
         artist: song.artist ?? '',
-        song_key: song.song_key ?? '',
+        keyNote,
+        keyMode,
         genre: song.genre ?? '',
         bpm: song.bpm ?? null,
         notes: song.notes ?? '',
@@ -382,11 +410,20 @@ export default {
       if (!this.form.title.trim()) return;
 
       this.saving = true;
+      const payload = {
+        ...this.form,
+        song_key: this.form.keyNote
+          ? [this.form.keyNote, this.form.keyMode].filter(Boolean).join(' ')
+          : null,
+      };
+      delete payload.keyNote;
+      delete payload.keyMode;
+
       try {
         if (this.editingSong) {
-          await axios.patch(route('songs.update', this.editingSong.id), this.form);
+          await axios.patch(route('songs.update', this.editingSong.id), payload);
         } else {
-          await axios.post(route('songs.store'), { ...this.form, band_id: this.band.id });
+          await axios.post(route('songs.store'), { ...payload, band_id: this.band.id });
         }
         this.dialogVisible = false;
         router.reload({ only: ['songs'] });
