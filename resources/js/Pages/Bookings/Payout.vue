@@ -319,13 +319,13 @@
         <!-- Legacy Member Payouts -->
         <div
           v-else-if="payoutResult.member_payouts?.length > 0"
-          class="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6"
+          class="bg-white dark:bg-slate-800 rounded-lg shadow-md p-2 md:p-6 mb-4"
         >
           <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-50 mb-4">
             Member Payouts
           </h2>
           
-          <div class="bg-white dark:bg-slate-700 rounded-lg overflow-hidden">
+          <div class="bg-white dark:bg-slate-700 rounded-lg overflow-auto">
             <table class="w-full">
               <thead class="bg-gray-50 dark:bg-slate-600">
                 <tr>

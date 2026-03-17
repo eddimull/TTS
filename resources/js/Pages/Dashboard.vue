@@ -159,6 +159,7 @@
         <div class="mb-6">
           <upcoming-charts
             :charts="upcomingCharts"
+            max-height="50vh"
             @scroll-to-event="scrollToEventFromChart"
           />
         </div>
@@ -329,47 +330,21 @@
   </transition>
 
   <!-- Upcoming Music Modal (Mobile) -->
-  <transition name="fade">
-    <div
-      v-if="showMusicModal"
-      class="lg:hidden fixed inset-0 z-50 flex items-end justify-center"
-      @click.self="showMusicModal = false"
-    >
-      <div class="bg-white dark:bg-gray-800 rounded-t-2xl shadow-xl w-full max-h-[80vh] overflow-y-auto">
-        <div class="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex justify-between items-center">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
-            Upcoming Music
-          </h3>
-          <button
-            class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            @click="showMusicModal = false"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-6 w-6"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-
-        <div class="p-4">
-          <upcoming-charts
-            :charts="upcomingCharts"
-            @scroll-to-event="handleMobileScrollToEvent"
-          />
-        </div>
-      </div>
-    </div>
-  </transition>
+  <Dialog
+    v-model:visible="showMusicModal"
+    header="Upcoming Music"
+    :modal="true"
+    :draggable="false"
+    class="lg:hidden w-full"
+    position="bottom"
+    content-style="max-height: 70vh; overflow-y: auto;"
+  >
+    <upcoming-charts
+      :charts="upcomingCharts"
+      :collapsible="false"
+      @scroll-to-event="handleMobileScrollToEvent"
+    />
+  </Dialog>
 
   <!-- Rehearsal Editor Modal -->
   <rehearsal-editor-modal
@@ -390,6 +365,7 @@
     import SideCalendar from '../Components/Dashboard/SideCalendar.vue'
     import UpcomingCharts from '../Components/Dashboard/UpcomingCharts.vue'
     import RehearsalEditorModal from '../Components/Rehearsal/RehearsalEditorModal.vue'
+    import Dialog from 'primevue/dialog';
     import { nextTick, onMounted, onUnmounted, ref } from 'vue';
     import { router } from '@inertiajs/vue3';
 

@@ -15,6 +15,14 @@
             <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-50 flex-1">
               {{ event.title }}
             </h1>
+            <Link :href="route('setlists.show', event.key)">
+              <Button
+                icon="pi pi-list-check"
+                label="Setlist"
+                size="small"
+                outlined
+              />
+            </Link>
           </div>
 
           <!-- Compact Info Pills -->
@@ -484,6 +492,7 @@ import ContactCard from './Show/ContactCard.vue';
 import RosterMember from './Show/RosterMember.vue';
 import Times from '@/Components/Event/Card/Components/Times.vue';
 import ImageLightbox from '@/Components/ImageLightbox.vue';
+import SectionHeader from './Show/SectionHeader.vue';
 
 defineOptions({
   layout: BreezeAuthenticatedLayout,

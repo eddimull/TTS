@@ -9,7 +9,6 @@ use App\Models\BandOwners;
 use App\Models\BandMembers;
 use App\Models\MediaFile;
 use App\Models\BandStorageQuota;
-use App\Models\userPermissions;
 use App\Services\MediaLibraryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -42,15 +41,7 @@ class MediaLibraryTest extends TestCase
             'band_id' => $this->band->id
         ]);
 
-        // Create user permissions for media access
-        // Note: Band owners should have all permissions automatically,
-        // but we create this explicitly to ensure tests work reliably
-        userPermissions::create([
-            'user_id' => $this->user->id,
-            'band_id' => $this->band->id,
-            'read_media' => true,
-            'write_media' => true
-        ]);
+        // Band owners get full access via ownsBand() shortcut in canRead/canWrite
     }
 
     public function test_displays_media_library_index_page()
@@ -144,13 +135,10 @@ class MediaLibraryTest extends TestCase
             'band_id' => $this->band->id
         ]);
 
-        // Create permissions with write_media set to false
-        userPermissions::create([
-            'user_id' => $member->id,
-            'band_id' => $this->band->id,
-            'read_media' => true,
-            'write_media' => false
-        ]);
+        // Grant only read permission (no write)
+        setPermissionsTeamId($this->band->id);
+        $member->givePermissionTo('read:media');
+        setPermissionsTeamId(0);
 
         $file = UploadedFile::fake()->image('test.jpg');
 

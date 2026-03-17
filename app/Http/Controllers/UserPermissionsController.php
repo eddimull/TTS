@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\BandResource;
 use App\Models\Bands;
 use App\Models\User;
 use App\Models\userPermissions;
@@ -17,8 +18,19 @@ class UserPermissionsController extends Controller
      */
     public function index(Bands $band, User $user)
     {
+        abort_unless($user->isPartOfBand($band->id), 403);
 
-        $permissions = userPermissions::firstOrCreate(['band_id' => $band->id, 'user_id' => $user->id]);
+        setPermissionsTeamId($band->id);
+
+        $permissions = collect(BandResource::cases())
+            ->flatMap(fn($r) => [
+                $r->readPermission()  => $user->hasPermissionTo($r->readPermission()),
+                $r->writePermission() => $user->hasPermissionTo($r->writePermission()),
+            ])
+            ->all();
+
+        setPermissionsTeamId(0);
+
         return Inertia::render('Band/ShowPermissions', ['band' => $band, 'user' => $user, 'permissions' => $permissions]);
     }
 
@@ -40,21 +52,35 @@ class UserPermissionsController extends Controller
      */
     public function store(Bands $band, User $user, Request $request)
     {
+        abort_unless($user->isPartOfBand($band->id), 403);
 
-        $permissions = userPermissions::firstOrCreate(['band_id' => $band->id, 'user_id' => $user->id]);
-        $permissions->read_events = !empty($request->permissions['read_events']) ? $request->permissions['read_events'] : false;
-        $permissions->write_events = !empty($request->permissions['write_events']) ? $request->permissions['write_events'] : false;
-        $permissions->read_proposals = !empty($request->permissions['read_proposals']) ? $request->permissions['read_proposals'] : false;
-        $permissions->write_proposals = !empty($request->permissions['write_proposals']) ? $request->permissions['write_proposals'] : false;
-        $permissions->read_invoices = !empty($request->permissions['read_invoices']) ? $request->permissions['read_invoices'] : false;
-        $permissions->write_invoices = !empty($request->permissions['write_invoices']) ? $request->permissions['write_invoices'] : false;
-        $permissions->read_colors = !empty($request->permissions['read_colors']) ? $request->permissions['read_colors'] : false;
-        $permissions->write_colors = !empty($request->permissions['write_colors']) ? $request->permissions['write_colors'] : false;
-        $permissions->read_charts = !empty($request->permissions['read_charts']) ? $request->permissions['read_charts'] : false;
-        $permissions->write_charts = !empty($request->permissions['write_charts']) ? $request->permissions['write_charts'] : false;
-        $permissions->read_bookings = !empty($request->permissions['read_bookings']) ? $request->permissions['read_bookings'] : false;
-        $permissions->write_bookings = !empty($request->permissions['write_bookings']) ? $request->permissions['write_bookings'] : false;
-        $permissions->save();
+        $incoming = $request->permissions ?? [];
+
+        $grant = [];
+        $revoke = [];
+
+        foreach (BandResource::cases() as $resource) {
+            $read  = $resource->readPermission();
+            $write = $resource->writePermission();
+
+            if (!empty($incoming[$read])) {
+                $grant[] = $read;
+            } else {
+                $revoke[] = $read;
+            }
+
+            if (!empty($incoming[$write])) {
+                $grant[] = $write;
+            } else {
+                $revoke[] = $write;
+            }
+        }
+
+        setPermissionsTeamId($band->id);
+        $user->givePermissionTo($grant);
+        $user->revokePermissionTo($revoke);
+        setPermissionsTeamId(0);
+
         return redirect()->back()->with('successMessage', 'Permissions Updated!');
     }
 

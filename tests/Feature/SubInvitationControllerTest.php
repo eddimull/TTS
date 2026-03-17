@@ -36,7 +36,7 @@ class SubInvitationControllerTest extends TestCase
             'user_id' => $this->owner->id,
             'band_id' => $this->band->id
         ]);
-
+        setPermissionsTeamId(0);
         $booking = Bookings::factory()->create(['band_id' => $this->band->id]);
         $this->event = Events::factory()->create([
             'eventable_id' => $booking->id,

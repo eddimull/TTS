@@ -47,6 +47,8 @@ import ProgressSpinner from 'primevue/progressspinner';
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
 import Container from '@/Components/Container'
 import ToastService from 'primevue/toastservice';
+import ConfirmationService from 'primevue/confirmationservice';
+import ConfirmDialog from 'primevue/confirmdialog';
 import Tooltip from 'primevue/tooltip';
 import 'sweetalert2/dist/sweetalert2.min.css';
 // import 'primevue/resources/themes/saga-blue/theme.css'
@@ -101,6 +103,7 @@ createInertiaApp({
             .use(VueSweetalert2)
             .use(PrimeVue, { ripple: true, theme: { preset: Aura } })
             .use(ToastService)
+            .use(ConfirmationService)
         const components = {
             Link,
             Container,
@@ -136,7 +139,8 @@ createInertiaApp({
             Dropdown,
             MultiSelect,
             ContextMenu,
-            InputSwitch
+            InputSwitch,
+            ConfirmDialog
         };
 
         Object.entries(components).forEach(([name, component]) => {

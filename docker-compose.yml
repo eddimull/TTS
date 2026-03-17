@@ -24,6 +24,7 @@ services:
         volumes:
             - ./:/var/www
             - ./docker/Caddyfile:/etc/frankenphp/Caddyfile:ro
+            - ./ssl:/data/caddy/ssl/:ro
         networks:
             - sail
         depends_on:
@@ -131,6 +132,17 @@ services:
             - "http"
             - "--url=${NGROK_URL}"
             - "http://app:8080"
+    soketi:
+        image: 'quay.io/soketi/soketi:latest-16-alpine'
+        environment:
+            SOKETI_DEFAULT_APP_ID: '${PUSHER_APP_ID}'
+            SOKETI_DEFAULT_APP_KEY: '${PUSHER_APP_KEY}'
+            SOKETI_DEFAULT_APP_SECRET: '${PUSHER_APP_SECRET}'
+            SOKETI_DEBUG: '0'
+        ports:
+            - '${FORWARD_SOKETI_PORT:-6001}:6001'
+        networks:
+            - sail
     horizon:
         build:
             context: .

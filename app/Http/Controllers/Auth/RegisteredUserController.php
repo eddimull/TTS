@@ -44,8 +44,8 @@ class RegisteredUserController extends Controller
             }
         }
         // Check for legacy invitation (band owner/member)
-        elseif ($request->filled('key')) {
-            $invitationEmail = $this->getInvitationEmail($request->key);
+        elseif ($request->route('key')) {
+            $invitationEmail = $this->getInvitationEmail($request->route('key'));
         }
 
         return Inertia::render('Auth/Register', [
@@ -116,6 +116,9 @@ class RegisteredUserController extends Controller
                     'user_id' => $user->id,
                     'band_id' => $invitation->band_id
                 ]);
+                setPermissionsTeamId($invitation->band_id);
+                $user->assignRole('band-owner');
+                setPermissionsTeamId(null);
             }
             if ($invitation->invite_type_id === static::MEMBER_INVITE_TYPE)
             {
@@ -123,6 +126,7 @@ class RegisteredUserController extends Controller
                     'user_id' => $user->id,
                     'band_id' => $invitation->band_id
                 ]);
+                $user->assignBandMemberDefaults($invitation->band_id);
             }
 
             $invitation->pending = false;

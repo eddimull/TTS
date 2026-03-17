@@ -29,6 +29,15 @@
 :8443 {
     tls /data/caddy/ssl/cert.crt /data/caddy/ssl/cert.key
 
+    # WebSocket proxy for Soketi
+    handle /app* {
+        reverse_proxy soketi:6001
+    }
+
+    handle /apps* {
+        reverse_proxy soketi:6001
+    }
+
     root * /var/www/public
 
     encode gzip
