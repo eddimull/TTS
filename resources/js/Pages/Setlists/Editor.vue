@@ -1,38 +1,71 @@
 <template>
   <breeze-authenticated-layout>
     <template #header>
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-3 min-w-0">
           <Link
             :href="route('events.show', event.key)"
-            class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+            class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 flex-shrink-0"
           >
             <i class="pi pi-arrow-left text-lg" />
           </Link>
-          <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-50 leading-tight">
+          <h2 class="font-semibold text-lg text-gray-800 dark:text-gray-50 leading-tight truncate">
             Setlist — {{ event.title }}
           </h2>
         </div>
-        <div class="flex items-center gap-2" v-if="canWrite">
+        <div class="flex items-center gap-2 flex-shrink-0" v-if="canWrite">
           <Button
-            label="Generate with AI"
             icon="pi pi-sparkles"
+            label="Generate"
             :loading="generating"
             :disabled="saving"
+            size="small"
+            class="!hidden sm:!inline-flex"
             @click="openGenerateDialog"
           />
           <Button
+            icon="pi pi-sparkles"
+            :loading="generating"
+            :disabled="saving"
+            class="sm:!hidden"
+            rounded
+            text
+            v-tooltip.bottom="'Generate with AI'"
+            @click="openGenerateDialog"
+          />
+          <Button
+            icon="pi pi-check"
             label="Save"
+            :loading="saving"
+            :disabled="generating || !localSetlist"
+            size="small"
+            class="!hidden sm:!inline-flex"
+            @click="saveSetlist"
+          />
+          <Button
             icon="pi pi-check"
             :loading="saving"
             :disabled="generating || !localSetlist"
+            class="sm:!hidden"
+            rounded
+            text
+            v-tooltip.bottom="'Save'"
             @click="saveSetlist"
           />
           <Link :href="route('setlists.live', event.key)">
             <Button
+              icon="pi pi-play"
               label="Go Live"
+              severity="danger"
+              size="small"
+              class="!hidden sm:!inline-flex"
+            />
+            <Button
               icon="pi pi-play"
               severity="danger"
+              class="sm:!hidden"
+              rounded
+              v-tooltip.bottom="'Go Live'"
             />
           </Link>
         </div>
@@ -60,7 +93,7 @@
       <!-- No setlist yet -->
       <div
         v-if="!localSetlist && !generating"
-        class="bg-white dark:bg-slate-800 rounded-lg shadow p-12 text-center"
+        class="bg-white dark:bg-slate-800 rounded-lg shadow p-8 sm:p-12 text-center"
       >
         <i class="pi pi-list-check text-5xl text-gray-300 dark:text-gray-600 mb-4" />
         <p class="text-gray-500 dark:text-gray-400 mb-4">No setlist yet.</p>
@@ -75,7 +108,7 @@
       <!-- Generating spinner -->
       <div
         v-else-if="generating"
-        class="bg-white dark:bg-slate-800 rounded-lg shadow p-12 text-center"
+        class="bg-white dark:bg-slate-800 rounded-lg shadow p-8 sm:p-12 text-center"
       >
         <i class="pi pi-spin pi-spinner text-4xl text-blue-500 mb-4" />
         <p class="text-gray-500 dark:text-gray-400">AI is building your setlist…</p>
@@ -84,8 +117,8 @@
       <!-- Setlist editor -->
       <div v-else class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
         <!-- Status bar -->
-        <div class="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          <div class="flex items-center gap-2">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+          <div class="flex items-center gap-2 flex-wrap min-w-0">
             <Tag
               :value="localSetlist.status === 'ready' ? 'Ready' : 'Draft'"
               :severity="localSetlist.status === 'ready' ? 'success' : 'secondary'"
@@ -94,17 +127,28 @@
               {{ localSetlist.songs.length }} songs
               <span v-if="totalDuration"> · ~{{ totalDuration }} min</span>
             </span>
-            <span v-if="localSetlist.generated_at" class="text-xs text-gray-400 dark:text-gray-500">
+            <span v-if="localSetlist.generated_at" class="text-xs text-gray-400 dark:text-gray-500 hidden sm:inline">
               · AI generated {{ formatRelative(localSetlist.generated_at) }}
             </span>
           </div>
-          <div class="flex items-center gap-2" v-if="canWrite">
+          <div class="flex items-center gap-2 flex-shrink-0" v-if="canWrite">
             <Button
               v-if="localSetlist.status === 'draft'"
               label="Mark Ready"
               size="small"
               severity="success"
               outlined
+              class="!hidden sm:!inline-flex"
+              @click="markReady"
+            />
+            <Button
+              v-if="localSetlist.status === 'draft'"
+              icon="pi pi-check-circle"
+              size="small"
+              severity="success"
+              outlined
+              class="sm:!hidden"
+              v-tooltip.bottom="'Mark Ready'"
               @click="markReady"
             />
             <Button
@@ -112,6 +156,15 @@
               icon="pi pi-plus"
               size="small"
               outlined
+              class="!hidden sm:!inline-flex"
+              @click="openAddDialog"
+            />
+            <Button
+              icon="pi pi-plus"
+              size="small"
+              outlined
+              class="sm:!hidden"
+              v-tooltip.bottom="'Add Song'"
               @click="openAddDialog"
             />
             <Button
@@ -135,10 +188,10 @@
         >
           <template #item="{ element, index }">
             <div
-              class="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+              class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
             >
               <!-- Position -->
-              <span class="w-6 text-center text-sm text-gray-400 dark:text-gray-500 flex-shrink-0">
+              <span class="w-5 sm:w-6 text-center text-sm text-gray-400 dark:text-gray-500 flex-shrink-0">
                 {{ index + 1 }}
               </span>
 
@@ -206,7 +259,7 @@
     <Dialog
       v-model:visible="generateDialogVisible"
       header="Generate Setlist with AI"
-      :style="{ width: '480px' }"
+      :style="{ width: 'min(480px, 95vw)' }"
       modal
     >
       <div class="flex flex-col gap-3 pt-2">
@@ -239,7 +292,7 @@
     <Dialog
       v-model:visible="entryDialogVisible"
       :header="editingIndex !== null ? 'Edit Entry' : 'Add Song'"
-      :style="{ width: '500px' }"
+      :style="{ width: 'min(500px, 95vw)' }"
       modal
     >
       <div class="flex flex-col gap-4 pt-2">

@@ -54,7 +54,7 @@ RULES — follow every rule without exception:
 Return ONLY a valid JSON array of song IDs in performance order. It is fine if the list is shorter than the full library.
 Example: [42, 17, 8, 23, 5]
 
-Do not include any explanation, commentary, or markdown — only the raw JSON array.
+Do not include any explanation, commentary, reasoning, or markdown. Output the raw JSON array and nothing else.
 PROMPT;
 
         $responseText = $this->callClaude($prompt);
@@ -109,7 +109,7 @@ Re-rank the remaining songs to optimize crowd energy based on the reactions abov
 Return ONLY a valid JSON array of the song IDs in new recommended order. Example:
 [15, 8, 22, 4]
 
-Do not include any explanation or markdown — only the JSON array.
+Do not include any explanation, reasoning, or markdown. Output the raw JSON array and nothing else.
 PROMPT;
 
         $responseText = $this->callClaude($prompt);
@@ -168,7 +168,7 @@ Choose the single best next song to play right now. Consider:
 
 Return ONLY a valid JSON array containing the single chosen song ID. Example: [42]
 
-Do not include any explanation or markdown — only the JSON array.
+Do not include any explanation, reasoning, or markdown. Output the raw JSON array and nothing else.
 PROMPT;
 
         $responseText = $this->callClaude($prompt);
@@ -247,10 +247,17 @@ PROMPT;
 
     private function parseSongIds(string $text): array
     {
-        // Strip any markdown code fences if Claude adds them
+        // Strip markdown code fences
         $text = preg_replace('/```[a-z]*\n?/', '', $text);
-        $text = trim($text);
 
+        // Extract the last JSON array in the response — handles cases where the
+        // model thinks out loud before producing the final answer
+        preg_match_all('/\[[\d,\s]+\]/', $text, $matches);
+        if (!empty($matches[0])) {
+            $text = end($matches[0]);
+        }
+
+        $text = trim($text);
         $ids = json_decode($text, true);
 
         if (!is_array($ids)) {
