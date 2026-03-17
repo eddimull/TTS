@@ -86,6 +86,12 @@ export const navigationGroups = [
         routeName: 'charts',
         permission: 'Charts',
         activeMatch: (route) => route === 'charts'
+      },
+      {
+        label: 'Song List',
+        routeName: 'songs.index',
+        permission: 'Songs',
+        activeMatch: (route) => route === 'songs.index'
       }
     ]
   }

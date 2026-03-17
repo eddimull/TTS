@@ -16,3 +16,9 @@ use Illuminate\Support\Facades\Broadcast;
 Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
+
+Broadcast::channel('setlist.{sessionId}', function ($user, $sessionId) {
+    $session = \App\Models\LiveSetlistSession::find($sessionId);
+    if (!$session) return false;
+    return $user->canRead('events', $session->band_id);
+});

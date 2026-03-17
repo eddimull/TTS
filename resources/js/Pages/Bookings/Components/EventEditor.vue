@@ -35,25 +35,52 @@
       :block-scroll="true"
       class="!w-full !h-full !m-0 !max-w-full !max-h-full"
       :content-style="{ height: '100%', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden' }"
+      :pt="{ header: { style: 'padding: 0.5rem 0.75rem' } }"
     >
       <template #header>
-        <div class="flex items-center justify-between w-full">
-          <h3 class="text-xl font-semibold">
-            Notes & Attachments
-          </h3>
-          <Button
-            icon="pi pi-times"
-            text
-            rounded
-            @click="closeNotesModal"
-          />
+        <div class="flex flex-col w-full">
+          <div class="relative flex items-center w-full">
+            <!-- Left slot — always occupies space, shows close or nothing -->
+            <div class="w-10 flex-shrink-0 flex items-center">
+              <Transition name="fade-slide-left">
+                <Button
+                  v-if="!notesFocused"
+                  icon="pi pi-times"
+                  text
+                  rounded
+                  @click="closeNotesModal"
+                />
+              </Transition>
+            </div>
+
+            <!-- Centered title -->
+            <h3 class="flex-1 text-xl font-semibold text-center truncate px-2">
+              Notes | {{ event.title }}
+            </h3>
+
+            <!-- Right slot — always occupies space, shows done or nothing -->
+            <div class="flex-shrink-0 flex items-center justify-end" style="min-width: 2.5rem">
+              <Transition name="fade-slide-right">
+                <Button
+                  v-if="notesFocused"
+                  label="Done"
+                  text
+                  @mousedown.prevent="blurNotes"
+                />
+              </Transition>
+            </div>
+          </div>
+          <hr class="border-t border-gray-200 dark:border-slate-600 mt-2" />
         </div>
       </template>
-      <div class="flex-1 overflow-y-auto p-4">
+      <div class="flex-1 overflow-y-auto transition-all duration-300" :class="notesFocused ? 'p-0' : 'pt-2 px-4 pb-4'">
         <NotesSection
           ref="notesSection"
           v-model="event"
+          :hide-attachments="notesFocused"
           @attachments-changed="handleAttachmentsChanged"
+          @notes-focus="notesFocused = true"
+          @notes-blur="notesFocused = false"
         />
       </div>
     </Dialog>
@@ -263,6 +290,7 @@ const editorContainer = ref(null);
 const showHistoryModal = ref(false);
 const showNotesModal = ref(false);
 const notesSection = ref(null);
+const notesFocused = ref(false);
 
 // Autosave state
 const isSaving = ref(false);
@@ -534,6 +562,13 @@ const viewHistory = () => {
     showHistoryModal.value = true;
 };
 
+const blurNotes = () => {
+    notesFocused.value = false;
+    if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+    }
+};
+
 const openNotesModal = () => {
     showNotesModal.value = true;
     document.body.style.overflow = 'hidden';
@@ -541,6 +576,7 @@ const openNotesModal = () => {
 
 const closeNotesModal = () => {
     showNotesModal.value = false;
+    notesFocused.value = false;
     document.body.style.overflow = '';
 };
 </script>
@@ -555,5 +591,27 @@ const closeNotesModal = () => {
 .fade-enter-from,
 .fade-leave-to {
     opacity: 0;
+}
+
+/* Close button fades + slides left */
+.fade-slide-left-enter-active,
+.fade-slide-left-leave-active {
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.fade-slide-left-enter-from,
+.fade-slide-left-leave-to {
+    opacity: 0;
+    transform: translateX(-8px);
+}
+
+/* Done button fades + slides right */
+.fade-slide-right-enter-active,
+.fade-slide-right-leave-active {
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.fade-slide-right-enter-from,
+.fade-slide-right-leave-to {
+    opacity: 0;
+    transform: translateX(8px);
 }
 </style>
