@@ -66,6 +66,8 @@
       :type="eventType"
       :date="event.date || event['date']"
       :eventable-type="event.eventable_type"
+      :booking-id="event.eventable_type === 'App\\Models\\Bookings' ? event.eventable_id : null"
+      :band-id="event.band_id ?? null"
     />
     <event-body :event="event" />
     <event-footer :event="event" />

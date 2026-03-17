@@ -41,14 +41,14 @@
       <div v-else class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
         <!-- Toolbar -->
         <div class="flex flex-col sm:flex-row sm:items-center gap-3 p-4 border-b border-gray-200 dark:border-gray-700">
-          <span class="p-input-icon-left flex-1">
-            <i class="pi pi-search" />
+          <div class="p-input-icon-left inline-flex flex-center items-center flex-1">
+            <i class="pi pi-search pr-2" />
             <InputText
               v-model="globalFilter"
               placeholder="Search songs..."
               class="w-full"
             />
-          </span>
+          </div>
           <div class="flex items-center gap-2">
             <label class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer">
               <Checkbox v-model="showInactiveOnly" :binary="true" />

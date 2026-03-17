@@ -1,23 +1,24 @@
 <template>
   <breeze-authenticated-layout>
     <template #header>
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-3 min-w-0">
           <Link
             :href="route('setlists.show', event.key)"
-            class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+            class="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 flex-shrink-0"
           >
             <i class="pi pi-arrow-left text-lg" />
           </Link>
-          <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-50 leading-tight">
+          <h2 class="font-semibold text-lg text-gray-800 dark:text-gray-50 leading-tight truncate">
             Live — {{ event.title }}
           </h2>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-shrink-0">
           <Tag
             :value="sessionStatus"
             :severity="statusSeverity"
           />
+          <!-- Take a Break: labeled on desktop, icon-only on mobile -->
           <Button
             v-if="localIsCaptain && localSession?.status === 'active'"
             label="Take a Break"
@@ -26,8 +27,21 @@
             outlined
             size="small"
             :loading="startingBreak"
+            class="!hidden sm:!inline-flex"
             @click="takeBreak"
           />
+          <Button
+            v-if="localIsCaptain && localSession?.status === 'active'"
+            icon="pi pi-pause"
+            severity="warn"
+            outlined
+            size="small"
+            :loading="startingBreak"
+            class="sm:!hidden"
+            v-tooltip.bottom="'Take a Break'"
+            @click="takeBreak"
+          />
+          <!-- End Show: labeled on desktop, icon-only on mobile -->
           <Button
             v-if="localIsCaptain && (localSession?.status === 'active' || localSession?.status === 'break')"
             label="End Show"
@@ -35,6 +49,17 @@
             severity="danger"
             outlined
             size="small"
+            class="!hidden sm:!inline-flex"
+            @click="confirmEnd"
+          />
+          <Button
+            v-if="localIsCaptain && (localSession?.status === 'active' || localSession?.status === 'break')"
+            icon="pi pi-stop"
+            severity="danger"
+            outlined
+            size="small"
+            class="sm:!hidden"
+            v-tooltip.bottom="'End Show'"
             @click="confirmEnd"
           />
         </div>
@@ -46,7 +71,7 @@
       <!-- No session yet -->
       <div
         v-if="!localSession"
-        class="bg-white dark:bg-slate-800 rounded-lg shadow p-12 text-center"
+        class="bg-white dark:bg-slate-800 rounded-lg shadow p-8 sm:p-12 text-center"
       >
         <i class="pi pi-music text-5xl text-gray-300 dark:text-gray-600 mb-4" />
         <p class="text-gray-500 dark:text-gray-400 mb-4">No live session started yet.</p>
@@ -62,7 +87,7 @@
       <!-- Session completed -->
       <div
         v-else-if="localSession.status === 'completed'"
-        class="bg-white dark:bg-slate-800 rounded-lg shadow p-12 text-center"
+        class="bg-white dark:bg-slate-800 rounded-lg shadow p-8 sm:p-12 text-center"
       >
         <i class="pi pi-check-circle text-5xl text-green-400 mb-4" />
         <p class="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-1">Show complete!</p>
@@ -135,15 +160,17 @@
               </div>
               <div class="flex flex-wrap gap-2">
                 <Button icon="pi pi-check" label="Use This" @click="lockInBreakSuggestion" />
-                <Button icon="pi pi-refresh" label="Try Another" severity="secondary" outlined :loading="loadingBreakSuggestion" @click="fetchBreakSuggestion" />
-                <Button icon="pi pi-list" label="Pick Manually" severity="secondary" text @click="breakManualPickVisible = true" />
+                <Button icon="pi pi-refresh" label="Try Another" severity="secondary" outlined :loading="loadingBreakSuggestion" class="!hidden sm:!inline-flex" @click="fetchBreakSuggestion" />
+                <Button icon="pi pi-refresh" severity="secondary" outlined :loading="loadingBreakSuggestion" class="sm:!hidden" v-tooltip.bottom="'Try Another'" @click="fetchBreakSuggestion" />
+                <Button icon="pi pi-list" label="Pick Manually" severity="secondary" text class="!hidden sm:!inline-flex" @click="breakManualPickVisible = true" />
+                <Button icon="pi pi-list" severity="secondary" text class="sm:!hidden" v-tooltip.bottom="'Pick Manually'" @click="breakManualPickVisible = true" />
               </div>
             </div>
 
             <!-- Get suggestion prompt -->
-            <div v-else class="text-center py-2">
+            <div v-else class="flex flex-wrap justify-center gap-2 py-2">
               <Button icon="pi pi-sparkles" label="Get AI Suggestion" severity="contrast" outlined @click="fetchBreakSuggestion" />
-              <Button icon="pi pi-list" label="Pick Manually" severity="secondary" text class="ml-2" @click="breakManualPickVisible = true" />
+              <Button icon="pi pi-list" label="Pick Manually" severity="secondary" text @click="breakManualPickVisible = true" />
             </div>
           </div>
         </div>
@@ -193,14 +220,25 @@
         </div>
 
         <!-- Captain controls (when a song is playing) -->
-        <div v-if="localIsCaptain && currentSong" class="bg-white dark:bg-slate-800 rounded-lg shadow p-4">
-          <div class="flex flex-wrap justify-center gap-3">
-            <!-- Thumbs up/down -->
+        <div v-if="localIsCaptain && currentSong" class="bg-white dark:bg-slate-800 rounded-lg shadow p-4 space-y-3">
+          <!-- Next Song — prominent, full-width on mobile -->
+          <Button
+            icon="pi pi-forward"
+            label="Next Song"
+            class="w-full justify-center"
+            @click="playNext"
+            :loading="actioning"
+          />
+
+          <!-- Secondary controls -->
+          <div class="grid grid-cols-2 sm:flex sm:flex-wrap sm:justify-center gap-2 sm:gap-3">
+            <!-- Crowd reactions -->
             <Button
               icon="pi pi-thumbs-up"
               label="Crowd Loves It"
               severity="success"
               outlined
+              class="justify-center"
               @click="react('positive')"
             />
             <Button
@@ -208,23 +246,17 @@
               label="Mixed Reaction"
               severity="danger"
               outlined
+              class="justify-center"
               @click="react('negative')"
             />
 
-            <Divider layout="vertical" />
-
-            <!-- Navigation -->
-            <Button
-              icon="pi pi-forward"
-              label="Next Song"
-              @click="playNext"
-              :loading="actioning"
-            />
+            <!-- Skip controls -->
             <Button
               icon="pi pi-step-forward"
               label="Skip"
               severity="secondary"
               outlined
+              class="justify-center"
               @click="skip"
             />
             <Button
@@ -232,10 +264,9 @@
               label="Skip & Remove"
               severity="warning"
               outlined
+              class="justify-center"
               @click="skipRemove"
             />
-
-            <Divider layout="vertical" />
 
             <!-- Off setlist -->
             <Button
@@ -243,19 +274,8 @@
               label="Off Setlist"
               severity="info"
               outlined
+              class="justify-center"
               @click="offSetlistDialogVisible = true"
-            />
-
-            <Divider layout="vertical" />
-
-            <!-- Break -->
-            <Button
-              icon="pi pi-pause"
-              label="Take a Break"
-              severity="warn"
-              outlined
-              :loading="startingBreak"
-              @click="takeBreak"
             />
           </div>
         </div>
@@ -303,6 +323,17 @@
                 label="Try Another"
                 severity="secondary"
                 outlined
+                class="!hidden sm:!inline-flex"
+                @click="fetchSuggestion"
+                :loading="loadingSuggestion"
+              />
+              <Button
+                v-if="!suggestion.forced_transition"
+                icon="pi pi-refresh"
+                severity="secondary"
+                outlined
+                class="sm:!hidden"
+                v-tooltip.bottom="'Try Another'"
                 @click="fetchSuggestion"
                 :loading="loadingSuggestion"
               />
@@ -312,6 +343,16 @@
                 label="Pick Manually"
                 severity="secondary"
                 text
+                class="!hidden sm:!inline-flex"
+                @click="manualPickDialogVisible = true"
+              />
+              <Button
+                v-if="!suggestion.forced_transition"
+                icon="pi pi-list"
+                severity="secondary"
+                text
+                class="sm:!hidden"
+                v-tooltip.bottom="'Pick Manually'"
                 @click="manualPickDialogVisible = true"
               />
             </div>
@@ -333,7 +374,7 @@
           </div>
 
           <!-- Get suggestion prompt -->
-          <div v-else class="p-6 text-center">
+          <div v-else class="p-4 sm:p-6 text-center">
             <Button
               icon="pi pi-sparkles"
               label="Get AI Suggestion"
@@ -349,26 +390,27 @@
           <p class="text-xs font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-3">
             Up Next
           </p>
-          <div v-if="nextSong" class="flex items-center gap-3">
-            <div class="flex-1">
-              <p class="font-semibold text-gray-900 dark:text-gray-50">{{ nextSong.title }}</p>
-              <p v-if="nextSong.artist" class="text-sm text-gray-500 dark:text-gray-400">{{ nextSong.artist }}</p>
+          <div v-if="nextSong" class="flex items-start gap-3">
+            <div class="flex-1 min-w-0">
+              <p class="font-semibold text-gray-900 dark:text-gray-50 truncate">{{ nextSong.title }}</p>
+              <p v-if="nextSong.artist" class="text-sm text-gray-500 dark:text-gray-400 truncate">{{ nextSong.artist }}</p>
+              <div class="flex flex-wrap gap-1 mt-1">
+                <Tag v-if="nextSong.song_key" :value="nextSong.song_key" severity="info" rounded />
+                <Tag v-if="nextSong.bpm" :value="nextSong.bpm + ' BPM'" severity="secondary" rounded />
+              </div>
             </div>
-            <div class="flex items-center gap-2">
-              <Tag v-if="nextSong.song_key" :value="nextSong.song_key" severity="info" rounded />
-              <Tag v-if="nextSong.bpm" :value="nextSong.bpm + ' BPM'" severity="secondary" rounded />
-              <Button
-                v-if="localIsCaptain"
-                icon="pi pi-refresh"
-                severity="secondary"
-                text
-                rounded
-                size="small"
-                :loading="swappingNext"
-                v-tooltip.top="'Swap for AI suggestion'"
-                @click="swapNextSong"
-              />
-            </div>
+            <Button
+              v-if="localIsCaptain"
+              icon="pi pi-refresh"
+              severity="secondary"
+              text
+              rounded
+              size="small"
+              class="flex-shrink-0 mt-0.5"
+              :loading="swappingNext"
+              v-tooltip.top="'Swap for AI suggestion'"
+              @click="swapNextSong"
+            />
           </div>
           <div v-else class="flex items-center gap-2 text-gray-400 dark:text-gray-500">
             <i class="pi pi-spin pi-spinner text-sm" />
@@ -450,7 +492,7 @@
     <Dialog
       v-model:visible="offSetlistDialogVisible"
       header="Play Off-Setlist Song"
-      :style="{ width: '480px' }"
+      :style="{ width: 'min(480px, 95vw)' }"
       modal
     >
       <div class="pt-2">
@@ -474,7 +516,7 @@
     <Dialog
       v-model:visible="manualPickDialogVisible"
       header="Pick Next Song"
-      :style="{ width: '480px' }"
+      :style="{ width: 'min(480px, 95vw)' }"
       modal
     >
       <div class="pt-2">
@@ -498,7 +540,7 @@
     <Dialog
       v-model:visible="promoteDialogVisible"
       header="Promote to Captain"
-      :style="{ width: '400px' }"
+      :style="{ width: 'min(400px, 95vw)' }"
       modal
     >
       <div class="pt-2">
@@ -521,7 +563,7 @@
     <Dialog
       v-model:visible="breakManualPickVisible"
       header="Pick Song to Come Back With"
-      :style="{ width: '480px' }"
+      :style="{ width: 'min(480px, 95vw)' }"
       modal
     >
       <div class="pt-2">
