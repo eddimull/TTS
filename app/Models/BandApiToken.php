@@ -9,7 +9,11 @@ use Spatie\Permission\Traits\HasRoles;
 
 class BandApiToken extends Model
 {
-    use HasFactory, HasRoles;
+    use HasFactory;
+    use HasRoles {
+        givePermissionTo as traitGivePermissionTo;
+        hasPermissionTo as traitHasPermissionTo;
+    }
 
     /**
      * The guard name for permissions
@@ -63,6 +67,28 @@ class BandApiToken extends Model
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Override givePermissionTo to set the team_id (band_id) required by Spatie teams mode
+     */
+    public function givePermissionTo(...$permissions)
+    {
+        setPermissionsTeamId($this->band_id);
+        $result = $this->traitGivePermissionTo(...$permissions);
+        setPermissionsTeamId(0);
+        return $result;
+    }
+
+    /**
+     * Override hasPermissionTo to set the team_id (band_id) required by Spatie teams mode
+     */
+    public function hasPermissionTo($permission, $guardName = null): bool
+    {
+        setPermissionsTeamId($this->band_id);
+        $result = $this->traitHasPermissionTo($permission, $guardName);
+        setPermissionsTeamId(0);
+        return $result;
     }
 
     /**

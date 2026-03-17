@@ -20,6 +20,7 @@ class SubChartsAccessTest extends TestCase
     protected $userEventsService;
     protected $band;
     protected $owner;
+    protected $sub;
 
     protected function setUp(): void
     {
@@ -33,6 +34,9 @@ class SubChartsAccessTest extends TestCase
         // Create test band and owner
         $this->band = Bands::factory()->create(['name' => 'Test Band']);
         $this->owner = User::factory()->create();
+
+        setPermissionsTeamId(0);
+
 
         BandOwners::create([
             'user_id' => $this->owner->id,

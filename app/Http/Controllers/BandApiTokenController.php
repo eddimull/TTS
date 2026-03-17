@@ -18,6 +18,7 @@ class BandApiTokenController extends Controller
     {
         $this->authorize('view', $band);
 
+        setPermissionsTeamId($band->id);
         $tokens = $band->apiTokens()->with('permissions')->get()->map(function ($token) {
             return [
                 'id' => $token->id,
@@ -28,6 +29,7 @@ class BandApiTokenController extends Controller
                 'permissions' => $token->permissions->pluck('name')->toArray(),
             ];
         });
+        setPermissionsTeamId(0);
 
         // Get all available API permissions
         $availablePermissions = Permission::where('guard_name', 'api_token')

@@ -51,11 +51,11 @@ class CreateMemberTest extends TestCase
     {
       
         $this->setupBandAndUser();
-        $response = $this->actingAs($this->user)->post('/inviteMember/' . $this->band->id,['email'=>'test@user.com']);
+        $response = $this->actingAs($this->user)->post('/inviteMember/' . $this->band->id,['email'=>'realperson@gmail.com']);
 
         $response->assertSessionHas(['successMessage']);
         $this->assertDatabaseHas('invitations',[
-            'email'=>'test@user.com',
+            'email'=>'realperson@gmail.com',
             'invite_type_id'=>2,
             'pending'=>true
         ]);

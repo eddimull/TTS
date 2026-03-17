@@ -15,6 +15,7 @@ use App\Models\Roster;
 use App\Models\StripeAccounts;
 use App\Models\User;
 use App\Models\BandPayoutConfig;
+use App\Models\Song;
 use App\Enums\PaymentType;
 use Database\Seeders\EventTypeSeeder;
 use Illuminate\Console\Command;
@@ -41,6 +42,7 @@ class DevSetupCommand extends Command
                             {--stripe : Create Stripe test accounts}
                             {--rehearsals : Create rehearsal schedules}
                             {--payout-config : Create payout configurations}
+                            {--songs : Create master song list}
                             {--all : Create all test data}
                             {--force : Force creation even if data exists}';
 
@@ -123,6 +125,10 @@ class DevSetupCommand extends Command
             $this->setupPayoutConfig($force);
         }
 
+        if ($all || $this->option('songs')) {
+            $this->setupSongs($force);
+        }
+
         $this->newLine();
         $this->info('✅ Development setup complete!');
         
@@ -145,7 +151,8 @@ class DevSetupCommand extends Command
                $this->option('stripe') ||
                $this->option('contacts') ||
                $this->option('rehearsals') ||
-               $this->option('payout-config');
+               $this->option('payout-config') ||
+               $this->option('songs');
     }
 
     /**
@@ -264,6 +271,11 @@ class DevSetupCommand extends Command
             'payout-config' => [
                 'label' => 'Payout Configuration',
                 'description' => 'Roster-based payout config',
+                'selected' => false,
+            ],
+            'songs' => [
+                'label' => 'Master Song List',
+                'description' => '30 songs with keys, genres, BPM, and lead singers',
                 'selected' => false,
             ],
         ];
@@ -1098,5 +1110,94 @@ class DevSetupCommand extends Command
         ]);
 
         $this->info("💵 Created roster-based payout configuration");
+    }
+
+    /**
+     * Setup master song list
+     */
+    private function setupSongs(bool $force)
+    {
+        $band = Bands::where('site_name', 'test_band')->first();
+
+        if (!$band) {
+            $this->error("❌ Test band not found. Run with --band first.");
+            return;
+        }
+
+        $existingCount = Song::where('band_id', $band->id)->count();
+
+        if ($existingCount > 0 && !$force) {
+            $this->warn("🎵 Band already has {$existingCount} songs (use --force to recreate)");
+            return;
+        }
+
+        if ($existingCount > 0 && $force) {
+            Song::where('band_id', $band->id)->delete();
+            $this->info("🗑️  Deleted {$existingCount} existing songs");
+        }
+
+        // Get roster members to assign as lead singers
+        $rosterMembers = $band->rosters()
+            ->with(['members' => fn($q) => $q->where('is_active', true)])
+            ->get()
+            ->pluck('members')
+            ->flatten()
+            ->unique('id')
+            ->values();
+
+        $songs = [
+            ['title' => 'September', 'artist' => 'Earth, Wind & Fire', 'song_key' => 'A maj', 'genre' => 'R&B', 'bpm' => 126],
+            ['title' => 'Superstition', 'artist' => 'Stevie Wonder', 'song_key' => 'Eb min', 'genre' => 'R&B', 'bpm' => 100],
+            ['title' => 'Sir Duke', 'artist' => 'Stevie Wonder', 'song_key' => 'B maj', 'genre' => 'R&B', 'bpm' => 96],
+            ['title' => 'Uptown Funk', 'artist' => 'Mark Ronson ft. Bruno Mars', 'song_key' => 'Dm', 'genre' => 'Funk', 'bpm' => 115],
+            ['title' => 'Happy', 'artist' => 'Pharrell Williams', 'song_key' => 'F min', 'genre' => 'Pop', 'bpm' => 160],
+            ['title' => 'Signed, Sealed, Delivered', 'artist' => 'Stevie Wonder', 'song_key' => 'C maj', 'genre' => 'R&B', 'bpm' => 116],
+            ['title' => 'Treasure', 'artist' => 'Bruno Mars', 'song_key' => 'Ab maj', 'genre' => 'Pop', 'bpm' => 112],
+            ['title' => 'Dancing in the Moonlight', 'artist' => 'Toploader', 'song_key' => 'D maj', 'genre' => 'Pop', 'bpm' => 118],
+            ['title' => 'Play That Funky Music', 'artist' => 'Wild Cherry', 'song_key' => 'G min', 'genre' => 'Funk', 'bpm' => 108],
+            ['title' => 'Brick House', 'artist' => 'Commodores', 'song_key' => 'C min', 'genre' => 'Funk', 'bpm' => 102],
+            ['title' => 'Shake a Tail Feather', 'artist' => 'Ray Charles', 'song_key' => 'G maj', 'genre' => 'R&B', 'bpm' => 168],
+            ['title' => 'Mustang Sally', 'artist' => 'Wilson Pickett', 'song_key' => 'C maj', 'genre' => 'R&B', 'bpm' => 110],
+            ['title' => 'Can\'t Stop the Feeling', 'artist' => 'Justin Timberlake', 'song_key' => 'C maj', 'genre' => 'Pop', 'bpm' => 113],
+            ['title' => 'I Gotta Feeling', 'artist' => 'Black Eyed Peas', 'song_key' => 'G maj', 'genre' => 'Pop', 'bpm' => 128],
+            ['title' => 'Shotgun', 'artist' => 'George Ezra', 'song_key' => 'C maj', 'genre' => 'Pop', 'bpm' => 128],
+            ['title' => 'Boogie Wonderland', 'artist' => 'Earth, Wind & Fire', 'song_key' => 'F min', 'genre' => 'Funk', 'bpm' => 124],
+            ['title' => 'Let\'s Get It Started', 'artist' => 'Black Eyed Peas', 'song_key' => 'C min', 'genre' => 'Hip Hop', 'bpm' => 138],
+            ['title' => 'Shake Your Body', 'artist' => 'The Jacksons', 'song_key' => 'Eb maj', 'genre' => 'Funk', 'bpm' => 108],
+            ['title' => 'That\'s What I Like', 'artist' => 'Bruno Mars', 'song_key' => 'Db maj', 'genre' => 'R&B', 'bpm' => 124],
+            ['title' => 'All About That Bass', 'artist' => 'Meghan Trainor', 'song_key' => 'A maj', 'genre' => 'Pop', 'bpm' => 132],
+            ['title' => 'Valerie', 'artist' => 'Amy Winehouse', 'song_key' => 'G maj', 'genre' => 'Soul', 'bpm' => 90],
+            ['title' => 'Mercy', 'artist' => 'Duffy', 'song_key' => 'G min', 'genre' => 'Soul', 'bpm' => 130],
+            ['title' => 'Take Me to Church', 'artist' => 'Hozier', 'song_key' => 'A min', 'genre' => 'Rock', 'bpm' => 129],
+            ['title' => 'Don\'t Stop Me Now', 'artist' => 'Queen', 'song_key' => 'F maj', 'genre' => 'Rock', 'bpm' => 156],
+            ['title' => 'Mr. Brightside', 'artist' => 'The Killers', 'song_key' => 'A maj', 'genre' => 'Rock', 'bpm' => 148],
+            ['title' => 'Sweet Home Chicago', 'artist' => 'Robert Johnson', 'song_key' => 'E maj', 'genre' => 'Blues', 'bpm' => 120, 'notes' => 'Good opener'],
+            ['title' => 'Fly Me to the Moon', 'artist' => 'Frank Sinatra', 'song_key' => 'C maj', 'genre' => 'Jazz', 'bpm' => 144],
+            ['title' => 'Fever', 'artist' => 'Peggy Lee', 'song_key' => 'A min', 'genre' => 'Jazz', 'bpm' => 108],
+            ['title' => 'Georgia on My Mind', 'artist' => 'Ray Charles', 'song_key' => 'F maj', 'genre' => 'Jazz', 'bpm' => 66],
+            ['title' => 'Higher Ground', 'artist' => 'Stevie Wonder', 'song_key' => 'Eb min', 'genre' => 'Funk', 'bpm' => 138, 'active' => false],
+        ];
+
+        $memberCount = $rosterMembers->count();
+        $created = 0;
+
+        foreach ($songs as $i => $songData) {
+            Song::create([
+                'band_id' => $band->id,
+                'title' => $songData['title'],
+                'artist' => $songData['artist'],
+                'song_key' => $songData['song_key'],
+                'genre' => $songData['genre'],
+                'bpm' => $songData['bpm'],
+                'notes' => $songData['notes'] ?? null,
+                'active' => $songData['active'] ?? true,
+                'lead_singer_id' => $memberCount > 0
+                    ? $rosterMembers[$i % $memberCount]->id
+                    : null,
+            ]);
+            $created++;
+        }
+
+        $this->info("🎵 Created {$created} songs for Test Band");
     }
 }

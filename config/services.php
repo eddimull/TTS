@@ -30,6 +30,10 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'anthropic' => [
+        'key' => env('ANTHROPIC_API_KEY'),
+    ],
+
     'pandadoc' => [
         'api_key' => env('PANDADOC_KEY'),
         'client_id' => env('PANDADOC_CLIENT_ID'),
