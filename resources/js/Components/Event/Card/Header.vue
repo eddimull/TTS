@@ -110,6 +110,11 @@ export default {
                         command: () => this.$inertia.get(route('Booking Details', { band: b, booking: bk })),
                     },
                     {
+                        label: 'Edit Event',
+                        icon: 'pi pi-pencil',
+                        command: () => this.$inertia.get(`/events/${this.eventkey}/edit`),
+                    },
+                    {
                         label: 'Media',
                         icon: 'pi pi-images',
                         command: () => this.$inertia.get(route('Booking Media', { band: b, booking: bk })),
