@@ -342,7 +342,7 @@
     </ul>
 
     <!-- Full view for regular events -->
-    <ul v-else>
+    <ul v-else class="list-inside">
       <li class="p-2">
         Venue: <strong>{{ event.venue_name }}</strong>
       </li>
@@ -381,7 +381,7 @@
         Notes:
         <div
           ref="eventNotesRef"
-          class="ml-3 p-3 shadow-lg rounded break-normal content-container bg-gray-100 dark:bg-slate-700"
+          class="p-3 shadow-lg rounded break-normal content-container bg-gray-100 dark:bg-slate-700 overflow-auto"
         >
           <!-- Display notes as plain text or HTML (backward compatibility) -->
           <div
@@ -479,7 +479,7 @@
         <div class="font-semibold mb-2 text-blue-700 dark:text-blue-300">
           Performance Information:
         </div>
-        <div class="ml-3 space-y-4">
+        <div class="space-y-4">
           <!-- Performance Notes -->
           <div v-if="event.additional_data?.performance?.notes">
             <div class="font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -487,7 +487,7 @@
             </div>
             <div
               ref="performanceNotesRef"
-              class="p-3 shadow-lg rounded break-normal content-container bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700"
+              class="p-3 shadow-lg rounded break-normal content-container bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 overflow-auto"
               v-html="event.additional_data.performance.notes"
             />
           </div>
@@ -632,7 +632,7 @@
       <li class="p-2">
         Extra Details:
         <div
-          class="ml-3 p-3 shadow-lg rounded break-normal bg-gray-100 dark:bg-slate-700"
+          class="p-3 shadow-lg rounded break-normal bg-gray-100 dark:bg-slate-700 overflow-auto"
         >
           <ul>
             <li>
@@ -679,13 +679,13 @@
         class="p-2"
       >
         Wedding Info:
-        <Wedding :wedding="event.additional_data?.wedding" />
+        <Wedding class="overflow-auto" :wedding="event.additional_data?.wedding" />
       </li>
-      <li v-if="event.additional_data?.attire">
+      <li class="p-2" v-if="event.additional_data?.attire">
         Attire:
         <div
           ref="attireRef"
-          class="ml-3 p-3 shadow-lg rounded break-normal bg-gray-100 dark:bg-slate-700"
+          class="p-3 shadow-lg rounded break-normal bg-gray-100 dark:bg-slate-700 overflow-auto"
           v-html="event.additional_data?.attire"
         />
       </li>

@@ -67,6 +67,17 @@ class User extends Authenticatable
             ->withTimestamps();
     }
 
+    public function bandSub()
+    {
+        return $this->belongsToMany(Bands::class, 'band_subs', 'user_id', 'band_id')
+            ->withTimestamps();
+    }
+
+    public function isSubOfBand($bandId): bool
+    {
+        return $this->bandSub->contains('id', $bandId);
+    }
+
     public function permissionsForBand($id)
     {
         return userPermissions::firstOrCreate(['user_id' => $this->id, 'band_id' => $id]);
@@ -95,6 +106,10 @@ class User extends Authenticatable
     public function canRead($resource, $bandId)
     {
         if ($this->ownsBand($bandId)) {
+            return true;
+        }
+
+        if ($this->isSubOfBand($bandId)) {
             return true;
         }
 
@@ -254,6 +269,14 @@ class User extends Authenticatable
         $ownerOf = $this->bandOwner;
         $memberOf = $this->bandMember;
         return $ownerOf->merge($memberOf);
+    }
+
+    public function allBands()
+    {
+        $ownerOf = $this->bandOwner;
+        $memberOf = $this->bandMember;
+        $subOf = $this->bandSub;
+        return $ownerOf->merge($memberOf)->merge($subOf)->unique('id');
     }
 
 

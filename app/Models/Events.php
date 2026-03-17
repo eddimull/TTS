@@ -73,6 +73,16 @@ class Events extends Model implements GoogleCalenderable
         return $this->hasOne(EventTypes::class, 'id', 'event_type_id');
     }
 
+    public function setlist()
+    {
+        return $this->hasOne(EventSetlist::class, 'event_id');
+    }
+
+    public function liveSetlistSession()
+    {
+        return $this->hasOne(LiveSetlistSession::class, 'event_id');
+    }
+
     public function getOldEventAttribute()
     {
         //return dates that are older than today plus a day

@@ -1,30 +1,42 @@
 <template>
-    <div class="bg-gray-100 dark:bg-slate-700 list-outside ml-4 p-4 shadow-lg rounded-lg ">
-        Dances:
-      <ul v-if="wedding?.dances && wedding.dances.length > 0" class="list-disc">
-        <li v-for="dance in wedding?.dances" class="mt-2 ml-5 pl-2" :key="dance.name">
-          <span class="text-gray-700 dark:text-gray-50">{{ dance.title }}:</span>
-          <strong class="ml-1 text-gray-900 dark:text-gray-100">{{ dance.data }}</strong>
-        </li>
-       
-      </ul>
-      <div v-else>
-        
-          <strong class="text-gray-700 dark:text-gray-50">None</strong>
-        
-      </div>
-        <div class="mt-2">
-            <strong class="text-gray-700 dark:text-slate-50">On-Site:</strong>
-            <strong class="ml-1 text-gray-900 dark:text-white">{{ wedding?.onsite ? 'Yes' : 'No' }}</strong>
-        </div>
+    <div class="max-w-md mx-auto bg-white dark:bg-slate-700 shadow-lg rounded-lg overflow-hidden">
+        <ul class="divide-y divide-gray-200 dark:divide-slate-600">
+
+            <li class="flex items-center p-4">
+                <div class="ml-1 flex-grow">
+                    <p class="text-sm font-medium text-gray-900 dark:text-white">Ceremony Location</p>
+                </div>
+                <Tag
+                    :value="wedding?.onsite ? 'On-Site' : 'Off-Site'"
+                    :severity="wedding?.onsite ? 'success' : 'danger'"
+                    rounded
+                />
+            </li>
+
+            <template v-if="wedding?.dances && wedding.dances.length > 0">
+                <li v-for="dance in wedding.dances" :key="dance.name" class="flex flex-col p-4">
+                    <p class="text-sm font-medium text-gray-900 dark:text-white">{{ dance.title }}</p>
+                    <div class="mt-1">
+                        <Tag :value="dance.data" severity="secondary" rounded />
+                    </div>
+                </li>
+            </template>
+            <li v-else class="flex items-center p-4">
+                <div class="ml-1 flex-grow">
+                    <p class="text-sm font-medium text-gray-900 dark:text-white">Dances</p>
+                </div>
+                <Tag value="None" severity="secondary" rounded />
+            </li>
+
+        </ul>
     </div>
-  </template>
+</template>
   
   <script setup>
-  const props = defineProps({
+const props = defineProps({
     wedding: {
-      type: Object,
-      required: true
+        type: Object,
+        required: true
     }
-  });
-  </script>
+});
+</script>

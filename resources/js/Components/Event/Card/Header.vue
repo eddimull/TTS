@@ -3,7 +3,7 @@
     <div
       class="flex flex-col min-[320px]:flex-row items-start min-[320px]:items-center"
     >
-      <div 
+      <div
         v-if="!isRehearsal"
         class="mb-2 sm:mb-0 sm:mr-3"
       >
@@ -19,14 +19,15 @@
         </div>
       </div>
     </div>
-    <div 
+    <div
       v-if="!isRehearsal"
       class="ml-4 text-right pr-4"
     >
       <span
         class="text-2xl font-bold leading-none cursor-pointer select-none"
-        @click="confirmEdit(name)"
+        @click="openMenu"
       >&#8230;</span>
+      <ContextMenu ref="menu" :model="menuItems" />
     </div>
   </div>
 </template>
@@ -60,10 +61,19 @@ export default {
             required: false,
             default: null
         },
+        bookingId: {
+            type: Number,
+            required: false,
+            default: null
+        },
+        bandId: {
+            type: Number,
+            required: false,
+            default: null
+        },
     },
     data() {
         return {
-            showEditModal: false,
             parsedDate: DateTime.now().toFormat("MM-dd-yyyy"),
         };
     },
@@ -72,12 +82,74 @@ export default {
             return this.eventkey && this.eventkey.startsWith('virtual-');
         },
         isRehearsal() {
-            // Virtual rehearsals from schedule
             if (this.isVirtual) return true;
-            // Saved rehearsals
             if (this.eventableType === 'App\\Models\\Rehearsal') return true;
             return false;
-        }
+        },
+        isBooking() {
+            return this.eventableType === 'App\\Models\\Bookings' && this.bookingId && this.bandId;
+        },
+        menuItems() {
+            if (this.isVirtual) {
+                return [
+                    {
+                        label: 'Generated Rehearsal',
+                        icon: 'pi pi-info-circle',
+                        disabled: true,
+                    },
+                ];
+            }
+
+            if (this.isBooking) {
+                const b = this.bandId;
+                const bk = this.bookingId;
+                return [
+                    {
+                        label: 'Details',
+                        icon: 'pi pi-file',
+                        command: () => this.$inertia.get(route('Booking Details', { band: b, booking: bk })),
+                    },
+                    {
+                        label: 'Edit Event',
+                        icon: 'pi pi-pencil',
+                        command: () => this.$inertia.get(`/events/${this.eventkey}/edit`),
+                    },
+                    {
+                        label: 'Media',
+                        icon: 'pi pi-images',
+                        command: () => this.$inertia.get(route('Booking Media', { band: b, booking: bk })),
+                    },
+                    {
+                        label: 'Contacts',
+                        icon: 'pi pi-users',
+                        command: () => this.$inertia.get(route('Booking Contacts', { band: b, booking: bk })),
+                    },
+                    {
+                        label: 'Finances',
+                        icon: 'pi pi-dollar',
+                        command: () => this.$inertia.get(route('Booking Finances', { band: b, booking: bk })),
+                    },
+                    {
+                        label: 'Contract',
+                        icon: 'pi pi-pen-to-square',
+                        command: () => this.$inertia.get(route('Booking Contract', { band: b, booking: bk })),
+                    },
+                    {
+                        label: 'Payout',
+                        icon: 'pi pi-wallet',
+                        command: () => this.$inertia.get(route('Booking Payout', { band: b, booking: bk })),
+                    },
+                ];
+            }
+
+            return [
+                {
+                    label: 'Edit Event',
+                    icon: 'pi pi-pencil',
+                    command: () => this.$inertia.get(`/events/${this.eventkey}/edit`),
+                },
+            ];
+        },
     },
     created() {
         this.parsedDate = {
@@ -86,32 +158,8 @@ export default {
         };
     },
     methods: {
-        confirmEdit(name) {
-            // Don't allow editing virtual rehearsals
-            if (this.isVirtual) {
-                this.$swal.fire({
-                    title: 'Generated Rehearsal',
-                    html: `This is a rehearsal generated from a schedule. To edit the schedule or create an actual rehearsal for this date, please visit the Rehearsals section.`,
-                    icon: 'info',
-                    confirmButtonText: 'OK'
-                });
-                return;
-            }
-            
-            this.$swal
-                .fire({
-                    title: `Edit`,
-                    html: `Would you like to edit <strong>"${name}"</strong>?`,
-                    showCancelButton: true,
-                    confirmButtonColor: "#3085d6",
-                    cancelButtonColor: "#d33",
-                    confirmButtonText: "Yes",
-                })
-                .then((result) => {
-                    if (result.value) {
-                        this.$inertia.get(`/events/${this.eventkey}/edit`);
-                    }
-                });
+        openMenu(event) {
+            this.$refs.menu.show(event);
         },
     },
 };

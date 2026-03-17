@@ -12,19 +12,28 @@
     </div>
 
     <!-- Notes textarea - prominent and spacious, grows to fill space -->
-    <div class="flex-1 flex flex-col mb-4">
+    <div class="flex-1 flex flex-col" :class="hideAttachments ? 'mb-0' : 'mb-4'">
       <textarea
         v-model="modelValue.notes"
-        class="w-full h-full p-4 text-base border-2 border-gray-300 dark:border-gray-600 rounded-lg 
-               focus:ring-2 focus:ring-blue-500 focus:border-blue-500 
-               dark:bg-slate-800 dark:text-gray-50 resize-none"
+        style="outline: none !important; box-shadow: none !important;"
+        class="w-full h-full text-base rounded-lg resize-none
+               dark:text-gray-50 transition-all duration-300
+               focus:ring-0 focus:outline-none focus:shadow-none"
+        :class="hideAttachments
+          ? 'border-0 bg-transparent dark:bg-transparent p-1'
+          : 'border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-800 p-4'"
         placeholder="Add your notes here..."
         :disabled="isConverting"
+        @focus="emit('notesFocus')"
+        @blur="emit('notesBlur')"
       />
     </div>
 
     <!-- Attachments drawer - slides up from bottom -->
-    <div class="border-t border-gray-200 dark:border-gray-700">
+    <div
+      class="border-t border-gray-200 dark:border-gray-700 transition-all duration-300 ease-in-out overflow-hidden"
+      :class="hideAttachments ? 'max-h-0 opacity-0 border-transparent' : 'max-h-[500px] opacity-100'"
+    >
       <button
         type="button"
         class="flex items-center justify-between w-full py-3 px-2 text-left hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
@@ -219,9 +228,13 @@ const props = defineProps({
         type: Object,
         required: true,
     },
+    hideAttachments: {
+        type: Boolean,
+        default: false,
+    },
 });
 
-const emit = defineEmits(['attachmentsChanged', 'update:modelValue']);
+const emit = defineEmits(['attachmentsChanged', 'update:modelValue', 'notesFocus', 'notesBlur']);
 
 const fileInput = ref(null);
 const selectedFiles = ref([]);

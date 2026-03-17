@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\BandEvents;
 use App\Models\Events;
+use App\Models\LiveSetlistSession;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
@@ -117,7 +118,54 @@ class UserEventsService
             // Re-sort by date
             $events = $events->sortBy('date')->values();
         }
-        
+
+        // Attach active live session info so the card footer can show a "Join" link
+        $eventIds = $events->pluck('id')->filter()->unique()->values()->all();
+        if (!empty($eventIds)) {
+            $liveSessions = LiveSetlistSession::whereIn('event_id', $eventIds)
+                ->whereIn('status', ['active', 'paused'])
+                ->get()
+                ->keyBy('event_id');
+
+            $events = $events->map(function ($event) use ($liveSessions) {
+                $id = is_array($event) ? ($event['id'] ?? null) : ($event->id ?? null);
+                if ($id && $liveSessions->has($id)) {
+                    if (is_array($event)) {
+                        $event['live_session_id'] = $liveSessions[$id]->id;
+                    } else {
+                        $event->live_session_id = $liveSessions[$id]->id;
+                    }
+                }
+                return $event;
+            });
+        }
+
+        // Attach roster member counts
+        if (!empty($eventIds)) {
+            $rosterCounts = DB::table('event_members')
+                ->whereIn('event_id', $eventIds)
+                ->whereNull('deleted_at')
+                ->selectRaw("event_id, SUM(CASE WHEN roster_member_id IS NOT NULL AND attendance_status NOT IN ('absent', 'excused') THEN 1 ELSE 0 END) as roster_count, SUM(CASE WHEN roster_member_id IS NULL THEN 1 ELSE 0 END) as sub_count, SUM(CASE WHEN roster_member_id IS NOT NULL AND attendance_status IN ('absent', 'excused') THEN 1 ELSE 0 END) as absent_count")
+                ->groupBy('event_id')
+                ->get()
+                ->keyBy('event_id');
+
+            $events = $events->map(function ($event) use ($rosterCounts) {
+                $id = is_array($event) ? ($event['id'] ?? null) : ($event->id ?? null);
+                $counts = $id ? $rosterCounts->get($id) : null;
+                if (is_array($event)) {
+                    $event['roster_count'] = $counts ? (int) $counts->roster_count : 0;
+                    $event['sub_count'] = $counts ? (int) $counts->sub_count : 0;
+                    $event['absent_count'] = $counts ? (int) $counts->absent_count : 0;
+                } else {
+                    $event->roster_count = $counts ? (int) $counts->roster_count : 0;
+                    $event->sub_count = $counts ? (int) $counts->sub_count : 0;
+                    $event->absent_count = $counts ? (int) $counts->absent_count : 0;
+                }
+                return $event;
+            });
+        }
+
         return $events;
     }
 
