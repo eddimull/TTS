@@ -1,11 +1,14 @@
 <template>
-  <div v-if="charts.length > 0">
+  <div v-if="charts.length > 0" :style="maxHeight ? { maxHeight, overflowY: 'auto' } : {}">
     <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl border-2 border-green-200 dark:border-green-800">
       <!-- Header -->
       <div
-        class="px-4 py-3 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 cursor-pointer hover:from-green-100 hover:to-blue-100 dark:hover:from-green-900/30 dark:hover:to-blue-900/30 transition-colors"
-        :class="{ 'border-b border-gray-200 dark:border-gray-700': isExpanded }"
-        @click="toggleExpand"
+        class="px-4 py-3 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 transition-colors"
+        :class="[
+          { 'border-b border-gray-200 dark:border-gray-700': isExpanded || !collapsible },
+          collapsible ? 'cursor-pointer hover:from-green-100 hover:to-blue-100 dark:hover:from-green-900/30 dark:hover:to-blue-900/30' : ''
+        ]"
+        @click="collapsible && toggleExpand()"
       >
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-2">
@@ -21,6 +24,7 @@
               {{ charts.length }} item{{ charts.length !== 1 ? 's' : '' }} in {{ uniqueEventCount }} event{{ uniqueEventCount !== 1 ? 's' : '' }}
             </span>
             <svg
+              v-if="collapsible"
               class="w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform duration-200"
               :class="{ 'rotate-180': isExpanded }"
               fill="none"
@@ -34,7 +38,7 @@
       </div>
 
       <!-- Charts List -->
-      <div v-show="isExpanded" class="divide-y divide-gray-200 dark:divide-gray-700">
+      <div v-show="isExpanded || !collapsible" class="divide-y divide-gray-200 dark:divide-gray-700">
         <div
           v-for="(chart, index) in charts"
           :key="`chart-${index}`"
@@ -129,6 +133,14 @@ const props = defineProps({
   charts: {
     type: Array,
     default: () => []
+  },
+  collapsible: {
+    type: Boolean,
+    default: true
+  },
+  maxHeight: {
+    type: String,
+    default: null
   }
 });
 
