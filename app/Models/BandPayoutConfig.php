@@ -63,9 +63,12 @@ class BandPayoutConfig extends Model
      */
     public function calculatePayouts(float $totalAmount, ?array $memberCounts = null, ?Bookings $booking = null): array
     {
+        // Pre-calculate attendance weights once to avoid repeated queries in sub-methods
+        $attendanceWeights = $booking ? $this->calculateAttendanceWeights($booking) : collect();
+
         // If this config has a flow_diagram, use flow-based calculation
         if ($this->flow_diagram && is_array($this->flow_diagram) && isset($this->flow_diagram['nodes'])) {
-            return $this->calculateFromFlow($totalAmount, $booking);
+            return $this->calculateFromFlow($totalAmount, $attendanceWeights);
         }
 
         $result = [
@@ -98,7 +101,7 @@ class BandPayoutConfig extends Model
 
         // If using payment groups, calculate based on groups
         if ($this->use_payment_groups && $this->payment_group_config && is_array($this->payment_group_config)) {
-            return $this->calculatePayoutsWithGroups($result, $booking);
+            return $this->calculatePayoutsWithGroups($result, $attendanceWeights);
         }
 
         // Check if we have member-specific configurations
@@ -151,11 +154,9 @@ class BandPayoutConfig extends Model
         } else {
             // Fallback to old calculation methods
             $memberCount = 0;
-            $attendanceWeights = collect();
 
             // Check if booking has attendance tracking across events
             if ($booking) {
-                $attendanceWeights = $this->calculateAttendanceWeights($booking);
                 $memberCount = $attendanceWeights->count();
             } else {
                 // Use default band member counts
@@ -307,13 +308,8 @@ class BandPayoutConfig extends Model
      *
      * This allows formulas like: (net - band_cut - production_group) / player_group
      */
-    private function calculatePayoutsWithGroups(array $result, ?Bookings $booking = null): array
+    private function calculatePayoutsWithGroups(array $result, \Illuminate\Support\Collection $attendanceData): array
     {
-        // Calculate attendance weights with role information if booking is provided
-        $attendanceData = collect();
-        if ($booking) {
-            $attendanceData = $this->calculateAttendanceWeights($booking);
-        }
 
         $remainingAmount = $result['distributable_amount'];
         $paymentGroups = BandPaymentGroup::where('band_id', $this->band_id)
@@ -403,7 +399,16 @@ class BandPayoutConfig extends Model
      */
     private function calculateAttendanceWeights(Bookings $booking): \Illuminate\Support\Collection
     {
-        $events = $booking->events()->with('eventMembers.rosterMember.user')->get();
+        // Use already-loaded relation if available to avoid re-querying
+        if ($booking->relationLoaded('events')) {
+            $events = $booking->events;
+        } else {
+            $events = $booking->events()->with([
+                'eventMembers.bandRole',
+                'eventMembers.rosterMember.bandRole',
+                'eventMembers.rosterMember.user',
+            ])->get();
+        }
         $totalEvents = $events->count();
 
         if ($totalEvents === 0) {
@@ -519,7 +524,7 @@ class BandPayoutConfig extends Model
     /**
      * Calculate payouts from flow diagram
      */
-    private function calculateFromFlow(float $totalAmount, ?Bookings $booking = null): array
+    private function calculateFromFlow(float $totalAmount, \Illuminate\Support\Collection $attendanceData): array
     {
         // Ensure band relationship is loaded for member access
         if (!$this->relationLoaded('band')) {
@@ -540,12 +545,6 @@ class BandPayoutConfig extends Model
             'total_member_payout' => 0,
             'remaining' => 0,
         ];
-
-        // Get attendance data with roles if booking provided
-        $attendanceData = collect();
-        if ($booking) {
-            $attendanceData = $this->calculateAttendanceWeights($booking);
-        }
 
         // Band cuts will be calculated during traversal
         $remainingAmount = $totalAmount;
