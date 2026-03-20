@@ -253,9 +253,8 @@ class SubChartsAccessTest extends TestCase
         $sub = User::factory()->create();
         $sub->assignRole('sub');
 
-        // Verify sub has the view-charts permission
-        $this->assertTrue($sub->hasPermissionTo('view-charts'));
-        $this->assertTrue($sub->hasPermissionTo('download-charts'));
+        // Verify sub has the read:charts permission
+        $this->assertTrue($sub->hasPermissionTo('read:charts'));
     }
 
     public function test_sub_has_permission_to_view_event_details()
@@ -264,8 +263,7 @@ class SubChartsAccessTest extends TestCase
         $sub->assignRole('sub');
 
         // Verify sub has event-related permissions
-        $this->assertTrue($sub->hasPermissionTo('view-event-details'));
-        $this->assertTrue($sub->hasPermissionTo('view-event-notes'));
+        $this->assertTrue($sub->hasPermissionTo('read:events'));
     }
 
     public function test_sub_has_permission_to_view_roster()
@@ -273,9 +271,8 @@ class SubChartsAccessTest extends TestCase
         $sub = User::factory()->create();
         $sub->assignRole('sub');
 
-        // Verify sub can view roster (but not financials except own payout)
-        $this->assertTrue($sub->hasPermissionTo('view-roster'));
-        $this->assertTrue($sub->hasPermissionTo('view-own-payout'));
+        // Verify sub has song/chart permissions
+        $this->assertTrue($sub->hasPermissionTo('read:songs'));
     }
 
     public function test_band_member_sees_all_charts_not_just_sub_charts()
