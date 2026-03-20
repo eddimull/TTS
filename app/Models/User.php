@@ -141,21 +141,9 @@ class User extends Authenticatable
         // return $this->hasManyThrough(Charts::class,Bands::class,'band_members','user_id','band_id');
         $bandIds = [];
 
-        $ownedBands = $this->bandOwner;
-        $bandMember = $this->bandMember;
+        $bandIds = $this->allBands()->pluck('id')->toArray();
 
-        foreach ($ownedBands as $band)
-        {
-            array_push($bandIds, $band->id);
-        }
-
-        foreach ($bandMember as $band)
-        {
-            array_push($bandIds, $band->id);
-        }
-        $bandIds = array_unique($bandIds);
-
-        $charts = Charts::whereIn('band_id', $bandIds)->orderBy('title', 'asc')->get(); //when the charts gets rendered, it will be ordered by title from last to first (proper alphabetical order)
+        $charts = Charts::whereIn('band_id', $bandIds)->orderBy('title', 'asc')->get();
 
         return $charts;
     }
@@ -189,7 +177,7 @@ class User extends Authenticatable
             ->mapWithKeys(fn($r) => [$r->label() => ['read' => false, 'write' => false]])
             ->all();
 
-        foreach ($this->bands() as $band) {
+        foreach ($this->allBands() as $band) {
             setPermissionsTeamId($band->id);
 
             if ($this->hasRole('band-owner')) {
@@ -282,8 +270,25 @@ class User extends Authenticatable
 
     public function getEventsAttribute($afterDate = null, $includeNotes = false, $beforeDate = null, $limit = null)
     {
+        $subBandIds = $this->bandSub->pluck('id')->toArray();
         $bandIds = $this->bands()->pluck('id')->toArray();
-        
+
+        // Subs only see their specifically assigned events
+        if (!empty($subBandIds) && empty($bandIds)) {
+            $assignedEventIds = \DB::table('event_subs')
+                ->where('user_id', $this->id)
+                ->pluck('event_id')
+                ->toArray();
+
+            if (empty($assignedEventIds)) {
+                return collect();
+            }
+
+            $bandIds = $subBandIds;
+        } else {
+            $assignedEventIds = null;
+        }
+
         if (empty($bandIds)) {
             return collect();
         }
@@ -315,19 +320,23 @@ class User extends Authenticatable
             ])
             ->join('event_types', 'events.event_type_id', '=', 'event_types.id');
 
+        if ($assignedEventIds !== null) {
+            $bookingQuery->whereIn('events.id', $assignedEventIds);
+        }
+
         if ($includeNotes) {
             $bookingQuery->addSelect('events.notes');
         }
-        
+
         // Apply date filter if provided
         if ($afterDate) {
             $bookingQuery->where('events.date', '>=', $afterDate->toDateString());
         }
-        
+
         if ($beforeDate) {
             $bookingQuery->where('events.date', '<', $beforeDate->toDateString());
         }
-        
+
         // Build the rehearsal events query
         $rehearsalQuery = Events::join('rehearsals', 'events.eventable_id', '=', 'rehearsals.id')
             ->join('rehearsal_schedules', 'rehearsals.rehearsal_schedule_id', '=', 'rehearsal_schedules.id')
@@ -373,7 +382,7 @@ class User extends Authenticatable
         
         // Get both result sets and merge them
         $bookingEvents = $bookingQuery->get();
-        $rehearsalEvents = $rehearsalQuery->get();
+        $rehearsalEvents = $assignedEventIds !== null ? collect() : $rehearsalQuery->get();
         
         // Merge and sort by date
         $events = $bookingEvents->merge($rehearsalEvents)->sortBy('date');

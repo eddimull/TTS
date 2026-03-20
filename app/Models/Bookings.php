@@ -357,6 +357,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
 
             ])
             ->whereRaw('COALESCE(payments_sum.total_paid, 0) < bookings.price')
+            ->with('payout')
             ->get();
     }
 
@@ -365,6 +366,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         return $query->select('bookings.*')
             ->selectRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id AND status = "paid") as amount_paid', [Bookings::class])
             ->whereRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id AND status = "paid") >= bookings.price', [Bookings::class])
+            ->with('payout')
             ->get();
     }
 
