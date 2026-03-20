@@ -83,7 +83,11 @@ class Payout extends Model
      */
     public function getPayoutAmountForUser(User $user): float
     {
-        $calculationResult = $this->calculation_result;
-        return round(\collect($calculationResult['member_payouts'])->firstWhere('user_id', $user->id)['amount'] ?? 0.0, 2);
+        $payouts = collect($this->calculation_result['member_payouts'] ?? []);
+
+        $match = $payouts->firstWhere('user_id', $user->id)
+            ?? $payouts->first(fn($p) => $p['user_id'] === null && ($p['name'] ?? '') === $user->name);
+
+        return round($match['amount'] ?? 0.0, 2);
     }
 }

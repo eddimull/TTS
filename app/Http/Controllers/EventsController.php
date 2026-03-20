@@ -215,6 +215,18 @@ class EventsController extends Controller
             $userPayout = $event->eventable->payout->getPayoutAmountForUser(Auth::user());
         }
 
+        // Fall back to event_subs payout for sub users
+        if ($userPayout === null) {
+            $subRecord = \DB::table('event_subs')
+                ->where('event_id', $event->id)
+                ->where('user_id', Auth::id())
+                ->first();
+
+            if ($subRecord && $subRecord->payout_amount !== null) {
+                $userPayout = $subRecord->payout_amount;
+            }
+        }
+
         // Format attachment sizes
         if ($event->attachments) {
             $event->attachments->each(function ($attachment) {

@@ -20,9 +20,10 @@ class UserEventsService
         $user = Auth::user();
 
         // Check if user is ONLY a sub (has sub role and no band ownership/membership)
+        // Use cached relationship properties to avoid duplicate queries within the same request
         $isSub = $user->hasRole('sub');
-        $ownedBands = $user->bandOwner()->pluck('bands.id')->toArray();
-        $memberBands = $user->bandMember()->pluck('bands.id')->toArray();
+        $ownedBands = $user->bandOwner->pluck('id')->toArray();
+        $memberBands = $user->bandMember->pluck('id')->toArray();
         $hasBandAccess = !empty($ownedBands) || !empty($memberBands);
 
         // If user is only a sub, show only events they're invited to
@@ -82,10 +83,7 @@ class UserEventsService
             });
         }
         
-        // Get user's band IDs
-        $user = Auth::user();
-        $ownedBands = $user->bandOwner()->pluck('bands.id')->toArray();
-        $memberBands = $user->bandMember()->pluck('bands.id')->toArray();
+        // Reuse band IDs already queried above
         $bandIds = array_merge($ownedBands, $memberBands);
         
         // Generate virtual rehearsal events from schedules
@@ -174,9 +172,9 @@ class UserEventsService
         $user = Auth::user();
         $today = Carbon::today();
 
-        // Get all user's band IDs
-        $ownedBands = $user->bandOwner()->pluck('bands.id')->toArray();
-        $memberBands = $user->bandMember()->pluck('bands.id')->toArray();
+        // Get all user's band IDs (use cached relationship properties to avoid duplicate queries)
+        $ownedBands = $user->bandOwner->pluck('id')->toArray();
+        $memberBands = $user->bandMember->pluck('id')->toArray();
         $bandIds = array_merge($ownedBands, $memberBands);
 
         // Check if user is ONLY a sub
@@ -344,7 +342,7 @@ class UserEventsService
             ->get()
             ->groupBy('event_id');
 
-        // Add attachments to events
+        // Add attachments to events and flatten venue fields from eventable
         $events = $events->map(function($event) use ($attachmentsData) {
             $eventId = $event->id;
 
@@ -372,6 +370,17 @@ class UserEventsService
                 })->toArray();
 
                 $event->attachments = $attachments;
+            }
+
+            // Flatten venue fields so the dashboard card (event.venue_name) works like regular events
+            // Also suppress payment appends on Bookings — not needed on the dashboard and cause N+1 queries
+            if ($event->eventable) {
+                if ($event->eventable_type === 'App\\Models\\Bookings') {
+                    $event->eventable->makeHidden(['amount_paid', 'amount_due', 'is_paid']);
+                }
+                $event->venue_name = $event->eventable->venue_name ?? null;
+                $event->venue_address = $event->eventable->venue_address ?? null;
+                $event->band_id = $event->eventable->band_id ?? null;
             }
 
             return $event;

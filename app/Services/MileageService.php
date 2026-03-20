@@ -7,7 +7,9 @@ use App\Models\Bookings;
 use Illuminate\Support\Facades\Auth;
 use App\Models\EventDistanceForMembers;
 
-class MileageService{
+class MileageService
+{
+    protected array $stateCache = [];
     public function handle($events, ?Bands $band = null)
     {
         $user = Auth::user();
@@ -88,7 +90,10 @@ class MileageService{
     protected function resolveOrigin($user, ?Bands $band): ?string
     {
         if ($user->Address1 && $user->City && $user->StateID && $user->Zip) {
-            $state = State::where('state_id', $user->StateID)->first();
+            if (!isset($this->stateCache[$user->StateID])) {
+                $this->stateCache[$user->StateID] = State::where('state_id', $user->StateID)->first();
+            }
+            $state = $this->stateCache[$user->StateID];
             if ($state) {
                 return $user->Address1 . ' ' . $user->City . ' ' . $state->state_name . ' ' . $user->Zip;
             }

@@ -23,7 +23,7 @@ class userInBand
         // Assuming you have route model binding for 'band'
         $band = $request->route('band');
 
-        if (!$user || !$band || (!$user->isPartOfBand($band->id) && !$user->ownsBand($band->id))) {
+        if (!$user || !$band || !$user->allBands()->contains('id', $band->id)) {
             return redirect(RouteServiceProvider::HOME)
                 ->withErrors('User is not a part requested band.');
         }
