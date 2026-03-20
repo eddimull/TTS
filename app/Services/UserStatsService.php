@@ -13,10 +13,29 @@ use Illuminate\Support\Carbon;
 class UserStatsService
 {
     protected User $user;
+    protected ?array $cachedPivots = null;
 
     public function __construct(User $user)
     {
         $this->user = $user;
+    }
+
+    /**
+     * Fetch owner/member/sub pivot rows for all user bands in 3 queries, cached for the request.
+     */
+    protected function getBandPivots(array $bandIds): array
+    {
+        if ($this->cachedPivots !== null) {
+            return $this->cachedPivots;
+        }
+
+        $this->cachedPivots = [
+            'owners'  => DB::table('band_owners')->where('user_id', $this->user->id)->whereIn('band_id', $bandIds)->get()->keyBy('band_id'),
+            'members' => DB::table('band_members')->where('user_id', $this->user->id)->whereIn('band_id', $bandIds)->get()->keyBy('band_id'),
+            'subs'    => DB::table('band_subs')->where('user_id', $this->user->id)->whereIn('band_id', $bandIds)->get()->keyBy('band_id'),
+        ];
+
+        return $this->cachedPivots;
     }
 
     /**
@@ -57,12 +76,20 @@ class UserStatsService
         // Pre-calculate user's membership status and join dates for each band to avoid N+1 queries
         $userBandStatus = [];
         $bandJoinDates = [];
+
+        $bandIds = $allBands->pluck('id')->toArray();
+        $pivots = $this->getBandPivots($bandIds);
+
         foreach ($allBands as $band) {
             $userBandStatus[$band->id] = [
                 'is_owner' => $ownedBands->contains('id', $band->id),
                 'is_member' => $memberBands->contains('id', $band->id),
             ];
-            $bandJoinDates[$band->id] = $this->getUserJoinDate($band);
+            $bandJoinDates[$band->id] = $this->getUserJoinDateFromPivots(
+                $pivots['owners']->get($band->id),
+                $pivots['members']->get($band->id),
+                $pivots['subs']->get($band->id),
+            );
         }
 
         foreach ($allBands as $band) {
@@ -74,7 +101,12 @@ class UserStatsService
             $bookings = \App\Models\Bookings::where('band_id', $band->id)
                 ->where('date', '>=', $joinDate)
                 ->whereIn('status', ['confirmed', 'pending']) // Only count confirmed and pending bookings
-                ->with(['payout.adjustments'])
+                ->with([
+                    'payout.adjustments',
+                    'events.eventMembers.bandRole',
+                    'events.eventMembers.rosterMember.bandRole',
+                    'events.eventMembers.rosterMember.user',
+                ])
                 ->orderBy('date', 'desc')
                 ->get();
 
@@ -170,33 +202,40 @@ class UserStatsService
     }
 
     /**
-     * Get all bands the user owns or is a member of
+     * Get all bands the user owns, is a member of, or subs for
      */
     protected function getUserBands()
     {
-        $ownedBands = $this->user->bandOwner()->get();
-        $memberBands = $this->user->bandMember()->get();
-        return $ownedBands->merge($memberBands)->unique('id');
+        return $this->user->allBands()->unique('id');
     }
 
     /**
-     * Get the user's join date for a specific band
+     * Get event IDs this user is allowed to see for a given band.
+     * Subs only see events they are specifically assigned to.
+     * Owners/members see all band events.
      */
-    protected function getUserJoinDate($band): Carbon
+    protected function getAllowedEventIds(int $bandId): ?array
     {
-        // Check if user is an owner
-        $ownerPivot = DB::table('band_owners')
-            ->where('band_id', $band->id)
-            ->where('user_id', $this->user->id)
-            ->first();
+        $isSub = $this->user->isSubOfBand($bandId)
+            && !$this->user->ownsBand($bandId)
+            && !$this->user->isPartOfBand($bandId);
 
-        // Check if user is a member
-        $memberPivot = DB::table('band_members')
-            ->where('band_id', $band->id)
-            ->where('user_id', $this->user->id)
-            ->first();
+        if (!$isSub) {
+            return null; // null = no restriction
+        }
 
-        // Return the earliest date (owner or member, whichever came first)
+        return DB::table('event_subs')
+            ->where('user_id', $this->user->id)
+            ->where('band_id', $bandId)
+            ->pluck('event_id')
+            ->toArray();
+    }
+
+    /**
+     * Derive the user's join date for a band from pre-fetched pivot rows.
+     */
+    protected function getUserJoinDateFromPivots($ownerPivot, $memberPivot, $subPivot): Carbon
+    {
         $ownerDate = $ownerPivot ? Carbon::parse($ownerPivot->created_at) : null;
         $memberDate = $memberPivot ? Carbon::parse($memberPivot->created_at) : null;
 
@@ -204,7 +243,9 @@ class UserStatsService
             return $ownerDate->lt($memberDate) ? $ownerDate : $memberDate;
         }
 
-        return $ownerDate ?? $memberDate ?? Carbon::now();
+        $subDate = $subPivot ? Carbon::parse($subPivot->created_at) : null;
+
+        return $ownerDate ?? $memberDate ?? $subDate ?? Carbon::now();
     }
 
     /**
@@ -370,8 +411,14 @@ class UserStatsService
         // Cache join dates to avoid N+1 queries
         $validEventIds = [];
         $bandJoinDates = [];
+        $bandIds = $allBands->pluck('id')->toArray();
+        $pivots = $this->getBandPivots($bandIds);
         foreach ($allBands as $band) {
-            $bandJoinDates[$band->id] = $this->getUserJoinDate($band);
+            $bandJoinDates[$band->id] = $this->getUserJoinDateFromPivots(
+                $pivots['owners']->get($band->id),
+                $pivots['members']->get($band->id),
+                $pivots['subs']->get($band->id),
+            );
         }
 
         $mileageService = new MileageService();
@@ -385,7 +432,9 @@ class UserStatsService
 
             // Get full event models with eventables so MileageService can read venue addresses.
             // Also eager-load the user's EventMember record to check attendance.
-            $bandEvents = Events::whereHasMorph('eventable', [\App\Models\Bookings::class, \App\Models\BandEvents::class], function ($query) use ($band) {
+            $allowedEventIds = $this->getAllowedEventIds($band->id);
+
+            $bandEventsQuery = Events::whereHasMorph('eventable', [\App\Models\Bookings::class, \App\Models\BandEvents::class], function ($query) use ($band) {
                 $query->where('band_id', $band->id);
             })
             ->with([
@@ -395,14 +444,19 @@ class UserStatsService
                 },
             ])
             ->where('date', '>=', $joinDate)
-            ->where('date', '<=', Carbon::now()) // Only count past events
-            ->get();
+            ->where('date', '<=', Carbon::now());
 
-            // Exclude events where the user was marked absent or excused.
-            // If the event has no roster (no EventMember record), the user attended.
+            if ($allowedEventIds !== null) {
+                $bandEventsQuery->whereIn('events.id', $allowedEventIds);
+            }
+
+            $bandEvents = $bandEventsQuery->get();
+
+            // Include events where the user has no roster entry (pre-roster legacy events)
+            // or is explicitly confirmed/attended. Exclude only absent/excused.
             $attendedEvents = $bandEvents->filter(function ($event) {
                 $member = $event->eventMembers->first();
-                return $member === null || !$member->isAbsent();
+                return $member === null || in_array($member->attendance_status, ['confirmed', 'attended']);
             });
 
             $validEventIds = array_merge($validEventIds, $attendedEvents->pluck('id')->toArray());
@@ -517,38 +571,62 @@ class UserStatsService
 
         // Cache join dates to avoid N+1 queries
         $bandJoinDates = [];
+        $bandIds = $allBands->pluck('id')->toArray();
+        $pivots = $this->getBandPivots($bandIds);
         foreach ($allBands as $band) {
-            $bandJoinDates[$band->id] = $this->getUserJoinDate($band);
+            $bandJoinDates[$band->id] = $this->getUserJoinDateFromPivots(
+                $pivots['owners']->get($band->id),
+                $pivots['members']->get($band->id),
+                $pivots['subs']->get($band->id),
+            );
         }
 
         $allEvents = collect();
 
         foreach ($allBands as $band) {
             $joinDate = $bandJoinDates[$band->id];
+            $allowedEventIds = $this->getAllowedEventIds($band->id);
+
+            $withClause = [
+                'eventable' => function ($query) {
+                    $query->select('id', 'venue_name', 'venue_address', 'band_id');
+                },
+                'eventMembers' => function ($query) {
+                    $query->where('user_id', $this->user->id);
+                },
+            ];
 
             // Get events from bookings for this band after join date
-            $bookingEvents = Events::whereHasMorph('eventable', [\App\Models\Bookings::class], function ($query) use ($band) {
+            $bookingEventsQuery = Events::whereHasMorph('eventable', [\App\Models\Bookings::class], function ($query) use ($band) {
                 $query->where('band_id', $band->id);
             })
-            ->with(['eventable' => function ($query) {
-                $query->select('id', 'venue_name', 'venue_address', 'band_id');
-            }])
+            ->with($withClause)
             ->where('date', '>=', $joinDate)
-            ->where('date', '<=', Carbon::now())
-            ->get();
+            ->where('date', '<=', Carbon::now());
+
+            if ($allowedEventIds !== null) {
+                $bookingEventsQuery->whereIn('events.id', $allowedEventIds);
+            }
 
             // Get events from legacy band_events for this band after join date
-            $bandEventEvents = Events::whereHasMorph('eventable', [\App\Models\BandEvents::class], function ($query) use ($band) {
+            $bandEventEventsQuery = Events::whereHasMorph('eventable', [\App\Models\BandEvents::class], function ($query) use ($band) {
                 $query->where('band_id', $band->id);
             })
-            ->with(['eventable' => function ($query) {
-                $query->select('id', 'venue_name', 'venue_address', 'band_id');
-            }])
+            ->with($withClause)
             ->where('date', '>=', $joinDate)
-            ->where('date', '<=', Carbon::now())
-            ->get();
+            ->where('date', '<=', Carbon::now());
 
-            $allEvents = $allEvents->concat($bookingEvents)->concat($bandEventEvents);
+            if ($allowedEventIds !== null) {
+                $bandEventEventsQuery->whereIn('events.id', $allowedEventIds);
+            }
+
+            $bandEvents = $bookingEventsQuery->get()->concat($bandEventEventsQuery->get())
+                ->filter(function ($event) {
+                    $member = $event->eventMembers->first();
+                    return $member === null || in_array($member->attendance_status, ['confirmed', 'attended']);
+                });
+
+            $allEvents = $allEvents->concat($bandEvents);
         }
 
         // Sort by date descending and limit to 100 for performance

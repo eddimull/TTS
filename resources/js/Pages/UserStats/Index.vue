@@ -91,7 +91,7 @@
                 <div class="ml-5 w-0 flex-1">
                   <dl>
                     <dt class="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-                      Distance Traveled
+                      Distance Traveled (one way)
                     </dt>
                     <dd class="text-lg font-semibold text-gray-900 dark:text-white">
                       {{ formatNumber(stats.travel.total_miles) }} miles
@@ -316,9 +316,10 @@
           class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-lg"
         >
           <div class="p-6">
-            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-1">
               My Mileage Breakdown
             </h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">One way distance per event</p>
             <div class="space-y-4">
               <div
                 v-for="yearData in stats.travel.by_year"

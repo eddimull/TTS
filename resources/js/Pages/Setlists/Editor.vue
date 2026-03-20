@@ -52,6 +52,24 @@
             v-tooltip.bottom="'Save'"
             @click="saveSetlist"
           />
+          <Button
+            icon="pi pi-print"
+            label="Print"
+            size="small"
+            severity="secondary"
+            outlined
+            class="!hidden sm:!inline-flex print:hidden"
+            @click="printSetlist"
+          />
+          <Button
+            icon="pi pi-print"
+            severity="secondary"
+            outlined
+            class="sm:!hidden print:hidden"
+            rounded
+            v-tooltip.bottom="'Print'"
+            @click="printSetlist"
+          />
           <Link :href="route('setlists.live', event.key)">
             <Button
               icon="pi pi-play"
@@ -73,8 +91,20 @@
     </template>
 
     <Container>
+      <div id="setlist-print-area">
+      <!-- Print-only header -->
+      <div class="hidden print:block mb-3">
+        <h1 class="text-xl font-bold text-gray-900">{{ event.title }} — Setlist</h1>
+        <div class="flex gap-3 text-xs text-gray-500 mt-0.5">
+          <span v-if="event.type">{{ event.type.name }}</span>
+          <span>{{ formatDate(event.date) }}</span>
+          <span v-if="event.time">{{ formatTime(event.time) }}</span>
+          <span v-if="localSetlist">{{ localSetlist.songs.length }} songs<span v-if="totalDuration"> · ~{{ totalDuration }} min</span></span>
+        </div>
+      </div>
+
       <!-- Event summary -->
-      <div class="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4">
+      <div class="bg-white dark:bg-slate-800 rounded-lg shadow p-4 mb-4 print:hidden">
         <div class="flex flex-wrap gap-3 text-sm text-gray-600 dark:text-gray-400">
           <span v-if="event.type"><i class="pi pi-tag mr-1" />{{ event.type.name }}</span>
           <span><i class="pi pi-calendar mr-1" />{{ formatDate(event.date) }}</span>
@@ -117,7 +147,7 @@
       <!-- Setlist editor -->
       <div v-else class="bg-white dark:bg-slate-800 rounded-lg shadow overflow-hidden">
         <!-- Status bar -->
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-700 print:hidden">
           <div class="flex items-center gap-2 flex-wrap min-w-0">
             <Tag
               :value="localSetlist.status === 'ready' ? 'Ready' : 'Draft'"
@@ -253,6 +283,7 @@
           No songs yet. Add songs or generate with AI.
         </div>
       </div>
+      </div><!-- #setlist-print-area -->
     </Container>
 
     <!-- AI generate dialog -->
@@ -302,7 +333,7 @@
           </label>
           <Dropdown
             v-model="entryForm.song_id"
-            :options="songs"
+            :options="songOptions"
             option-label="label"
             option-value="id"
             placeholder="Select a song"
@@ -533,6 +564,10 @@ export default {
       });
     },
 
+    printSetlist() {
+      window.print();
+    },
+
     async clearSetlist() {
       this.saving = true;
       try {
@@ -551,3 +586,64 @@ export default {
   },
 };
 </script>
+
+<style>
+@media print {
+  nav,
+  header,
+  aside {
+    display: none !important;
+  }
+
+  /* Remove the pt-16 layout wrapper padding */
+  .pt-16 {
+    padding-top: 0 !important;
+  }
+
+  /* Hide everything inside app except the print area */
+  body * {
+    visibility: hidden;
+  }
+
+  #setlist-print-area,
+  #setlist-print-area * {
+    visibility: visible;
+  }
+
+  #setlist-print-area {
+    background: white;
+    color: black;
+    font-size: 10pt;
+  }
+
+  /* Remove shadows/rounded corners */
+  #setlist-print-area .rounded-lg,
+  #setlist-print-area .shadow {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* Hide drag handles and action buttons */
+  #setlist-print-area .drag-handle,
+  #setlist-print-area button {
+    display: none !important;
+  }
+
+  /* Force light text colors for print */
+  #setlist-print-area [class*="text-gray"] {
+    color: #333 !important;
+  }
+
+  /* Compact song rows */
+  #setlist-print-area .border-b {
+    page-break-inside: avoid;
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+  }
+
+  /* Tighten up the print header */
+  #setlist-print-area .mb-3 {
+    margin-bottom: 6px !important;
+  }
+}
+</style>
