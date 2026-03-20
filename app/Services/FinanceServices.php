@@ -42,6 +42,9 @@ class FinanceServices
     function getPaidUnpaid($bands, $snapshotDate = null)
     {
         // Pre-load activePayoutConfig for all bands in one query
+        if (!($bands instanceof \Illuminate\Database\Eloquent\Collection)) {
+            $bands = new \Illuminate\Database\Eloquent\Collection($bands);
+        }
         $bands->loadMissing('activePayoutConfig');
 
         foreach ($bands as $band)

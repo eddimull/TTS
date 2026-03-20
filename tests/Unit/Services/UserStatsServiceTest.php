@@ -41,17 +41,22 @@ class UserStatsServiceTest extends TestCase
             'updated_at' => $joinDate,
         ]);
 
+        $ownerPivot = DB::table('band_owners')
+            ->where('user_id', $this->user->id)
+            ->where('band_id', $this->band->id)
+            ->first();
+
         $service = new UserStatsService($this->user);
         $reflection = new \ReflectionClass($service);
-        $method = $reflection->getMethod('getUserJoinDate');
+        $method = $reflection->getMethod('getUserJoinDateFromPivots');
         $method->setAccessible(true);
 
-        $result = $method->invoke($service, $this->band);
+        $result = $method->invoke($service, $ownerPivot, null, null);
 
         $this->assertEquals($joinDate->format('Y-m-d H:i:s'), $result->format('Y-m-d H:i:s'));
     }
 
-    
+
     public function test_it_calculates_user_join_date_from_band_member_pivot()
     {
         $joinDate = Carbon::now()->subMonths(3);
@@ -63,17 +68,22 @@ class UserStatsServiceTest extends TestCase
             'updated_at' => $joinDate,
         ]);
 
+        $memberPivot = DB::table('band_members')
+            ->where('user_id', $this->user->id)
+            ->where('band_id', $this->band->id)
+            ->first();
+
         $service = new UserStatsService($this->user);
         $reflection = new \ReflectionClass($service);
-        $method = $reflection->getMethod('getUserJoinDate');
+        $method = $reflection->getMethod('getUserJoinDateFromPivots');
         $method->setAccessible(true);
 
-        $result = $method->invoke($service, $this->band);
+        $result = $method->invoke($service, null, $memberPivot, null);
 
         $this->assertEquals($joinDate->format('Y-m-d H:i:s'), $result->format('Y-m-d H:i:s'));
     }
 
-    
+
     public function test_it_uses_earliest_join_date_when_user_is_both_owner_and_member()
     {
         $ownerDate = Carbon::now()->subMonths(6);
@@ -93,12 +103,21 @@ class UserStatsServiceTest extends TestCase
             'updated_at' => $memberDate,
         ]);
 
+        $ownerPivot = DB::table('band_owners')
+            ->where('user_id', $this->user->id)
+            ->where('band_id', $this->band->id)
+            ->first();
+        $memberPivot = DB::table('band_members')
+            ->where('user_id', $this->user->id)
+            ->where('band_id', $this->band->id)
+            ->first();
+
         $service = new UserStatsService($this->user);
         $reflection = new \ReflectionClass($service);
-        $method = $reflection->getMethod('getUserJoinDate');
+        $method = $reflection->getMethod('getUserJoinDateFromPivots');
         $method->setAccessible(true);
 
-        $result = $method->invoke($service, $this->band);
+        $result = $method->invoke($service, $ownerPivot, $memberPivot, null);
 
         // Should use owner date (earlier)
         $this->assertEquals($ownerDate->format('Y-m-d H:i:s'), $result->format('Y-m-d H:i:s'));
