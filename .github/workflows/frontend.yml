@@ -98,6 +98,10 @@ jobs:
       - name: Build assets
         env:
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_PUSHER_APP_KEY: ${{ secrets.VITE_PUSHER_APP_KEY }}
+          VITE_PUSHER_HOST: ${{ secrets.VITE_PUSHER_HOST }}
+          VITE_PUSHER_PORT: ${{ secrets.VITE_PUSHER_PORT }}
+          VITE_PUSHER_SCHEME: ${{ secrets.VITE_PUSHER_SCHEME }}
         run: npm run build
 
       - name: Archive production artifacts
