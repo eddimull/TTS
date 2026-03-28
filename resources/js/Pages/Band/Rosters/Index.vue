@@ -30,7 +30,7 @@
             :href="route('bands.roles.page', band.id)"
             class='py-4 px-1 border-b-2 font-medium text-sm transition-colors border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
           >
-            Instruments and Roles
+            Roles
           </a>
         </nav>
       </div>
