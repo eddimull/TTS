@@ -309,6 +309,7 @@ class User extends Authenticatable
                 'events.additional_data',
                 'events.eventable_id',
                 'events.eventable_type',
+                'events.roster_id',
                 'bookings.band_id',
                 'bookings.name as booking_name',
                 'bookings.id as booking_id',

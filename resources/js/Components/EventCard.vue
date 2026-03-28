@@ -70,7 +70,7 @@
       :band-id="event.band_id ?? null"
     />
     <event-body :event="event" />
-    <event-footer :event="event" />
+    <event-footer :event="event" @roster-counts-updated="$emit('roster-counts-updated', $event)" />
   </div>
 </template> 
 <script setup>
@@ -87,7 +87,7 @@ const props = defineProps({
   }
 });
 
-defineEmits(['edit-rehearsal']);
+defineEmits(['edit-rehearsal', 'roster-counts-updated']);
 
 const store = useStore();
 

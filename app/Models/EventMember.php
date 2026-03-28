@@ -15,6 +15,7 @@ class EventMember extends Model
         'band_id',
         'user_id',
         'roster_member_id',
+        'slot_id',
         'name',
         'email',
         'phone',
@@ -59,6 +60,14 @@ class EventMember extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the roster slot this member is assigned to.
+     */
+    public function slot()
+    {
+        return $this->belongsTo(RosterSlot::class, 'slot_id');
     }
 
     /**

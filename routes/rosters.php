@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\RosterController;
 use App\Http\Controllers\RosterMemberController;
+use App\Http\Controllers\RosterSlotController;
 use App\Http\Controllers\EventMemberController;
 use App\Http\Controllers\SubstituteCallListController;
 use App\Http\Controllers\BandRoleController;
@@ -24,6 +25,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/bands/{band}/roles/{role}', [BandRoleController::class, 'update'])->name('bands.roles.update');
     Route::delete('/bands/{band}/roles/{role}', [BandRoleController::class, 'destroy'])->name('bands.roles.destroy');
     Route::post('/bands/{band}/roles/reorder', [BandRoleController::class, 'reorder'])->name('bands.roles.reorder');
+
+    // Roster slot management
+    Route::get('/rosters/{roster}/slots', [RosterSlotController::class, 'index'])->name('rosters.slots.index');
+    Route::post('/rosters/{roster}/slots', [RosterSlotController::class, 'store'])->name('rosters.slots.store');
+    Route::patch('/roster-slots/{rosterSlot}', [RosterSlotController::class, 'update'])->name('rosters.slots.update');
+    Route::delete('/roster-slots/{rosterSlot}', [RosterSlotController::class, 'destroy'])->name('rosters.slots.destroy');
 
     // Roster member management
     Route::post('/rosters/{roster}/members', [RosterMemberController::class, 'store'])->name('rosters.members.store');
