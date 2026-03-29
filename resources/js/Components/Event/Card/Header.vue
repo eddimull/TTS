@@ -135,6 +135,11 @@ export default {
                         command: () => this.$inertia.get(route('Booking Contract', { band: b, booking: bk })),
                     },
                     {
+                        label: 'Lineup',
+                        icon: 'pi pi-users',
+                        command: () => this.$inertia.get(route('Booking Lineup', { band: b, booking: bk })),
+                    },
+                    {
                         label: 'Payout',
                         icon: 'pi pi-wallet',
                         command: () => this.$inertia.get(route('Booking Payout', { band: b, booking: bk })),

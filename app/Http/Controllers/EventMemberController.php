@@ -16,18 +16,21 @@ class EventMemberController extends Controller
     public function index(Events $event)
     {
         $members = $event->eventMembers()
-            ->with(['rosterMember.bandRole', 'bandRole', 'user'])
+            ->with(['rosterMember.bandRole', 'bandRole', 'user', 'slot.bandRole'])
             ->get();
 
         $formattedMembers = $members->map(function ($member) {
             return [
                 'id' => $member->id,
                 'roster_member_id' => $member->roster_member_id,
+                'slot_id' => $member->slot_id,
+                'slot_name' => $member->slot?->name,
+                'slot_role_name' => $member->slot?->bandRole?->name,
                 'user_id' => $member->user_id,
-                'display_name' => $member->display_name, // Uses model accessor
-                'role' => $member->role_name, // Uses accessor that resolves BandRole
-                'band_role_id' => $member->band_role_id, // Include for dropdown selection
-                'email' => $member->display_email, // Uses model accessor
+                'display_name' => $member->display_name,
+                'role' => $member->role_name,
+                'band_role_id' => $member->band_role_id,
+                'email' => $member->display_email,
                 'attendance_status' => $member->attendance_status,
             ];
         });
@@ -44,8 +47,9 @@ class EventMemberController extends Controller
     {
         $validated = $request->validate([
             'roster_member_id' => 'nullable|exists:roster_members,id',
+            'slot_id' => 'nullable|exists:roster_slots,id',
             'user_id' => 'nullable|exists:users,id',
-            'name' => 'required_without:roster_member_id,user_id|string|max:255',
+            'name' => 'required_without:roster_member_id|string|max:255',
             'role' => 'nullable|string|max:100',
             'band_role_id' => 'nullable|exists:band_roles,id',
             'email' => 'nullable|email|max:255',
@@ -107,10 +111,10 @@ class EventMemberController extends Controller
             }
         }
 
-        $eventMember = EventMember::create([
-            'event_id' => $event->id,
+        $data = [
             'band_id' => $bandId,
             'roster_member_id' => $validated['roster_member_id'] ?? null,
+            'slot_id' => $validated['slot_id'] ?? null,
             'user_id' => $userId,
             'name' => $validated['name'] ?? null,
             'email' => $validated['email'] ?? null,
@@ -118,7 +122,35 @@ class EventMemberController extends Controller
             'role' => $validated['role'] ?? null,
             'band_role_id' => $validated['band_role_id'] ?? null,
             'attendance_status' => $validated['attendance_status'] ?? 'confirmed',
-        ]);
+        ];
+        
+        // If a soft-deleted record exists for this user/roster-member on this event, restore it
+        $existing = EventMember::withTrashed()
+            ->where('event_id', $event->id)
+            ->when($userId, fn($q) => $q->where('user_id', $userId))
+            ->when(!$userId && isset($validated['roster_member_id']), fn($q) => $q->where('roster_member_id', $validated['roster_member_id']))
+            ->whereNotNull('deleted_at')
+            ->first();
+
+        // If no roster_member_id supplied but we have a user, look it up from the event's roster
+        if (empty($data['roster_member_id']) && $userId && $event->roster_id) {
+            $rosterMember = \App\Models\RosterMember::where('roster_id', $event->roster_id)
+                ->where('user_id', $userId)
+                ->first();
+            if ($rosterMember) {
+                $data['roster_member_id'] = $rosterMember->id;
+                $data['slot_id'] = $data['slot_id'] ?? $rosterMember->slot_id;
+                $data['band_role_id'] = $data['band_role_id'] ?: $rosterMember->band_role_id;
+            }
+        }
+
+        if ($existing) {
+            $existing->restore();
+            $existing->update($data);
+            $eventMember = $existing;
+        } else {
+            $eventMember = EventMember::create(['event_id' => $event->id] + $data);
+        }
 
         return response()->json([
             'message' => 'Member added to event successfully',
@@ -134,6 +166,7 @@ class EventMemberController extends Controller
     {
         $validated = $request->validate([
             'attendance_status' => 'sometimes|in:confirmed,attended,absent,excused',
+            'slot_id' => 'sometimes|nullable|exists:roster_slots,id',
             'payout_amount' => 'nullable|numeric|min:0',
         ]);
 

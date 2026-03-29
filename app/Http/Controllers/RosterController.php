@@ -46,21 +46,40 @@ class RosterController extends Controller
     {
         $this->authorizeViewBand($roster->band);
 
-        $roster->load(['members.user', 'members.bandRole', 'band']);
+        $roster->load([
+            'slots.bandRole',
+            'slots.activeMembers.user',
+            'slots.activeMembers.bandRole',
+            'members.user',
+            'members.bandRole',
+            'members.slot',
+            'band',
+        ]);
 
         return response()->json([
             'roster' => $roster,
+            'slots' => $roster->slots->map(fn($slot) => [
+                'id'             => $slot->id,
+                'name'           => $slot->name,
+                'band_role_id'   => $slot->band_role_id,
+                'band_role_name' => $slot->bandRole?->name,
+                'is_required'    => $slot->is_required,
+                'quantity'       => $slot->quantity,
+                'notes'          => $slot->notes,
+                'member_count'   => $slot->activeMembers->count(),
+            ]),
             'members' => $roster->members->map(fn($member) => [
-                'id' => $member->id,
-                'user_id' => $member->user_id,
-                'name' => $member->display_name,
-                'email' => $member->display_email,
-                'phone' => $member->phone,
-                'role' => $member->role_name,
+                'id'           => $member->id,
+                'user_id'      => $member->user_id,
+                'slot_id'      => $member->slot_id,
+                'name'         => $member->display_name,
+                'email'        => $member->display_email,
+                'phone'        => $member->phone,
+                'role'         => $member->role_name,
                 'band_role_id' => $member->band_role_id,
-                'notes' => $member->notes,
-                'is_active' => $member->is_active,
-                'is_user' => $member->isUser(),
+                'notes'        => $member->notes,
+                'is_active'    => $member->is_active,
+                'is_user'      => $member->isUser(),
             ]),
         ]);
     }

@@ -12,6 +12,7 @@ class RosterMember extends Model
 
     protected $fillable = [
         'roster_id',
+        'slot_id',
         'user_id',
         'name',
         'email',
@@ -26,6 +27,14 @@ class RosterMember extends Model
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    /**
+     * Get the slot this member is assigned to.
+     */
+    public function slot()
+    {
+        return $this->belongsTo(RosterSlot::class, 'slot_id');
+    }
 
     /**
      * Get the roster this member belongs to.

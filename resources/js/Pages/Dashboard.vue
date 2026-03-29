@@ -138,6 +138,7 @@
           <event-card
             :event="event"
             @edit-rehearsal="openRehearsalEditor"
+            @roster-counts-updated="updateRosterCounts"
           />
         </div>
       </div>
@@ -711,6 +712,13 @@
 
     // Store event date for scroll restoration
     const eventDateBeforeEdit = ref(null);
+
+    const updateRosterCounts = ({ eventId, roster_count, sub_count, absent_count, unfilled_required_slots_count }) => {
+      const idx = localEvents.value.findIndex(e => e.id === eventId);
+      if (idx === -1) return;
+      const updated = { ...localEvents.value[idx], roster_count, sub_count, absent_count, unfilled_required_slots_count };
+      localEvents.value.splice(idx, 1, updated);
+    };
 
     const openRehearsalEditor = async (event) => {
       // Store the event date so we can navigate back to it after save
