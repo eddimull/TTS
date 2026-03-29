@@ -20,6 +20,7 @@ class RosterMemberController extends Controller
                 'user_id' => $request->user_id,
             ],
             [
+                'slot_id' => $request->slot_id,
                 'name' => $request->name,
                 'email' => $request->email,
                 'phone' => $request->phone,

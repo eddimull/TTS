@@ -212,6 +212,7 @@ class Events extends Model implements GoogleCalenderable
                 'event_id' => $this->id,
                 'band_id' => $bandId,
                 'roster_member_id' => $rosterMember->id,
+                'slot_id' => $rosterMember->slot_id,
                 'user_id' => $rosterMember->user_id,
                 'band_role_id' => $rosterMember->band_role_id,
                 'attendance_status' => 'confirmed',
