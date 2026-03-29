@@ -65,6 +65,15 @@ Route::prefix('mobile')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/auth/me', [MobileAuthController::class, 'me'])->name('mobile.auth.me');
         Route::delete('/auth/token', [MobileAuthController::class, 'logout'])->name('mobile.auth.logout');
+
+        // Dashboard
+        Route::get('/dashboard', [App\Http\Controllers\Api\Mobile\DashboardController::class, 'index'])->name('mobile.dashboard');
+
+        // Events
+        Route::get('/events/{key}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'show'])->name('mobile.events.show');
+        Route::middleware('mobile.band')->group(function () {
+            Route::get('/bands/{band}/events', [App\Http\Controllers\Api\Mobile\EventsController::class, 'index'])->name('mobile.events.index');
+        });
     });
 });
 
