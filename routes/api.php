@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\EventsController;
 use App\Http\Controllers\ChartsController;
 use App\Http\Controllers\RehearsalController;
 use App\Http\Controllers\ChunkedUploadController;
+use App\Http\Controllers\Api\Mobile\AuthController as MobileAuthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -54,6 +55,18 @@ Route::post('/searchLocations', [LocationController::class, 'searchLocations'])-
 Route::post('/getLocationDetails', [LocationController::class, 'getLocationDetails'])->name('getLocationDetails');
 Route::post('/geocodeAddress', [LocationController::class, 'geocodeAddress'])->name('geocodeAddress');
 Route::get('/contracts/{contract:envelope_id}/history', [ContractsController::class, 'getHistory'])->name('getContractHistory');
+
+// Mobile API routes (Sanctum user token authenticated)
+Route::prefix('mobile')->group(function () {
+    // Public: login
+    Route::post('/auth/token', [MobileAuthController::class, 'token'])->name('mobile.auth.token');
+
+    // Authenticated
+    Route::middleware('auth:sanctum')->group(function () {
+        Route::get('/auth/me', [MobileAuthController::class, 'me'])->name('mobile.auth.me');
+        Route::delete('/auth/token', [MobileAuthController::class, 'logout'])->name('mobile.auth.logout');
+    });
+});
 
 // Band API routes (token-authenticated)
 Route::middleware(['band.api'])->group(function () {
