@@ -48,6 +48,14 @@ class Roster extends Model
     }
 
     /**
+     * Get all slots defined for this roster.
+     */
+    public function slots()
+    {
+        return $this->hasMany(RosterSlot::class)->orderBy('name');
+    }
+
+    /**
      * Get events using this roster.
      */
     public function events()

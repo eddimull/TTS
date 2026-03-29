@@ -58,58 +58,176 @@
         </p>
       </div>
 
-      <!-- Members List -->
-      <div v-else class="space-y-2">
+      <!-- Role-grouped lineup -->
+      <div v-else class="space-y-4">
+
+        <!-- Role group (e.g. "Rhythm Section") -->
         <div
-          v-for="member in eventMembers"
-          :key="member.id"
-          class="flex items-center justify-between p-3 bg-white dark:bg-slate-700 border border-gray-200 dark:border-gray-600 rounded-lg"
+          v-for="group in lineupBySlot.groups"
+          :key="group.roleName || '__none__'"
+          class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
         >
-          <div class="flex-1">
-            <div class="flex items-center gap-2">
-              <h5 class="font-semibold text-gray-900 dark:text-white">
-                {{ member.display_name }}
-              </h5>
-              <PlayerTypeFlag :label="member.roster_member_id ? 'From Roster' : 'Sub'" />
-            </div>
-            <div class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-              <span v-if="member.role">{{ member.role }}</span>
-              <span v-if="member.email" class="ml-2">• {{ member.email }}</span>
-            </div>
+          <!-- Role section header -->
+          <div v-if="group.roleName" class="px-3 py-2 bg-gray-100 dark:bg-slate-700 border-b border-gray-200 dark:border-gray-600">
+            <span class="font-bold text-sm text-gray-700 dark:text-gray-200 uppercase tracking-wide">{{ group.roleName }}</span>
           </div>
 
-          <div class="flex items-center gap-2">
-            <!-- Attendance Status -->
-            <select
-              :value="member.attendance_status"
-              @change="updateAttendance(member.id, $event.target.value)"
-              :class="[
-                'px-2 py-1 text-sm rounded border',
-                member.attendance_status === 'confirmed' ? 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900 dark:text-blue-200' :
-                member.attendance_status === 'attended' ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900 dark:text-green-200' :
-                member.attendance_status === 'absent' ? 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900 dark:text-red-200' :
-                member.attendance_status === 'excused' ? 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900 dark:text-yellow-200' :
-                'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-700 dark:text-gray-200'
-              ]"
+          <!-- Instrument slots within the role -->
+          <div class="divide-y divide-gray-100 dark:divide-gray-700">
+            <div
+              v-for="{ slot, seats } in group.slots"
+              :key="slot.id"
             >
-              <option value="confirmed">Confirmed</option>
-              <option value="attended">Attended</option>
-              <option value="absent">Absent</option>
-              <option value="excused">Excused</option>
-            </select>
+              <!-- Instrument sub-header -->
+              <div class="flex items-center justify-between px-3 py-1.5 bg-gray-50 dark:bg-slate-700/40 border-b border-gray-100 dark:border-gray-700/50">
+                <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ slot.name }}</span>
+                <span
+                  :class="[
+                    'text-xs font-medium px-1.5 py-0.5 rounded',
+                    slot.is_required && seats.filter(s => s && s.attendance_status !== 'absent' && s.attendance_status !== 'excused').length < slot.quantity
+                      ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-200'
+                      : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-200'
+                  ]"
+                >
+                  {{ seats.filter(s => s && s.attendance_status !== 'absent' && s.attendance_status !== 'excused').length }}/{{ slot.quantity }}
+                  <span v-if="!slot.is_required" class="opacity-60 ml-0.5">(opt)</span>
+                </span>
+              </div>
 
-            <!-- Remove Button -->
-            <button
-              @click="removeMember(member.id)"
-              class="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
-              title="Remove from event"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
+              <!-- Seat rows for this instrument -->
+              <div class="divide-y divide-gray-100 dark:divide-gray-700">
+                <div
+                  v-for="(member, seatIndex) in seats"
+                  :key="member ? member.id : `empty-${slot.id}-${seatIndex}`"
+                  class="flex items-center justify-between px-3 py-2.5 pl-6"
+                  :class="member ? 'bg-white dark:bg-slate-800' : 'bg-gray-50/50 dark:bg-slate-800/50'"
+                >
+                  <!-- Filled seat -->
+                  <template v-if="member">
+                    <div class="flex-1">
+                      <div class="flex items-center gap-2">
+                        <span class="font-medium text-gray-900 dark:text-white">{{ member.display_name }}</span>
+                        <PlayerTypeFlag :label="member.roster_member_id ? '' : 'Sub'" />
+                      </div>
+                      <div v-if="member.email" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ member.email }}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <select
+                        :value="member.attendance_status"
+                        @change="updateAttendance(member.id, $event.target.value)"
+                        :class="[
+                          'px-2 py-1 text-sm rounded border',
+                          member.attendance_status === 'confirmed' ? 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900 dark:text-blue-200' :
+                          member.attendance_status === 'attended' ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900 dark:text-green-200' :
+                          member.attendance_status === 'absent' ? 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900 dark:text-red-200' :
+                          member.attendance_status === 'excused' ? 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900 dark:text-yellow-200' :
+                          'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-700 dark:text-gray-200'
+                        ]"
+                      >
+                        <option value="confirmed">Confirmed</option>
+                        <option value="attended">Attended</option>
+                        <option value="absent">Absent</option>
+                        <option value="excused">Excused</option>
+                      </select>
+                      <button
+                        @click="removeMember(member.id)"
+                        class="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                        title="Remove from event"
+                      >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </template>
+
+                  <!-- Empty seat -->
+                  <template v-else>
+                    <span class="text-sm italic text-gray-400 dark:text-gray-500">
+                      {{ slot.is_required ? 'Needs filling' : 'Empty' }}
+                    </span>
+                    <button
+                      @click="openAddMemberModal(slot)"
+                      class="ml-auto px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center gap-1"
+                    >
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                      </svg>
+                      Add Sub
+                    </button>
+                  </template>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+
+        <!-- Unslotted members (no slot_id assigned yet) -->
+        <div
+          v-if="lineupBySlot.unslotted.length > 0"
+          class="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+        >
+          <div class="px-3 py-2 bg-gray-100 dark:bg-slate-700">
+            <span class="font-bold text-sm text-gray-500 dark:text-gray-400 uppercase tracking-wide">Unassigned</span>
+          </div>
+          <div class="divide-y divide-gray-100 dark:divide-gray-700">
+            <div
+              v-for="member in lineupBySlot.unslotted"
+              :key="member.id"
+              class="flex items-center justify-between px-3 py-2.5 bg-white dark:bg-slate-800"
+            >
+              <div class="flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="font-medium text-gray-900 dark:text-white">{{ member.display_name }}</span>
+                  <PlayerTypeFlag :label="member.roster_member_id ? '' : 'Sub'" />
+                </div>
+                <div v-if="member.role" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ member.role }}</div>
+                <div v-if="member.email" class="text-xs text-gray-500 dark:text-gray-400">{{ member.email }}</div>
+              </div>
+              <div class="flex items-center gap-2">
+                <!-- Assign to slot -->
+                <select
+                  :value="member.slot_id || ''"
+                  @change="assignSlot(member.id, $event.target.value || null)"
+                  class="px-2 py-1 text-sm rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-slate-700 text-gray-700 dark:text-gray-200"
+                  title="Assign to instrument"
+                >
+                  <option value="">Assign instrument...</option>
+                  <option v-for="slot in rosterSlots" :key="slot.id" :value="slot.id">
+                    {{ slot.band_role_name ? `${slot.band_role_name} — ` : '' }}{{ slot.name }}
+                  </option>
+                </select>
+                <select
+                  :value="member.attendance_status"
+                  @change="updateAttendance(member.id, $event.target.value)"
+                  :class="[
+                    'px-2 py-1 text-sm rounded border',
+                    member.attendance_status === 'confirmed' ? 'bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900 dark:text-blue-200' :
+                    member.attendance_status === 'attended' ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900 dark:text-green-200' :
+                    member.attendance_status === 'absent' ? 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900 dark:text-red-200' :
+                    member.attendance_status === 'excused' ? 'bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900 dark:text-yellow-200' :
+                    'bg-gray-100 text-gray-800 border-gray-300 dark:bg-gray-700 dark:text-gray-200'
+                  ]"
+                >
+                  <option value="confirmed">Confirmed</option>
+                  <option value="attended">Attended</option>
+                  <option value="absent">Absent</option>
+                  <option value="excused">Excused</option>
+                </select>
+                <button
+                  @click="removeMember(member.id)"
+                  class="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                  title="Remove from event"
+                >
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -119,15 +237,15 @@
         <div
           v-if="showAddMemberModal"
           class="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4"
-          @click.self="showAddMemberModal = false"
+          @click.self="showAddMemberModal = false; targetSlot = null"
         >
           <div class="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-lg w-full p-6">
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-xl font-bold text-gray-900 dark:text-white">
-                Add Substitute / Guest
+                Add Sub<span v-if="targetSlot"> — {{ targetSlot.name }}</span>
               </h3>
               <button
-                @click="showAddMemberModal = false"
+                @click="showAddMemberModal = false; targetSlot = null"
                 class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
               >
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -375,12 +493,14 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue']);
 
 const rosters = ref([]);
+const rosterSlots = ref([]);
 const eventMembers = ref([]);
 const allRosterMembers = ref([]);
 const allBandMembers = ref([]);
 const callLists = ref([]);
 const bandRoles = ref([]);
 const showAddMemberModal = ref(false);
+const targetSlot = ref(null); // slot to pre-assign when adding from an empty seat
 const activeTab = ref('subList');
 const newMember = ref({
   roster_member_id: '',
@@ -398,6 +518,44 @@ const availableBandMembers = computed(() => {
     .map(m => m.user_id);
 
   return allBandMembers.value.filter(bm => !currentUserIds.includes(bm.id));
+});
+
+// Role-grouped lineup: slots are grouped by their band role (e.g. "Rhythm Section"),
+// with each slot showing individual instrument rows. Members with a slot_id are pinned
+// to their exact slot. Members without a slot_id (unassigned) fall into "Other".
+const lineupBySlot = computed(() => {
+  const assignedMemberIds = new Set();
+
+  const roleGroups = {};
+  const roleOrder = [];
+
+  rosterSlots.value.forEach(slot => {
+    const groupKey = slot.band_role_name || '__none__';
+    if (!roleGroups[groupKey]) {
+      roleGroups[groupKey] = { roleName: slot.band_role_name || null, slots: [] };
+      roleOrder.push(groupKey);
+    }
+
+    // Members explicitly assigned to this slot
+    const pinned = eventMembers.value.filter(m => m.slot_id === slot.id);
+    pinned.forEach(m => assignedMemberIds.add(m.id));
+
+    const seats = [];
+    for (let i = 0; i < slot.quantity; i++) {
+      seats.push(pinned[i] || null);
+    }
+    // Overfill beyond quantity
+    pinned.slice(slot.quantity).forEach(m => seats.push(m));
+
+    roleGroups[groupKey].slots.push({ slot, seats });
+  });
+
+  const groups = roleOrder.map(key => roleGroups[key]);
+
+  // Members with no slot_id assigned go to "Other"
+  const unslotted = eventMembers.value.filter(m => !assignedMemberIds.has(m.id));
+
+  return { groups, unslotted };
 });
 
 const callListsByInstrument = computed(() => {
@@ -433,7 +591,7 @@ onMounted(() => {
   loadBandMembers();
   loadBandRoles();
   if (props.modelValue.roster_id) {
-    loadRosterMembers(props.modelValue.roster_id);
+    loadRosterData(props.modelValue.roster_id);
   }
 });
 
@@ -487,12 +645,13 @@ const loadEventMembers = async () => {
   }
 };
 
-const loadRosterMembers = async (rosterId) => {
+const loadRosterData = async (rosterId) => {
   try {
     const response = await axios.get(`/rosters/${rosterId}`);
     allRosterMembers.value = response.data.members || [];
+    rosterSlots.value = response.data.slots || [];
   } catch (error) {
-    console.error('Failed to load roster members:', error);
+    console.error('Failed to load roster data:', error);
   }
 };
 
@@ -537,7 +696,9 @@ const handleRosterChange = async (event) => {
   emit('update:modelValue', updatedEvent);
 
   if (rosterId) {
-    loadRosterMembers(rosterId);
+    loadRosterData(rosterId);
+  } else {
+    rosterSlots.value = [];
   }
 
   // Immediately save the roster change to backend and sync members
@@ -556,8 +717,8 @@ const handleRosterChange = async (event) => {
   }
 };
 
-const openAddMemberModal = () => {
-  // Set initial tab based on whether there are call lists
+const openAddMemberModal = (slot = null) => {
+  targetSlot.value = slot;
   if (Object.keys(callListsByInstrument.value).length > 0) {
     activeTab.value = 'subList';
   } else {
@@ -591,6 +752,7 @@ const addMember = async () => {
       roster_member_id: newMember.value.roster_member_id || null,
       user_id: newMember.value.user_id || null,
       name: newMember.value.name,
+      slot_id: targetSlot.value?.id || null,
       band_role_id: newMember.value.band_role_id || null,
       email: newMember.value.email,
       phone: newMember.value.phone,
@@ -606,6 +768,7 @@ const addMember = async () => {
     showAddMemberModal.value = false;
 
     // Reset form
+    targetSlot.value = null;
     newMember.value = {
       roster_member_id: '',
       user_id: '',
@@ -633,6 +796,18 @@ const updateAttendance = async (memberId, status) => {
   }
 };
 
+const assignSlot = async (memberId, slotId) => {
+  try {
+    await axios.patch(`/event-members/${memberId}`, {
+      slot_id: slotId || null,
+    });
+    await loadEventMembers();
+  } catch (error) {
+    console.error('Failed to assign slot:', error);
+    alert('Failed to assign instrument slot');
+  }
+};
+
 const removeMember = async (memberId) => {
   if (!confirm('Remove this member from the event?')) return;
 
@@ -651,6 +826,7 @@ const addFromCallList = async (callListEntry) => {
   try {
     const payload = {
       attendance_status: 'confirmed',
+      slot_id: targetSlot.value?.id || null,
     };
 
     // Add either roster member or custom player fields
@@ -672,6 +848,8 @@ const addFromCallList = async (callListEntry) => {
     }
 
     await loadEventMembers();
+    showAddMemberModal.value = false;
+    targetSlot.value = null;
   } catch (error) {
     console.error('Failed to add member from call list:', error);
     alert('Failed to add substitute to event');

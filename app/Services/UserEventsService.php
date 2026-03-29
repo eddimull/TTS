@@ -148,17 +148,36 @@ class UserEventsService
                 ->get()
                 ->keyBy('event_id');
 
-            $events = $events->map(function ($event) use ($rosterCounts) {
+            // Count required slots that are underfilled for each event's roster
+            $unfilledSlotCounts = DB::table('events')
+                ->join('roster_slots', 'roster_slots.roster_id', '=', 'events.roster_id')
+                ->whereIn('events.id', $eventIds)
+                ->whereNotNull('events.roster_id')
+                ->where('roster_slots.is_required', true)
+                ->select(
+                    'events.id as event_id',
+                    'roster_slots.id as slot_id',
+                    'roster_slots.quantity',
+                    DB::raw('(SELECT COUNT(*) FROM event_members em WHERE em.slot_id = roster_slots.id AND em.event_id = events.id AND em.deleted_at IS NULL AND em.attendance_status NOT IN (\'absent\', \'excused\')) as filled_count')
+                )
+                ->get()
+                ->groupBy('event_id')
+                ->map(fn($slots) => $slots->filter(fn($s) => $s->filled_count < $s->quantity)->count());
+
+            $events = $events->map(function ($event) use ($rosterCounts, $unfilledSlotCounts) {
                 $id = is_array($event) ? ($event['id'] ?? null) : ($event->id ?? null);
                 $counts = $id ? $rosterCounts->get($id) : null;
+                $unfilled = $id ? ($unfilledSlotCounts->get($id) ?? 0) : 0;
                 if (is_array($event)) {
                     $event['roster_count'] = $counts ? (int) $counts->roster_count : 0;
                     $event['sub_count'] = $counts ? (int) $counts->sub_count : 0;
                     $event['absent_count'] = $counts ? (int) $counts->absent_count : 0;
+                    $event['unfilled_required_slots_count'] = (int) $unfilled;
                 } else {
                     $event->roster_count = $counts ? (int) $counts->roster_count : 0;
                     $event->sub_count = $counts ? (int) $counts->sub_count : 0;
                     $event->absent_count = $counts ? (int) $counts->absent_count : 0;
+                    $event->unfilled_required_slots_count = (int) $unfilled;
                 }
                 return $event;
             });
