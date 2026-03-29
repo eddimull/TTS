@@ -4,10 +4,10 @@
     <div class="flex justify-between items-center">
       <div>
         <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-50">
-          Band Roles / Instruments
+          Band Roles
         </h2>
         <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Manage consistent role names used across rosters, events, and call lists
+          What roles do your members play/do? "Rhythm", "Horns", "Vocals", "Strings"
         </p>
       </div>
       <button

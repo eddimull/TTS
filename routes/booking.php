@@ -98,6 +98,10 @@ Route::middleware(['auth', 'verified'])->group(function ()
         ->name('Delete Booking Event')
         ->middleware('booking.access');
 
+    Route::get('bands/{band}/booking/{booking}/lineup', [BookingsController::class, 'lineup'])
+        ->name('Booking Lineup')
+        ->middleware('booking.access');
+
     Route::get('bands/{band}/booking/{booking}/payout', [BookingsController::class, 'payout'])
         ->name('Booking Payout')
         ->middleware('booking.access');

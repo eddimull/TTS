@@ -33,6 +33,7 @@ class UpdateRosterMemberRequest extends FormRequest
             'phone' => ['nullable', 'string', 'max:50'],
             'role' => ['nullable', 'string', 'max:100'],
             'band_role_id' => ['nullable', 'exists:band_roles,id'],
+            'slot_id' => ['nullable', 'exists:roster_slots,id'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['boolean'],
         ];

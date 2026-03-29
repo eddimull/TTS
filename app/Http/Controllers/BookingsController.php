@@ -435,6 +435,22 @@ class BookingsController extends Controller
         ]);
     }
 
+    public function lineup(Bands $band, Bookings $booking)
+    {
+        $booking->load(['events.roster', 'events.eventMembers.bandRole', 'events.eventMembers.rosterMember', 'events.eventMembers.user']);
+
+        $events = $booking->events->map(function ($event) {
+            $this->appendLastUpdatedBy($event);
+            return $event;
+        });
+
+        return Inertia::render('Bookings/Lineup', [
+            'booking' => $booking,
+            'band' => $band,
+            'events' => $events,
+        ]);
+    }
+
     public function media(Bands $band, Bookings $booking, MediaLibraryService $mediaLibraryService)
     {
         $booking->load(['events']);
