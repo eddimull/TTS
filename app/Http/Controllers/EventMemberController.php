@@ -49,7 +49,7 @@ class EventMemberController extends Controller
             'roster_member_id' => 'nullable|exists:roster_members,id',
             'slot_id' => 'nullable|exists:roster_slots,id',
             'user_id' => 'nullable|exists:users,id',
-            'name' => 'required_without:roster_member_id,user_id|string|max:255',
+            'name' => 'required_without:roster_member_id|string|max:255',
             'role' => 'nullable|string|max:100',
             'band_role_id' => 'nullable|exists:band_roles,id',
             'email' => 'nullable|email|max:255',
@@ -123,7 +123,7 @@ class EventMemberController extends Controller
             'band_role_id' => $validated['band_role_id'] ?? null,
             'attendance_status' => $validated['attendance_status'] ?? 'confirmed',
         ];
-
+        
         // If a soft-deleted record exists for this user/roster-member on this event, restore it
         $existing = EventMember::withTrashed()
             ->where('event_id', $event->id)
