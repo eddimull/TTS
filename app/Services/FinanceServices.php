@@ -2,8 +2,6 @@
 
 namespace App\Services;
 
-use Error;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class FinanceServices
@@ -89,6 +87,21 @@ class FinanceServices
         // Net amount is what the band keeps (the band cut)
         $booking->net_amount = $bandCut;
         $booking->band_cut = $bandCut;
+    }
+
+    /**
+     * Filter a bookings collection by the year of their date field.
+     * Returns the original collection unchanged if $year is null.
+     */
+    function filterByYear($bookings, ?int $year)
+    {
+        if ($year === null) {
+            return $bookings;
+        }
+
+        return $bookings->filter(function ($booking) use ($year) {
+            return $booking->date && $booking->date->year === $year;
+        })->values();
     }
 
     function getBandRevenueByYear($bands)
