@@ -23,13 +23,56 @@ class DashboardController extends Controller
         $events = (new UserEventsService())->getEvents();
         $upcomingCharts = (new UserEventsService())->getUpcomingCharts();
 
+        $collection = $events instanceof \Illuminate\Support\Collection
+            ? $events
+            : collect($events);
+
+        $normalized = $collection->map(function ($e) {
+            $e = is_object($e) && method_exists($e, 'toArray') ? $e->toArray() : (array) $e;
+
+            $source = $e['event_source'] ?? match (true) {
+                str_contains($e['eventable_type'] ?? '', 'Rehearsal') => 'rehearsal',
+                str_contains($e['eventable_type'] ?? '', 'Booking') => 'booking',
+                default => 'band_event',
+            };
+
+            $date = $e['date'] ?? null;
+            if ($date && !is_string($date)) {
+                $date = is_array($date) ? ($date['date'] ?? null) : (string) $date;
+            }
+            // Strip time component if present (e.g. "2026-04-15 00:00:00")
+            if ($date && strlen($date) > 10) {
+                $date = substr($date, 0, 10);
+            }
+
+            $time = $e['time'] ?? null;
+            if ($time && !is_string($time)) {
+                $time = is_array($time) ? ($time['time'] ?? null) : (string) $time;
+            }
+            if ($time && strlen($time) > 5) {
+                $time = substr($time, 0, 5);
+            }
+
+            return [
+                'id'              => $e['id'] ?? null,
+                'key'             => $e['key'] ?? null,
+                'title'           => $e['title'] ?? $e['booking_name'] ?? 'Untitled',
+                'date'            => $date,
+                'time'            => $time,
+                'event_type'      => $e['event_type_name'] ?? null,
+                'event_source'    => $source,
+                'venue_name'      => $e['venue_name'] ?? null,
+                'venue_address'   => $e['venue_address'] ?? null,
+                'status'          => $e['status'] ?? null,
+                'live_session_id' => $e['live_session_id'] ?? null,
+            ];
+        })->values();
+
         return response()->json([
-            'events' => $events instanceof \Illuminate\Support\Collection
-                ? $events->map(fn($e) => is_object($e) && method_exists($e, 'toArray') ? $e->toArray() : (array) $e)->values()
-                : (array) $events,
+            'events'          => $normalized,
             'upcoming_charts' => $upcomingCharts instanceof \Illuminate\Support\Collection
                 ? $upcomingCharts->values()
-                : (array) $upcomingCharts,
+                : collect($upcomingCharts)->values(),
         ]);
     }
 }
