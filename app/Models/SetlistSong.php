@@ -8,6 +8,7 @@ class SetlistSong extends Model
 {
     protected $fillable = [
         'setlist_id',
+        'type',
         'song_id',
         'custom_title',
         'custom_artist',

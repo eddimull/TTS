@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use Carbon\Carbon;
-use App\Models\Bookings;
 use Illuminate\Foundation\Http\FormRequest;
 use App\Services\ImageProcessingService;
 use Illuminate\Validation\Rule;
@@ -26,7 +25,7 @@ class UpdateBookingEventRequest extends FormRequest
     {
         $band = $this->route('band');
 
-        return $this->user()->can('store', [Bookings::class, $band]);
+        return $this->user()->canWrite('events', $band->id);
     }
 
     /**
