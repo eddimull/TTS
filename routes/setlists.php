@@ -11,6 +11,7 @@ Route::middleware(['auth'])->group(function () {
     // Static setlist
     Route::get('/events/{key}/setlist', [SetlistController::class, 'show'])->name('setlists.show');
     Route::post('/events/{key}/setlist/generate', [SetlistController::class, 'generate'])->name('setlists.generate');
+    Route::post('/events/{key}/setlist/refine', [SetlistController::class, 'refine'])->name('setlists.refine');
     Route::put('/events/{key}/setlist', [SetlistController::class, 'update'])->name('setlists.update');
 
     // Live session

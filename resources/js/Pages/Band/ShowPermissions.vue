@@ -164,6 +164,7 @@ export default {
         { name: 'colors' },
         { name: 'charts' },
         { name: 'bookings' },
+        { name: 'songs' },
         { name: 'rehearsals' },
         { name: 'media' },
       ]

@@ -34,6 +34,27 @@
             @click="openGenerateDialog"
           />
           <Button
+            v-if="localSetlist"
+            icon="pi pi-comment"
+            label="Refine"
+            size="small"
+            severity="secondary"
+            outlined
+            class="!hidden sm:!inline-flex"
+            @click="refineDrawerOpen = true"
+          />
+          <Button
+            v-if="localSetlist"
+            icon="pi pi-comment"
+            size="small"
+            severity="secondary"
+            outlined
+            rounded
+            class="sm:!hidden"
+            v-tooltip.bottom="'Refine with AI'"
+            @click="refineDrawerOpen = true"
+          />
+          <Button
             icon="pi pi-check"
             label="Save"
             :loading="saving"
@@ -99,7 +120,7 @@
           <span v-if="event.type">{{ event.type.name }}</span>
           <span>{{ formatDate(event.date) }}</span>
           <span v-if="event.time">{{ formatTime(event.time) }}</span>
-          <span v-if="localSetlist">{{ localSetlist.songs.length }} songs<span v-if="totalDuration"> · ~{{ totalDuration }} min</span></span>
+          <span v-if="localSetlist">{{ songCount }} songs<span v-if="totalDuration"> · ~{{ totalDuration }} min</span></span>
         </div>
       </div>
 
@@ -154,7 +175,7 @@
               :severity="localSetlist.status === 'ready' ? 'success' : 'secondary'"
             />
             <span class="text-sm text-gray-500 dark:text-gray-400">
-              {{ localSetlist.songs.length }} songs
+              {{ songCount }} songs
               <span v-if="totalDuration"> · ~{{ totalDuration }} min</span>
             </span>
             <span v-if="localSetlist.generated_at" class="text-xs text-gray-400 dark:text-gray-500 hidden sm:inline">
@@ -198,6 +219,24 @@
               @click="openAddDialog"
             />
             <Button
+              label="Add Break"
+              icon="pi pi-pause"
+              size="small"
+              severity="warning"
+              outlined
+              class="!hidden sm:!inline-flex"
+              @click="addBreak"
+            />
+            <Button
+              icon="pi pi-pause"
+              size="small"
+              severity="warning"
+              outlined
+              class="sm:!hidden"
+              v-tooltip.bottom="'Add Break'"
+              @click="addBreak"
+            />
+            <Button
               icon="pi pi-refresh"
               size="small"
               severity="danger"
@@ -217,12 +256,43 @@
           @end="onDragEnd"
         >
           <template #item="{ element, index }">
+            <div>
+            <!-- Break row -->
             <div
+              v-if="element.type === 'break'"
+              class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 border-b border-gray-100 dark:border-gray-700 bg-amber-50 dark:bg-amber-900/20"
+            >
+              <span class="w-5 sm:w-6 flex-shrink-0" />
+              <span
+                v-if="canWrite"
+                class="drag-handle cursor-move text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 flex-shrink-0"
+              >
+                <i class="pi pi-bars" />
+              </span>
+              <div class="flex-1 flex items-center gap-2 text-amber-600 dark:text-amber-400 text-sm font-medium">
+                <i class="pi pi-pause" />
+                <span>— SET BREAK —</span>
+              </div>
+              <div v-if="canWrite" class="flex-shrink-0">
+                <Button
+                  icon="pi pi-trash"
+                  text
+                  rounded
+                  size="small"
+                  severity="danger"
+                  @click="removeEntry(index)"
+                />
+              </div>
+            </div>
+
+            <!-- Song row -->
+            <div
+              v-else
               class="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
             >
-              <!-- Position -->
+              <!-- Position (count only songs, not breaks) -->
               <span class="w-5 sm:w-6 text-center text-sm text-gray-400 dark:text-gray-500 flex-shrink-0">
-                {{ index + 1 }}
+                {{ songPosition(index) }}
               </span>
 
               <!-- Drag handle -->
@@ -273,6 +343,7 @@
                 />
               </div>
             </div>
+            </div>
           </template>
         </draggable>
 
@@ -318,6 +389,92 @@
     </Dialog>
 
     <ConfirmDialog />
+
+    <!-- Refine with AI drawer -->
+    <Sidebar
+      v-model:visible="refineDrawerOpen"
+      position="right"
+      :modal="false"
+      :show-close-icon="true"
+      :style="{ width: 'min(420px, 100vw)' }"
+      header="Refine Setlist"
+      class="print:hidden"
+    >
+      <div class="flex flex-col h-full gap-3">
+        <!-- Chat log -->
+        <div ref="chatLog" class="flex-1 overflow-y-auto flex flex-col gap-3 pr-1">
+          <div
+            v-if="chatHistory.length === 0"
+            class="text-sm text-gray-400 dark:text-gray-500 text-center mt-6"
+          >
+            Describe what you'd like to change.<br />
+            <span class="text-xs">e.g. "Swap Into the Mystic for something more upbeat" or "Move the break to after song 8"</span>
+          </div>
+
+          <template v-for="(turn, i) in chatHistory" :key="i">
+            <!-- User message -->
+            <div v-if="turn.role === 'user'" class="flex justify-end">
+              <div class="bg-blue-600 text-white text-sm rounded-2xl rounded-tr-sm px-3 py-2 max-w-[85%]">
+                {{ turn.content }}
+              </div>
+            </div>
+
+            <!-- AI summary + proposal -->
+            <div v-else class="flex flex-col gap-2">
+              <div class="bg-gray-100 dark:bg-slate-700 text-sm rounded-2xl rounded-tl-sm px-3 py-2 max-w-[85%] text-gray-800 dark:text-gray-200">
+                {{ turn.content }}
+              </div>
+              <!-- Accept / dismiss for the most recent proposal only -->
+              <div
+                v-if="i === chatHistory.length - 1 && pendingSetlist"
+                class="flex gap-2 ml-1"
+              >
+                <Button
+                  label="Apply"
+                  icon="pi pi-check"
+                  size="small"
+                  severity="success"
+                  @click="applyProposal"
+                />
+                <Button
+                  label="Dismiss"
+                  icon="pi pi-times"
+                  size="small"
+                  severity="secondary"
+                  outlined
+                  @click="dismissProposal"
+                />
+              </div>
+            </div>
+          </template>
+
+          <!-- Typing indicator -->
+          <div v-if="refining" class="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500">
+            <i class="pi pi-spin pi-spinner" />
+            AI is refining…
+          </div>
+        </div>
+
+        <!-- Input -->
+        <div class="flex gap-2 pt-2 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <Textarea
+            v-model="refineMessage"
+            class="flex-1"
+            rows="2"
+            auto-resize
+            placeholder="What would you like to change?"
+            :disabled="refining"
+            @keydown.enter.exact.prevent="sendRefine"
+          />
+          <Button
+            icon="pi pi-send"
+            :loading="refining"
+            :disabled="!refineMessage.trim()"
+            @click="sendRefine"
+          />
+        </div>
+      </div>
+    </Sidebar>
 
     <!-- Add / Edit song dialog -->
     <Dialog
@@ -374,9 +531,10 @@
 import { Link, router } from '@inertiajs/vue3';
 import draggable from 'vuedraggable';
 import { DateTime } from 'luxon';
+import Sidebar from 'primevue/sidebar';
 
 export default {
-  components: { Link, draggable },
+  components: { Link, draggable, Sidebar },
 
   props: {
     event: { type: Object, required: true },
@@ -395,6 +553,13 @@ export default {
       entryDialogVisible: false,
       editingIndex: null,
       entryForm: this.emptyEntryForm(),
+      // Refine drawer
+      refineDrawerOpen: false,
+      refining: false,
+      refineMessage: '',
+      chatHistory: [],       // [{role:'user'|'assistant', content:string}]
+      pendingSetlist: null,  // proposed setlist from AI, awaiting accept/dismiss
+      previousSetlist: null, // snapshot before proposal, for dismiss
     };
   },
 
@@ -406,17 +571,43 @@ export default {
       }));
     },
 
+    songCount() {
+      return this.localSetlist?.songs?.filter(s => s.type !== 'break').length ?? 0;
+    },
+
     totalDuration() {
-      // Rough estimate: avg 3.5 min/song
-      const count = this.localSetlist?.songs?.length ?? 0;
-      if (!count) return null;
-      return Math.round(count * 3.5);
+      // Rough estimate: avg 3.5 min/song (excludes break rows)
+      if (!this.songCount) return null;
+      return Math.round(this.songCount * 3.5);
     },
   },
 
   methods: {
     emptyEntryForm() {
-      return { song_id: null, custom_title: '', custom_artist: '', notes: '' };
+      return { type: 'song', song_id: null, custom_title: '', custom_artist: '', notes: '' };
+    },
+
+    // Returns the 1-based song number (ignoring break rows) for display
+    songPosition(index) {
+      let count = 0;
+      for (let i = 0; i <= index; i++) {
+        if (this.localSetlist.songs[i].type !== 'break') count++;
+      }
+      return count;
+    },
+
+    addBreak() {
+      if (!this.localSetlist) {
+        this.localSetlist = { id: null, status: 'draft', generated_at: null, songs: [] };
+      }
+      this.localSetlist.songs.push({
+        id: Date.now(),
+        type: 'break',
+        song_id: null,
+        title: null,
+        artist: null,
+        notes: null,
+      });
     },
 
     formatDate(d) {
@@ -466,6 +657,7 @@ export default {
       try {
         const { data } = await axios.put(route('setlists.update', this.event.key), {
           songs: this.localSetlist.songs.map(s => ({
+            type: s.type ?? 'song',
             song_id: s.song_id ?? null,
             custom_title: s.custom_title ?? null,
             custom_artist: s.custom_artist ?? null,
@@ -523,6 +715,7 @@ export default {
       const song = this.songs.find(s => s.id === this.entryForm.song_id);
       const entry = {
         id: Date.now(), // temp client-side id for draggable key
+        type: 'song',
         song_id: this.entryForm.song_id ?? null,
         custom_title: this.entryForm.custom_title || null,
         custom_artist: this.entryForm.custom_artist || null,
@@ -546,6 +739,64 @@ export default {
       }
 
       this.entryDialogVisible = false;
+    },
+
+    async sendRefine() {
+      const msg = this.refineMessage.trim();
+      if (!msg || this.refining) return;
+
+      // If there's a pending proposal not yet accepted, dismiss it first
+      if (this.pendingSetlist) {
+        this.dismissProposal();
+      }
+
+      this.chatHistory.push({ role: 'user', content: msg });
+      this.refineMessage = '';
+      this.refining = true;
+      this.$nextTick(() => this.scrollChatToBottom());
+
+      try {
+        // Build history excluding the message we just pushed (it goes as `message`)
+        const history = this.chatHistory.slice(0, -1);
+
+        const { data } = await axios.post(route('setlists.refine', this.event.key), {
+          message: msg,
+          history,
+        });
+
+        this.chatHistory.push({ role: 'assistant', content: data.summary });
+        this.previousSetlist = JSON.parse(JSON.stringify(this.localSetlist));
+        this.pendingSetlist  = data.setlist;
+
+        // Preview the proposal in the main setlist immediately
+        this.localSetlist = data.setlist;
+      } catch (err) {
+        this.chatHistory.push({
+          role: 'assistant',
+          content: err.response?.data?.error ?? 'Something went wrong. Please try again.',
+        });
+      } finally {
+        this.refining = false;
+        this.$nextTick(() => this.scrollChatToBottom());
+      }
+    },
+
+    applyProposal() {
+      this.pendingSetlist  = null;
+      this.previousSetlist = null;
+    },
+
+    dismissProposal() {
+      if (this.previousSetlist) {
+        this.localSetlist = this.previousSetlist;
+      }
+      this.pendingSetlist  = null;
+      this.previousSetlist = null;
+    },
+
+    scrollChatToBottom() {
+      const el = this.$refs.chatLog;
+      if (el) el.scrollTop = el.scrollHeight;
     },
 
     removeEntry(index) {
