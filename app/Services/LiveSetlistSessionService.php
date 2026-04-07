@@ -35,6 +35,7 @@ class LiveSetlistSessionService
             foreach ($setlist->songs as $entry) {
                 LiveSetlistQueue::create([
                     'session_id' => $session->id,
+                    'type' => $entry->type ?? 'song',
                     'song_id' => $entry->song_id,
                     'custom_title' => $entry->custom_title,
                     'custom_artist' => $entry->custom_artist,
@@ -149,7 +150,24 @@ class LiveSetlistSessionService
                 $this->log($session, $current, $user, 'next');
             }
 
-            // Find next pending song (skip break entries)
+            // Check if the next pending item is a break — if so, trigger break mode
+            $nextItem = $session->pendingQueue()
+                ->where('position', '>', $session->current_position)
+                ->first();
+
+            if ($nextItem && $nextItem->type === 'break') {
+                $nextItem->update(['status' => 'played', 'played_at' => now()]);
+                $session->update([
+                    'status' => 'break',
+                    'break_started_at' => now(),
+                    'current_position' => $nextItem->position,
+                ]);
+                $this->log($session, $nextItem, $user, 'session_break_start');
+                broadcast(new SetlistSessionStateChanged($session));
+                return;
+            }
+
+            // Find next pending song (skip any remaining break entries)
             $next = $session->pendingQueue()
                 ->where('type', 'song')
                 ->where('position', '>', $session->current_position)
