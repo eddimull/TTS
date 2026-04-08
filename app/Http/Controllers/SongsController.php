@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Bands;
 use App\Models\Song;
+use App\Services\GetSongBpmService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -74,6 +75,8 @@ class SongsController extends Controller
             'song_key' => 'nullable|string|max:20',
             'genre' => 'nullable|string|max:100',
             'bpm' => 'nullable|integer|min:1|max:999',
+            'rating' => 'nullable|integer|min:1|max:10',
+            'energy' => 'nullable|integer|min:1|max:10',
             'notes' => 'nullable|string',
             'lead_singer_id' => 'nullable|integer|exists:roster_members,id',
             'transition_song_id' => 'nullable|integer|exists:songs,id',
@@ -104,6 +107,8 @@ class SongsController extends Controller
             'song_key' => 'nullable|string|max:20',
             'genre' => 'nullable|string|max:100',
             'bpm' => 'nullable|integer|min:1|max:999',
+            'rating' => 'nullable|integer|min:1|max:10',
+            'energy' => 'nullable|integer|min:1|max:10',
             'notes' => 'nullable|string',
             'lead_singer_id' => 'nullable|integer|exists:roster_members,id',
             'transition_song_id' => 'nullable|integer|exists:songs,id',
@@ -114,6 +119,21 @@ class SongsController extends Controller
         $song->load(['leadSinger', 'transitionSong:id,title,artist']);
 
         return response()->json($song);
+    }
+
+    public function lookup(Request $request): JsonResponse
+    {
+        $request->validate([
+            'title'  => 'required|string|max:255',
+            'artist' => 'nullable|string|max:255',
+        ]);
+
+        $result = (new GetSongBpmService())->lookup(
+            $request->input('title'),
+            $request->input('artist')
+        );
+
+        return response()->json($result);
     }
 
     public function destroy(Song $song): JsonResponse

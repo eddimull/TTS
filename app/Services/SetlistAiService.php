@@ -254,6 +254,52 @@ PROMPT;
     }
 
     /**
+     * Look up song details (key, BPM, genre, artist) using Claude as a fallback.
+     *
+     * @return array{bpm: int|null, song_key: string|null, genre: string|null, artist: string|null}
+     */
+    public function lookupSongDetails(string $title, ?string $artist = null): array
+    {
+        $artistLine = $artist ? " by {$artist}" : '';
+        $prompt = <<<PROMPT
+You are a music reference tool. Return the details for the song "{$title}"{$artistLine}.
+
+Respond with ONLY a JSON object, no explanation:
+{
+  "bpm": <integer or null>,
+  "song_key": "<note> <accidental if any> <maj or min>, e.g. 'Bb min' or 'E maj', or null if unknown>",
+  "genre": "<primary genre, e.g. Rock, Country, R&B, or null if unknown>",
+  "artist": "<canonical artist name, or null if unknown>"
+}
+
+If you are not confident about a value, use null rather than guessing.
+PROMPT;
+
+        try {
+            $raw = $this->callClaude($prompt);
+            Log::info('Claude song lookup raw', ['raw' => $raw]);
+            // Strip markdown code fences if present
+            $json = preg_replace('/^```(?:json)?\s*|\s*```$/m', '', trim($raw));
+            $data = json_decode($json, true);
+            Log::info('Claude song lookup parsed', ['data' => $data]);
+
+            if (!is_array($data)) {
+                return ['bpm' => null, 'song_key' => null, 'genre' => null, 'artist' => null];
+            }
+
+            return [
+                'bpm'      => isset($data['bpm']) ? (int) $data['bpm'] : null,
+                'song_key' => $data['song_key'] ?? null,
+                'genre'    => $data['genre'] ?? null,
+                'artist'   => $data['artist'] ?? null,
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('Claude song lookup failed', ['error' => $e->getMessage(), 'title' => $title]);
+            return ['bpm' => null, 'song_key' => null, 'genre' => null, 'artist' => null];
+        }
+    }
+
+    /**
      * @param array|null $messages  Pre-built multi-turn messages array. When provided,
      *                              $prompt and $images are ignored.
      */

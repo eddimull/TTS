@@ -19,4 +19,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/songs/{song}', [SongsController::class, 'destroy'])
         ->middleware('songs.write')
         ->name('songs.destroy');
+
+    Route::get('/songs/lookup', [SongsController::class, 'lookup'])
+        ->name('songs.lookup');
 });
