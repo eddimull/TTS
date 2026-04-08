@@ -55,6 +55,10 @@ return [
         'redirect_uri' => env('APP_URL') . '/media/drive/callback',
     ],
 
+    'getsongbpm' => [
+        'key' => env('GETSONGBPM_API_KEY'),
+    ],
+
     'media' => [
         'upload_notification_delay' => env('MEDIA_UPLOAD_NOTIFICATION_DELAY', 5), // minutes
     ],

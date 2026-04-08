@@ -156,27 +156,57 @@
 
           <!-- Artist -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Artist</label>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Artist</label>
+              <Button
+                label="Auto-fill"
+                icon="pi pi-sparkles"
+                size="small"
+                text
+                :loading="lookingUp"
+                :disabled="!form.title"
+                @click="autofill"
+              />
+            </div>
             <InputText v-model="form.artist" class="w-full" placeholder="Artist / band name" />
           </div>
 
           <!-- Key -->
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Key</label>
-            <div class="flex gap-2">
-              <Dropdown
-                v-model="form.keyNote"
-                :options="keyNotes"
-                placeholder="Note"
-                show-clear
-                class="flex-1"
+            <!-- Note buttons: A–G -->
+            <div class="flex flex-wrap gap-2 mb-3">
+              <Button
+                v-for="note in keyNotes"
+                :key="note"
+                :label="note"
+                :outlined="form.keyNote !== note"
+                size="small"
+                @click="form.keyNote = form.keyNote === note ? null : note"
               />
-              <Dropdown
-                v-model="form.keyMode"
-                :options="keyModes"
-                placeholder="maj/min"
-                class="w-28"
-              />
+            </div>
+            <!-- Accidental + Mode toggles -->
+            <div class="flex gap-4">
+              <div class="flex gap-1">
+                <Button
+                  v-for="acc in keyAccidentals"
+                  :key="acc"
+                  :label="acc"
+                  :outlined="form.keyAccidental !== acc"
+                  size="small"
+                  @click="form.keyAccidental = form.keyAccidental === acc ? null : acc"
+                />
+              </div>
+              <div class="flex gap-1">
+                <Button
+                  v-for="mode in keyModes"
+                  :key="mode"
+                  :label="mode"
+                  :outlined="form.keyMode !== mode"
+                  size="small"
+                  @click="form.keyMode = form.keyMode === mode ? null : mode"
+                />
+              </div>
             </div>
           </div>
 
@@ -203,6 +233,38 @@
               :max="999"
               placeholder="Tempo"
             />
+          </div>
+
+          <!-- Rating -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Band Rating</label>
+            <div class="flex gap-1">
+              <Button
+                v-for="n in 10"
+                :key="n"
+                :label="String(n)"
+                :outlined="form.rating !== n"
+                :severity="form.rating >= n ? 'warn' : 'secondary'"
+                size="small"
+                @click="form.rating = form.rating === n ? null : n"
+              />
+            </div>
+          </div>
+
+          <!-- Energy -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Energy</label>
+            <div class="flex gap-1">
+              <Button
+                v-for="n in 10"
+                :key="n"
+                :label="String(n)"
+                :outlined="form.energy !== n"
+                :severity="form.energy >= n ? 'danger' : 'secondary'"
+                size="small"
+                @click="form.energy = form.energy === n ? null : n"
+              />
+            </div>
           </div>
 
           <!-- Lead Singer -->
@@ -297,9 +359,11 @@ export default {
       dialogVisible: false,
       saving: false,
       deleting: false,
+      lookingUp: false,
       editingSong: null,
       form: this.emptyForm(),
-      keyNotes: ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'],
+      keyNotes: ['A', 'B', 'C', 'D', 'E', 'F', 'G'],
+      keyAccidentals: ['♯', '♭'],
       keyModes: ['maj', 'min'],
     };
   },
@@ -354,9 +418,12 @@ export default {
         title: '',
         artist: '',
         keyNote: null,
+        keyAccidental: null,
         keyMode: null,
         genre: '',
         bpm: null,
+        rating: null,
+        energy: null,
         notes: '',
         lead_singer_id: null,
         transition_song_id: null,
@@ -365,11 +432,17 @@ export default {
     },
 
     parseSongKey(songKey) {
-      if (!songKey) return { keyNote: null, keyMode: null };
-      const parts = songKey.trim().split(/\s+/);
+      if (!songKey) return { keyNote: null, keyAccidental: null, keyMode: null };
+      // Match: note letter, optional accidental (♯ ♭ # b), optional mode
+      // 'b' after a note letter is a flat, but 'B' alone is the note B
+      const match = songKey.trim().match(/^([A-G])([♯♭#]|b)?(?:\s+(maj|min))?$/i);
+      if (!match) return { keyNote: null, keyAccidental: null, keyMode: null };
+      const accidentalMap = { '#': '♯', 'b': '♭' };
+      const raw = match[2] ?? null;
       return {
-        keyNote: parts[0] ?? null,
-        keyMode: parts[1] ?? null,
+        keyNote: match[1].toUpperCase(),
+        keyAccidental: raw ? (accidentalMap[raw] ?? raw) : null,
+        keyMode: match[3] ? match[3].toLowerCase() : null,
       };
     },
 
@@ -385,14 +458,17 @@ export default {
 
     openEditDialog(song) {
       this.editingSong = song;
-      const { keyNote, keyMode } = this.parseSongKey(song.song_key);
+      const { keyNote, keyAccidental, keyMode } = this.parseSongKey(song.song_key);
       this.form = {
         title: song.title ?? '',
         artist: song.artist ?? '',
         keyNote,
+        keyAccidental,
         keyMode,
         genre: song.genre ?? '',
         bpm: song.bpm ?? null,
+        rating: song.rating ?? null,
+        energy: song.energy ?? null,
         notes: song.notes ?? '',
         lead_singer_id: song.lead_singer_id ?? null,
         transition_song_id: song.transition_song_id ?? null,
@@ -406,6 +482,32 @@ export default {
       this.form = this.emptyForm();
     },
 
+    async autofill() {
+      if (!this.form.title) return;
+      this.lookingUp = true;
+      try {
+        const params = new URLSearchParams({ title: this.form.title });
+        if (this.form.artist) params.append('artist', this.form.artist);
+        const res = await fetch(`/songs/lookup?${params}`);
+        const data = await res.json();
+
+        if (data.artist && !this.form.artist) this.form.artist = data.artist;
+        if (data.bpm)      this.form.bpm = data.bpm;
+        if (data.genre && !this.form.genre)   this.form.genre = data.genre;
+
+        if (data.song_key) {
+          const { keyNote, keyAccidental, keyMode } = this.parseSongKey(data.song_key);
+          if (keyNote)       this.form.keyNote = keyNote;
+          if (keyAccidental) this.form.keyAccidental = keyAccidental;
+          if (keyMode)       this.form.keyMode = keyMode;
+        }
+      } catch (e) {
+        // silently fail — user can fill in manually
+      } finally {
+        this.lookingUp = false;
+      }
+    },
+
     async saveSong() {
       if (!this.form.title.trim()) return;
 
@@ -413,10 +515,11 @@ export default {
       const payload = {
         ...this.form,
         song_key: this.form.keyNote
-          ? [this.form.keyNote, this.form.keyMode].filter(Boolean).join(' ')
+          ? [(this.form.keyNote + (this.form.keyAccidental ?? '')), this.form.keyMode].filter(Boolean).join(' ')
           : null,
       };
       delete payload.keyNote;
+      delete payload.keyAccidental;
       delete payload.keyMode;
 
       try {
