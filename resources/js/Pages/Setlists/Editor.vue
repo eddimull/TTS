@@ -204,13 +204,39 @@
         />
       </div>
 
-      <!-- Generating spinner -->
+      <!-- Generating — live progress -->
       <div
         v-else-if="generating"
-        class="bg-white dark:bg-slate-800 rounded-lg shadow p-8 sm:p-12 text-center"
+        class="bg-white dark:bg-slate-800 rounded-lg shadow p-8 sm:p-12"
       >
-        <i class="pi pi-spin pi-spinner text-4xl text-blue-500 mb-4" />
-        <p class="text-gray-500 dark:text-gray-400">AI is building your setlist…</p>
+        <div class="flex items-center gap-3 mb-6">
+          <i class="pi pi-spin pi-spinner text-2xl text-blue-500 flex-shrink-0" />
+          <p class="text-gray-700 dark:text-gray-200 font-medium">AI is building your setlist…</p>
+        </div>
+
+        <ul v-if="progressSteps.length" class="space-y-2">
+          <li
+            v-for="(s, i) in progressSteps"
+            :key="i"
+            class="flex items-start gap-3 text-sm"
+          >
+            <!-- status icon -->
+            <span class="mt-0.5 flex-shrink-0 w-5 text-center">
+              <i v-if="s.status === 'done'"    class="pi pi-check-circle text-green-500" />
+              <i v-else-if="s.status === 'error'"  class="pi pi-times-circle text-red-500" />
+              <i v-else                             class="pi pi-spin pi-spinner text-blue-400" />
+            </span>
+            <!-- label + detail -->
+            <span>
+              <span :class="s.status === 'done' ? 'text-gray-500 dark:text-gray-400' : 'text-gray-800 dark:text-gray-100'">
+                {{ s.step }}
+              </span>
+              <span v-if="s.detail" class="ml-1 text-gray-400 dark:text-gray-500">— {{ s.detail }}</span>
+            </span>
+          </li>
+        </ul>
+
+        <p v-else class="text-sm text-gray-400 dark:text-gray-500">Starting up…</p>
       </div>
 
       <!-- Setlist editor -->
@@ -778,6 +804,7 @@ export default {
     return {
       localSetlist: this.setlist ? JSON.parse(JSON.stringify(this.setlist)) : null,
       generating: false,
+      progressSteps: [],   // [{step, status, detail}] — live generation progress
       saving: false,
       generateDialogVisible: false,
       aiContext: '',
@@ -894,7 +921,30 @@ export default {
 
     async generateSetlist() {
       this.generating = true;
+      this.progressSteps = [];
       this.generateDialogVisible = false;
+
+      // Subscribe to live progress updates via Echo
+      const userId   = this.$page.props.auth.user.id;
+      const eventKey = this.event.key;
+      const channel  = window.Echo.private(`App.Models.User.${userId}`);
+
+      channel.listen('.SetlistGenerationProgress', (payload) => {
+        if (payload.event_key !== eventKey) return;
+
+        const existing = this.progressSteps.find(s => s.step === payload.step);
+        if (existing) {
+          existing.status = payload.status;
+          existing.detail = payload.detail ?? existing.detail;
+        } else {
+          this.progressSteps.push({
+            step:   payload.step,
+            status: payload.status,
+            detail: payload.detail ?? null,
+          });
+        }
+      });
+
       try {
         const { data } = await axios.post(route('setlists.generate', this.event.key), {
           context: this.aiContext || null,
@@ -909,6 +959,7 @@ export default {
         });
       } finally {
         this.generating = false;
+        window.Echo.leave(`App.Models.User.${userId}`);
       }
     },
 
