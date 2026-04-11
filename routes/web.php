@@ -21,6 +21,7 @@ Route::get('/', function () {
         'canRegister' => Route::has('register'),
         'laravelVersion' => Application::VERSION,
         'phpVersion' => PHP_VERSION,
+        'appStoreUrl' => env('APP_STORE_URL'),
     ]);
 });
 
@@ -59,3 +60,6 @@ require __DIR__ . '/setlists.php';
 
 URL::forceScheme('https');
 Route::get('/healthcheck', fn() => response()->json(['status' => 'ok']))->name('healthcheck');
+
+Route::get('/privacy', fn() => Inertia::render('PrivacyPolicy'))->name('privacy');
+Route::get('/support', fn() => Inertia::render('Support'))->name('support');
