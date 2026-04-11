@@ -141,6 +141,54 @@
         />
       </div>
 
+      <!-- AI Sources panel (shown after generation) -->
+      <div
+        v-if="localSetlist && (localSetlist.event_context || localSetlist.image_context?.length)"
+        class="bg-white dark:bg-slate-800 rounded-lg shadow mb-4 print:hidden overflow-hidden"
+      >
+        <button
+          class="w-full flex items-center justify-between px-4 py-3 text-sm text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+          @click="sourcesOpen = !sourcesOpen"
+        >
+          <span class="flex items-center gap-2">
+            <i class="pi pi-eye text-xs" />
+            AI sources — what the generator saw
+          </span>
+          <i :class="['pi text-xs transition-transform', sourcesOpen ? 'pi-chevron-up' : 'pi-chevron-down']" />
+        </button>
+
+        <div v-if="sourcesOpen" class="border-t border-gray-100 dark:border-gray-700 px-4 py-3 flex flex-col gap-4">
+          <!-- Event context -->
+          <div v-if="localSetlist.event_context">
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">Event details</p>
+            <pre class="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-sans leading-relaxed">{{ localSetlist.event_context }}</pre>
+          </div>
+
+          <!-- Image context -->
+          <div v-if="localSetlist.image_context?.length">
+            <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1.5">
+              Attachments ({{ localSetlist.image_context.length }})
+            </p>
+            <div class="flex flex-col gap-3">
+              <div
+                v-for="(img, i) in localSetlist.image_context"
+                :key="i"
+                class="rounded-md bg-gray-50 dark:bg-slate-700 p-3"
+              >
+                <div class="flex items-center gap-2 mb-1">
+                  <span :class="['text-xs font-medium px-1.5 py-0.5 rounded', imageTypeClass(img.type)]">
+                    {{ imageTypeLabel(img.type) }}
+                  </span>
+                  <span class="text-xs text-gray-400 dark:text-gray-500">Image {{ i + 1 }}</span>
+                </div>
+                <pre v-if="img.content" class="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-sans leading-relaxed mt-1">{{ img.content }}</pre>
+                <p v-else class="text-xs text-gray-400 dark:text-gray-500 italic mt-1">No structured extraction — used as general context only.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- No setlist yet -->
       <div
         v-if="!localSetlist && !generating"
@@ -315,6 +363,7 @@
                   </span>
                   <span v-if="element.genre" class="text-xs text-gray-400">{{ element.genre }}</span>
                   <span v-if="element.bpm" class="text-xs text-gray-400">{{ element.bpm }} BPM</span>
+                  <span v-if="element.energy" class="text-xs text-gray-400">E{{ element.energy }}</span>
                   <span v-if="element.lead_singer" class="text-xs text-gray-400">
                     <i class="pi pi-microphone text-xs" /> {{ element.lead_singer }}
                   </span>
@@ -369,17 +418,111 @@
           AI will build a setlist using the event type, roster, notes, and your song library.
           Add any extra context below.
         </p>
+
+        <!-- Saved prompts -->
+        <div v-if="promptTemplates.length > 0">
+          <p class="text-xs text-gray-500 dark:text-gray-400 mb-1.5">Saved prompts — click to load</p>
+          <div class="flex flex-wrap gap-2 max-h-24 overflow-y-auto">
+            <button
+              v-for="tpl in promptTemplates"
+              :key="tpl.id"
+              :class="[
+                'inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-colors',
+                selectedGenerateTemplate?.id === tpl.id
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                  : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-slate-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-600'
+              ]"
+              :aria-label="tpl.name"
+              @click="loadGenerateTemplate(tpl)"
+            >
+              <i class="pi pi-bookmark text-xs" />
+              {{ tpl.name }}
+              <span
+                class="ml-0.5 text-gray-400 hover:text-red-500 transition-colors"
+                :aria-label="`Remove ${tpl.name}`"
+                @click.stop="deleteTemplate(tpl)"
+              >
+                <i class="pi pi-times text-xs" />
+              </span>
+            </button>
+          </div>
+        </div>
+
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Additional context <span class="text-gray-400 font-normal">(optional)</span>
           </label>
           <Textarea
+            ref="generateTextarea"
             v-model="aiContext"
             class="w-full"
             rows="4"
             placeholder="e.g. Keep energy high throughout. The bride hates country music. End with something slow."
             auto-resize
           />
+          <!-- Loaded-from indicator -->
+          <div v-if="selectedGenerateTemplate" class="flex items-center gap-1 mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <i class="pi pi-bookmark text-xs" />
+            Loaded from: <span class="font-medium">{{ selectedGenerateTemplate.name }}</span>
+            <button class="ml-1 hover:text-gray-700 dark:hover:text-gray-200" @click="clearGenerateTemplate">clear</button>
+          </div>
+        </div>
+
+        <!-- Save actions -->
+        <div v-if="aiContext.trim()" class="flex flex-col gap-2">
+          <!-- Loaded from a template: Update or Save as new -->
+          <div v-if="selectedGenerateTemplate" class="flex items-center gap-2 flex-wrap">
+            <Button
+              :label="`Update &quot;${selectedGenerateTemplate.name}&quot;`"
+              icon="pi pi-bookmark"
+              size="small"
+              :loading="savingTemplate"
+              @click="updateTemplate('generate')"
+            />
+            <Button
+              label="Save as new…"
+              size="small"
+              severity="secondary"
+              outlined
+              @click="showSaveAsGenerate = !showSaveAsGenerate"
+            />
+          </div>
+          <!-- Fresh text: Save prompt -->
+          <div v-else class="flex items-center gap-2">
+            <InputText
+              v-model="newTemplateName"
+              class="flex-1"
+              size="small"
+              placeholder="Template name…"
+            />
+            <Button
+              label="Save prompt"
+              icon="pi pi-bookmark"
+              size="small"
+              severity="secondary"
+              outlined
+              :disabled="!newTemplateName.trim()"
+              :loading="savingTemplate"
+              @click="saveTemplate('generate')"
+            />
+          </div>
+          <!-- Save as new name field (only when loaded template + expanded) -->
+          <div v-if="selectedGenerateTemplate && showSaveAsGenerate" class="flex items-center gap-2">
+            <InputText
+              v-model="newTemplateName"
+              class="flex-1"
+              size="small"
+              placeholder="New template name…"
+            />
+            <Button
+              label="Save"
+              icon="pi pi-check"
+              size="small"
+              :disabled="!newTemplateName.trim()"
+              :loading="savingTemplate"
+              @click="saveTemplate('generate')"
+            />
+          </div>
         </div>
       </div>
       <template #footer>
@@ -456,22 +599,109 @@
         </div>
 
         <!-- Input -->
-        <div class="flex gap-2 pt-2 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
-          <Textarea
-            v-model="refineMessage"
-            class="flex-1"
-            rows="2"
-            auto-resize
-            placeholder="What would you like to change?"
-            :disabled="refining"
-            @keydown.enter.exact.prevent="sendRefine"
-          />
-          <Button
-            icon="pi pi-send"
-            :loading="refining"
-            :disabled="!refineMessage.trim()"
-            @click="sendRefine"
-          />
+        <div class="flex flex-col gap-2 pt-2 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <!-- Saved prompt chips -->
+          <div v-if="promptTemplates.length > 0" class="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto">
+            <p class="w-full text-xs text-gray-400 dark:text-gray-500">Saved prompts — click to load</p>
+            <button
+              v-for="tpl in promptTemplates"
+              :key="tpl.id"
+              :class="[
+                'inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition-colors',
+                selectedRefineTemplate?.id === tpl.id
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                  : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-600'
+              ]"
+              :aria-label="tpl.name"
+              @click="loadRefineTemplate(tpl)"
+            >
+              <i class="pi pi-bookmark text-xs" />
+              {{ tpl.name }}
+            </button>
+          </div>
+
+          <div class="flex gap-2">
+            <Textarea
+              ref="refineTextarea"
+              v-model="refineMessage"
+              class="flex-1"
+              rows="2"
+              auto-resize
+              placeholder="What would you like to change?"
+              :disabled="refining"
+              @keydown.enter.exact.prevent="sendRefine"
+            />
+            <Button
+              icon="pi pi-send"
+              :loading="refining"
+              :disabled="!refineMessage.trim()"
+              @click="sendRefine"
+            />
+          </div>
+
+          <!-- Loaded-from indicator -->
+          <div v-if="selectedRefineTemplate" class="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+            <i class="pi pi-bookmark text-xs" />
+            Loaded from: <span class="font-medium">{{ selectedRefineTemplate.name }}</span>
+            <button class="ml-1 hover:text-gray-700 dark:hover:text-gray-200" @click="clearRefineTemplate">clear</button>
+          </div>
+
+          <!-- Save actions -->
+          <div v-if="refineMessage.trim()" class="flex flex-col gap-1.5">
+            <!-- Loaded from template: Update or Save as new -->
+            <div v-if="selectedRefineTemplate" class="flex items-center gap-2 flex-wrap">
+              <Button
+                :label="`Update &quot;${selectedRefineTemplate.name}&quot;`"
+                icon="pi pi-bookmark"
+                size="small"
+                :loading="savingTemplate"
+                @click="updateTemplate('refine')"
+              />
+              <Button
+                label="Save as new…"
+                size="small"
+                severity="secondary"
+                outlined
+                @click="showSaveAsRefine = !showSaveAsRefine"
+              />
+            </div>
+            <!-- Fresh text: Save prompt -->
+            <div v-else class="flex items-center gap-2">
+              <InputText
+                v-model="newTemplateName"
+                class="flex-1"
+                size="small"
+                placeholder="Save as template…"
+              />
+              <Button
+                icon="pi pi-bookmark"
+                size="small"
+                severity="secondary"
+                text
+                :disabled="!newTemplateName.trim()"
+                :loading="savingTemplate"
+                v-tooltip.top="'Save prompt'"
+                @click="saveTemplate('refine')"
+              />
+            </div>
+            <!-- Save as new name field (only when loaded template + expanded) -->
+            <div v-if="selectedRefineTemplate && showSaveAsRefine" class="flex items-center gap-2">
+              <InputText
+                v-model="newTemplateName"
+                class="flex-1"
+                size="small"
+                placeholder="New template name…"
+              />
+              <Button
+                icon="pi pi-check"
+                size="small"
+                :disabled="!newTemplateName.trim()"
+                :loading="savingTemplate"
+                v-tooltip.top="'Save as new'"
+                @click="saveTemplate('refine')"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </Sidebar>
@@ -538,6 +768,7 @@ export default {
 
   props: {
     event: { type: Object, required: true },
+    bandId: { type: Number, required: true },
     setlist: { type: Object, default: null },
     songs: { type: Array, default: () => [] },
     canWrite: { type: Boolean, default: false },
@@ -560,7 +791,21 @@ export default {
       chatHistory: [],       // [{role:'user'|'assistant', content:string}]
       pendingSetlist: null,  // proposed setlist from AI, awaiting accept/dismiss
       previousSetlist: null, // snapshot before proposal, for dismiss
+      // AI sources panel
+      sourcesOpen: false,
+      // Prompt templates
+      promptTemplates: [],
+      newTemplateName: '',
+      savingTemplate: false,
+      selectedGenerateTemplate: null,  // template loaded into the generate dialog
+      showSaveAsGenerate: false,        // true when user expands "Save as new" in generate dialog
+      selectedRefineTemplate: null,    // template loaded into the refine drawer
+      showSaveAsRefine: false,          // true when user expands "Save as new" in refine drawer
     };
+  },
+
+  mounted() {
+    this.loadTemplates();
   },
 
   computed: {
@@ -585,6 +830,19 @@ export default {
   methods: {
     emptyEntryForm() {
       return { type: 'song', song_id: null, custom_title: '', custom_artist: '', notes: '' };
+    },
+
+    imageTypeLabel(type) {
+      return { MARKED_SETLIST: 'Marked setlist', PLAIN_SETLIST: 'Song list', TIMELINE: 'Timeline', OTHER: 'Other' }[type] ?? type;
+    },
+
+    imageTypeClass(type) {
+      return {
+        MARKED_SETLIST: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300',
+        PLAIN_SETLIST:  'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300',
+        TIMELINE:       'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300',
+        OTHER:          'bg-gray-100 dark:bg-slate-600 text-gray-600 dark:text-gray-300',
+      }[type] ?? 'bg-gray-100 dark:bg-slate-600 text-gray-600 dark:text-gray-300';
     },
 
     // Returns the 1-based song number (ignoring break rows) for display
@@ -628,6 +886,9 @@ export default {
 
     openGenerateDialog() {
       this.aiContext = '';
+      this.selectedGenerateTemplate = null;
+      this.showSaveAsGenerate = false;
+      this.newTemplateName = '';
       this.generateDialogVisible = true;
     },
 
@@ -724,6 +985,7 @@ export default {
         song_key: song?.song_key ?? null,
         genre: song?.genre ?? null,
         bpm: song?.bpm ?? null,
+        energy: song?.energy ?? null,
         lead_singer: song?.lead_singer ?? null,
         notes: this.entryForm.notes || null,
       };
@@ -752,6 +1014,8 @@ export default {
 
       this.chatHistory.push({ role: 'user', content: msg });
       this.refineMessage = '';
+      this.selectedRefineTemplate = null;
+      this.showSaveAsRefine = false;
       this.refining = true;
       this.$nextTick(() => this.scrollChatToBottom());
 
@@ -832,6 +1096,113 @@ export default {
         this.$toast?.add({ severity: 'error', summary: 'Failed to clear setlist', life: 4000 });
       } finally {
         this.saving = false;
+      }
+    },
+
+    async loadTemplates() {
+      try {
+        const { data } = await axios.get(route('setlists.prompt-templates.index', this.bandId));
+        this.promptTemplates = data;
+      } catch {
+        // Non-critical; silently ignore
+      }
+    },
+
+    loadGenerateTemplate(tpl) {
+      this.aiContext = tpl.prompt;
+      this.selectedGenerateTemplate = tpl;
+      this.showSaveAsGenerate = false;
+      this.newTemplateName = '';
+      this.$nextTick(() => this.$refs.generateTextarea?.$el?.focus());
+    },
+
+    clearGenerateTemplate() {
+      this.selectedGenerateTemplate = null;
+      this.showSaveAsGenerate = false;
+      this.newTemplateName = '';
+    },
+
+    loadRefineTemplate(tpl) {
+      this.refineMessage = tpl.prompt;
+      this.selectedRefineTemplate = tpl;
+      this.showSaveAsRefine = false;
+      this.newTemplateName = '';
+      this.$nextTick(() => this.$refs.refineTextarea?.$el?.focus());
+    },
+
+    clearRefineTemplate() {
+      this.selectedRefineTemplate = null;
+      this.showSaveAsRefine = false;
+      this.newTemplateName = '';
+    },
+
+    async updateTemplate(context) {
+      const tpl = context === 'generate' ? this.selectedGenerateTemplate : this.selectedRefineTemplate;
+      const prompt = context === 'generate' ? this.aiContext.trim() : this.refineMessage.trim();
+      if (!tpl || !prompt) return;
+
+      this.savingTemplate = true;
+      try {
+        const { data } = await axios.patch(
+          route('setlists.prompt-templates.update', { band: this.bandId, template: tpl.id }),
+          { prompt }
+        );
+        const idx = this.promptTemplates.findIndex(t => t.id === tpl.id);
+        if (idx !== -1) this.promptTemplates.splice(idx, 1, data);
+        if (context === 'generate') this.selectedGenerateTemplate = data;
+        else this.selectedRefineTemplate = data;
+        this.$toast?.add({ severity: 'success', summary: 'Prompt updated', life: 2000 });
+      } catch {
+        this.$toast?.add({ severity: 'error', summary: 'Could not update prompt', life: 4000 });
+      } finally {
+        this.savingTemplate = false;
+      }
+    },
+
+    async saveTemplate(context) {
+      const prompt = context === 'generate' ? this.aiContext.trim() : this.refineMessage.trim();
+      if (!prompt || !this.newTemplateName.trim()) return;
+
+      this.savingTemplate = true;
+      try {
+        const { data } = await axios.post(route('setlists.prompt-templates.store', this.bandId), {
+          name: this.newTemplateName.trim(),
+          prompt,
+        });
+        this.promptTemplates.push(data);
+        this.promptTemplates.sort((a, b) => a.name.localeCompare(b.name));
+        this.newTemplateName = '';
+        if (context === 'generate') {
+          this.selectedGenerateTemplate = data;
+          this.showSaveAsGenerate = false;
+        } else {
+          this.selectedRefineTemplate = data;
+          this.showSaveAsRefine = false;
+        }
+        this.$toast?.add({ severity: 'success', summary: 'Prompt saved', life: 2000 });
+      } catch {
+        this.$toast?.add({ severity: 'error', summary: 'Could not save prompt', life: 4000 });
+      } finally {
+        this.savingTemplate = false;
+      }
+    },
+
+    async deleteTemplate(tpl) {
+      try {
+        await axios.delete(route('setlists.prompt-templates.destroy', { band: this.bandId, template: tpl.id }));
+        this.promptTemplates = this.promptTemplates.filter(t => t.id !== tpl.id);
+        if (this.selectedGenerateTemplate?.id === tpl.id) {
+          this.selectedGenerateTemplate = null;
+          this.showSaveAsGenerate = false;
+          this.newTemplateName = '';
+        }
+        if (this.selectedRefineTemplate?.id === tpl.id) {
+          this.selectedRefineTemplate = null;
+          this.showSaveAsRefine = false;
+          this.newTemplateName = '';
+        }
+      } catch {
+        this.$toast?.add({ severity: 'error', summary: 'Could not delete prompt', life: 4000 });
       }
     },
   },

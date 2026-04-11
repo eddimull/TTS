@@ -235,6 +235,11 @@ class Bands extends Model
         return $this->hasMany(Song::class, 'band_id')->orderBy('title');
     }
 
+    public function setlistPromptTemplates()
+    {
+        return $this->hasMany(SetlistPromptTemplate::class, 'band_id');
+    }
+
     public function apiTokens()
     {
         return $this->hasMany(BandApiToken::class, 'band_id')->orderBy('created_at', 'desc');
