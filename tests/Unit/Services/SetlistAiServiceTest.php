@@ -239,6 +239,103 @@ class SetlistAiServiceTest extends TestCase
         $this->assertStringContainsString('First dance', $result);
     }
 
+    // ─── generateSetlist ─────────────────────────────────────────────────────
+
+    public function test_generate_setlist_returns_parsed_items(): void
+    {
+        SetlistAgent::fake(['[1, 3, 2]']);
+
+        $event = $this->makeEvent();
+        $songs = $this->makeSongs();
+
+        $result = $this->service->generateSetlist($event, $songs);
+
+        $this->assertSame([1, 3, 2], $result['items']);
+        $this->assertIsString($result['event_context']);
+        $this->assertIsArray($result['image_context']);
+    }
+
+    public function test_generate_setlist_handles_empty_ai_response(): void
+    {
+        SetlistAgent::fake(['not json at all']);
+
+        $event = $this->makeEvent();
+        $result = $this->service->generateSetlist($event, $this->makeSongs());
+
+        $this->assertSame([], $result['items']);
+    }
+
+    public function test_generate_setlist_with_image_attachments_classifies_and_includes_context(): void
+    {
+        VisionAgent::fake(['TIMELINE', json_encode([
+            ['time' => '7:00 PM', 'description' => 'Grand entrance'],
+        ])]);
+        SetlistAgent::fake(fn ($prompt) => str_contains($prompt, 'Grand entrance') ? '[1, 2]' : '[]');
+
+        $event = $this->makeEvent();
+        $image = ['data' => base64_encode('fake'), 'media_type' => 'image/jpeg'];
+
+        $result = $this->service->generateSetlist($event, $this->makeSongs(), null, [$image]);
+
+        $this->assertNotEmpty($result['items']);
+        $this->assertSame('TIMELINE', $result['image_context'][0]['type']);
+    }
+
+    // ─── refineSetlist ────────────────────────────────────────────────────────
+
+    public function test_refine_setlist_returns_updated_setlist_and_summary(): void
+    {
+        SetlistAgent::fake([json_encode([
+            'setlist' => [1, 2],
+            'summary' => 'Moved Song A to position 1.',
+        ])]);
+
+        $event = $this->makeEvent();
+        $songs = $this->makeSongs();
+        $currentSetlist = [
+            ['type' => 'song', 'song_id' => 2, 'title' => 'Song B', 'artist' => null, 'notes' => null, 'position' => 1],
+            ['type' => 'song', 'song_id' => 1, 'title' => 'Song A', 'artist' => null, 'notes' => null, 'position' => 2],
+        ];
+
+        $result = $this->service->refineSetlist($event, $songs, $currentSetlist, [], 'Put Song A first');
+
+        $this->assertSame([1, 2], $result['setlist']);
+        $this->assertSame('Moved Song A to position 1.', $result['summary']);
+    }
+
+    public function test_refine_setlist_handles_invalid_ai_response(): void
+    {
+        SetlistAgent::fake(['not valid json']);
+
+        $event = $this->makeEvent();
+        $result = $this->service->refineSetlist($event, $this->makeSongs(), [], [], 'make it better');
+
+        $this->assertSame([], $result['setlist']);
+        $this->assertStringContainsString('Could not parse', $result['summary']);
+    }
+
+    // ─── suggestNext ─────────────────────────────────────────────────────────
+
+    public function test_suggest_next_returns_first_id(): void
+    {
+        SetlistAgent::fake(['[3]']);
+
+        $event = $this->makeEvent();
+        $result = $this->service->suggestNext($event, $this->makeSongs(), [], []);
+
+        $this->assertSame(3, $result);
+    }
+
+    public function test_suggest_next_returns_null_on_empty_response(): void
+    {
+        SetlistAgent::fake(['[]']);
+
+        $event = $this->makeEvent();
+        $result = $this->service->suggestNext($event, $this->makeSongs(), [], []);
+
+        $this->assertNull($result);
+    }
+
     // ─── SetlistAgent (callClaude) ────────────────────────────────────────────
 
     public function test_lookup_song_details_returns_parsed_fields(): void
@@ -294,5 +391,32 @@ class SetlistAiServiceTest extends TestCase
         $result = $this->service->rerankQueue([], [], []);
 
         $this->assertSame([], $result);
+    }
+
+    // ─── helpers ─────────────────────────────────────────────────────────────
+
+    private function makeEvent(): \App\Models\Events
+    {
+        $event = $this->createMock(\App\Models\Events::class);
+        $event->method('getAttribute')->willReturnMap([
+            ['title', 'Test Gig'],
+            ['date', null],
+            ['type', null],
+            ['notes', null],
+            ['time', null],
+            ['roster_members', []],
+            ['eventable', null],
+        ]);
+
+        return $event;
+    }
+
+    private function makeSongs(): array
+    {
+        return [
+            ['id' => 1, 'title' => 'Song A', 'artist' => 'Artist A', 'song_key' => 'C', 'genre' => 'Rock', 'bpm' => 120, 'energy' => 7, 'lead_singer' => 'Alice', 'transition_song' => null],
+            ['id' => 2, 'title' => 'Song B', 'artist' => 'Artist B', 'song_key' => 'G', 'genre' => 'Pop',  'bpm' => 100, 'energy' => 5, 'lead_singer' => 'Bob',   'transition_song' => null],
+            ['id' => 3, 'title' => 'Song C', 'artist' => 'Artist C', 'song_key' => 'D', 'genre' => 'R&B',  'bpm' => 90,  'energy' => 6, 'lead_singer' => 'Alice', 'transition_song' => null],
+        ];
     }
 }

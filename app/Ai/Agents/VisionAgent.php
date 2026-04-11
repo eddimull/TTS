@@ -9,7 +9,7 @@ use Laravel\Ai\Enums\Lab;
 use Laravel\Ai\Promptable;
 
 #[Provider(Lab::Gemini)]
-#[Model('gemini-2.0-flash')]
+#[Model('gemini-3.1-pro-preview')]
 class VisionAgent implements Agent
 {
     use Promptable;
