@@ -21,11 +21,15 @@ class Song extends Model
         'lead_singer_id',
         'transition_song_id',
         'active',
+        'rating',
+        'energy',
     ];
 
     protected $casts = [
         'active' => 'boolean',
         'bpm' => 'integer',
+        'rating' => 'integer',
+        'energy' => 'integer',
     ];
 
     public function band()
