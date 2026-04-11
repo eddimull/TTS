@@ -2,30 +2,16 @@
 
 namespace App\Services;
 
+use App\Ai\Agents\SetlistAgent;
+use App\Ai\Agents\VisionAgent;
 use App\Models\Events;
-use App\Services\Ai\Contracts\AiAdapterInterface;
-use App\Services\Ai\Adapters\ClaudeAdapter;
-use App\Services\Ai\Adapters\GeminiAdapter;
-use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Ai\Files\Base64Image;
 
 class SetlistAiService
 {
-    private Client $http;
-    private string $apiKey;
-    private string $model = 'claude-opus-4-6';
-    private AiAdapterInterface $visionAdapter;
-
-    public function __construct(?AiAdapterInterface $visionAdapter = null, ?string $apiKey = null)
-    {
-        $this->apiKey = $apiKey ?? config('services.anthropic.key', '');
-        $this->http = new Client([
-            'base_uri' => 'https://api.anthropic.com',
-            'timeout' => 60,
-        ]);
-        $this->visionAdapter = $visionAdapter ?? new GeminiAdapter();
-    }
+    public function __construct() {}
 
     /**
      * Generate a setlist for an event.
@@ -303,7 +289,8 @@ OTHER — anything else (stage plot, photo, logo, contract, diagram, etc.).
 Reply with exactly one word: MARKED_SETLIST, PLAIN_SETLIST, TIMELINE, or OTHER.
 PROMPT;
 
-        $raw = trim($this->visionAdapter->queryWithImage($prompt, $image));
+        $attachment = new Base64Image($image['data'], $image['media_type']);
+        $raw = trim((string) (new VisionAgent())->prompt($prompt, [$attachment]));
         $type = strtoupper(preg_replace('/[^A-Z_]/', '', $raw));
 
         if (!in_array($type, ['MARKED_SETLIST', 'PLAIN_SETLIST', 'TIMELINE', 'OTHER'])) {
@@ -330,7 +317,8 @@ Example: ["September", "Can't Stop the Feeling", "Uptown Funk"]
 Return ONLY the JSON array. No explanation, no markdown.
 PROMPT;
 
-        $raw  = $this->visionAdapter->queryWithImage($prompt, $images[0], 1024);
+        $attachment = new Base64Image($images[0]['data'], $images[0]['media_type']);
+        $raw  = (string) (new VisionAgent())->prompt($prompt, [$attachment]);
         $json = preg_replace('/^```(?:json)?\s*|\s*```$/m', '', trim($raw));
         $titles = json_decode($json, true);
 
@@ -359,7 +347,8 @@ Example: [{"time": "6:00 PM", "description": "Cocktail hour — background music
 If no time is listed for an item, use null for "time". Return ONLY the JSON array. No explanation, no markdown.
 PROMPT;
 
-        $raw  = $this->visionAdapter->queryWithImage($prompt, $images[0], 1024);
+        $attachment = new Base64Image($images[0]['data'], $images[0]['media_type']);
+        $raw  = (string) (new VisionAgent())->prompt($prompt, [$attachment]);
         $json = preg_replace('/^```(?:json)?\s*|\s*```$/m', '', trim($raw));
         $items = json_decode($json, true);
 
@@ -418,7 +407,8 @@ Output exactly one line per song, in the same order:
 Do not skip any song. If you cannot find a close match in the image or cannot read it clearly, output UNMARKED.
 PROMPT;
 
-            $raw = $this->visionAdapter->queryWithImage($extractionPrompt, $image, 8192);
+            $attachment = new Base64Image($image['data'], $image['media_type']);
+            $raw = (string) (new VisionAgent())->prompt($extractionPrompt, [$attachment]);
             Log::info("SetlistAiService: marked setlist chunk {$chunkIndex}", ['raw' => $raw]);
 
             foreach (explode("\n", $raw) as $line) {
@@ -554,47 +544,31 @@ PROMPT;
     }
 
     /**
-     * @param array|null $messages  Pre-built multi-turn messages array. When provided,
-     *                              $prompt and $images are ignored.
+     * Send a prompt to Claude via the Laravel AI SDK.
+     *
+     * @param  array  $history  Pre-built multi-turn messages [{role, content},...]. When provided, $prompt is appended as the final user turn.
      */
-    private function callClaude(string $prompt, array $images = [], ?array $messages = null): string
+    private function callClaude(string $prompt, array $history = []): string
     {
-        if ($messages !== null) {
-            $payload = $messages;
-        } elseif (!empty($images)) {
-            $content = [];
-            foreach ($images as $image) {
-                $content[] = [
-                    'type' => 'image',
-                    'source' => [
-                        'type' => 'base64',
-                        'media_type' => $image['media_type'],
-                        'data' => $image['data'],
-                    ],
-                ];
-            }
-            $content[] = ['type' => 'text', 'text' => $prompt];
-            $payload = [['role' => 'user', 'content' => $content]];
-        } else {
-            $payload = [['role' => 'user', 'content' => $prompt]];
+        $agent = new SetlistAgent();
+
+        if (!empty($history)) {
+            $messages = collect($history)->map(
+                fn ($m) => new \Laravel\Ai\Messages\Message($m['role'], $m['content'])
+            )->all();
+
+            // Implement Conversational by passing history through an anonymous class
+            $agent = new class($messages) extends SetlistAgent implements \Laravel\Ai\Contracts\Conversational {
+                public function __construct(private array $priorMessages) {}
+
+                public function messages(): iterable
+                {
+                    return $this->priorMessages;
+                }
+            };
         }
 
-        $response = $this->http->post('/v1/messages', [
-            'headers' => [
-                'x-api-key' => $this->apiKey,
-                'anthropic-version' => '2023-06-01',
-                'content-type' => 'application/json',
-            ],
-            'json' => [
-                'model' => $this->model,
-                'max_tokens' => 4096,
-                'messages' => $payload,
-            ],
-        ]);
-
-        $body = json_decode($response->getBody()->getContents(), true);
-
-        return $body['content'][0]['text'] ?? '';
+        return (string) $agent->prompt($prompt, timeout: 120);
     }
 
     /**
@@ -658,22 +632,17 @@ Respond with ONLY a valid JSON object with exactly two keys:
 Do not include any explanation, markdown, or text outside the JSON object.
 PROMPT;
 
-        // Build multi-turn messages: system prompt as first user message, then history, then new message
-        $messages = [
-            ['role' => 'user', 'content' => $systemPrompt],
+        // Build multi-turn messages: system prompt as first user message, then history
+        $history = [
+            ['role' => 'user',      'content' => $systemPrompt],
             ['role' => 'assistant', 'content' => 'Understood. I\'m ready to refine the setlist. What changes would you like?'],
         ];
 
         foreach ($chatHistory as $turn) {
-            $messages[] = [
-                'role'    => $turn['role'],
-                'content' => $turn['content'],
-            ];
+            $history[] = ['role' => $turn['role'], 'content' => $turn['content']];
         }
 
-        $messages[] = ['role' => 'user', 'content' => $newMessage];
-
-        $responseText = $this->callClaude('', [], $messages);
+        $responseText = $this->callClaude($newMessage, $history);
 
         return $this->parseRefineResponse($responseText);
     }
