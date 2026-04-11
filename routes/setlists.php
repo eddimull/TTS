@@ -4,10 +4,17 @@ use App\Http\Controllers\BreakController;
 use App\Http\Controllers\CaptainController;
 use App\Http\Controllers\LiveSessionController;
 use App\Http\Controllers\SetlistController;
+use App\Http\Controllers\SetlistPromptTemplateController;
 use App\Http\Controllers\SetlistSuggestionController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth'])->group(function () {
+    // Prompt templates (scoped to band)
+    Route::get('/bands/{band}/setlist-prompt-templates', [SetlistPromptTemplateController::class, 'index'])->name('setlists.prompt-templates.index');
+    Route::post('/bands/{band}/setlist-prompt-templates', [SetlistPromptTemplateController::class, 'store'])->name('setlists.prompt-templates.store');
+    Route::patch('/bands/{band}/setlist-prompt-templates/{template}', [SetlistPromptTemplateController::class, 'update'])->name('setlists.prompt-templates.update');
+    Route::delete('/bands/{band}/setlist-prompt-templates/{template}', [SetlistPromptTemplateController::class, 'destroy'])->name('setlists.prompt-templates.destroy');
+
     // Static setlist
     Route::get('/events/{key}/setlist', [SetlistController::class, 'show'])->name('setlists.show');
     Route::post('/events/{key}/setlist/generate', [SetlistController::class, 'generate'])->name('setlists.generate');

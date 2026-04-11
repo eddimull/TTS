@@ -24,6 +24,8 @@ class RosterMember extends Model
         'deleted_at',
     ];
 
+    protected $appends = ['display_name'];
+
     protected $casts = [
         'is_active' => 'boolean',
     ];

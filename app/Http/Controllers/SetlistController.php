@@ -29,7 +29,7 @@ class SetlistController extends Controller
 
         $songs = $band->songs()
             ->where('active', true)
-            ->with('leadSinger')
+            ->with('leadSinger.user')
             ->get()
             ->map(fn($s) => [
                 'id' => $s->id,
@@ -38,6 +38,7 @@ class SetlistController extends Controller
                 'song_key' => $s->song_key,
                 'genre' => $s->genre,
                 'bpm' => $s->bpm,
+                'energy' => $s->energy,
                 'lead_singer' => $s->leadSinger?->display_name,
             ]);
 
@@ -55,6 +56,7 @@ class SetlistController extends Controller
                     'role' => $m->role_name,
                 ]),
             ],
+            'bandId' => $band->id,
             'setlist' => $setlist ? $this->formatSetlist($setlist) : null,
             'songs' => $songs,
             'canWrite' => Auth::user()->canWrite('events', $band->id),
@@ -74,7 +76,7 @@ class SetlistController extends Controller
 
         $songs = $band->songs()
             ->where('active', true)
-            ->with(['leadSinger', 'transitionSong'])
+            ->with(['leadSinger.user', 'transitionSong'])
             ->get();
 
         $songsArray = $songs->map(fn($s) => [
@@ -84,6 +86,7 @@ class SetlistController extends Controller
             'song_key' => $s->song_key,
             'genre' => $s->genre,
             'bpm' => $s->bpm,
+            'energy' => $s->energy,
             'lead_singer' => $s->leadSinger?->display_name,
             'transition_song' => $s->transitionSong
                 ? $s->transitionSong->title . ($s->transitionSong->artist ? ' – ' . $s->transitionSong->artist : '')
@@ -107,29 +110,33 @@ class SetlistController extends Controller
 
         $attachmentImages = [];
         $attachments = $event->attachments()->get();
+        \Illuminate\Support\Facades\Log::info('SetlistController: attachments found', ['count' => $attachments->count(), 'event_id' => $event->id]);
         if ($attachments->isNotEmpty()) {
             $attachmentImages = $aiService->buildImageBlocks($attachments);
+            \Illuminate\Support\Facades\Log::info('SetlistController: image blocks built', ['count' => count($attachmentImages)]);
         }
 
-        $orderedItems = $aiService->generateSetlist($event, $songsArray, $request->input('context'), $attachmentImages);
+        $result = $aiService->generateSetlist($event, $songsArray, $request->input('context'), $attachmentImages);
 
-        if (empty($orderedItems)) {
+        if (empty($result['items'])) {
             return response()->json(['error' => 'AI could not generate a setlist. Please try again.'], 500);
         }
 
         $songMap    = $songs->keyBy('id');
-        $finalItems = $this->filterValidItems($orderedItems, $songMap);
+        $finalItems = $this->filterValidItems($result['items'], $songMap);
 
-        DB::transaction(function () use ($event, $band, $finalItems, $songsArray) {
+        DB::transaction(function () use ($event, $band, $finalItems, $songsArray, $result) {
             $setlist = EventSetlist::updateOrCreate(
                 ['event_id' => $event->id],
                 [
-                    'band_id' => $band->id,
+                    'band_id'      => $band->id,
                     'generated_at' => now(),
-                    'status' => 'draft',
-                    'ai_context' => [
-                        'song_count' => count($songsArray),
-                        'generated_at' => now()->toISOString(),
+                    'status'       => 'draft',
+                    'ai_context'   => [
+                        'song_count'    => count($songsArray),
+                        'generated_at'  => now()->toISOString(),
+                        'event_context' => $result['event_context'],
+                        'image_context' => $result['image_context'],
                     ],
                 ]
             );
@@ -139,8 +146,12 @@ class SetlistController extends Controller
         });
 
         $setlist = $event->setlist()->with('songs.song.leadSinger')->first();
+        $formatted = $this->formatSetlist($setlist);
+        \Illuminate\Support\Facades\Log::info('SetlistController: final order returned to frontend', [
+            'songs' => collect($formatted['songs'])->map(fn($s) => $s['position'] . '. ' . $s['title'] . ' (' . ($s['lead_singer'] ?? 'none') . ')')->values()->all()
+        ]);
 
-        return response()->json($this->formatSetlist($setlist));
+        return response()->json($formatted);
     }
 
     public function refine(Request $request, string $key): JsonResponse
@@ -168,7 +179,7 @@ class SetlistController extends Controller
 
         $songs = $band->songs()
             ->where('active', true)
-            ->with(['leadSinger', 'transitionSong'])
+            ->with(['leadSinger.user', 'transitionSong'])
             ->get();
 
         $songsArray = $songs->map(fn($s) => [
@@ -178,6 +189,7 @@ class SetlistController extends Controller
             'song_key'       => $s->song_key,
             'genre'          => $s->genre,
             'bpm'            => $s->bpm,
+            'energy'         => $s->energy,
             'lead_singer'    => $s->leadSinger?->display_name,
             'transition_song' => $s->transitionSong
                 ? $s->transitionSong->title . ($s->transitionSong->artist ? ' – ' . $s->transitionSong->artist : '')
@@ -272,15 +284,107 @@ class SetlistController extends Controller
         return response()->json($this->formatSetlist($setlist));
     }
 
+    /**
+     * Reorder items so no lead singer appears more than once in any 3-song window.
+     * Breaks are kept in place. Songs without a lead singer (instrumental/custom) are neutral.
+     */
+    private function interleaveSingers(\Illuminate\Support\Collection $items, \Illuminate\Support\Collection $songMap): \Illuminate\Support\Collection
+    {
+        $getSinger = function ($item) use ($songMap): ?string {
+            if ($item === 'break') return null;
+            $id = is_array($item) ? ($item['id'] ?? null) : $item;
+            if (!$id) return null;
+            $song = $songMap->get((int) $id);
+            return $song?->leadSinger?->display_name;
+        };
+
+        // Split into sets (separated by breaks) and process each independently
+        $sets = [];
+        $current = [];
+        foreach ($items->values()->all() as $item) {
+            if ($item === 'break') {
+                $sets[] = ['songs' => $current, 'break' => true];
+                $current = [];
+            } else {
+                $current[] = $item;
+            }
+        }
+        $sets[] = ['songs' => $current, 'break' => false];
+
+        $processedSets = [];
+        foreach ($sets as $set) {
+            $result = $set['songs'];
+            $maxPasses = count($result) * 2;
+            $pass = 0;
+
+            do {
+                $swapped = false;
+                for ($i = 0; $i < count($result) - 1; $i++) {
+                    $recentSingers = [];
+                    for ($j = $i; $j >= 0 && count($recentSingers) < 2; $j--) {
+                        $s = $getSinger($result[$j]);
+                        if ($s !== null) $recentSingers[] = $s;
+                    }
+
+                    $nextSinger = $getSinger($result[$i + 1]);
+                    if ($nextSinger === null) continue;
+
+                    if (count(array_filter($recentSingers, fn($s) => $s === $nextSinger)) >= 2) {
+                        for ($k = $i + 2; $k < count($result); $k++) {
+                            $candidateSinger = $getSinger($result[$k]);
+                            if ($candidateSinger !== $nextSinger) {
+                                [$result[$i + 1], $result[$k]] = [$result[$k], $result[$i + 1]];
+                                $swapped = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                $pass++;
+            } while ($swapped && $pass < $maxPasses);
+
+            $processedSets[] = ['songs' => $result, 'break' => $set['break']];
+        }
+
+        // Reassemble with breaks
+        $final = [];
+        foreach ($processedSets as $set) {
+            foreach ($set['songs'] as $song) {
+                $final[] = $song;
+            }
+            if ($set['break']) {
+                $final[] = 'break';
+            }
+        }
+
+        return collect($final);
+    }
+
     private function filterValidItems(array $orderedItems, \Illuminate\Support\Collection $songMap): \Illuminate\Support\Collection
     {
+        $seenIds = [];
+
         return collect($orderedItems)
-            ->filter(fn($item) =>
-                $item === 'break' ||
-                (is_int($item) && $songMap->has($item)) ||
-                (is_array($item) && isset($item['id']) && $songMap->has((int) $item['id'])) ||
-                (is_array($item) && !empty($item['title']))
-            )
+            ->filter(function ($item) use ($songMap, &$seenIds) {
+                if ($item === 'break') return true;
+
+                if (is_int($item) && $songMap->has($item)) {
+                    if (in_array($item, $seenIds)) return false;
+                    $seenIds[] = $item;
+                    return true;
+                }
+
+                if (is_array($item) && isset($item['id']) && $songMap->has((int) $item['id'])) {
+                    $id = (int) $item['id'];
+                    if (in_array($id, $seenIds)) return false;
+                    $seenIds[] = $id;
+                    return true;
+                }
+
+                if (is_array($item) && !empty($item['title'])) return true;
+
+                return false;
+            })
             ->values();
     }
 
@@ -326,10 +430,14 @@ class SetlistController extends Controller
 
     private function formatSetlist(EventSetlist $setlist): array
     {
+        $aiContext = $setlist->ai_context ?? [];
+
         return [
-            'id' => $setlist->id,
-            'status' => $setlist->status,
-            'generated_at' => $setlist->generated_at,
+            'id'            => $setlist->id,
+            'status'        => $setlist->status,
+            'generated_at'  => $setlist->generated_at,
+            'event_context' => $aiContext['event_context'] ?? null,
+            'image_context' => $aiContext['image_context'] ?? [],
             'songs' => $setlist->songs->map(fn($entry) => [
                 'id' => $entry->id,
                 'type' => $entry->type ?? 'song',
@@ -340,6 +448,7 @@ class SetlistController extends Controller
                 'song_key' => $entry->song?->song_key,
                 'genre' => $entry->song?->genre,
                 'bpm' => $entry->song?->bpm,
+                'energy' => $entry->song?->energy,
                 'lead_singer' => $entry->song?->leadSinger?->display_name,
                 'notes' => $entry->notes,
             ])->values()->all(),

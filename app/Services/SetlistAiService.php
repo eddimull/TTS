@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use App\Models\Events;
+use App\Services\Ai\Contracts\AiAdapterInterface;
+use App\Services\Ai\Adapters\ClaudeAdapter;
+use App\Services\Ai\Adapters\GeminiAdapter;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -12,19 +15,21 @@ class SetlistAiService
     private Client $http;
     private string $apiKey;
     private string $model = 'claude-opus-4-6';
+    private AiAdapterInterface $visionAdapter;
 
-    public function __construct()
+    public function __construct(?AiAdapterInterface $visionAdapter = null, ?string $apiKey = null)
     {
-        $this->apiKey = config('services.anthropic.key');
+        $this->apiKey = $apiKey ?? config('services.anthropic.key', '');
         $this->http = new Client([
             'base_uri' => 'https://api.anthropic.com',
             'timeout' => 60,
         ]);
+        $this->visionAdapter = $visionAdapter ?? new GeminiAdapter();
     }
 
     /**
      * Generate a setlist for an event.
-     * Returns an array of items: integers (song IDs) or the string "break".
+     * Returns ['items' => [...], 'event_context' => string, 'image_context' => string[]].
      *
      * @param array $attachmentImages  Each element: ['data' => base64string, 'media_type' => 'image/jpeg']
      */
@@ -32,20 +37,38 @@ class SetlistAiService
     {
         $context = $this->buildEventContext($event);
         $songList = $this->buildSongList($songs);
-        
+
         $extraSection = $extraContext
             ? "\nBAND LEADER INSTRUCTIONS:\n{$extraContext}\n"
             : '';
 
         Log::info(empty($attachmentImages) ? 'No attachment images provided' : count($attachmentImages) . ' attachment image(s) provided');
 
-        // Two-step image analysis: first extract client markings, then generate setlist.
-        // This isolates the noisy vision task so the setlist prompt only sees clean text.
+        // Classify each image then extract structured information based on its type.
+        // This keeps the noisy vision tasks separate from setlist generation.
+        $imageSections   = []; // keyed entries: ['type' => ..., 'content' => ...]
+        $attachmentParts = []; // plain text for the prompt
+        foreach ($attachmentImages as $image) {
+            $type = $this->classifyImage($image);
+            Log::info('SetlistAiService: image classified', ['type' => $type]);
+
+            $extracted = match ($type) {
+                'MARKED_SETLIST' => $this->extractClientMarkingsFromImages([$image], $songs),
+                'PLAIN_SETLIST'  => $this->extractPlainSetlist([$image]),
+                'TIMELINE'       => $this->extractTimeline([$image]),
+                default          => null,
+            };
+
+            $imageSections[] = ['type' => $type, 'content' => $extracted];
+
+            if ($extracted !== null) {
+                $attachmentParts[] = $extracted;
+            }
+        }
+
         $attachmentSection = '';
-        if (!empty($attachmentImages)) {
-            $imageAnalysis = $this->extractClientMarkingsFromImages($attachmentImages, $songs);
-            Log::info('SetlistAiService: image analysis result', ['analysis' => $imageAnalysis]);
-            $attachmentSection = "\nCLIENT MARKINGS FROM ATTACHED IMAGE (pre-extracted):\n{$imageAnalysis}\n";
+        if (!empty($attachmentParts)) {
+            $attachmentSection = "\nATTACHMENT CONTEXT:\n" . implode("\n\n", $attachmentParts) . "\n";
         }
 
         $prompt = <<<PROMPT
@@ -112,7 +135,11 @@ PROMPT;
 
         Log::info('SetlistAiService: parsed setlist from Claude', ['order' => $readable]);
 
-        return $parsed;
+        return [
+            'items'         => $parsed,
+            'event_context' => trim($context . ($extraContext ? "\n\nBand leader instructions: {$extraContext}" : '')),
+            'image_context' => $imageSections,
+        ];
     }
 
     /**
@@ -230,27 +257,139 @@ PROMPT;
         return $ids[0] ?? null;
     }
 
-    /** Public wrapper for testing in isolation via artisan command. */
+    /**
+     * Public wrapper for testing in isolation via artisan command.
+     * Classifies each image then routes to the appropriate extractor.
+     */
     public function testExtractMarkings(array $images, array $songs): string
     {
-        return $this->extractClientMarkingsFromImages($images, $songs);
+        $sections = [];
+        foreach ($images as $image) {
+            $type = $this->classifyImage($image);
+            Log::info('SetlistAiService: test image classified', ['type' => $type]);
+
+            $extracted = match ($type) {
+                'MARKED_SETLIST' => $this->extractClientMarkingsFromImages([$image], $songs),
+                'PLAIN_SETLIST'  => $this->extractPlainSetlist([$image]),
+                'TIMELINE'       => $this->extractTimeline([$image]),
+                default          => null,
+            };
+
+            $sections[] = "[Classified as: {$type}]";
+            if ($extracted !== null) {
+                $sections[] = $extracted;
+            } else {
+                $sections[] = "(No structured extraction for this image type — passed as general context only.)";
+            }
+        }
+
+        return implode("\n\n", $sections);
     }
 
     /**
-     * Step 1 of two-step image analysis.
-     * Send the image(s) to Claude with a focused extraction prompt and return
-     * a plain-English summary of client markings (requested, highlighted, crossed-out).
-     * This keeps the noisy vision task separate from setlist generation.
+     * Pre-flight: classify an image so the correct extraction strategy can be applied.
+     * Returns one of: MARKED_SETLIST, PLAIN_SETLIST, TIMELINE, OTHER.
+     */
+    private function classifyImage(array $image): string
+    {
+        $prompt = <<<PROMPT
+Look at this image and classify it into exactly one of these four categories:
+
+MARKED_SETLIST — a printed or typed list of song titles where the client has added handwritten marks (highlights, circles, stars, asterisks, checkmarks, crossed-out lines, or colored annotations).
+PLAIN_SETLIST — a printed, typed, or handwritten list of song titles with no client marks or annotations.
+TIMELINE — a schedule, run-of-show, or timeline for an event (e.g. wedding reception order, ceremony schedule, show itinerary with times).
+OTHER — anything else (stage plot, photo, logo, contract, diagram, etc.).
+
+Reply with exactly one word: MARKED_SETLIST, PLAIN_SETLIST, TIMELINE, or OTHER.
+PROMPT;
+
+        $raw = trim($this->visionAdapter->queryWithImage($prompt, $image));
+        $type = strtoupper(preg_replace('/[^A-Z_]/', '', $raw));
+
+        if (!in_array($type, ['MARKED_SETLIST', 'PLAIN_SETLIST', 'TIMELINE', 'OTHER'])) {
+            Log::warning('SetlistAiService: unexpected image classification', ['raw' => $raw]);
+            return 'OTHER';
+        }
+
+        return $type;
+    }
+
+    /**
+     * Extract song titles from a plain (unmarked) setlist image.
+     * Returns a formatted string listing the songs as client requests.
+     */
+    private function extractPlainSetlist(array $images): string
+    {
+        $prompt = <<<PROMPT
+This image contains a list of song titles provided by a client.
+
+Read every song title visible in the image and return them as a JSON array of strings, in the order they appear.
+
+Example: ["September", "Can't Stop the Feeling", "Uptown Funk"]
+
+Return ONLY the JSON array. No explanation, no markdown.
+PROMPT;
+
+        $raw  = $this->visionAdapter->queryWithImage($prompt, $images[0], 1024);
+        $json = preg_replace('/^```(?:json)?\s*|\s*```$/m', '', trim($raw));
+        $titles = json_decode($json, true);
+
+        if (!is_array($titles)) {
+            Log::warning('SetlistAiService: could not parse plain setlist', ['raw' => $raw]);
+            return "CLIENT SONG LIST (from image):\nNone";
+        }
+
+        $list = implode("\n", array_map(fn ($t) => "- {$t}", $titles));
+        return "CLIENT SONG LIST (from attached image — treat as requested songs):\n{$list}";
+    }
+
+    /**
+     * Extract event timeline / run-of-show from a schedule image.
+     * Returns a formatted string with time-ordered event notes.
+     */
+    private function extractTimeline(array $images): string
+    {
+        $prompt = <<<PROMPT
+This image contains an event timeline, run-of-show, or schedule.
+
+Extract every item you can read and return them as a JSON array of objects with "time" and "description" keys.
+
+Example: [{"time": "6:00 PM", "description": "Cocktail hour — background music"}, {"time": "7:00 PM", "description": "Grand entrance"}]
+
+If no time is listed for an item, use null for "time". Return ONLY the JSON array. No explanation, no markdown.
+PROMPT;
+
+        $raw  = $this->visionAdapter->queryWithImage($prompt, $images[0], 1024);
+        $json = preg_replace('/^```(?:json)?\s*|\s*```$/m', '', trim($raw));
+        $items = json_decode($json, true);
+
+        if (!is_array($items)) {
+            Log::warning('SetlistAiService: could not parse timeline', ['raw' => $raw]);
+            return "EVENT TIMELINE (from image):\nNone";
+        }
+
+        $lines = array_map(function ($item) {
+            $time = $item['time'] ?? null;
+            $desc = $item['description'] ?? '';
+            return $time ? "{$time}: {$desc}" : $desc;
+        }, $items);
+
+        $list = implode("\n", $lines);
+        return "EVENT TIMELINE (from attached image — use for set breaks and performance timing):\n{$list}";
+    }
+
+    /**
+     * Extract client markings from a marked-up setlist image using Gemini.
+     * Chunks the song library and checks each title against the image.
      */
     private function extractClientMarkingsFromImages(array $images, array $songs): string
     {
         $highlighted = [];
         $excluded    = [];
+        $image       = $images[0]; // one image per classification call
 
-        // Split into chunks of 25 and ask Claude to check each chunk separately.
-        // This forces full coverage — Claude won't skip songs when the list is short.
-        $chunkSize = 15;
-        $chunks = collect($songs)->values()->chunk($chunkSize);
+        $chunkSize = 25;
+        $chunks    = collect($songs)->values()->chunk($chunkSize);
 
         foreach ($chunks as $chunkIndex => $chunk) {
             $numberedList = $chunk->values()
@@ -266,7 +405,9 @@ There are TWO types of client marks:
 1. HIGHLIGHTED / REQUESTED — a star (*), asterisk, circle, checkmark, or different-colored text (orange, gold, red) next to the title.
 2. CROSSED OUT / EXCLUDED — a line struck through the title.
 
-TASK: For each song in the list below, find that title in the image and check whether it has a mark next to it.
+IMPORTANT — FUZZY TITLE MATCHING: The song titles in the list below may differ slightly from what is printed in the image. The image may use abbreviations, alternate punctuation, shortened titles, or omit subtitles. Match each song to the closest title you can find in the image. For example, "If You Don't Want Me To (The Freeze)" in the list may appear as "If You Don't Want Me To" or "The Freeze" in the image — treat these as the same song.
+
+TASK: For each song in the list below, find the closest matching title in the image and check whether it has a mark next to it.
 
 SONGS TO CHECK:
 {$numberedList}
@@ -274,11 +415,11 @@ SONGS TO CHECK:
 Output exactly one line per song, in the same order:
 [number]. [song title] | HIGHLIGHTED or EXCLUDED or UNMARKED
 
-Do not skip any song. If you cannot find the title in the image or cannot read it clearly, output UNMARKED.
+Do not skip any song. If you cannot find a close match in the image or cannot read it clearly, output UNMARKED.
 PROMPT;
 
-            $raw = $this->callClaude($extractionPrompt, $images);
-            Log::info("SetlistAiService: image checklist chunk {$chunkIndex}", ['raw' => $raw]);
+            $raw = $this->visionAdapter->queryWithImage($extractionPrompt, $image, 8192);
+            Log::info("SetlistAiService: marked setlist chunk {$chunkIndex}", ['raw' => $raw]);
 
             foreach (explode("\n", $raw) as $line) {
                 $line = trim($line);
@@ -310,40 +451,41 @@ PROMPT;
     {
         $lines = [];
 
-        $lines[] = 'Title: ' . ($event->title ?? 'Unknown');
+        $lines[] = 'Event Title: ' . ($event->title ?? 'Unknown');
         $lines[] = 'Date: ' . ($event->date?->toFormattedDateString() ?? 'Unknown');
-
-        if ($event->type) {
-            $lines[] = 'Event Type: ' . $event->type->name;
-        }
+        $lines[] = 'Event Type: ' . ($event->type?->name ?? 'Unknown');
 
         if ($event->eventable) {
             $booking = $event->eventable;
 
             if (!empty($booking->venue_name)) {
-                $lines[] = 'Venue: ' . $booking->venue_name;
+                $venueLine = 'Venue: ' . $booking->venue_name;
+                if (!empty($booking->venue_address)) {
+                    $venueLine .= ' — ' . $booking->venue_address;
+                }
+                $lines[] = $venueLine;
             }
 
             if (!empty($booking->start_time) && !empty($booking->end_time)) {
-                $start = $booking->start_time->format('g:i A');
-                $end   = $booking->end_time->format('g:i A');
-                $lines[] = "Performance Time: {$start} – {$end}";
-
-                $duration = $booking->duration; // hours (float)
-                $minutes  = (int) round($duration * 60);
-                $lines[] = "Total Performance Duration: {$minutes} minutes";
+                $start   = $booking->start_time->format('g:i A');
+                $end     = $booking->end_time->format('g:i A');
+                $minutes = (int) round($booking->duration * 60);
+                $lines[] = "Performance Time: {$start} – {$end} ({$minutes} minutes total)";
             }
         } elseif ($event->time) {
             $lines[] = 'Start Time: ' . $event->time;
         }
 
         if ($event->notes) {
-            $lines[] = 'Notes / Special Requests: ' . strip_tags($event->notes);
+            $lines[] = 'Client Notes / Special Requests: ' . strip_tags($event->notes);
         }
 
         if ($event->roster_members && count($event->roster_members) > 0) {
-            $roster = collect($event->roster_members)->pluck('name')->implode(', ');
-            $lines[] = 'Performing Musicians: ' . $roster;
+            $lines[] = 'Performing Musicians:';
+            foreach ($event->roster_members as $member) {
+                $role    = !empty($member['role']) ? " ({$member['role']})" : '';
+                $lines[] = "  - {$member['name']}{$role}";
+            }
         }
 
         return implode("\n", $lines);
