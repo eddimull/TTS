@@ -2,8 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Services\Ai\Adapters\ClaudeAdapter;
-use App\Services\Ai\Adapters\GeminiAdapter;
 use App\Services\SetlistAiService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
@@ -12,8 +10,7 @@ class TestSetlistImageExtraction extends Command
 {
     protected $signature = 'setlist:test-image-extraction
                             {attachment-id : ID from event_attachments table}
-                            {--songs= : Comma-separated list of song titles to use as the library (optional)}
-                            {--driver=gemini : Which AI to use for vision: gemini or claude}';
+                            {--songs= : Comma-separated list of song titles to use as the library (optional)}';
 
     protected $description = 'Test the image extraction step of setlist AI in isolation';
 
@@ -56,15 +53,9 @@ class TestSetlistImageExtraction extends Command
                 ->toArray();
         }
 
-        $driver = $this->option('driver');
-        $this->info("Driver: {$driver} | Songs in library: " . count($songs) . "\n");
+        $this->info("Songs in library: " . count($songs) . "\n");
 
-        $adapter = match ($driver) {
-            'claude' => new ClaudeAdapter(),
-            default  => new GeminiAdapter('gemini-3.1-pro-preview'),
-        };
-
-        $service = new SetlistAiService($adapter);
+        $service = new SetlistAiService();
 
         $image = [
             'data'       => base64_encode($data),

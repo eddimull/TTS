@@ -2,39 +2,28 @@
 
 namespace App\Services;
 
+use App\Ai\Agents\SetlistAgent;
+use App\Ai\Agents\VisionAgent;
 use App\Models\Events;
-use App\Services\Ai\Contracts\AiAdapterInterface;
-use App\Services\Ai\Adapters\ClaudeAdapter;
-use App\Services\Ai\Adapters\GeminiAdapter;
-use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Ai\Files\Base64Image;
 
 class SetlistAiService
 {
-    private Client $http;
-    private string $apiKey;
-    private string $model = 'claude-opus-4-6';
-    private AiAdapterInterface $visionAdapter;
-
-    public function __construct(?AiAdapterInterface $visionAdapter = null, ?string $apiKey = null)
-    {
-        $this->apiKey = $apiKey ?? config('services.anthropic.key', '');
-        $this->http = new Client([
-            'base_uri' => 'https://api.anthropic.com',
-            'timeout' => 60,
-        ]);
-        $this->visionAdapter = $visionAdapter ?? new GeminiAdapter();
-    }
+    public function __construct() {}
 
     /**
      * Generate a setlist for an event.
      * Returns ['items' => [...], 'event_context' => string, 'image_context' => string[]].
      *
-     * @param array $attachmentImages  Each element: ['data' => base64string, 'media_type' => 'image/jpeg']
+     * @param array         $attachmentImages  Each element: ['data' => base64string, 'media_type' => 'image/jpeg']
+     * @param callable|null $progress          fn(string $step, string $status, ?string $detail) — called at each stage
      */
-    public function generateSetlist(Events $event, array $songs, ?string $extraContext = null, array $attachmentImages = []): array
+    public function generateSetlist(Events $event, array $songs, ?string $extraContext = null, array $attachmentImages = [], ?callable $progress = null): array
     {
+        $progress ??= fn () => null;
+
         $context = $this->buildEventContext($event);
         $songList = $this->buildSongList($songs);
 
@@ -48,12 +37,23 @@ class SetlistAiService
         // This keeps the noisy vision tasks separate from setlist generation.
         $imageSections   = []; // keyed entries: ['type' => ..., 'content' => ...]
         $attachmentParts = []; // plain text for the prompt
-        foreach ($attachmentImages as $image) {
+
+        foreach ($attachmentImages as $i => $image) {
+            $label = count($attachmentImages) > 1 ? 'image ' . ($i + 1) : 'attached image';
+
+            $progress("Analysing {$label}…", 'working', null);
             $type = $this->classifyImage($image);
             Log::info('SetlistAiService: image classified', ['type' => $type]);
 
+            $typeLabel = match ($type) {
+                'MARKED_SETLIST' => 'marked setlist',
+                'PLAIN_SETLIST'  => 'song list',
+                'TIMELINE'       => 'event timeline',
+                default          => 'other (skipping)',
+            };
+
             $extracted = match ($type) {
-                'MARKED_SETLIST' => $this->extractClientMarkingsFromImages([$image], $songs),
+                'MARKED_SETLIST' => $this->extractClientMarkingsFromImages([$image], $songs, $progress),
                 'PLAIN_SETLIST'  => $this->extractPlainSetlist([$image]),
                 'TIMELINE'       => $this->extractTimeline([$image]),
                 default          => null,
@@ -64,6 +64,8 @@ class SetlistAiService
             if ($extracted !== null) {
                 $attachmentParts[] = $extracted;
             }
+
+            $progress("Analysing {$label}…", 'done', "Recognised as {$typeLabel}");
         }
 
         $attachmentSection = '';
@@ -110,10 +112,13 @@ PROMPT;
 
         Log::info('SetlistAiService: prompt sent to Claude', ['prompt' => $prompt]);
 
+        $progress('Building setlist with AI…', 'working', null);
         $responseText = $this->callClaude($prompt);
         Log::info('SetlistAiService: response received from Claude', ['response' => $responseText]);
 
         $parsed = $this->parseSetlistItems($responseText);
+        $songCount = count(array_filter($parsed, fn ($i) => $i !== 'break'));
+        $progress('Building setlist with AI…', 'done', "{$songCount} songs arranged");
 
         $songMap = collect($songs)->keyBy('id');
         $readable = collect($parsed)->map(function ($item) use ($songMap) {
@@ -303,15 +308,22 @@ OTHER — anything else (stage plot, photo, logo, contract, diagram, etc.).
 Reply with exactly one word: MARKED_SETLIST, PLAIN_SETLIST, TIMELINE, or OTHER.
 PROMPT;
 
-        $raw = trim($this->visionAdapter->queryWithImage($prompt, $image));
-        $type = strtoupper(preg_replace('/[^A-Z_]/', '', $raw));
+        $attachment = new Base64Image($image['data'], $image['media_type']);
 
-        if (!in_array($type, ['MARKED_SETLIST', 'PLAIN_SETLIST', 'TIMELINE', 'OTHER'])) {
-            Log::warning('SetlistAiService: unexpected image classification', ['raw' => $raw]);
+        try {
+            $raw  = trim((string) (new VisionAgent())->prompt($prompt, [$attachment], timeout: 120));
+            $type = strtoupper(preg_replace('/[^A-Z_]/', '', $raw));
+
+            if (!in_array($type, ['MARKED_SETLIST', 'PLAIN_SETLIST', 'TIMELINE', 'OTHER'])) {
+                Log::warning('SetlistAiService: unexpected image classification', ['raw' => $raw]);
+                return 'OTHER';
+            }
+
+            return $type;
+        } catch (\Throwable $e) {
+            Log::error('SetlistAiService: image classification failed', ['error' => $e->getMessage()]);
             return 'OTHER';
         }
-
-        return $type;
     }
 
     /**
@@ -330,7 +342,8 @@ Example: ["September", "Can't Stop the Feeling", "Uptown Funk"]
 Return ONLY the JSON array. No explanation, no markdown.
 PROMPT;
 
-        $raw  = $this->visionAdapter->queryWithImage($prompt, $images[0], 1024);
+        $attachment = new Base64Image($images[0]['data'], $images[0]['media_type']);
+        $raw  = (string) (new VisionAgent())->prompt($prompt, [$attachment], timeout: 120);
         $json = preg_replace('/^```(?:json)?\s*|\s*```$/m', '', trim($raw));
         $titles = json_decode($json, true);
 
@@ -359,7 +372,8 @@ Example: [{"time": "6:00 PM", "description": "Cocktail hour — background music
 If no time is listed for an item, use null for "time". Return ONLY the JSON array. No explanation, no markdown.
 PROMPT;
 
-        $raw  = $this->visionAdapter->queryWithImage($prompt, $images[0], 1024);
+        $attachment = new Base64Image($images[0]['data'], $images[0]['media_type']);
+        $raw  = (string) (new VisionAgent())->prompt($prompt, [$attachment], timeout: 120);
         $json = preg_replace('/^```(?:json)?\s*|\s*```$/m', '', trim($raw));
         $items = json_decode($json, true);
 
@@ -382,16 +396,21 @@ PROMPT;
      * Extract client markings from a marked-up setlist image using Gemini.
      * Chunks the song library and checks each title against the image.
      */
-    private function extractClientMarkingsFromImages(array $images, array $songs): string
+    private function extractClientMarkingsFromImages(array $images, array $songs, ?callable $progress = null): string
     {
+        $progress ??= fn () => null;
         $highlighted = [];
         $excluded    = [];
         $image       = $images[0]; // one image per classification call
 
-        $chunkSize = 25;
-        $chunks    = collect($songs)->values()->chunk($chunkSize);
+        $chunkSize  = 25;
+        $chunks     = collect($songs)->values()->chunk($chunkSize);
+        $totalSongs = count($songs);
 
         foreach ($chunks as $chunkIndex => $chunk) {
+            $start = $chunkIndex * $chunkSize + 1;
+            $end   = min($start + $chunkSize - 1, $totalSongs);
+            $progress('Reading marked setlist…', 'working', "Checking songs {$start}–{$end} of {$totalSongs}");
             $numberedList = $chunk->values()
                 ->map(fn ($s, $i) => ($chunkIndex * $chunkSize + $i + 1) . '. ' . $s['title'])
                 ->implode("\n");
@@ -418,7 +437,8 @@ Output exactly one line per song, in the same order:
 Do not skip any song. If you cannot find a close match in the image or cannot read it clearly, output UNMARKED.
 PROMPT;
 
-            $raw = $this->visionAdapter->queryWithImage($extractionPrompt, $image, 8192);
+            $attachment = new Base64Image($image['data'], $image['media_type']);
+            $raw = (string) (new VisionAgent())->prompt($extractionPrompt, [$attachment], timeout: 120);
             Log::info("SetlistAiService: marked setlist chunk {$chunkIndex}", ['raw' => $raw]);
 
             foreach (explode("\n", $raw) as $line) {
@@ -554,47 +574,23 @@ PROMPT;
     }
 
     /**
-     * @param array|null $messages  Pre-built multi-turn messages array. When provided,
-     *                              $prompt and $images are ignored.
+     * Send a prompt to Claude via the Laravel AI SDK.
+     *
+     * @param  array  $history  Pre-built multi-turn messages [{role, content},...]. Prepended as conversation history.
      */
-    private function callClaude(string $prompt, array $images = [], ?array $messages = null): string
+    private function callClaude(string $prompt, array $history = []): string
     {
-        if ($messages !== null) {
-            $payload = $messages;
-        } elseif (!empty($images)) {
-            $content = [];
-            foreach ($images as $image) {
-                $content[] = [
-                    'type' => 'image',
-                    'source' => [
-                        'type' => 'base64',
-                        'media_type' => $image['media_type'],
-                        'data' => $image['data'],
-                    ],
-                ];
-            }
-            $content[] = ['type' => 'text', 'text' => $prompt];
-            $payload = [['role' => 'user', 'content' => $content]];
-        } else {
-            $payload = [['role' => 'user', 'content' => $prompt]];
+        $agent = new SetlistAgent();
+
+        if (!empty($history)) {
+            $messages = collect($history)->map(
+                fn ($m) => new \Laravel\Ai\Messages\Message($m['role'], $m['content'])
+            )->all();
+
+            $agent = $agent->withHistory($messages);
         }
 
-        $response = $this->http->post('/v1/messages', [
-            'headers' => [
-                'x-api-key' => $this->apiKey,
-                'anthropic-version' => '2023-06-01',
-                'content-type' => 'application/json',
-            ],
-            'json' => [
-                'model' => $this->model,
-                'max_tokens' => 4096,
-                'messages' => $payload,
-            ],
-        ]);
-
-        $body = json_decode($response->getBody()->getContents(), true);
-
-        return $body['content'][0]['text'] ?? '';
+        return (string) $agent->prompt($prompt, timeout: 120);
     }
 
     /**
@@ -658,22 +654,17 @@ Respond with ONLY a valid JSON object with exactly two keys:
 Do not include any explanation, markdown, or text outside the JSON object.
 PROMPT;
 
-        // Build multi-turn messages: system prompt as first user message, then history, then new message
-        $messages = [
-            ['role' => 'user', 'content' => $systemPrompt],
+        // Build multi-turn messages: system prompt as first user message, then history
+        $history = [
+            ['role' => 'user',      'content' => $systemPrompt],
             ['role' => 'assistant', 'content' => 'Understood. I\'m ready to refine the setlist. What changes would you like?'],
         ];
 
         foreach ($chatHistory as $turn) {
-            $messages[] = [
-                'role'    => $turn['role'],
-                'content' => $turn['content'],
-            ];
+            $history[] = ['role' => $turn['role'], 'content' => $turn['content']];
         }
 
-        $messages[] = ['role' => 'user', 'content' => $newMessage];
-
-        $responseText = $this->callClaude('', [], $messages);
+        $responseText = $this->callClaude($newMessage, $history);
 
         return $this->parseRefineResponse($responseText);
     }
