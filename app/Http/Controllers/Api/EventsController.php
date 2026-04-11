@@ -7,21 +7,40 @@ use App\Models\Events;
 use App\Models\Bookings;
 use App\Models\BandEvents;
 use Illuminate\Http\Request;
+use OpenApi\Attributes as OA;
 
 class EventsController extends Controller
 {
-    /**
-     * Get all events for the authenticated band
-     *
-     * Returns events from both bookings and band_events with optional date filtering.
-     *
-     * Query Parameters:
-     * - date: Specific date (YYYY-MM-DD)
-     * - from: Start date for range query (YYYY-MM-DD)
-     * - to: End date for range query (YYYY-MM-DD)
-     * - before: Get events before this date (YYYY-MM-DD)
-     * - after: Get events after this date (YYYY-MM-DD)
-     */
+    #[OA\Get(
+        path: '/events',
+        operationId: 'listEvents',
+        summary: 'List events',
+        description: "Returns events for the authenticated band from **both** bookings and legacy band events (polymorphic). Results are ordered by date ascending, then time ascending.\n\n**Required permission:** `api:read-events`",
+        security: [['BearerToken' => []]],
+        tags: ['Events'],
+        parameters: [
+            new OA\Parameter(name: 'date', in: 'query', required: false, description: 'Exact date match (YYYY-MM-DD)', schema: new OA\Schema(type: 'string', format: 'date', example: '2025-06-14')),
+            new OA\Parameter(name: 'from', in: 'query', required: false, description: 'Start of date range, inclusive (YYYY-MM-DD)', schema: new OA\Schema(type: 'string', format: 'date', example: '2025-06-01')),
+            new OA\Parameter(name: 'to', in: 'query', required: false, description: 'End of date range, inclusive (YYYY-MM-DD)', schema: new OA\Schema(type: 'string', format: 'date', example: '2025-06-30')),
+            new OA\Parameter(name: 'before', in: 'query', required: false, description: 'Exclusive upper-bound date (YYYY-MM-DD)', schema: new OA\Schema(type: 'string', format: 'date', example: '2025-07-01')),
+            new OA\Parameter(name: 'after', in: 'query', required: false, description: 'Exclusive lower-bound date (YYYY-MM-DD)', schema: new OA\Schema(type: 'string', format: 'date', example: '2025-05-31')),
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Success',
+                content: new OA\JsonContent(properties: [
+                    new OA\Property(property: 'success', type: 'boolean', example: true),
+                    new OA\Property(property: 'band', ref: '#/components/schemas/BandSummary'),
+                    new OA\Property(property: 'events', type: 'array', items: new OA\Items(ref: '#/components/schemas/Event')),
+                    new OA\Property(property: 'total', type: 'integer', example: 8),
+                    new OA\Property(property: 'filters', ref: '#/components/schemas/AppliedFilters'),
+                ]),
+            ),
+            new OA\Response(response: 401, description: 'Unauthorized', content: new OA\JsonContent(ref: '#/components/schemas/ErrorUnauthorized')),
+            new OA\Response(response: 403, description: 'Forbidden', content: new OA\JsonContent(ref: '#/components/schemas/ErrorForbidden')),
+        ],
+    )]
     public function index(Request $request)
     {
         $band = $request->input('authenticated_band');

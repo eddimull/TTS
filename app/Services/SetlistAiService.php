@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use App\Models\Events;
+use App\Services\Ai\Contracts\AiAdapterInterface;
+use App\Services\Ai\Adapters\ClaudeAdapter;
+use App\Services\Ai\Adapters\GeminiAdapter;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -11,20 +14,22 @@ class SetlistAiService
 {
     private Client $http;
     private string $apiKey;
-    private string $model = 'claude-sonnet-4-6';
+    private string $model = 'claude-opus-4-6';
+    private AiAdapterInterface $visionAdapter;
 
-    public function __construct()
+    public function __construct(?AiAdapterInterface $visionAdapter = null, ?string $apiKey = null)
     {
-        $this->apiKey = config('services.anthropic.key');
+        $this->apiKey = $apiKey ?? config('services.anthropic.key', '');
         $this->http = new Client([
             'base_uri' => 'https://api.anthropic.com',
             'timeout' => 60,
         ]);
+        $this->visionAdapter = $visionAdapter ?? new GeminiAdapter();
     }
 
     /**
      * Generate a setlist for an event.
-     * Returns an array of items: integers (song IDs) or the string "break".
+     * Returns ['items' => [...], 'event_context' => string, 'image_context' => string[]].
      *
      * @param array $attachmentImages  Each element: ['data' => base64string, 'media_type' => 'image/jpeg']
      */
@@ -37,9 +42,34 @@ class SetlistAiService
             ? "\nBAND LEADER INSTRUCTIONS:\n{$extraContext}\n"
             : '';
 
-        $attachmentSection = !empty($attachmentImages)
-            ? "\nATTACHMENT IMAGES: One or more images are attached showing a handwritten or printed song request list from the client. Study each image carefully before building the setlist:\n- Any song that is CROSSED OUT, STRUCK THROUGH, or has a line drawn through it is FORBIDDEN. Treat it exactly like an exclusion in rule 1 — do not include it under any circumstances, even if it appears in the event notes.\n- Any song that is HIGHLIGHTED or circled is a must-play request.\n- When in doubt about whether a marking indicates exclusion, assume it does and leave the song out.\n"
-            : '';
+        Log::info(empty($attachmentImages) ? 'No attachment images provided' : count($attachmentImages) . ' attachment image(s) provided');
+
+        // Classify each image then extract structured information based on its type.
+        // This keeps the noisy vision tasks separate from setlist generation.
+        $imageSections   = []; // keyed entries: ['type' => ..., 'content' => ...]
+        $attachmentParts = []; // plain text for the prompt
+        foreach ($attachmentImages as $image) {
+            $type = $this->classifyImage($image);
+            Log::info('SetlistAiService: image classified', ['type' => $type]);
+
+            $extracted = match ($type) {
+                'MARKED_SETLIST' => $this->extractClientMarkingsFromImages([$image], $songs),
+                'PLAIN_SETLIST'  => $this->extractPlainSetlist([$image]),
+                'TIMELINE'       => $this->extractTimeline([$image]),
+                default          => null,
+            };
+
+            $imageSections[] = ['type' => $type, 'content' => $extracted];
+
+            if ($extracted !== null) {
+                $attachmentParts[] = $extracted;
+            }
+        }
+
+        $attachmentSection = '';
+        if (!empty($attachmentParts)) {
+            $attachmentSection = "\nATTACHMENT CONTEXT:\n" . implode("\n\n", $attachmentParts) . "\n";
+        }
 
         $prompt = <<<PROMPT
 You are a professional band manager building a setlist for a live performance.
@@ -47,26 +77,29 @@ You are a professional band manager building a setlist for a live performance.
 EVENT DETAILS:
 {$context}
 {$extraSection}{$attachmentSection}
-AVAILABLE SONGS (format: ID | Title – Artist | Key | Genre | BPM | Lead singer | Transitions into):
+AVAILABLE SONGS (format: ID | Title – Artist | Key | Genre | BPM | Energy | Lead singer | Transitions into):
 {$songList}
 
 RULES — follow every rule without exception:
 
 1. EXCLUSIONS ARE ABSOLUTE: Songs are excluded if: (a) the band leader's instructions say to exclude them, (b) they appear crossed out or struck through in any attached image. Do NOT include excluded songs under any circumstances — not to fill time, not to round out a set, not for any reason. A shorter setlist is always preferable to violating an exclusion. If a song is crossed out in an image AND mentioned in the notes as a request, the crossed-out marking wins — do not play it.
 2. PLAY/DO-NOT-PLAY: Respect any play or do-not-play lists in the event notes with the same strictness as rule 1.
-3. REQUESTED SONGS: If the event notes, band leader instructions, or attached images reference a specific song (that is NOT crossed out):
-   - If it IS in the library, include it as {"id": <song_id>, "note": "Client request"} instead of a bare integer.
-   - If it is NOT in the library, include it as {"title": "...", "artist": "...", "note": "Client request — not in library"}.
-   Do not silently omit client requests in either case.
-4. HIGHLIGHTED SONGS: Songs highlighted or circled in any attached images are must-play requests — include them unless they conflict with rule 1.
+3. REQUESTED SONGS: Only include a song as a client request if it is EXPLICITLY named in the event notes, band leader instructions, or listed under "REQUESTED SONGS" in the CLIENT MARKINGS section above. Do NOT infer, guess, or add songs you think the client might want — only what is literally listed.
+   - If the song IS in the library, include it as {"id": <song_id>, "note": "Client request"} instead of a bare integer.
+   - If the song is NOT in the library, include it as {"title": "...", "artist": "...", "note": "Client request — not in library"}.
+   Do not silently omit client requests, but also do not fabricate them.
+4. HIGHLIGHTED SONGS: Songs listed under "REQUESTED SONGS" in the CLIENT MARKINGS section are client preferences. Include them where possible without violating other rules. Add {"note": "Highlighted"} for any such song. Take note of the genre pattern of requested songs and try to reflect that in the overall setlist.
 5. TRANSITIONS: When a song has a "Transitions into" field, place that target song immediately after it in the setlist.
-6. ENERGY FLOW: Vary genres and BPM to manage crowd energy. Do not cluster all slow songs together.
-7. LEAD SINGERS: Vary lead singers throughout the set when possible.
+6. ENERGY FLOW: Use the Energy field (Energy: 1/10) to shape the crowd arc. Take into account the BPM and what you already know about a song. Build energy gradually and always end the night on high energy songs (≥7). Avoid placing multiple low-energy songs (≤4) consecutively. After a set break, start with a high-energy song (≥7 if available). Songs with no energy rating should be treated as moderate (5).
+7. LEAD SINGERS: Distribute lead singers proportionally. Never have more than 3 consecutive songs with the same lead singer.
 8. BREAKS: If the event details specify multiple sets or a total performance duration, insert the string "break" between sets to represent set breaks. Do NOT place a break at the very beginning or very end of the setlist. Use the performance duration and typical ~3.5-minute song length to determine approximately how many songs fit per set.
+9. PERFORMANCE TYPE: Consider the type of performance specified in the event details (e.g., full concert, festival set, private event) and structure the setlist accordingly. For example, a festival set may require a shorter, high-energy selection of songs, whereas a full concert may allow for a more gradual build and inclusion of lower-energy songs or a wedding needs to include a mix of crowd-pleasing, familiar songs that appeal to a broad audience and keep the energy appropriate for a family-friendly or celebratory atmosphere.
+10. LOCATION: If the the event is taking place in South Louisiana, for example, consider including songs that reflect the local musical culture, such as zydeco, Cajun, or swamp pop influences, where appropriate, to connect with the audience and enhance the event experience.
 
 Return ONLY a valid JSON array in performance order. Each element is one of:
 - A song ID integer (plain library song with no special notes)
 - {"id": <song_id>, "note": "Client request"} for a library song that was specifically requested by the client
+- {"id": <song_id>, "note": "Highlighted"} for a library song that was highlighted or circled in an attached image
 - {"title": "...", "artist": "...", "note": "Client request — not in library"} for a requested song not in the library
 - The string "break" for set breaks
 
@@ -75,9 +108,38 @@ Example: [42, {"id": 17, "note": "Client request"}, {"title": "Sugar", "artist":
 Do not include any explanation, commentary, reasoning, or markdown. Output the raw JSON array and nothing else.
 PROMPT;
 
-        $responseText = $this->callClaude($prompt, $attachmentImages);
+        Log::info('SetlistAiService: prompt sent to Claude', ['prompt' => $prompt]);
 
-        return $this->parseSetlistItems($responseText);
+        $responseText = $this->callClaude($prompt);
+        Log::info('SetlistAiService: response received from Claude', ['response' => $responseText]);
+
+        $parsed = $this->parseSetlistItems($responseText);
+
+        $songMap = collect($songs)->keyBy('id');
+        $readable = collect($parsed)->map(function ($item) use ($songMap) {
+            if ($item === 'break') return '[BREAK]';
+            if (is_int($item)) {
+                $s = $songMap->get($item);
+                return $s ? "#{$item} {$s['title']}" : "#{$item} (unknown)";
+            }
+            if (is_array($item) && isset($item['id'])) {
+                $s = $songMap->get($item['id']);
+                $title = $s ? $s['title'] : "#{$item['id']} (unknown)";
+                return "{$title} [{$item['note']}]";
+            }
+            if (is_array($item) && isset($item['title'])) {
+                return "{$item['title']} (not in library)";
+            }
+            return '(unknown)';
+        })->values()->toArray();
+
+        Log::info('SetlistAiService: parsed setlist from Claude', ['order' => $readable]);
+
+        return [
+            'items'         => $parsed,
+            'event_context' => trim($context . ($extraContext ? "\n\nBand leader instructions: {$extraContext}" : '')),
+            'image_context' => $imageSections,
+        ];
     }
 
     /**
@@ -174,7 +236,7 @@ SONGS ALREADY PLAYED THIS SHOW: {$playedText}
 CROWD REACTIONS SO FAR:
 {$reactionsText}
 {$afterBreakSection}{$excludeSection}
-AVAILABLE SONGS (format: ID | Title – Artist | Key | Genre | BPM | Lead singer | Transitions into):
+AVAILABLE SONGS (format: ID | Title – Artist | Key | Genre | BPM | Energy | Lead singer | Transitions into):
 {$songList}
 
 Choose the single best next song to play right now. Consider:
@@ -195,44 +257,235 @@ PROMPT;
         return $ids[0] ?? null;
     }
 
+    /**
+     * Public wrapper for testing in isolation via artisan command.
+     * Classifies each image then routes to the appropriate extractor.
+     */
+    public function testExtractMarkings(array $images, array $songs): string
+    {
+        $sections = [];
+        foreach ($images as $image) {
+            $type = $this->classifyImage($image);
+            Log::info('SetlistAiService: test image classified', ['type' => $type]);
+
+            $extracted = match ($type) {
+                'MARKED_SETLIST' => $this->extractClientMarkingsFromImages([$image], $songs),
+                'PLAIN_SETLIST'  => $this->extractPlainSetlist([$image]),
+                'TIMELINE'       => $this->extractTimeline([$image]),
+                default          => null,
+            };
+
+            $sections[] = "[Classified as: {$type}]";
+            if ($extracted !== null) {
+                $sections[] = $extracted;
+            } else {
+                $sections[] = "(No structured extraction for this image type — passed as general context only.)";
+            }
+        }
+
+        return implode("\n\n", $sections);
+    }
+
+    /**
+     * Pre-flight: classify an image so the correct extraction strategy can be applied.
+     * Returns one of: MARKED_SETLIST, PLAIN_SETLIST, TIMELINE, OTHER.
+     */
+    private function classifyImage(array $image): string
+    {
+        $prompt = <<<PROMPT
+Look at this image and classify it into exactly one of these four categories:
+
+MARKED_SETLIST — a printed or typed list of song titles where the client has added handwritten marks (highlights, circles, stars, asterisks, checkmarks, crossed-out lines, or colored annotations).
+PLAIN_SETLIST — a printed, typed, or handwritten list of song titles with no client marks or annotations.
+TIMELINE — a schedule, run-of-show, or timeline for an event (e.g. wedding reception order, ceremony schedule, show itinerary with times).
+OTHER — anything else (stage plot, photo, logo, contract, diagram, etc.).
+
+Reply with exactly one word: MARKED_SETLIST, PLAIN_SETLIST, TIMELINE, or OTHER.
+PROMPT;
+
+        $raw = trim($this->visionAdapter->queryWithImage($prompt, $image));
+        $type = strtoupper(preg_replace('/[^A-Z_]/', '', $raw));
+
+        if (!in_array($type, ['MARKED_SETLIST', 'PLAIN_SETLIST', 'TIMELINE', 'OTHER'])) {
+            Log::warning('SetlistAiService: unexpected image classification', ['raw' => $raw]);
+            return 'OTHER';
+        }
+
+        return $type;
+    }
+
+    /**
+     * Extract song titles from a plain (unmarked) setlist image.
+     * Returns a formatted string listing the songs as client requests.
+     */
+    private function extractPlainSetlist(array $images): string
+    {
+        $prompt = <<<PROMPT
+This image contains a list of song titles provided by a client.
+
+Read every song title visible in the image and return them as a JSON array of strings, in the order they appear.
+
+Example: ["September", "Can't Stop the Feeling", "Uptown Funk"]
+
+Return ONLY the JSON array. No explanation, no markdown.
+PROMPT;
+
+        $raw  = $this->visionAdapter->queryWithImage($prompt, $images[0], 1024);
+        $json = preg_replace('/^```(?:json)?\s*|\s*```$/m', '', trim($raw));
+        $titles = json_decode($json, true);
+
+        if (!is_array($titles)) {
+            Log::warning('SetlistAiService: could not parse plain setlist', ['raw' => $raw]);
+            return "CLIENT SONG LIST (from image):\nNone";
+        }
+
+        $list = implode("\n", array_map(fn ($t) => "- {$t}", $titles));
+        return "CLIENT SONG LIST (from attached image — treat as requested songs):\n{$list}";
+    }
+
+    /**
+     * Extract event timeline / run-of-show from a schedule image.
+     * Returns a formatted string with time-ordered event notes.
+     */
+    private function extractTimeline(array $images): string
+    {
+        $prompt = <<<PROMPT
+This image contains an event timeline, run-of-show, or schedule.
+
+Extract every item you can read and return them as a JSON array of objects with "time" and "description" keys.
+
+Example: [{"time": "6:00 PM", "description": "Cocktail hour — background music"}, {"time": "7:00 PM", "description": "Grand entrance"}]
+
+If no time is listed for an item, use null for "time". Return ONLY the JSON array. No explanation, no markdown.
+PROMPT;
+
+        $raw  = $this->visionAdapter->queryWithImage($prompt, $images[0], 1024);
+        $json = preg_replace('/^```(?:json)?\s*|\s*```$/m', '', trim($raw));
+        $items = json_decode($json, true);
+
+        if (!is_array($items)) {
+            Log::warning('SetlistAiService: could not parse timeline', ['raw' => $raw]);
+            return "EVENT TIMELINE (from image):\nNone";
+        }
+
+        $lines = array_map(function ($item) {
+            $time = $item['time'] ?? null;
+            $desc = $item['description'] ?? '';
+            return $time ? "{$time}: {$desc}" : $desc;
+        }, $items);
+
+        $list = implode("\n", $lines);
+        return "EVENT TIMELINE (from attached image — use for set breaks and performance timing):\n{$list}";
+    }
+
+    /**
+     * Extract client markings from a marked-up setlist image using Gemini.
+     * Chunks the song library and checks each title against the image.
+     */
+    private function extractClientMarkingsFromImages(array $images, array $songs): string
+    {
+        $highlighted = [];
+        $excluded    = [];
+        $image       = $images[0]; // one image per classification call
+
+        $chunkSize = 25;
+        $chunks    = collect($songs)->values()->chunk($chunkSize);
+
+        foreach ($chunks as $chunkIndex => $chunk) {
+            $numberedList = $chunk->values()
+                ->map(fn ($s, $i) => ($chunkIndex * $chunkSize + $i + 1) . '. ' . $s['title'])
+                ->implode("\n");
+
+            $extractionPrompt = <<<PROMPT
+You are analyzing a band's printed master setlist that a client has physically marked up.
+
+The image shows a printed list of song titles. The client has made physical marks next to some songs.
+
+There are TWO types of client marks:
+1. HIGHLIGHTED / REQUESTED — a star (*), asterisk, circle, checkmark, or different-colored text (orange, gold, red) next to the title.
+2. CROSSED OUT / EXCLUDED — a line struck through the title.
+
+IMPORTANT — FUZZY TITLE MATCHING: The song titles in the list below may differ slightly from what is printed in the image. The image may use abbreviations, alternate punctuation, shortened titles, or omit subtitles. Match each song to the closest title you can find in the image. For example, "If You Don't Want Me To (The Freeze)" in the list may appear as "If You Don't Want Me To" or "The Freeze" in the image — treat these as the same song.
+
+TASK: For each song in the list below, find the closest matching title in the image and check whether it has a mark next to it.
+
+SONGS TO CHECK:
+{$numberedList}
+
+Output exactly one line per song, in the same order:
+[number]. [song title] | HIGHLIGHTED or EXCLUDED or UNMARKED
+
+Do not skip any song. If you cannot find a close match in the image or cannot read it clearly, output UNMARKED.
+PROMPT;
+
+            $raw = $this->visionAdapter->queryWithImage($extractionPrompt, $image, 8192);
+            Log::info("SetlistAiService: marked setlist chunk {$chunkIndex}", ['raw' => $raw]);
+
+            foreach (explode("\n", $raw) as $line) {
+                $line = trim($line);
+                if (empty($line)) continue;
+                if (preg_match('/^\d+\.\s+(.+?)\s*\|\s*(HIGHLIGHTED|EXCLUDED|UNMARKED)/i', $line, $m)) {
+                    $title  = trim($m[1]);
+                    $status = strtoupper(trim($m[2]));
+                    if ($status === 'HIGHLIGHTED') {
+                        $highlighted[] = $title;
+                    } elseif ($status === 'EXCLUDED') {
+                        $excluded[] = $title;
+                    }
+                }
+            }
+        }
+
+        $highlightedText = !empty($highlighted)
+            ? implode("\n", array_map(fn ($t) => "- {$t}", $highlighted))
+            : 'None';
+
+        $excludedText = !empty($excluded)
+            ? implode("\n", array_map(fn ($t) => "- {$t}", $excluded))
+            : 'None';
+
+        return "REQUESTED SONGS (highlighted/starred by client):\n{$highlightedText}\n\nEXCLUDED SONGS (crossed out by client):\n{$excludedText}";
+    }
+
     private function buildEventContext(Events $event): string
     {
         $lines = [];
 
-        $lines[] = 'Title: ' . ($event->title ?? 'Unknown');
+        $lines[] = 'Event Title: ' . ($event->title ?? 'Unknown');
         $lines[] = 'Date: ' . ($event->date?->toFormattedDateString() ?? 'Unknown');
-
-        if ($event->type) {
-            $lines[] = 'Event Type: ' . $event->type->name;
-        }
+        $lines[] = 'Event Type: ' . ($event->type?->name ?? 'Unknown');
 
         if ($event->eventable) {
             $booking = $event->eventable;
 
             if (!empty($booking->venue_name)) {
-                $lines[] = 'Venue: ' . $booking->venue_name;
+                $venueLine = 'Venue: ' . $booking->venue_name;
+                if (!empty($booking->venue_address)) {
+                    $venueLine .= ' — ' . $booking->venue_address;
+                }
+                $lines[] = $venueLine;
             }
 
             if (!empty($booking->start_time) && !empty($booking->end_time)) {
-                $start = $booking->start_time->format('g:i A');
-                $end   = $booking->end_time->format('g:i A');
-                $lines[] = "Performance Time: {$start} – {$end}";
-
-                $duration = $booking->duration; // hours (float)
-                $minutes  = (int) round($duration * 60);
-                $lines[] = "Total Performance Duration: {$minutes} minutes";
+                $start   = $booking->start_time->format('g:i A');
+                $end     = $booking->end_time->format('g:i A');
+                $minutes = (int) round($booking->duration * 60);
+                $lines[] = "Performance Time: {$start} – {$end} ({$minutes} minutes total)";
             }
         } elseif ($event->time) {
             $lines[] = 'Start Time: ' . $event->time;
         }
 
         if ($event->notes) {
-            $lines[] = 'Notes / Special Requests: ' . strip_tags($event->notes);
+            $lines[] = 'Client Notes / Special Requests: ' . strip_tags($event->notes);
         }
 
         if ($event->roster_members && count($event->roster_members) > 0) {
-            $roster = collect($event->roster_members)->pluck('name')->implode(', ');
-            $lines[] = 'Performing Musicians: ' . $roster;
+            $lines[] = 'Performing Musicians:';
+            foreach ($event->roster_members as $member) {
+                $role    = !empty($member['role']) ? " ({$member['role']})" : '';
+                $lines[] = "  - {$member['name']}{$role}";
+            }
         }
 
         return implode("\n", $lines);
@@ -241,16 +494,63 @@ PROMPT;
     private function buildSongList(array $songs): string
     {
         return collect($songs)->map(fn($s) => sprintf(
-            'ID:%d | %s%s | Key: %s | Genre: %s | BPM: %s | Lead: %s%s',
+            'ID:%d | %s%s | Key: %s | Genre: %s | BPM: %s | Energy: %s | Lead Singer: %s%s',
             $s['id'],
             $s['title'],
             !empty($s['artist']) ? ' – ' . $s['artist'] : '',
             $s['song_key'] ?? '—',
             $s['genre'] ?? '—',
             $s['bpm'] ?? '—',
+            isset($s['energy']) ? $s['energy'] . '/10' : '—',
             $s['lead_singer'] ?? 'Instrumental',
             !empty($s['transition_song']) ? ' | Transitions into: ' . $s['transition_song'] : ''
         ))->implode("\n");
+    }
+
+    /**
+     * Look up song details (key, BPM, genre, artist) using Claude as a fallback.
+     *
+     * @return array{bpm: int|null, song_key: string|null, genre: string|null, artist: string|null}
+     */
+    public function lookupSongDetails(string $title, ?string $artist = null): array
+    {
+        $artistLine = $artist ? " by {$artist}" : '';
+        $prompt = <<<PROMPT
+You are a music reference tool. Return the details for the song "{$title}"{$artistLine}.
+
+Respond with ONLY a JSON object, no explanation:
+{
+  "bpm": <integer or null>,
+  "song_key": "<note> <accidental if any> <maj or min>, e.g. 'Bb min' or 'E maj', or null if unknown>",
+  "genre": "<primary genre, e.g. Rock, Country, R&B, or null if unknown>",
+  "artist": "<canonical artist name, or null if unknown>"
+}
+
+If you are not confident about a value, use null rather than guessing.
+PROMPT;
+
+        try {
+            $raw = $this->callClaude($prompt);
+            Log::info('Claude song lookup raw', ['raw' => $raw]);
+            // Strip markdown code fences if present
+            $json = preg_replace('/^```(?:json)?\s*|\s*```$/m', '', trim($raw));
+            $data = json_decode($json, true);
+            Log::info('Claude song lookup parsed', ['data' => $data]);
+
+            if (!is_array($data)) {
+                return ['bpm' => null, 'song_key' => null, 'genre' => null, 'artist' => null];
+            }
+
+            return [
+                'bpm'      => isset($data['bpm']) ? (int) $data['bpm'] : null,
+                'song_key' => $data['song_key'] ?? null,
+                'genre'    => $data['genre'] ?? null,
+                'artist'   => $data['artist'] ?? null,
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('Claude song lookup failed', ['error' => $e->getMessage(), 'title' => $title]);
+            return ['bpm' => null, 'song_key' => null, 'genre' => null, 'artist' => null];
+        }
     }
 
     /**
@@ -287,7 +587,7 @@ PROMPT;
             ],
             'json' => [
                 'model' => $this->model,
-                'max_tokens' => 2048,
+                'max_tokens' => 4096,
                 'messages' => $payload,
             ],
         ]);
@@ -336,7 +636,7 @@ You are a professional band manager refining a live performance setlist based on
 EVENT DETAILS:
 {$context}
 
-AVAILABLE SONGS (format: ID | Title – Artist | Key | Genre | BPM | Lead singer | Transitions into):
+AVAILABLE SONGS (format: ID | Title – Artist | Key | Genre | BPM | Energy | Lead singer | Transitions into):
 {$songList}
 
 CURRENT SETLIST:
