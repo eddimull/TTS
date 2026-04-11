@@ -116,7 +116,12 @@ class SetlistController extends Controller
             \Illuminate\Support\Facades\Log::info('SetlistController: image blocks built', ['count' => count($attachmentImages)]);
         }
 
-        $result = $aiService->generateSetlist($event, $songsArray, $request->input('context'), $attachmentImages);
+        $userId   = Auth::id();
+        $eventKey = $event->key;
+        $progress = fn (string $step, string $status, ?string $detail) =>
+            \App\Events\SetlistGenerationProgress::dispatch($userId, $eventKey, $step, $status, $detail);
+
+        $result = $aiService->generateSetlist($event, $songsArray, $request->input('context'), $attachmentImages, $progress);
 
         if (empty($result['items'])) {
             return response()->json(['error' => 'AI could not generate a setlist. Please try again.'], 500);
