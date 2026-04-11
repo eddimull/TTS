@@ -41,7 +41,7 @@ class SongsController extends Controller
         }
 
         $songs = $band->songs()
-            ->with(['leadSinger', 'transitionSong:id,title,artist'])
+            ->with(['leadSinger.user', 'transitionSong:id,title,artist'])
             ->get();
 
         $rosterMembers = $band->rosters()
@@ -90,7 +90,7 @@ class SongsController extends Controller
         }
 
         $song = $band->songs()->create($validated);
-        $song->load(['leadSinger', 'transitionSong:id,title,artist']);
+        $song->load(['leadSinger.user', 'transitionSong:id,title,artist']);
 
         return response()->json($song, 201);
     }
@@ -116,7 +116,7 @@ class SongsController extends Controller
         ]);
 
         $song->update($validated);
-        $song->load(['leadSinger', 'transitionSong:id,title,artist']);
+        $song->load(['leadSinger.user', 'transitionSong:id,title,artist']);
 
         return response()->json($song);
     }

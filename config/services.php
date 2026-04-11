@@ -34,6 +34,10 @@ return [
         'key' => env('ANTHROPIC_API_KEY'),
     ],
 
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+    ],
+
     'pandadoc' => [
         'api_key' => env('PANDADOC_KEY'),
         'client_id' => env('PANDADOC_CLIENT_ID'),

@@ -88,6 +88,12 @@
           <Column field="song_key" header="Key" sortable style="width: 90px" />
           <Column field="genre" header="Genre" sortable style="width: 130px" />
           <Column field="bpm" header="BPM" sortable style="width: 80px" />
+          <Column field="energy" header="Energy" sortable style="width: 90px">
+            <template #body="{ data }">
+              <span v-if="data.energy">{{ data.energy }}/10</span>
+              <span v-else class="text-gray-400">—</span>
+            </template>
+          </Column>
           <Column header="Lead Singer" style="width: 160px">
             <template #body="{ data }">
               {{ data.lead_singer?.display_name ?? '—' }}
