@@ -34,6 +34,10 @@ return [
         'key' => env('ANTHROPIC_API_KEY'),
     ],
 
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+    ],
+
     'pandadoc' => [
         'api_key' => env('PANDADOC_KEY'),
         'client_id' => env('PANDADOC_CLIENT_ID'),
@@ -53,6 +57,10 @@ return [
         'client_id' => env('GOOGLE_DRIVE_CLIENT_ID'),
         'client_secret' => env('GOOGLE_DRIVE_CLIENT_SECRET'),
         'redirect_uri' => env('APP_URL') . '/media/drive/callback',
+    ],
+
+    'getsongbpm' => [
+        'key' => env('GETSONGBPM_API_KEY'),
     ],
 
     'media' => [
