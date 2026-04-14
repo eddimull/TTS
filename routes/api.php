@@ -77,61 +77,74 @@ Route::prefix('mobile')->group(function () {
         Route::get('/search', [App\Http\Controllers\Api\Mobile\SearchController::class, 'search'])->name('mobile.search');
 
         // Events
-        Route::get('/events/{key}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'show'])->name('mobile.events.show');
-        Route::patch('/events/{key}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'update'])->name('mobile.events.update');
-        Route::get('/events/{key}/subs', [App\Http\Controllers\Api\Mobile\EventsController::class, 'subs'])->name('mobile.events.subs');
-        Route::post('/events/{key}/members/{memberId}/sub', [App\Http\Controllers\Api\Mobile\EventsController::class, 'assignSub'])->name('mobile.events.members.sub');
-        Route::post('/events/{key}/attachments', [App\Http\Controllers\Api\Mobile\EventsController::class, 'uploadAttachment'])->name('mobile.events.attachments.store');
-        Route::delete('/events/{key}/attachments/{attachmentId}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'deleteAttachment'])->name('mobile.events.attachments.destroy');
+        Route::get('/events/{event}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'show'])->name('mobile.events.show');
+        Route::patch('/events/{event}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'update'])->name('mobile.events.update');
+        Route::get('/events/{event}/subs', [App\Http\Controllers\Api\Mobile\EventsController::class, 'subs'])->name('mobile.events.subs');
+        Route::post('/events/{event}/members/{memberId}/sub', [App\Http\Controllers\Api\Mobile\EventsController::class, 'assignSub'])->name('mobile.events.members.sub');
+        Route::post('/events/{event}/attachments', [App\Http\Controllers\Api\Mobile\EventsController::class, 'uploadAttachment'])->name('mobile.events.attachments.store');
+        Route::delete('/events/{event}/attachments/{attachment}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'deleteAttachment'])->name('mobile.events.attachments.destroy');
 
-        Route::middleware('mobile.band')->group(function () {
+        // ── Events (read) ──────────────────────────────────────────────
+        Route::middleware('mobile.band:read:events')->group(function () {
             Route::get('/bands/{band}/events', [App\Http\Controllers\Api\Mobile\EventsController::class, 'index'])->name('mobile.events.index');
+        });
 
-            // Bookings
+        // ── Bookings (read) ────────────────────────────────────────────
+        Route::middleware('mobile.band:read:bookings')->scopeBindings()->group(function () {
             Route::get('/bands/{band}/bookings', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'index'])->name('mobile.bookings.index');
             Route::get('/bands/{band}/bookings/{booking}', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'show'])->name('mobile.bookings.show');
+            Route::get('/bands/{band}/contacts', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'contactLibrary'])->name('mobile.contacts.index');
+            Route::get('/bands/{band}/bookings/{booking}/contract', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'showContract'])->name('mobile.bookings.contract.show');
+            Route::get('/bands/{band}/bookings/{booking}/history', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'showHistory'])->name('mobile.bookings.history');
+        });
 
-            // Booking mutations
+        // ── Bookings (write) ───────────────────────────────────────────
+        Route::middleware('mobile.band:write:bookings')->scopeBindings()->group(function () {
             Route::post('/bands/{band}/bookings', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'store'])->name('mobile.bookings.store');
             Route::patch('/bands/{band}/bookings/{booking}', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'update'])->name('mobile.bookings.update');
             Route::delete('/bands/{band}/bookings/{booking}', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'destroy'])->name('mobile.bookings.destroy');
             Route::post('/bands/{band}/bookings/{booking}/cancel', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'cancel'])->name('mobile.bookings.cancel');
 
-            // Booking contacts
-            Route::get('/bands/{band}/contacts', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'contactLibrary'])->name('mobile.contacts.index');
+            // Booking contacts (write)
             Route::post('/bands/{band}/bookings/{booking}/contacts', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'storeContact'])->name('mobile.bookings.contacts.store');
-            Route::patch('/bands/{band}/bookings/{booking}/contacts/{bc}', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'updateContact'])->name('mobile.bookings.contacts.update');
-            Route::delete('/bands/{band}/bookings/{booking}/contacts/{bc}', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'destroyContact'])->name('mobile.bookings.contacts.destroy');
+            Route::patch('/bands/{band}/bookings/{booking}/contacts/{booking_contact}', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'updateContact'])->name('mobile.bookings.contacts.update');
+            Route::delete('/bands/{band}/bookings/{booking}/contacts/{booking_contact}', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'destroyContact'])->name('mobile.bookings.contacts.destroy');
 
             // Booking payments
             Route::post('/bands/{band}/bookings/{booking}/payments', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'storePayment'])->name('mobile.bookings.payments.store');
             Route::delete('/bands/{band}/bookings/{booking}/payments/{payment}', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'destroyPayment'])->name('mobile.bookings.payments.destroy');
 
-            // Booking contract
-            Route::get('/bands/{band}/bookings/{booking}/contract', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'showContract'])->name('mobile.bookings.contract.show');
+            // Booking contract (write)
             Route::post('/bands/{band}/bookings/{booking}/contract/upload', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'uploadContract'])->name('mobile.bookings.contract.upload');
             Route::post('/bands/{band}/bookings/{booking}/contract/send', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'sendContract'])->name('mobile.bookings.contract.send');
+        });
 
-            // Booking history
-            Route::get('/bands/{band}/bookings/{booking}/history', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'showHistory'])->name('mobile.bookings.history');
-
-            // Finances
+        // ── Finances (uses read:bookings permission) ───────────────────
+        Route::middleware('mobile.band:read:bookings')->group(function () {
             Route::get('/bands/{band}/finances', [App\Http\Controllers\Api\Mobile\FinancesController::class, 'index'])->name('mobile.finances.index');
             Route::get('/bands/{band}/finances/unpaid', [App\Http\Controllers\Api\Mobile\FinancesController::class, 'unpaid'])->name('mobile.finances.unpaid');
             Route::get('/bands/{band}/finances/paid', [App\Http\Controllers\Api\Mobile\FinancesController::class, 'paid'])->name('mobile.finances.paid');
+        });
 
-            // Rehearsal schedules
+        // ── Rehearsals (read) ──────────────────────────────────────────
+        Route::middleware('mobile.band:read:rehearsals')->group(function () {
             Route::get('/bands/{band}/rehearsal-schedules', [App\Http\Controllers\Api\Mobile\RehearsalsController::class, 'schedules'])->name('mobile.rehearsals.schedules');
+        });
 
-            // Music library
+        // ── Music / Charts (read) ──────────────────────────────────────
+        Route::middleware('mobile.band:read:charts')->group(function () {
             Route::get('/bands/{band}/songs', [App\Http\Controllers\Api\Mobile\MusicController::class, 'songs'])->name('mobile.songs.index');
             Route::get('/bands/{band}/charts', [App\Http\Controllers\Api\Mobile\MusicController::class, 'charts'])->name('mobile.charts.index');
-            Route::post('/bands/{band}/charts', [App\Http\Controllers\Api\Mobile\MusicController::class, 'storeChart'])->name('mobile.charts.store');
             Route::get('/bands/{band}/charts/{chart}', [App\Http\Controllers\Api\Mobile\MusicController::class, 'chartDetail'])->name('mobile.charts.show');
+            Route::get('/bands/{band}/charts/{chart}/uploads/{upload}/download', [App\Http\Controllers\Api\Mobile\MusicController::class, 'downloadChartUpload'])->name('mobile.charts.uploads.download');
+        });
+
+        // ── Music / Charts (write) ─────────────────────────────────────
+        Route::middleware('mobile.band:write:charts')->group(function () {
+            Route::post('/bands/{band}/charts', [App\Http\Controllers\Api\Mobile\MusicController::class, 'storeChart'])->name('mobile.charts.store');
             Route::delete('/bands/{band}/charts/{chart}', [App\Http\Controllers\Api\Mobile\MusicController::class, 'destroyChart'])->name('mobile.charts.destroy');
             Route::post('/bands/{band}/charts/{chart}/uploads', [App\Http\Controllers\Api\Mobile\MusicController::class, 'storeChartUpload'])->name('mobile.charts.uploads.store');
             Route::delete('/bands/{band}/charts/{chart}/uploads/{upload}', [App\Http\Controllers\Api\Mobile\MusicController::class, 'destroyChartUpload'])->name('mobile.charts.uploads.destroy');
-            Route::get('/bands/{band}/charts/{chart}/uploads/{upload}/download', [App\Http\Controllers\Api\Mobile\MusicController::class, 'downloadChartUpload'])->name('mobile.charts.uploads.download');
         });
 
         // Rehearsal detail (band derived from rehearsal)
@@ -141,14 +154,16 @@ Route::prefix('mobile')->group(function () {
         Route::patch('/rehearsals/{rehearsal}/notes', [App\Http\Controllers\Api\Mobile\RehearsalsController::class, 'updateNotes'])->name('mobile.rehearsals.update-notes');
         Route::get('/rehearsals/{rehearsal}', [App\Http\Controllers\Api\Mobile\RehearsalsController::class, 'show'])->name('mobile.rehearsals.show');
 
-        // Media library
-        Route::prefix('bands/{band}')->middleware('mobile.band')->group(function () {
+        // ── Media (read) ───────────────────────────────────────────────
+        Route::prefix('bands/{band}')->middleware('mobile.band:read:media')->group(function () {
             Route::get('/media', [App\Http\Controllers\Api\Mobile\MediaController::class, 'index'])->name('mobile.media.index');
             Route::get('/media/{media}', [App\Http\Controllers\Api\Mobile\MediaController::class, 'show'])->name('mobile.media.show');
-            Route::delete('/media/{media}', [App\Http\Controllers\Api\Mobile\MediaController::class, 'destroy'])->name('mobile.media.destroy');
             Route::get('/media/{media}/serve', [App\Http\Controllers\Api\Mobile\MediaController::class, 'serve'])->name('mobile.media.serve');
+        });
 
-            // Chunked upload
+        // ── Media (write) ──────────────────────────────────────────────
+        Route::prefix('bands/{band}')->middleware('mobile.band:write:media')->group(function () {
+            Route::delete('/media/{media}', [App\Http\Controllers\Api\Mobile\MediaController::class, 'destroy'])->name('mobile.media.destroy');
             Route::post('/media/upload/initiate', [App\Http\Controllers\Api\Mobile\MediaController::class, 'uploadInitiate'])->name('mobile.media.upload.initiate');
             Route::post('/media/upload/{uploadId}/chunk', [App\Http\Controllers\Api\Mobile\MediaController::class, 'uploadChunk'])->name('mobile.media.upload.chunk');
             Route::post('/media/upload/{uploadId}/complete', [App\Http\Controllers\Api\Mobile\MediaController::class, 'uploadComplete'])->name('mobile.media.upload.complete');
@@ -156,9 +171,9 @@ Route::prefix('mobile')->group(function () {
 
         // Setlist / live session
         Route::prefix('setlist')->name('mobile.setlist.')->group(function () {
-            Route::get('/events/{key}/session', [App\Http\Controllers\Api\Mobile\SetlistController::class, 'show'])->name('show');
-            Route::post('/events/{key}/session', [App\Http\Controllers\Api\Mobile\SetlistController::class, 'start'])->name('start');
-            Route::delete('/events/{key}/session', [App\Http\Controllers\Api\Mobile\SetlistController::class, 'end'])->name('end');
+            Route::get('/events/{event}/session', [App\Http\Controllers\Api\Mobile\SetlistController::class, 'show'])->name('show');
+            Route::post('/events/{event}/session', [App\Http\Controllers\Api\Mobile\SetlistController::class, 'start'])->name('start');
+            Route::delete('/events/{event}/session', [App\Http\Controllers\Api\Mobile\SetlistController::class, 'end'])->name('end');
 
             // Captain actions — keyed by session id
             Route::post('/sessions/{id}/next', [App\Http\Controllers\Api\Mobile\SetlistController::class, 'next'])->name('next');

@@ -1,0 +1,901 @@
+openapi: 3.0.3
+info:
+  title: TTS Bandmate API
+  description: |
+    The TTS Bandmate Band API allows external integrations to read and manage bookings
+    and events for a band. Authentication uses a **Bearer token** issued per band.
+
+    ## Authentication
+
+    All endpoints require an `Authorization: Bearer <token>` header. Tokens are
+    scoped to a single band and carry fine-grained permissions.
+
+    ## Permissions
+
+    Each token is granted one or more permissions at issuance:
+
+    | Permission | Grants access to |
+    |---|---|
+    | `api:read-bookings` | `GET /booked-dates`, `GET /bookings`, `GET /bookings/{id}` |
+    | `api:write-bookings` | `POST /bookings`, `PUT /bookings/{id}`, `PATCH /bookings/{id}`, `DELETE /bookings/{id}` |
+    | `api:read-events` | `GET /events` |
+
+    ## Date Filtering
+
+    `/booked-dates` and `/events` support the same set of query parameters for
+    filtering by date. All dates must be in `YYYY-MM-DD` format. Parameters can be
+    combined (e.g. `from` + `to` for a range).
+
+  version: 1.0.0
+  contact:
+    name: TTS Bandmate
+
+servers:
+  - url: https://local.tts.band:8710/api
+    description: Local development
+
+tags:
+  - name: Bookings
+    description: Create and manage bookings for your band
+  - name: Booked Dates
+    description: Query booking schedules with flexible date filters
+  - name: Events
+    description: Read calendar events (bookings + legacy band events)
+
+components:
+  securitySchemes:
+    BearerToken:
+      type: http
+      scheme: bearer
+      description: Band API token issued from the TTS dashboard
+
+  schemas:
+    # ── Shared date-filter parameters ────────────────────────────────────────
+    DateFilterParams:
+      description: Optional date-range query parameters shared by /booked-dates and /events
+      properties:
+        date:
+          type: string
+          format: date
+          description: Exact date match (YYYY-MM-DD)
+          example: "2025-06-14"
+        from:
+          type: string
+          format: date
+          description: Start of date range (inclusive)
+          example: "2025-06-01"
+        to:
+          type: string
+          format: date
+          description: End of date range (inclusive)
+          example: "2025-06-30"
+        before:
+          type: string
+          format: date
+          description: Exclusive upper bound
+          example: "2025-07-01"
+        after:
+          type: string
+          format: date
+          description: Exclusive lower bound
+          example: "2025-05-31"
+
+    # ── Band summary ──────────────────────────────────────────────────────────
+    BandSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "The Groove Collective"
+
+    # ── Booking (full) ────────────────────────────────────────────────────────
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 42
+        name:
+          type: string
+          example: "Smith Wedding Reception"
+        date:
+          type: string
+          format: date
+          example: "2025-06-14"
+        start_time:
+          type: string
+          example: "18:00"
+          nullable: true
+        end_time:
+          type: string
+          example: "23:00"
+          nullable: true
+        venue_name:
+          type: string
+          example: "Grand Ballroom"
+          nullable: true
+        venue_address:
+          type: string
+          example: "123 Main St, Nashville, TN 37201"
+          nullable: true
+        price:
+          type: number
+          format: float
+          example: 3500.00
+        status:
+          type: string
+          enum: [draft, pending, confirmed, cancelled]
+          example: confirmed
+        contract_option:
+          type: string
+          enum: [default, none, external]
+          example: default
+        notes:
+          type: string
+          nullable: true
+          example: "Cocktail hour 6-7pm, dinner 7-9pm, dancing 9-11pm"
+        event_type_id:
+          type: integer
+          example: 2
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-03-01T12:00:00.000000Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2025-03-15T09:30:00.000000Z"
+        events:
+          type: array
+          items:
+            type: object
+          description: Associated calendar events
+        contacts:
+          type: array
+          items:
+            type: object
+          description: Client contacts for this booking
+        payments:
+          type: array
+          items:
+            type: object
+          description: Payments recorded against this booking
+        amount_paid:
+          type: number
+          format: float
+          example: 1750.00
+        amount_due:
+          type: number
+          format: float
+          example: 1750.00
+        is_paid:
+          type: boolean
+          example: false
+
+    # ── Booked-date entry (lighter than full Booking) ─────────────────────────
+    BookedDate:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 42
+        name:
+          type: string
+          example: "Smith Wedding Reception"
+        date:
+          type: string
+          format: date
+          example: "2025-06-14"
+        start_time:
+          type: string
+          example: "18:00"
+          nullable: true
+        end_time:
+          type: string
+          example: "23:00"
+          nullable: true
+        duration:
+          type: integer
+          description: Duration in hours
+          example: 5
+          nullable: true
+        event_type:
+          type: string
+          example: "Wedding"
+          nullable: true
+        event_type_id:
+          type: integer
+          example: 2
+          nullable: true
+        venue_name:
+          type: string
+          example: "Grand Ballroom"
+          nullable: true
+        venue_address:
+          type: string
+          example: "123 Main St, Nashville, TN 37201"
+          nullable: true
+        status:
+          type: string
+          enum: [draft, pending, confirmed, cancelled]
+          example: confirmed
+        price:
+          type: number
+          format: float
+          example: 3500.00
+        notes:
+          type: string
+          nullable: true
+
+    # ── Event ─────────────────────────────────────────────────────────────────
+    Event:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 101
+        title:
+          type: string
+          example: "Smith Wedding Reception"
+        date:
+          type: string
+          format: date
+          example: "2025-06-14"
+        time:
+          type: string
+          example: "18:00"
+          nullable: true
+        start_datetime:
+          type: string
+          format: date-time
+          example: "2025-06-14T18:00:00.000000Z"
+          nullable: true
+        end_datetime:
+          type: string
+          format: date-time
+          example: "2025-06-14T23:00:00.000000Z"
+          nullable: true
+        event_type:
+          type: string
+          example: "Wedding"
+          nullable: true
+        event_type_id:
+          type: integer
+          example: 2
+          nullable: true
+        eventable_type:
+          type: string
+          enum: [Bookings, BandEvents]
+          description: Whether this event originates from a booking or a legacy band event
+          example: Bookings
+        eventable_id:
+          type: integer
+          description: ID of the parent booking or band event
+          example: 42
+        venue_name:
+          type: string
+          example: "Grand Ballroom"
+          nullable: true
+        venue_address:
+          type: string
+          example: "123 Main St, Nashville, TN 37201"
+          nullable: true
+        status:
+          type: string
+          enum: [draft, pending, confirmed, cancelled]
+          nullable: true
+          example: confirmed
+        price:
+          type: number
+          format: float
+          nullable: true
+          example: 3500.00
+        notes:
+          type: string
+          nullable: true
+        is_public:
+          type: boolean
+          example: false
+
+    # ── Shared filter echo ────────────────────────────────────────────────────
+    AppliedFilters:
+      type: object
+      description: Echoes back any date filters that were applied
+      properties:
+        date:
+          type: string
+          format: date
+        from:
+          type: string
+          format: date
+        to:
+          type: string
+          format: date
+        before:
+          type: string
+          format: date
+        after:
+          type: string
+          format: date
+
+    # ── Error responses ───────────────────────────────────────────────────────
+    ErrorUnauthorized:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Unauthorized
+        message:
+          type: string
+          example: API token is required
+
+    ErrorForbidden:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Forbidden
+        message:
+          type: string
+          example: This API token does not have permission to perform this action
+        required_permission:
+          type: string
+          example: api:read-bookings
+
+    ErrorNotFound:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Not Found
+        message:
+          type: string
+          example: Booking not found or does not belong to your band
+
+    ErrorValidation:
+      type: object
+      properties:
+        message:
+          type: string
+          example: The given data was invalid.
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          example:
+            date: ["The date field is required."]
+
+  # ── Reusable responses ─────────────────────────────────────────────────────
+  responses:
+    Unauthorized:
+      description: Missing or invalid API token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorUnauthorized'
+
+    Forbidden:
+      description: Token lacks the required permission
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorForbidden'
+
+    NotFound:
+      description: Resource not found or not owned by this band
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorNotFound'
+
+    UnprocessableEntity:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorValidation'
+
+  # ── Reusable parameters ────────────────────────────────────────────────────
+  parameters:
+    DateParam:
+      name: date
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+      description: Exact date match (YYYY-MM-DD)
+    FromParam:
+      name: from
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+      description: Start of date range (inclusive, YYYY-MM-DD)
+    ToParam:
+      name: to
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+      description: End of date range (inclusive, YYYY-MM-DD)
+    BeforeParam:
+      name: before
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+      description: Exclusive upper-bound date (YYYY-MM-DD)
+    AfterParam:
+      name: after
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+      description: Exclusive lower-bound date (YYYY-MM-DD)
+
+security:
+  - BearerToken: []
+
+paths:
+  # ── /booked-dates ──────────────────────────────────────────────────────────
+  /booked-dates:
+    get:
+      tags: [Booked Dates]
+      summary: List booked dates
+      description: |
+        Returns bookings for the authenticated band with optional date filtering.
+        Results are ordered by date ascending, then start time ascending.
+
+        **Required permission:** `api:read-bookings`
+      operationId: listBookedDates
+      parameters:
+        - $ref: '#/components/parameters/DateParam'
+        - $ref: '#/components/parameters/FromParam'
+        - $ref: '#/components/parameters/ToParam'
+        - $ref: '#/components/parameters/BeforeParam'
+        - $ref: '#/components/parameters/AfterParam'
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  band:
+                    $ref: '#/components/schemas/BandSummary'
+                  bookings:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BookedDate'
+                  total:
+                    type: integer
+                    example: 12
+                  filters:
+                    $ref: '#/components/schemas/AppliedFilters'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+
+  # ── /events ────────────────────────────────────────────────────────────────
+  /events:
+    get:
+      tags: [Events]
+      summary: List events
+      description: |
+        Returns events for the authenticated band from **both** bookings and
+        legacy band events (polymorphic). Results are ordered by date ascending,
+        then time ascending.
+
+        **Required permission:** `api:read-events`
+      operationId: listEvents
+      parameters:
+        - $ref: '#/components/parameters/DateParam'
+        - $ref: '#/components/parameters/FromParam'
+        - $ref: '#/components/parameters/ToParam'
+        - $ref: '#/components/parameters/BeforeParam'
+        - $ref: '#/components/parameters/AfterParam'
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  band:
+                    $ref: '#/components/schemas/BandSummary'
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Event'
+                  total:
+                    type: integer
+                    example: 8
+                  filters:
+                    $ref: '#/components/schemas/AppliedFilters'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+
+  # ── /bookings ──────────────────────────────────────────────────────────────
+  /bookings:
+    get:
+      tags: [Bookings]
+      summary: List bookings
+      description: |
+        Returns all bookings for the authenticated band, ordered by date descending.
+        Includes associated events, contacts, and payments.
+
+        **Required permission:** `api:read-bookings`
+      operationId: listBookings
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  bookings:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Booking'
+                  total:
+                    type: integer
+                    example: 25
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+
+    post:
+      tags: [Bookings]
+      summary: Create a booking
+      description: |
+        Creates a new booking for the authenticated band. The end time is
+        calculated automatically from `start_time` + `duration` (hours).
+
+        **Required permission:** `api:write-bookings`
+      operationId: createBooking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - event_type_id
+                - date
+                - start_time
+                - duration
+                - price
+                - contract_option
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                  example: "Smith Wedding Reception"
+                event_type_id:
+                  type: integer
+                  description: Must reference a valid event type
+                  example: 2
+                date:
+                  type: string
+                  format: date
+                  description: Must be today or in the future
+                  example: "2025-06-14"
+                start_time:
+                  type: string
+                  description: "24-hour format HH:MM"
+                  example: "18:00"
+                duration:
+                  type: integer
+                  description: Duration in whole hours (1–24)
+                  minimum: 1
+                  maximum: 24
+                  example: 5
+                price:
+                  type: number
+                  format: float
+                  minimum: 0
+                  example: 3500.00
+                venue_name:
+                  type: string
+                  maxLength: 255
+                  nullable: true
+                  example: "Grand Ballroom"
+                venue_address:
+                  type: string
+                  nullable: true
+                  example: "123 Main St, Nashville, TN 37201"
+                contract_option:
+                  type: string
+                  enum: [default, none, external]
+                  example: default
+                status:
+                  type: string
+                  enum: [draft, pending, confirmed, cancelled]
+                  default: draft
+                  example: draft
+                notes:
+                  type: string
+                  nullable: true
+                  example: "Cocktail hour 6-7pm, dinner 7-9pm, dancing 9-11pm"
+      responses:
+        "201":
+          description: Booking created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Booking created successfully
+                  booking:
+                    $ref: '#/components/schemas/Booking'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "422":
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  # ── /bookings/{id} ─────────────────────────────────────────────────────────
+  /bookings/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Booking ID
+        example: 42
+
+    get:
+      tags: [Bookings]
+      summary: Get a booking
+      description: |
+        Returns a single booking. Returns 404 if the booking does not exist or
+        does not belong to the authenticated band.
+
+        **Required permission:** `api:read-bookings`
+      operationId: getBooking
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  booking:
+                    $ref: '#/components/schemas/Booking'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags: [Bookings]
+      summary: Replace a booking
+      description: |
+        Full update of an existing booking. All fields are optional (partial updates
+        also accepted via `PATCH`). Only fields provided are validated and updated.
+
+        **Required permission:** `api:write-bookings`
+      operationId: replaceBooking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                  example: "Smith Wedding Reception"
+                event_type_id:
+                  type: integer
+                  example: 2
+                date:
+                  type: string
+                  format: date
+                  example: "2025-06-14"
+                start_time:
+                  type: string
+                  example: "18:00"
+                end_time:
+                  type: string
+                  example: "23:00"
+                price:
+                  type: number
+                  format: float
+                  minimum: 0
+                  example: 3500.00
+                venue_name:
+                  type: string
+                  nullable: true
+                  example: "Grand Ballroom"
+                venue_address:
+                  type: string
+                  nullable: true
+                  example: "123 Main St, Nashville, TN 37201"
+                contract_option:
+                  type: string
+                  enum: [default, none, external]
+                  example: default
+                status:
+                  type: string
+                  enum: [draft, pending, confirmed, cancelled]
+                  example: confirmed
+                notes:
+                  type: string
+                  nullable: true
+      responses:
+        "200":
+          description: Booking updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Booking updated successfully
+                  booking:
+                    $ref: '#/components/schemas/Booking'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "422":
+          $ref: '#/components/responses/UnprocessableEntity'
+
+    patch:
+      tags: [Bookings]
+      summary: Partially update a booking
+      description: |
+        Partial update — send only the fields you want to change.
+
+        **Required permission:** `api:write-bookings`
+      operationId: updateBooking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                  example: "Smith Wedding Reception"
+                event_type_id:
+                  type: integer
+                  example: 2
+                date:
+                  type: string
+                  format: date
+                  example: "2025-06-14"
+                start_time:
+                  type: string
+                  example: "18:00"
+                end_time:
+                  type: string
+                  example: "23:00"
+                price:
+                  type: number
+                  format: float
+                  minimum: 0
+                  example: 3500.00
+                venue_name:
+                  type: string
+                  nullable: true
+                  example: "Grand Ballroom"
+                venue_address:
+                  type: string
+                  nullable: true
+                  example: "123 Main St, Nashville, TN 37201"
+                contract_option:
+                  type: string
+                  enum: [default, none, external]
+                  example: default
+                status:
+                  type: string
+                  enum: [draft, pending, confirmed, cancelled]
+                  example: confirmed
+                notes:
+                  type: string
+                  nullable: true
+      responses:
+        "200":
+          description: Booking updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Booking updated successfully
+                  booking:
+                    $ref: '#/components/schemas/Booking'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "422":
+          $ref: '#/components/responses/UnprocessableEntity'
+
+    delete:
+      tags: [Bookings]
+      summary: Delete a booking
+      description: |
+        Permanently deletes a booking. This action cannot be undone.
+
+        **Required permission:** `api:write-bookings`
+      operationId: deleteBooking
+      responses:
+        "200":
+          description: Booking deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Booking deleted successfully
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+

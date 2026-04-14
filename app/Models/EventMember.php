@@ -10,6 +10,21 @@ class EventMember extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected static function booted(): void
+    {
+        $ensureBandSub = function (self $member) {
+            if ($member->user_id && $member->band_id) {
+                BandSubs::firstOrCreate([
+                    'user_id' => $member->user_id,
+                    'band_id' => $member->band_id,
+                ]);
+            }
+        };
+
+        static::created($ensureBandSub);
+        static::updated($ensureBandSub);
+    }
+
     protected $fillable = [
         'event_id',
         'band_id',
