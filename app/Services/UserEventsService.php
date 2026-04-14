@@ -327,7 +327,7 @@ class UserEventsService
     {
         $user = Auth::user();
 
-        // Get event IDs the user is subbing for
+        // Get event IDs from accepted event_subs invitations
         $eventSubsQuery = DB::table('event_subs')
             ->where('user_id', $user->id)
             ->where('pending', false); // Only accepted invitations
@@ -344,7 +344,29 @@ class UserEventsService
             $eventSubsQuery->where('events.date', '<', $beforeDate->toDateString());
         }
 
-        $eventIds = $eventSubsQuery->pluck('event_id')->toArray();
+        $invitationEventIds = $eventSubsQuery->pluck('event_id')->toArray();
+
+        // Also get event IDs from event_members where the user is a sub (no roster_member_id)
+        $eventMembersQuery = DB::table('event_members')
+            ->where('user_id', $user->id)
+            ->whereNull('roster_member_id')
+            ->whereNull('deleted_at');
+
+        if ($afterDate) {
+            $eventMembersQuery->join('events as e2', 'event_members.event_id', '=', 'e2.id')
+                ->where('e2.date', '>=', $afterDate->toDateString());
+        }
+
+        if ($beforeDate) {
+            if (!$afterDate) {
+                $eventMembersQuery->join('events as e2', 'event_members.event_id', '=', 'e2.id');
+            }
+            $eventMembersQuery->where('e2.date', '<', $beforeDate->toDateString());
+        }
+
+        $rosterEventIds = $eventMembersQuery->pluck('event_members.event_id')->toArray();
+
+        $eventIds = array_unique(array_merge($invitationEventIds, $rosterEventIds));
 
         if (empty($eventIds)) {
             return collect();
@@ -440,14 +462,26 @@ class UserEventsService
     {
         $user = Auth::user();
 
-        // Get event IDs the user is subbing for (accepted invitations only)
-        $eventIds = DB::table('event_subs')
+        // Get event IDs from accepted event_subs invitations
+        $invitationEventIds = DB::table('event_subs')
             ->join('events', 'event_subs.event_id', '=', 'events.id')
             ->where('event_subs.user_id', $user->id)
             ->where('event_subs.pending', false)
             ->where('events.date', '>=', $today)
             ->pluck('event_subs.event_id')
             ->toArray();
+
+        // Also get event IDs from event_members where the user is a sub (no roster_member_id)
+        $rosterEventIds = DB::table('event_members')
+            ->join('events as e2', 'event_members.event_id', '=', 'e2.id')
+            ->where('event_members.user_id', $user->id)
+            ->whereNull('event_members.roster_member_id')
+            ->whereNull('event_members.deleted_at')
+            ->where('e2.date', '>=', $today)
+            ->pluck('event_members.event_id')
+            ->toArray();
+
+        $eventIds = array_unique(array_merge($invitationEventIds, $rosterEventIds));
 
         if (empty($eventIds)) {
             return collect();
