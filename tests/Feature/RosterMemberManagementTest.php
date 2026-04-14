@@ -323,7 +323,7 @@ class RosterMemberManagementTest extends TestCase
             'is_active' => false,
         ]);
 
-        $activeMembers = RosterMember::active()->get();
+        $activeMembers = RosterMember::where('roster_id', $this->roster->id)->active()->get();
 
         $this->assertCount(1, $activeMembers);
         $this->assertTrue($activeMembers->first()->is_active);
