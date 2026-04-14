@@ -6,6 +6,7 @@ use App\Models\Events;
 use App\Models\EventMember;
 use App\Models\Bands;
 use App\Models\User;
+use App\Services\SubInvitationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -63,6 +64,55 @@ class EventMembersController extends Controller
             'members' => $members->values(),
             'substitutes' => $substitutes->values(),
         ]);
+    }
+
+    /**
+     * Add a member or substitute to an event.
+     * If invite_substitute is true, sends a SubInvitation email and creates an event_subs record.
+     */
+    public function store(Request $request, int $eventId, SubInvitationService $subInvitationService)
+    {
+        $event = Events::findOrFail($eventId);
+        $this->authorize('update', $event);
+
+        $inviteSub = $request->boolean('invite_substitute');
+
+        if ($inviteSub && !$request->filled('email')) {
+            return response()->json(['message' => 'Email is required to invite a substitute'], 422);
+        }
+
+        $validated = $request->validate([
+            'name'             => ['nullable', 'string', 'max:255'],
+            'email'            => ['nullable', 'email', 'max:255'],
+            'phone'            => ['nullable', 'string', 'max:50'],
+            'invite_substitute' => ['boolean'],
+        ]);
+
+        $band = $event->eventable->band;
+
+        if ($inviteSub) {
+            $subInvitationService->inviteSubToEvent(
+                eventId: $event->id,
+                bandId: $band->id,
+                email: $validated['email'],
+                name: $validated['name'] ?? null,
+                phone: $validated['phone'] ?? null,
+            );
+
+            return response()->json(['message' => 'Substitute invited'], 201);
+        }
+
+        $eventMember = EventMember::create([
+            'event_id'       => $event->id,
+            'band_id'        => $band->id,
+            'name'           => $validated['name'] ?? null,
+            'email'          => $validated['email'] ?? null,
+            'phone'          => $validated['phone'] ?? null,
+            'status'         => 'substitute',
+            'is_band_member' => false,
+        ]);
+
+        return response()->json(['message' => 'Member added', 'member' => $eventMember], 201);
     }
 
     /**
