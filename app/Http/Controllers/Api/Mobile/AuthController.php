@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Mobile\TokenRequest;
 use App\Models\User;
+use App\Services\Mobile\TokenService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -11,14 +13,10 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function token(Request $request): JsonResponse
-    {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required|string',
-            'device_name' => 'required|string|max:255',
-        ]);
+    public function __construct(private readonly TokenService $tokenService) {}
 
+    public function token(TokenRequest $request): JsonResponse
+    {
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
@@ -27,20 +25,13 @@ class AuthController extends Controller
             ]);
         }
 
-        $token = $user->createToken($request->device_name)->plainTextToken;
+        $abilities = $this->tokenService->buildAbilities($user);
+        $token     = $user->createToken($request->device_name, $abilities)->plainTextToken;
 
         return response()->json([
             'token' => $token,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ],
-            'bands' => $user->allBands()->map(fn($b) => [
-                'id' => $b->id,
-                'name' => $b->name,
-                'is_owner' => $user->ownsBand($b->id),
-            ])->values(),
+            'user'  => $this->tokenService->formatUser($user),
+            'bands' => $this->tokenService->formatBands($user),
         ]);
     }
 
@@ -49,16 +40,8 @@ class AuthController extends Controller
         $user = $request->user();
 
         return response()->json([
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-            ],
-            'bands' => $user->allBands()->map(fn($b) => [
-                'id' => $b->id,
-                'name' => $b->name,
-                'is_owner' => $user->ownsBand($b->id),
-            ])->values(),
+            'user'  => $this->tokenService->formatUser($user),
+            'bands' => $this->tokenService->formatBands($user),
         ]);
     }
 

@@ -35,6 +35,11 @@ class Events extends Model implements GoogleCalenderable
         });
     }
 
+    public function getRouteKeyName(): string
+    {
+        return 'key';
+    }
+
     protected $fillable = [
         'additional_data',
         'date',
