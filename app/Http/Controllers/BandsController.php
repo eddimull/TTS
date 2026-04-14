@@ -5,13 +5,17 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use Inertia\Inertia;
 use App\Models\Bands;
+use App\Models\CalendarAccess;
 use App\Rules\PartOfBand;
 use App\Models\BandOwners;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\BandCalendars;
 use App\Models\StripeAccounts;
+use App\Services\BandMemberRemovalService;
 use App\Services\CalendarService;
+use App\Services\GoogleCalendarService;
+use App\Formatters\CalendarAccessFormatter;
 use Illuminate\Support\Facades\Auth;
 use App\Notifications\TTSNotification;
 use App\Http\Requests\CreateCalendarRequest;
@@ -120,7 +124,7 @@ class BandsController extends Controller
     public function syncCalendar(Bands $band)
     {
         $calService = new CalendarService($band);
-        $calService->syncEvents();
+        $calService->syncEventsByType();
         $calService->syncBookings();
 
         return back()->with('successMessage', 'Events written to your calendar!');
@@ -142,17 +146,9 @@ class BandsController extends Controller
     {
         $calService = new CalendarService($band);
         $results = $calService->createAllBandCalendars();
-        
+
         if (count($results) > 0) {
-            // Automatically grant appropriate access to all band members
-            foreach (['booking', 'events', 'public'] as $type) {
-                $calService->grantBandAccessByType($type);
-            }
-            
-            // Make public calendar publicly readable
-            $calService->makePublicCalendarPublic();
-            
-            $message = 'Calendars created successfully and access granted! ';
+            $message = 'Calendars created successfully! ';
             foreach ($results as $type => $calendarId) {
                 $message .= ucfirst($type) . ': ' . $calendarId . ' ';
             }
@@ -212,13 +208,13 @@ class BandsController extends Controller
 
         return redirect()->back()->with('successMessage', $band->name . ' was successfully updated');
     }
-    public function deleteMember(Bands $band, User $user)
+    public function deleteMember(Bands $band, User $user, BandMemberRemovalService $removalService)
     {
         $author = Auth::user();
 
         if ($author->ownsBand($band->id))
         {
-            $band->members()->where('user_id', $user->id)->delete();
+            $removalService->removeFromBand($band, $user);
             return redirect()->route('bands.editSettings', [$band->id, 'band members'])->with('successMessage', $user->name . ' removed from band members');
         }
         else
@@ -227,13 +223,12 @@ class BandsController extends Controller
         }
     }
 
-    public function deleteOwner(Bands $band, $ownerParam)
+    public function deleteOwner(Bands $band, $ownerParam, BandMemberRemovalService $removalService)
     {
         $owner = BandOwners::where('user_id', '=', $ownerParam)->where('band_id', '=', $band->id)->first();
         $author = Auth::user();
         if ($author->ownsBand($band->id))
         {
-
             foreach ($band->owners as $bandOwner)
             {
                 $inviteOwnerUser = User::find($bandOwner->user_id);
@@ -245,7 +240,7 @@ class BandsController extends Controller
                 ]));
             }
 
-            $owner->delete();
+            $removalService->removeFromBand($band, $owner->user);
             return back()->with('successMessage', 'User removed from band owners');
         }
         else
@@ -288,7 +283,7 @@ class BandsController extends Controller
         return back()->withErrors('You do not have privileges to update the logo for this band');
     }
 
-    public function setupStripe(Bands $band, Request $request)
+    public function setupStripe(Bands $band)
     {
         \Stripe\Stripe::setApiKey(config('services.stripe.key'));
 
@@ -394,15 +389,15 @@ class BandsController extends Controller
         }
     }
 
-    public function grantCalendarAccessByType(Request $request, Bands $band, $type)
+    public function grantCalendarAccessByType(Request $request, Bands $band, $type, GoogleCalendarService $googleCalendarService)
     {
         $request->validate([
             'email' => 'required|email',
             'role' => 'required|in:reader,writer,owner',
         ]);
 
-        $user = \App\Models\User::where('email', $request->email)->first();
-        
+        $user = User::where('email', $request->email)->first();
+
         if (!$user) {
             return back()->withErrors(['User with email ' . $request->email . ' not found.']);
         }
@@ -412,32 +407,15 @@ class BandsController extends Controller
             return back()->withErrors(['No ' . $type . ' calendar found for this band.']);
         }
 
-        // Check if this access level is appropriate for the calendar type
-        $calService = new CalendarService($band, $type);
-        
-        // Determine if user is owner or member of band
-        $userRole = 'guest';
-        if ($band->owners()->where('user_id', $user->id)->exists()) {
-            $userRole = 'owner';
-        } elseif ($band->members()->where('user_id', $user->id)->exists()) {
-            $userRole = 'member';
-        }
+        $aclRule = CalendarAccessFormatter::formatACLRule($user->email, $request->role);
+        $googleCalendarService->addAccess($calendar->googleCalendar, $aclRule);
 
-        // Get appropriate role for this calendar type
-        $appropriateRole = $calService->getAccessRoleByType($type, $userRole);
-        
-        if (!$appropriateRole && $type === 'booking' && $userRole === 'member') {
-            return back()->withErrors(['Members cannot access booking calendar. Only owners have access to bookings.']);
-        }
+        CalendarAccess::updateOrCreate(
+            ['band_calendar_id' => $calendar->id, 'user_id' => $user->id],
+            ['role' => $request->role]
+        );
 
-        $service = GoogleCalendarFactory::createForCalendarId($calendar->calendar_id)->getService();
-        $success = $calService->grantUserAccessToCalendar($service, $user, $request->role, $calendar->calendar_id);
-        
-        if ($success) {
-            return back()->with('successMessage', ucfirst($type) . ' calendar access granted to ' . $request->email);
-        } else {
-            return back()->withErrors(['Failed to grant calendar access. Please check the logs for more details.']);
-        }
+        return back()->with('successMessage', ucfirst($type) . ' calendar access granted to ' . $request->email);
     }
 
     public function syncBandCalendarAccess(Bands $band)
