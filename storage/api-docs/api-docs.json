@@ -1,0 +1,1266 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "TTS Bandmate API",
+        "description": "The TTS Bandmate Band API allows external integrations to read and manage bookings\nand events for a band. Authentication uses a **Bearer token** issued per band.\n\n## Authentication\n\nAll endpoints require an `Authorization: Bearer <token>` header. Tokens are\nscoped to a single band and carry fine-grained permissions.\n\n## Permissions\n\nEach token is granted one or more permissions at issuance:\n\n| Permission | Grants access to |\n|---|---|\n| `api:read-bookings` | GET /booked-dates, GET /bookings, GET /bookings/{id} |\n| `api:write-bookings` | POST /bookings, PUT /bookings/{id}, PATCH /bookings/{id}, DELETE /bookings/{id} |\n| `api:read-events` | GET /events |\n\n## Date Filtering\n\n`/booked-dates` and `/events` support the same set of query parameters for filtering\nby date. All dates must be in `YYYY-MM-DD` format. Parameters can be combined\n(e.g. `from` + `to` for a range).",
+        "contact": {
+            "name": "TTS Bandmate"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "https://local.tts.band:8710/api",
+            "description": "API Server"
+        }
+    ],
+    "paths": {
+        "/booked-dates": {
+            "get": {
+                "tags": [
+                    "Booked Dates"
+                ],
+                "summary": "List booked dates",
+                "description": "Returns bookings for the authenticated band with optional date filtering. Results are ordered by date ascending, then start time ascending.\n\n**Required permission:** `api:read-bookings`",
+                "operationId": "listBookedDates",
+                "parameters": [
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "description": "Exact date match (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2025-06-14"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "description": "Start of date range, inclusive (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2025-06-01"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "description": "End of date range, inclusive (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2025-06-30"
+                        }
+                    },
+                    {
+                        "name": "before",
+                        "in": "query",
+                        "description": "Exclusive upper-bound date (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2025-07-01"
+                        }
+                    },
+                    {
+                        "name": "after",
+                        "in": "query",
+                        "description": "Exclusive lower-bound date (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2025-05-31"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "band": {
+                                            "$ref": "#/components/schemas/BandSummary"
+                                        },
+                                        "bookings": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/BookedDate"
+                                            }
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 12
+                                        },
+                                        "filters": {
+                                            "$ref": "#/components/schemas/AppliedFilters"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorUnauthorized"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorForbidden"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "/bookings": {
+            "get": {
+                "tags": [
+                    "Bookings"
+                ],
+                "summary": "List bookings",
+                "description": "Returns all bookings for the authenticated band, ordered by date descending. Includes associated events, contacts, and payments.\n\n**Required permission:** `api:read-bookings`",
+                "operationId": "listBookings",
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "bookings": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Booking"
+                                            }
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 25
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorUnauthorized"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorForbidden"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Bookings"
+                ],
+                "summary": "Create a booking",
+                "description": "Creates a new booking for the authenticated band. The end time is calculated automatically from `start_time` + `duration` (hours).\n\n**Required permission:** `api:write-bookings`",
+                "operationId": "createBooking",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "event_type_id",
+                                    "date",
+                                    "start_time",
+                                    "duration",
+                                    "price",
+                                    "contract_option"
+                                ],
+                                "allOf": [
+                                    {
+                                        "$ref": "#/components/schemas/BookingWriteBody"
+                                    },
+                                    {
+                                        "properties": {
+                                            "duration": {
+                                                "description": "Duration in whole hours (1–24). Used to calculate end_time.",
+                                                "type": "integer",
+                                                "example": 5,
+                                                "maximum": 24,
+                                                "minimum": 1
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Booking created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Booking created successfully"
+                                        },
+                                        "booking": {
+                                            "$ref": "#/components/schemas/Booking"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorUnauthorized"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorForbidden"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorValidation"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "/bookings/{id}": {
+            "get": {
+                "tags": [
+                    "Bookings"
+                ],
+                "summary": "Get a booking",
+                "description": "Returns a single booking. Returns 404 if the booking does not exist or does not belong to the authenticated band.\n\n**Required permission:** `api:read-bookings`",
+                "operationId": "getBooking",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Booking ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 42
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "booking": {
+                                            "$ref": "#/components/schemas/Booking"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorUnauthorized"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorForbidden"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorNotFound"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Bookings"
+                ],
+                "summary": "Replace a booking",
+                "description": "Full update of an existing booking. Only fields provided are validated and updated.\n\n**Required permission:** `api:write-bookings`",
+                "operationId": "replaceBooking",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Booking ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 42
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BookingWriteBody"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Booking updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Booking updated successfully"
+                                        },
+                                        "booking": {
+                                            "$ref": "#/components/schemas/Booking"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorUnauthorized"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorForbidden"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorNotFound"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorValidation"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Bookings"
+                ],
+                "summary": "Delete a booking",
+                "description": "Permanently deletes a booking. This action cannot be undone.\n\n**Required permission:** `api:write-bookings`",
+                "operationId": "deleteBooking",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Booking ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 42
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Booking deleted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Booking deleted successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorUnauthorized"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorForbidden"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorNotFound"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Bookings"
+                ],
+                "summary": "Partially update a booking",
+                "description": "Partial update — send only the fields you want to change.\n\n**Required permission:** `api:write-bookings`",
+                "operationId": "updateBooking",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Booking ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 42
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BookingWriteBody"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Booking updated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Booking updated successfully"
+                                        },
+                                        "booking": {
+                                            "$ref": "#/components/schemas/Booking"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorUnauthorized"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorForbidden"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorNotFound"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorValidation"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "/events": {
+            "get": {
+                "tags": [
+                    "Events"
+                ],
+                "summary": "List events",
+                "description": "Returns events for the authenticated band from **both** bookings and legacy band events (polymorphic). Results are ordered by date ascending, then time ascending.\n\n**Required permission:** `api:read-events`",
+                "operationId": "listEvents",
+                "parameters": [
+                    {
+                        "name": "date",
+                        "in": "query",
+                        "description": "Exact date match (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2025-06-14"
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "description": "Start of date range, inclusive (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2025-06-01"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "description": "End of date range, inclusive (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2025-06-30"
+                        }
+                    },
+                    {
+                        "name": "before",
+                        "in": "query",
+                        "description": "Exclusive upper-bound date (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2025-07-01"
+                        }
+                    },
+                    {
+                        "name": "after",
+                        "in": "query",
+                        "description": "Exclusive lower-bound date (YYYY-MM-DD)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "example": "2025-05-31"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "band": {
+                                            "$ref": "#/components/schemas/BandSummary"
+                                        },
+                                        "events": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Event"
+                                            }
+                                        },
+                                        "total": {
+                                            "type": "integer",
+                                            "example": 8
+                                        },
+                                        "filters": {
+                                            "$ref": "#/components/schemas/AppliedFilters"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorUnauthorized"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorForbidden"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "BandSummary": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "The Groove Collective"
+                    }
+                },
+                "type": "object"
+            },
+            "AppliedFilters": {
+                "description": "Echoes back any date filters that were applied",
+                "properties": {
+                    "date": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "from": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "to": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "before": {
+                        "type": "string",
+                        "format": "date"
+                    },
+                    "after": {
+                        "type": "string",
+                        "format": "date"
+                    }
+                },
+                "type": "object"
+            },
+            "Booking": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 42
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Smith Wedding Reception"
+                    },
+                    "date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2025-06-14"
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "example": "18:00",
+                        "nullable": true
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "example": "23:00",
+                        "nullable": true
+                    },
+                    "venue_name": {
+                        "type": "string",
+                        "example": "Grand Ballroom",
+                        "nullable": true
+                    },
+                    "venue_address": {
+                        "type": "string",
+                        "example": "123 Main St, Nashville, TN 37201",
+                        "nullable": true
+                    },
+                    "price": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 3500
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "confirmed",
+                        "enum": [
+                            "draft",
+                            "pending",
+                            "confirmed",
+                            "cancelled"
+                        ]
+                    },
+                    "contract_option": {
+                        "type": "string",
+                        "example": "default",
+                        "enum": [
+                            "default",
+                            "none",
+                            "external"
+                        ]
+                    },
+                    "notes": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "event_type_id": {
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-03-01T12:00:00.000000Z"
+                    },
+                    "updated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-03-15T09:30:00.000000Z"
+                    },
+                    "events": {
+                        "description": "Associated calendar events",
+                        "type": "array",
+                        "items": {
+                            "type": "object"
+                        }
+                    },
+                    "contacts": {
+                        "description": "Client contacts",
+                        "type": "array",
+                        "items": {
+                            "type": "object"
+                        }
+                    },
+                    "payments": {
+                        "description": "Recorded payments",
+                        "type": "array",
+                        "items": {
+                            "type": "object"
+                        }
+                    },
+                    "amount_paid": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 1750
+                    },
+                    "amount_due": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 1750
+                    },
+                    "is_paid": {
+                        "type": "boolean",
+                        "example": false
+                    }
+                },
+                "type": "object"
+            },
+            "BookedDate": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 42
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Smith Wedding Reception"
+                    },
+                    "date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2025-06-14"
+                    },
+                    "start_time": {
+                        "type": "string",
+                        "example": "18:00",
+                        "nullable": true
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "example": "23:00",
+                        "nullable": true
+                    },
+                    "duration": {
+                        "description": "Duration in hours",
+                        "type": "integer",
+                        "example": 5,
+                        "nullable": true
+                    },
+                    "event_type": {
+                        "type": "string",
+                        "example": "Wedding",
+                        "nullable": true
+                    },
+                    "event_type_id": {
+                        "type": "integer",
+                        "example": 2,
+                        "nullable": true
+                    },
+                    "venue_name": {
+                        "type": "string",
+                        "example": "Grand Ballroom",
+                        "nullable": true
+                    },
+                    "venue_address": {
+                        "type": "string",
+                        "example": "123 Main St, Nashville, TN 37201",
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "confirmed",
+                        "enum": [
+                            "draft",
+                            "pending",
+                            "confirmed",
+                            "cancelled"
+                        ]
+                    },
+                    "price": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 3500
+                    },
+                    "notes": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "Event": {
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 101
+                    },
+                    "title": {
+                        "type": "string",
+                        "example": "Smith Wedding Reception"
+                    },
+                    "date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2025-06-14"
+                    },
+                    "time": {
+                        "type": "string",
+                        "example": "18:00",
+                        "nullable": true
+                    },
+                    "start_datetime": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-06-14T18:00:00.000000Z",
+                        "nullable": true
+                    },
+                    "end_datetime": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2025-06-14T23:00:00.000000Z",
+                        "nullable": true
+                    },
+                    "event_type": {
+                        "type": "string",
+                        "example": "Wedding",
+                        "nullable": true
+                    },
+                    "event_type_id": {
+                        "type": "integer",
+                        "example": 2,
+                        "nullable": true
+                    },
+                    "eventable_type": {
+                        "description": "Whether this event originates from a booking or a legacy band event",
+                        "type": "string",
+                        "example": "Bookings",
+                        "enum": [
+                            "Bookings",
+                            "BandEvents"
+                        ]
+                    },
+                    "eventable_id": {
+                        "description": "ID of the parent booking or band event",
+                        "type": "integer",
+                        "example": 42
+                    },
+                    "venue_name": {
+                        "type": "string",
+                        "example": "Grand Ballroom",
+                        "nullable": true
+                    },
+                    "venue_address": {
+                        "type": "string",
+                        "example": "123 Main St, Nashville, TN 37201",
+                        "nullable": true
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "confirmed",
+                        "nullable": true
+                    },
+                    "price": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 3500,
+                        "nullable": true
+                    },
+                    "notes": {
+                        "type": "string",
+                        "nullable": true
+                    },
+                    "is_public": {
+                        "type": "boolean",
+                        "example": false
+                    }
+                },
+                "type": "object"
+            },
+            "BookingWriteBody": {
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "Smith Wedding Reception",
+                        "maxLength": 255
+                    },
+                    "event_type_id": {
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "date": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2025-06-14"
+                    },
+                    "start_time": {
+                        "description": "HH:MM 24-hour format",
+                        "type": "string",
+                        "example": "18:00"
+                    },
+                    "end_time": {
+                        "description": "HH:MM 24-hour format (update only; ignored on create)",
+                        "type": "string",
+                        "example": "23:00"
+                    },
+                    "price": {
+                        "type": "number",
+                        "format": "float",
+                        "example": 3500,
+                        "minimum": 0
+                    },
+                    "venue_name": {
+                        "type": "string",
+                        "example": "Grand Ballroom",
+                        "nullable": true
+                    },
+                    "venue_address": {
+                        "type": "string",
+                        "example": "123 Main St, Nashville, TN 37201",
+                        "nullable": true
+                    },
+                    "contract_option": {
+                        "type": "string",
+                        "example": "default",
+                        "enum": [
+                            "default",
+                            "none",
+                            "external"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "draft",
+                        "enum": [
+                            "draft",
+                            "pending",
+                            "confirmed",
+                            "cancelled"
+                        ]
+                    },
+                    "notes": {
+                        "type": "string",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "ErrorUnauthorized": {
+                "properties": {
+                    "error": {
+                        "type": "string",
+                        "example": "Unauthorized"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "API token is required"
+                    }
+                },
+                "type": "object"
+            },
+            "ErrorForbidden": {
+                "properties": {
+                    "error": {
+                        "type": "string",
+                        "example": "Forbidden"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "This API token does not have permission to perform this action"
+                    },
+                    "required_permission": {
+                        "type": "string",
+                        "example": "api:read-bookings"
+                    }
+                },
+                "type": "object"
+            },
+            "ErrorNotFound": {
+                "properties": {
+                    "error": {
+                        "type": "string",
+                        "example": "Not Found"
+                    },
+                    "message": {
+                        "type": "string",
+                        "example": "Booking not found or does not belong to your band"
+                    }
+                },
+                "type": "object"
+            },
+            "ErrorValidation": {
+                "properties": {
+                    "message": {
+                        "type": "string",
+                        "example": "The given data was invalid."
+                    },
+                    "errors": {
+                        "type": "object",
+                        "example": {
+                            "date": [
+                                "The date field is required."
+                            ]
+                        },
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "securitySchemes": {
+            "BearerToken": {
+                "type": "http",
+                "description": "Band API token issued from the TTS dashboard",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Bookings",
+            "description": "Create and manage bookings for your band"
+        },
+        {
+            "name": "Booked Dates",
+            "description": "Query booking schedules with flexible date filters"
+        },
+        {
+            "name": "Events",
+            "description": "Read calendar events (bookings + legacy band events)"
+        }
+    ]
+}

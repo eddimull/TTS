@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Mobile\UploadChunkRequest;
+use App\Http\Requests\Mobile\UploadInitiateRequest;
 use App\Models\Bands;
 use App\Models\BandStorageQuota;
 use App\Models\ChunkedUpload;
 use App\Models\MediaFile;
 use App\Services\MediaLibraryService;
+use App\Services\Mobile\MediaUploadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,18 +19,15 @@ use Illuminate\Support\Str;
 
 class MediaController extends Controller
 {
-    public function __construct(protected MediaLibraryService $mediaService) {}
+    public function __construct(
+        protected MediaLibraryService $mediaService,
+        protected MediaUploadService $uploadService,
+    ) {}
 
     // ── Browse ─────────────────────────────────────────────────────────────────
 
     public function index(Request $request, Bands $band): JsonResponse
     {
-        $user = Auth::user();
-
-        if (!$user->canRead('media', $band->id)) {
-            abort(403);
-        }
-
         $filters = $request->only(['search', 'media_type', 'folder_path']);
         $perPage = min((int) $request->get('per_page', 24), 100);
 
@@ -54,10 +54,6 @@ class MediaController extends Controller
             abort(404);
         }
 
-        if (!Auth::user()->canRead('media', $band->id)) {
-            abort(403);
-        }
-
         $media->load(['tags:id,name,color', 'uploader:id,name']);
 
         return response()->json($this->formatFile($media, detailed: true));
@@ -71,10 +67,6 @@ class MediaController extends Controller
             abort(404);
         }
 
-        if (!Auth::user()->canWrite('media', $band->id)) {
-            abort(403);
-        }
-
         $media->delete();
 
         return response()->json(['ok' => true]);
@@ -86,10 +78,6 @@ class MediaController extends Controller
     {
         if ($media->band_id !== $band->id) {
             abort(404);
-        }
-
-        if (!Auth::user()->canRead('media', $band->id)) {
-            abort(403);
         }
 
         try {
@@ -109,22 +97,10 @@ class MediaController extends Controller
 
     // ── Chunked upload (initiate) ──────────────────────────────────────────────
 
-    public function uploadInitiate(Request $request, Bands $band): JsonResponse
+    public function uploadInitiate(UploadInitiateRequest $request, Bands $band): JsonResponse
     {
-        if (!Auth::user()->canWrite('media', $band->id)) {
-            abort(403);
-        }
+        $validated = $request->validated();
 
-        $validated = $request->validate([
-            'filename'     => 'required|string|max:255',
-            'filesize'     => 'required|integer|min:1|max:5368709120',
-            'mime_type'    => 'required|string',
-            'total_chunks' => 'required|integer|min:1',
-            'folder_path'  => 'nullable|string|max:255',
-            'event_id'     => 'nullable|integer|exists:events,id',
-        ]);
-
-        // Check quota
         $quota = BandStorageQuota::firstOrCreate(
             ['band_id' => $band->id],
             ['quota_limit' => 5368709120, 'quota_used' => 0]
@@ -137,15 +113,15 @@ class MediaController extends Controller
         $uploadId = Str::uuid()->toString();
 
         ChunkedUpload::create([
-            'upload_id'     => $uploadId,
-            'filename'      => $validated['filename'],
-            'filesize'      => $validated['filesize'],
-            'mime_type'     => $validated['mime_type'],
-            'folder_path'   => $validated['folder_path'] ?? null,
-            'event_id'      => $validated['event_id'] ?? null,
-            'total_chunks'  => $validated['total_chunks'],
-            'user_id'       => Auth::id(),
-            'status'        => 'initiated',
+            'upload_id'    => $uploadId,
+            'filename'     => $validated['filename'],
+            'filesize'     => $validated['filesize'],
+            'mime_type'    => $validated['mime_type'],
+            'folder_path'  => $validated['folder_path'] ?? null,
+            'event_id'     => $validated['event_id'] ?? null,
+            'total_chunks' => $validated['total_chunks'],
+            'user_id'      => Auth::id(),
+            'status'       => 'initiated',
         ]);
 
         return response()->json(['upload_id' => $uploadId]);
@@ -153,16 +129,9 @@ class MediaController extends Controller
 
     // ── Chunked upload (chunk) ─────────────────────────────────────────────────
 
-    public function uploadChunk(Request $request, Bands $band, string $uploadId): JsonResponse
+    public function uploadChunk(UploadChunkRequest $request, Bands $band, string $uploadId): JsonResponse
     {
-        if (!Auth::user()->canWrite('media', $band->id)) {
-            abort(403);
-        }
-
-        $validated = $request->validate([
-            'chunk'       => 'required|file',
-            'chunk_index' => 'required|integer|min:0',
-        ]);
+        $validated = $request->validated();
 
         $upload = ChunkedUpload::where('upload_id', $uploadId)
             ->where('user_id', Auth::id())
@@ -181,7 +150,7 @@ class MediaController extends Controller
         $upload->increment('chunks_uploaded');
         $upload->update(['status' => 'uploading', 'last_chunk_at' => now()]);
 
-        $fresh = $upload->fresh();
+        $fresh    = $upload->fresh();
         $progress = ($fresh->chunks_uploaded / $upload->total_chunks) * 100;
 
         return response()->json([
@@ -194,10 +163,6 @@ class MediaController extends Controller
 
     public function uploadComplete(Request $request, Bands $band, string $uploadId): JsonResponse
     {
-        if (!Auth::user()->canWrite('media', $band->id)) {
-            abort(403);
-        }
-
         $upload = ChunkedUpload::where('upload_id', $uploadId)
             ->where('user_id', Auth::id())
             ->firstOrFail();
@@ -211,89 +176,7 @@ class MediaController extends Controller
         }
 
         try {
-            $tempFilename = $upload->upload_id . '_' . $upload->filename;
-            $tempPath     = "temp/{$tempFilename}";
-            $disk         = Storage::disk('local');
-
-            if (!$disk->exists('temp')) {
-                $disk->makeDirectory('temp');
-            }
-
-            $tempFullPath = $disk->path($tempPath);
-            $output       = fopen($tempFullPath, 'wb');
-
-            if ($output === false) {
-                throw new \Exception('Could not create temporary file.');
-            }
-
-            for ($i = 0; $i < $upload->total_chunks; $i++) {
-                $chunkPath = "chunks/{$uploadId}/{$i}";
-
-                if (!$disk->exists($chunkPath)) {
-                    fclose($output);
-                    throw new \Exception("Chunk {$i} is missing.");
-                }
-
-                $input = fopen($disk->path($chunkPath), 'rb');
-                while (!feof($input)) {
-                    fwrite($output, fread($input, 1024 * 1024));
-                }
-                fclose($input);
-            }
-
-            fclose($output);
-
-            // Upload merged file to S3
-            $extension       = pathinfo($upload->filename, PATHINFO_EXTENSION);
-            $uuid            = Str::uuid()->toString();
-            $storedFilename  = $band->site_name . '/media/' . $uuid . '.' . $extension;
-            $storageDisk     = config('filesystems.default');
-
-            $stream = fopen($tempFullPath, 'rb');
-            Storage::disk($storageDisk)->put($storedFilename, $stream, 'private');
-            if (is_resource($stream)) fclose($stream);
-
-            $mediaType = $this->determineMediaType($upload->mime_type);
-
-            $mediaFile = MediaFile::create([
-                'band_id'         => $band->id,
-                'user_id'         => Auth::id(),
-                'filename'        => $upload->filename,
-                'stored_filename' => $storedFilename,
-                'mime_type'       => $upload->mime_type,
-                'file_size'       => $upload->filesize,
-                'disk'            => $storageDisk,
-                'media_type'      => $mediaType,
-                'title'           => $upload->filename,
-                'folder_path'     => $upload->folder_path,
-            ]);
-
-            // Update quota
-            $quota = BandStorageQuota::firstOrCreate(
-                ['band_id' => $band->id],
-                ['quota_limit' => 5368709120, 'quota_used' => 0]
-            );
-            $quota->increment('quota_used', $upload->filesize);
-
-            // Associations
-            $this->mediaService->createAssociations($mediaFile, null, $upload->event_id);
-
-            // Thumbnail generation (best-effort)
-            if (in_array($mediaType, ['image', 'video'])) {
-                try {
-                    $this->mediaService->generateThumbnail($mediaFile);
-                } catch (\Exception $e) {
-                    \Log::warning('Mobile upload: thumbnail generation failed', [
-                        'media_id' => $mediaFile->id,
-                        'error'    => $e->getMessage(),
-                    ]);
-                }
-            }
-
-            // Cleanup
-            $disk->deleteDirectory("chunks/{$uploadId}");
-            $disk->delete($tempPath);
-
+            $mediaFile = $this->uploadService->complete($upload, $band);
             $upload->update(['status' => 'completed', 'media_id' => $mediaFile->id]);
 
             return response()->json([
@@ -341,15 +224,5 @@ class MediaController extends Controller
         }
 
         return $data;
-    }
-
-    private function determineMediaType(string $mimeType): string
-    {
-        return match (true) {
-            str_starts_with($mimeType, 'image/') => 'image',
-            str_starts_with($mimeType, 'video/') => 'video',
-            str_starts_with($mimeType, 'audio/') => 'audio',
-            default                               => 'document',
-        };
     }
 }

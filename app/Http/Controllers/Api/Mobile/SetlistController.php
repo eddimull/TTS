@@ -3,6 +3,10 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Mobile\BreakResumeRequest;
+use App\Http\Requests\Mobile\OffSetlistRequest;
+use App\Http\Requests\Mobile\SetlistCaptainRequest;
+use App\Http\Requests\Mobile\SetlistReactionRequest;
 use App\Models\Events;
 use App\Models\LiveSetlistQueue;
 use App\Models\LiveSetlistSession;
@@ -14,17 +18,14 @@ use Illuminate\Support\Facades\Auth;
 
 class SetlistController extends Controller
 {
+    public function __construct(private readonly LiveSetlistSessionService $sessionService) {}
+
     // ── Session ────────────────────────────────────────────────────────────────
 
-    public function show(string $key): JsonResponse
+    public function show(Events $event): JsonResponse
     {
-        $event = Events::where('key', $key)->firstOrFail();
-        $event->load('eventable.band');
+        $event->loadMissing('eventable.band');
         $band = $event->eventable->band;
-
-        if (!Auth::user()->canRead('events', $band->id)) {
-            abort(403);
-        }
 
         $session = $event->liveSetlistSession()
             ->with(['queue.song.leadSinger', 'captains.user', 'startedBy'])
@@ -59,27 +60,21 @@ class SetlistController extends Controller
         ]);
     }
 
-    public function start(string $key): JsonResponse
+    public function start(Events $event): JsonResponse
     {
-        $event = Events::where('key', $key)->firstOrFail();
-        $event->load('eventable.band');
+        $event->loadMissing('eventable.band');
         $band = $event->eventable->band;
-
-        if (!Auth::user()->canWrite('events', $band->id)) {
-            abort(403);
-        }
 
         if ($event->liveSetlistSession()->whereIn('status', ['active', 'paused', 'break'])->exists()) {
             return response()->json(['error' => 'A session is already in progress.'], 422);
         }
 
-        $service = new LiveSetlistSessionService();
         $setlist = $event->setlist()->with('songs')->first();
 
         if ($setlist && $setlist->songs->isNotEmpty()) {
-            $session = $service->start($setlist, Auth::user());
+            $session = $this->sessionService->start($setlist, Auth::user());
         } else {
-            $session = $service->startEmpty($event->id, $band->id, Auth::user());
+            $session = $this->sessionService->startEmpty($event->id, $band->id, Auth::user());
         }
 
         $session->load(['queue.song.leadSinger', 'captains.user']);
@@ -87,9 +82,8 @@ class SetlistController extends Controller
         return response()->json($this->formatSession($session));
     }
 
-    public function end(string $key): JsonResponse
+    public function end(Events $event): JsonResponse
     {
-        $event = Events::where('key', $key)->firstOrFail();
         $session = $event->liveSetlistSession()
             ->whereIn('status', ['active', 'paused', 'break'])
             ->firstOrFail();
@@ -98,7 +92,7 @@ class SetlistController extends Controller
             abort(403, 'Only captains can end the session.');
         }
 
-        (new LiveSetlistSessionService())->end($session, Auth::user());
+        $this->sessionService->end($session, Auth::user());
 
         return response()->json(['status' => 'completed']);
     }
@@ -107,49 +101,44 @@ class SetlistController extends Controller
 
     public function next(int $id): JsonResponse
     {
-        (new LiveSetlistSessionService())->next($this->captainSession($id), Auth::user());
+        $this->sessionService->next($this->captainSession($id), Auth::user());
         return response()->json(['ok' => true]);
     }
 
     public function skip(int $id): JsonResponse
     {
-        (new LiveSetlistSessionService())->skip($this->captainSession($id), Auth::user());
+        $this->sessionService->skip($this->captainSession($id), Auth::user());
         return response()->json(['ok' => true]);
     }
 
     public function skipRemove(int $id): JsonResponse
     {
-        (new LiveSetlistSessionService())->skipRemove($this->captainSession($id), Auth::user());
+        $this->sessionService->skipRemove($this->captainSession($id), Auth::user());
         return response()->json(['ok' => true]);
     }
 
-    public function reaction(Request $request, int $id): JsonResponse
+    public function reaction(SetlistReactionRequest $request, int $id): JsonResponse
     {
         $session = $this->captainSession($id);
 
-        $validated = $request->validate([
-            'queue_entry_id' => 'required|integer|exists:live_setlist_queue,id',
-            'reaction'       => 'required|in:positive,negative,neutral',
-        ]);
+        $validated = $request->validated();
 
         $entry = LiveSetlistQueue::where('id', $validated['queue_entry_id'])
             ->where('session_id', $session->id)
             ->firstOrFail();
 
-        (new LiveSetlistSessionService())->react($session, $entry, $validated['reaction'], Auth::user());
+        $this->sessionService->react($session, $entry, $validated['reaction'], Auth::user());
 
         return response()->json(['ok' => true]);
     }
 
-    public function offSetlist(Request $request, int $id): JsonResponse
+    public function offSetlist(OffSetlistRequest $request, int $id): JsonResponse
     {
         $session = $this->captainSession($id);
 
-        $validated = $request->validate([
-            'song_id' => 'required|integer|exists:songs,id',
-        ]);
+        $validated = $request->validated();
 
-        $entry = (new LiveSetlistSessionService())->addOffSetlist($session, $validated['song_id'], Auth::user());
+        $entry = $this->sessionService->addOffSetlist($session, $validated['song_id'], Auth::user());
 
         return response()->json([
             'id'     => $entry->id,
@@ -158,30 +147,26 @@ class SetlistController extends Controller
         ]);
     }
 
-    public function promote(Request $request, int $id): JsonResponse
+    public function promote(SetlistCaptainRequest $request, int $id): JsonResponse
     {
         $session = $this->captainSession($id);
 
-        $validated = $request->validate([
-            'user_id' => 'required|integer|exists:users,id',
-        ]);
+        $validated = $request->validated();
 
         $target = User::findOrFail($validated['user_id']);
-        (new LiveSetlistSessionService())->promoteCaptain($session, $target, Auth::user());
+        $this->sessionService->promoteCaptain($session, $target, Auth::user());
 
         return response()->json(['ok' => true]);
     }
 
-    public function demote(Request $request, int $id): JsonResponse
+    public function demote(SetlistCaptainRequest $request, int $id): JsonResponse
     {
         $session = $this->captainSession($id);
 
-        $validated = $request->validate([
-            'user_id' => 'required|integer|exists:users,id',
-        ]);
+        $validated = $request->validated();
 
         $target = User::findOrFail($validated['user_id']);
-        (new LiveSetlistSessionService())->demoteCaptain($session, $target, Auth::user());
+        $this->sessionService->demoteCaptain($session, $target, Auth::user());
 
         return response()->json(['ok' => true]);
     }
@@ -196,12 +181,12 @@ class SetlistController extends Controller
             return response()->json(['error' => 'Session is not active.'], 422);
         }
 
-        (new LiveSetlistSessionService())->startBreak($session, Auth::user());
+        $this->sessionService->startBreak($session, Auth::user());
 
         return response()->json(['ok' => true]);
     }
 
-    public function breakResume(Request $request, int $id): JsonResponse
+    public function breakResume(BreakResumeRequest $request, int $id): JsonResponse
     {
         $session = $this->captainSession($id);
 
@@ -209,9 +194,7 @@ class SetlistController extends Controller
             return response()->json(['error' => 'Session is not on break.'], 422);
         }
 
-        $request->validate(['song_id' => 'required|integer|exists:songs,id']);
-
-        (new LiveSetlistSessionService())->resumeFromBreak($session, $request->song_id, Auth::user());
+        $this->sessionService->resumeFromBreak($session, $request->song_id, Auth::user());
 
         return response()->json(['ok' => true]);
     }
@@ -231,8 +214,6 @@ class SetlistController extends Controller
 
     private function formatSession(LiveSetlistSession $session): array
     {
-        $service = new LiveSetlistSessionService();
-
         return [
             'id'               => $session->id,
             'status'           => $session->status,
@@ -241,7 +222,7 @@ class SetlistController extends Controller
             'started_at'       => $session->started_at?->toIso8601String(),
             'break_started_at' => $session->break_started_at?->toIso8601String(),
             'after_break'      => (bool) $session->after_break,
-            'queue'            => $service->formatQueue($session),
+            'queue'            => $this->sessionService->formatQueue($session),
             'captains'         => $session->captains->map(fn ($c) => [
                 'user_id' => $c->user_id,
                 'name'    => $c->user?->name,
