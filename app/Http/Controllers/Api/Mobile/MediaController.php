@@ -72,6 +72,21 @@ class MediaController extends Controller
         return response()->json(['ok' => true]);
     }
 
+    // ── Create folder ──────────────────────────────────────────────────────
+
+    public function createFolder(Request $request, Bands $band): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:100', 'regex:/^[^\/\\\\]+$/'],
+        ]);
+
+        // Folders are virtual — no DB record. We validate the name and return
+        // the canonical folder_path string the client should use when uploading.
+        $folderPath = trim($validated['name']);
+
+        return response()->json(['folder_path' => $folderPath]);
+    }
+
     // ── Serve / thumbnail ──────────────────────────────────────────────────────
 
     public function serve(Bands $band, MediaFile $media)
