@@ -36,6 +36,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Event members (absences and substitutes)
         Route::get('/{event}/members', [EventMembersController::class, 'index'])->name('events.members.index');
+        Route::post('/{eventId}/members', [EventMembersController::class, 'store'])->name('events.members.store');
         Route::post('/{event}/members/initialize', [EventMembersController::class, 'initializeFromBand'])->name('events.members.initialize');
         Route::patch('/{event}/members/{user}/status', [EventMembersController::class, 'updateStatus'])->name('events.members.updateStatus');
         Route::post('/{event}/members/substitutes', [EventMembersController::class, 'addSubstitute'])->name('events.members.addSubstitute');

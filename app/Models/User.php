@@ -110,7 +110,7 @@ class User extends Authenticatable
             return true;
         }
 
-        if ($this->isSubOfBand($bandId)) {
+        if ($resource === 'events' && $this->isSubOfBand($bandId)) {
             return true;
         }
 
