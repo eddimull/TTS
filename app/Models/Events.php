@@ -40,6 +40,16 @@ class Events extends Model implements GoogleCalenderable
         return 'key';
     }
 
+    public function resolveRouteBinding($value, $field = null): ?self
+    {
+        // Accept either the event key (mobile app) or numeric id (web app)
+        if (is_numeric($value)) {
+            return $this->where('id', $value)->first();
+        }
+
+        return $this->where('key', $value)->first();
+    }
+
     protected $fillable = [
         'additional_data',
         'date',
