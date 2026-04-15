@@ -167,6 +167,7 @@ Route::prefix('mobile')->group(function () {
             Route::post('/media/upload/initiate', [App\Http\Controllers\Api\Mobile\MediaController::class, 'uploadInitiate'])->name('mobile.media.upload.initiate');
             Route::post('/media/upload/{uploadId}/chunk', [App\Http\Controllers\Api\Mobile\MediaController::class, 'uploadChunk'])->name('mobile.media.upload.chunk');
             Route::post('/media/upload/{uploadId}/complete', [App\Http\Controllers\Api\Mobile\MediaController::class, 'uploadComplete'])->name('mobile.media.upload.complete');
+            Route::post('/media/folders', [App\Http\Controllers\Api\Mobile\MediaController::class, 'createFolder'])->name('mobile.media.folders.create');
         });
 
         // Setlist / live session
