@@ -84,6 +84,10 @@ class MediaController extends Controller
         // the canonical folder_path string the client should use when uploading.
         $folderPath = trim($validated['name']);
 
+        if ($folderPath === '') {
+            return response()->json(['error' => 'Folder name cannot be empty.'], 422);
+        }
+
         return response()->json(['folder_path' => $folderPath]);
     }
 
