@@ -213,7 +213,7 @@ class MediaLibraryTest extends TestCase
         $mediaFile = MediaFile::first();
 
         $response = $this->actingAs($this->user)
-            ->get(route('media.serve', $mediaFile->id));
+            ->get(route('media.serve.token', $mediaFile->id));
 
         $response->assertStatus(200);
         $response->assertHeader('Content-Type', 'image/jpeg');
