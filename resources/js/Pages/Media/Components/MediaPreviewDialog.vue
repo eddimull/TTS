@@ -178,7 +178,7 @@ export default {
         return this.media.url;
       }
       // For regular media files, use the media.serve route
-      return this.route('media.serve', this.media.id);
+      return this.route('media.serve.token', this.media.id);
     }
   },
   methods: {

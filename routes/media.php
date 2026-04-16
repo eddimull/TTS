@@ -124,3 +124,13 @@ Route::get('/share/{token}', [MediaShareController::class, 'access'])
     ->name('media.share.access');
 Route::post('/share/{token}', [MediaShareController::class, 'access'])
     ->name('media.share.access.post');
+
+// ── Mobile-compatible serve routes ────────────────────────────────────────────
+// These accept either a session cookie OR a Bearer token so the mobile app
+// can load thumbnails and serve files without a web session.
+Route::middleware(['auth.web-or-token', 'media.read'])->prefix('media')->group(function () {
+    Route::get('/{media}/thumbnail', [MediaLibraryController::class, 'thumbnail'])
+        ->name('media.thumbnail.token');
+    Route::get('/{media}/serve', [MediaLibraryController::class, 'serve'])
+        ->name('media.serve.token');
+});
