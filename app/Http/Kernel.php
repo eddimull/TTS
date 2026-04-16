@@ -93,6 +93,7 @@ class Kernel extends HttpKernel
         'charts.write' => \App\Http\Middleware\CanWriteCharts::class,
         'media.read' => \App\Http\Middleware\CanReadMedia::class,
         'media.write' => \App\Http\Middleware\CanWriteMedia::class,
+        'auth.web-or-token' => \App\Http\Middleware\AuthenticateWebOrToken::class,
         'songs.read' => \App\Http\Middleware\CanReadSongs::class,
         'songs.write' => \App\Http\Middleware\CanWriteSongs::class,
         'booking.access' => \App\Http\Middleware\BookingAccessMiddleware::class,
