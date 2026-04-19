@@ -16,7 +16,7 @@ class Bands extends Model
         return 'id';
     }
 
-    protected $fillable = ['name', 'site_name', 'address', 'city', 'state', 'zip'];
+    protected $fillable = ['name', 'site_name', 'address', 'city', 'state', 'zip', 'is_personal'];
 
     public function owner()
     {
