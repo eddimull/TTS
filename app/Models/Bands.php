@@ -18,6 +18,10 @@ class Bands extends Model
 
     protected $fillable = ['name', 'site_name', 'address', 'city', 'state', 'zip', 'is_personal'];
 
+    protected $casts = [
+        'is_personal' => 'boolean',
+    ];
+
     public function owner()
     {
         return $this->hasMany(BandOwners::class, 'band_id')->orderBy('created_at')->limit(1);
