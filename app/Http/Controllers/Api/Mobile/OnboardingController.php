@@ -34,7 +34,7 @@ class OnboardingController extends Controller
             'name'                  => 'required|string|max:255',
             'email'                 => 'required|string|email|max:255|unique:users',
             'password'              => 'required|string|min:8|confirmed',
-            'device_name'           => 'required|string',
+            'device_name'           => 'required|string|max:255',
         ]);
 
         $user = User::create([
@@ -131,7 +131,7 @@ class OnboardingController extends Controller
     public function inviteMembers(Request $request, Bands $band): JsonResponse
     {
         $request->validate([
-            'emails'   => 'required|array|min:1',
+            'emails'   => 'required|array|min:1|max:50',
             'emails.*' => 'required|email',
         ]);
 
@@ -146,6 +146,10 @@ class OnboardingController extends Controller
 
         $service = new InvitationServices();
         foreach ($request->emails as $email) {
+            $existingUser = \App\Models\User::where('email', $email)->first();
+            if ($existingUser && ($existingUser->ownsBand($band->id) || $existingUser->bandMember->contains('id', $band->id))) {
+                continue; // Already a member — skip silently
+            }
             $service->inviteUser($email, $band->id, false);
         }
 
@@ -207,19 +211,14 @@ class OnboardingController extends Controller
         }
 
         // Get or create a pending member invitation for this band
-        $invitation = Invitations::where('band_id', $band->id)
-            ->where('invite_type_id', static::MEMBER_INVITE_TYPE)
-            ->where('pending', true)
-            ->whereNull('email') // reusable invite has no email
-            ->first();
-
-        if (!$invitation) {
-            $invitation = Invitations::create([
-                'email'          => null,
+        $invitation = Invitations::firstOrCreate(
+            [
                 'band_id'        => $band->id,
                 'invite_type_id' => static::MEMBER_INVITE_TYPE,
-            ]);
-        }
+                'pending'        => true,
+                'email'          => null,
+            ]
+        );
 
         return response()->json(['key' => $invitation->key]);
     }
@@ -229,6 +228,17 @@ class OnboardingController extends Controller
     public function goSolo(Request $request): JsonResponse
     {
         $user = $request->user();
+
+        // Idempotency: return existing personal band if one already exists
+        $existing = Bands::whereHas('owners', fn ($q) => $q->where('user_id', $user->id))
+            ->where('is_personal', true)
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'bands' => $this->tokenService->formatBands($user),
+            ]);
+        }
 
         $name     = "{$user->name}'s Band";
         $siteName = $this->uniqueSiteName(Str::slug($name));
