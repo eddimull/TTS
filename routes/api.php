@@ -14,6 +14,7 @@ use App\Http\Controllers\ChartsController;
 use App\Http\Controllers\RehearsalController;
 use App\Http\Controllers\ChunkedUploadController;
 use App\Http\Controllers\Api\Mobile\AuthController as MobileAuthController;
+use App\Http\Controllers\Api\Mobile\BandSettingsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -93,6 +94,18 @@ Route::prefix('mobile')->group(function () {
         Route::post('/bands/solo', [App\Http\Controllers\Api\Mobile\OnboardingController::class, 'goSolo'])->name('mobile.bands.solo');
         Route::post('/bands/{band}/invite', [App\Http\Controllers\Api\Mobile\OnboardingController::class, 'inviteMembers'])->name('mobile.bands.invite');
         Route::get('/bands/{band}/invite-qr', [App\Http\Controllers\Api\Mobile\OnboardingController::class, 'inviteQr'])->name('mobile.bands.invite-qr');
+
+        // ── Band settings (owner-only) ─────────────────────────────────
+        Route::middleware('owner')->group(function () {
+            Route::get('/bands/{band}', [BandSettingsController::class, 'show'])->name('mobile.bands.show');
+            Route::patch('/bands/{band}', [BandSettingsController::class, 'update'])->name('mobile.bands.update');
+            Route::post('/bands/{band}/logo', [BandSettingsController::class, 'uploadLogo'])->name('mobile.bands.logo');
+            Route::get('/bands/{band}/members', [BandSettingsController::class, 'members'])->name('mobile.bands.members');
+            Route::delete('/bands/{band}/members/{userId}', [BandSettingsController::class, 'removeMember'])->name('mobile.bands.members.remove');
+            Route::patch('/bands/{band}/members/{userId}/permissions', [BandSettingsController::class, 'setPermission'])->name('mobile.bands.members.permissions');
+            Route::get('/bands/{band}/invitations', [BandSettingsController::class, 'invitations'])->name('mobile.bands.invitations');
+            Route::delete('/bands/{band}/invitations/{invitation}', [BandSettingsController::class, 'revokeInvitation'])->name('mobile.bands.invitations.revoke');
+        });
 
         // ── Events (read) ──────────────────────────────────────────────
         Route::middleware('mobile.band:read:events')->group(function () {
