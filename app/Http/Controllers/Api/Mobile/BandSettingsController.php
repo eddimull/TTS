@@ -61,7 +61,6 @@ class BandSettingsController extends Controller
         $ownerIds = $band->owners()->pluck('user_id')->toArray();
 
         $members = $band->everyone()->get()->map(function ($user) use ($ownerIds, $band) {
-            setPermissionsTeamId($band->id);
             $isOwner = in_array($user->id, $ownerIds);
             $perms = [];
             foreach ($this->allPermissionNames() as $perm) {
@@ -121,6 +120,7 @@ class BandSettingsController extends Controller
 
     public function revokeInvitation(Bands $band, Invitations $invitation): JsonResponse
     {
+        abort_if($invitation->band_id !== $band->id, 403);
         $invitation->update(['pending' => false]);
         return response()->json(null, 204);
     }
