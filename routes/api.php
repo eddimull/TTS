@@ -14,6 +14,7 @@ use App\Http\Controllers\ChartsController;
 use App\Http\Controllers\RehearsalController;
 use App\Http\Controllers\ChunkedUploadController;
 use App\Http\Controllers\Api\Mobile\AuthController as MobileAuthController;
+use App\Http\Controllers\Api\Mobile\BandSettingsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -60,6 +61,9 @@ Route::prefix('mobile')->group(function () {
     // Public: login
     Route::post('/auth/token', [MobileAuthController::class, 'token'])->name('mobile.auth.token');
 
+    // Registration
+    Route::post('/auth/register', [App\Http\Controllers\Api\Mobile\OnboardingController::class, 'register'])->name('mobile.auth.register');
+
     // Authenticated
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/auth/me', [MobileAuthController::class, 'me'])->name('mobile.auth.me');
@@ -83,6 +87,25 @@ Route::prefix('mobile')->group(function () {
         Route::post('/events/{event}/members/{memberId}/sub', [App\Http\Controllers\Api\Mobile\EventsController::class, 'assignSub'])->name('mobile.events.members.sub');
         Route::post('/events/{event}/attachments', [App\Http\Controllers\Api\Mobile\EventsController::class, 'uploadAttachment'])->name('mobile.events.attachments.store');
         Route::delete('/events/{event}/attachments/{attachment}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'deleteAttachment'])->name('mobile.events.attachments.destroy');
+
+        // Band onboarding
+        Route::post('/bands', [App\Http\Controllers\Api\Mobile\OnboardingController::class, 'createBand'])->name('mobile.bands.create');
+        Route::post('/bands/join', [App\Http\Controllers\Api\Mobile\OnboardingController::class, 'joinBand'])->name('mobile.bands.join');
+        Route::post('/bands/solo', [App\Http\Controllers\Api\Mobile\OnboardingController::class, 'goSolo'])->name('mobile.bands.solo');
+        Route::post('/bands/{band}/invite', [App\Http\Controllers\Api\Mobile\OnboardingController::class, 'inviteMembers'])->name('mobile.bands.invite');
+        Route::get('/bands/{band}/invite-qr', [App\Http\Controllers\Api\Mobile\OnboardingController::class, 'inviteQr'])->name('mobile.bands.invite-qr');
+
+        // ── Band settings (owner-only) ─────────────────────────────────
+        Route::middleware('owner')->group(function () {
+            Route::get('/bands/{band}', [BandSettingsController::class, 'show'])->name('mobile.bands.show');
+            Route::patch('/bands/{band}', [BandSettingsController::class, 'update'])->name('mobile.bands.update');
+            Route::post('/bands/{band}/logo', [BandSettingsController::class, 'uploadLogo'])->name('mobile.bands.logo');
+            Route::get('/bands/{band}/members', [BandSettingsController::class, 'members'])->name('mobile.bands.members');
+            Route::delete('/bands/{band}/members/{userId}', [BandSettingsController::class, 'removeMember'])->name('mobile.bands.members.remove');
+            Route::patch('/bands/{band}/members/{userId}/permissions', [BandSettingsController::class, 'setPermission'])->name('mobile.bands.members.permissions');
+            Route::get('/bands/{band}/invitations', [BandSettingsController::class, 'invitations'])->name('mobile.bands.invitations');
+            Route::delete('/bands/{band}/invitations/{invitation}', [BandSettingsController::class, 'revokeInvitation'])->name('mobile.bands.invitations.revoke');
+        });
 
         // ── Events (read) ──────────────────────────────────────────────
         Route::middleware('mobile.band:read:events')->group(function () {
