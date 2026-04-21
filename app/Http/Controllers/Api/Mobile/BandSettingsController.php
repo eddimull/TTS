@@ -27,7 +27,7 @@ class BandSettingsController extends Controller
                 'city'     => $band->city ?? '',
                 'state'    => $band->state ?? '',
                 'zip'      => $band->zip ?? '',
-                'logo_url' => $band->logo_url ?? null,
+                'logo_url' => $band->logo ? asset('storage/' . ltrim($band->logo, '/')) : null,
             ],
         ]);
     }
@@ -50,8 +50,8 @@ class BandSettingsController extends Controller
     {
         $request->validate(['logo' => 'required|image|max:5120']);
         $path = $request->file('logo')->store("bands/{$band->id}/logo", 'public');
-        $band->update(['logo_url' => asset('storage/' . $path)]);
-        return response()->json(['logo_url' => $band->logo_url]);
+        $band->update(['logo' => $path]);
+        return response()->json(['logo_url' => asset('storage/' . $path)]);
     }
 
     public function members(Bands $band): JsonResponse
@@ -60,7 +60,7 @@ class BandSettingsController extends Controller
 
         $ownerIds = $band->owners()->pluck('user_id')->toArray();
 
-        $members = $band->everyone()->get()->map(function ($user) use ($ownerIds, $band) {
+        $members = $band->everyone()->map(function ($user) use ($ownerIds, $band) {
             $isOwner = in_array($user->id, $ownerIds);
             $perms = [];
             foreach ($this->allPermissionNames() as $perm) {
