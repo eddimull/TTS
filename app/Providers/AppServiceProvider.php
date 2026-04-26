@@ -9,6 +9,8 @@ use Illuminate\Support\Str;
 use App\Models\QuestionnaireComponents;
 use App\Models\Bands;
 use App\Services\GoogleCalendarService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\ServiceProvider;
 use App\Observers\QuestionnaireComponentObserver;
 use App\Observers\BandObserver;
@@ -44,6 +46,25 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        // Laravel's parallel testing only rewrites the connection's database for
+        // tests that use a database trait. Tests without one still hit the DB via
+        // shared middleware (e.g. HandleInertiaRequests::share -> EventTypes::all),
+        // so apply the per-token suffix to the default connection for every test.
+        // No-op in sequential mode — these callbacks only fire under --parallel.
+        if ($this->app->environment('testing')) {
+            $rewriteDatabase = function ($token) {
+                $default = config('database.default');
+                $original = config("database.connections.{$default}.database");
+                $suffix = "_test_{$token}";
+                if (! str_ends_with($original, $suffix)) {
+                    config(["database.connections.{$default}.database" => $original . $suffix]);
+                    DB::purge($default);
+                }
+            };
+            ParallelTesting::setUpProcess($rewriteDatabase);
+            ParallelTesting::setUpTestCase(fn ($token) => $rewriteDatabase($token));
+        }
+
         QuestionnaireComponents::observe(QuestionnaireComponentObserver::class);
         Bands::observe(BandObserver::class);
         Inertia::share([
