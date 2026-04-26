@@ -60,9 +60,10 @@ class BandSettingsController extends Controller
 
         $ownerIds = $band->owners()->pluck('user_id')->toArray();
 
-        $members = $band->everyone()->map(function ($user) use ($ownerIds, $band) {
-            $isOwner = in_array($user->id, $ownerIds);
-            $perms = [];
+        $members = $band->everyone()->map(function ($record) use ($ownerIds) {
+            $isOwner = in_array($record->user_id, $ownerIds);
+            $user    = $record->user;
+            $perms   = [];
             foreach ($this->allPermissionNames() as $perm) {
                 $perms[$perm] = $isOwner || $user->hasPermissionTo($perm);
             }
