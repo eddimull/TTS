@@ -95,6 +95,8 @@ jobs:
         run: |
           mysql -h 127.0.0.1 -P 3306 -u root -ppassword \
             -e "GRANT ALL PRIVILEGES ON \`ttsband_test_%\`.* TO 'tts'@'%'; FLUSH PRIVILEGES;"
+          mysql -h 127.0.0.1 -P 3306 -u root -ppassword \
+            -e "SHOW GRANTS FOR 'tts'@'%';"
 
       - name: Execute tests via Artisan
         env:
@@ -102,4 +104,4 @@ jobs:
           DB_HOST: 127.0.0.1
           MEILISEARCH_HOST: http://127.0.0.1:7700
           MEILISEARCH_KEY: masterKey
-        run: php artisan test --parallel
+        run: php artisan test --parallel --recreate-databases -v
