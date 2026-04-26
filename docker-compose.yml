@@ -62,6 +62,7 @@ services:
             MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
         volumes:
             - 'sailmysqltest:/var/lib/mysql'
+            - './docker/mysql-test-init.sql:/docker-entrypoint-initdb.d/10-grant-parallel-test-dbs.sql:ro'
         networks:
             - sail
     redis:
