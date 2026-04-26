@@ -47,7 +47,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
         ParallelTesting::setUpTestDatabase(function (string $database, int $token) {
-            Artisan::call('db:seed');
+            Artisan::call('migrate:fresh', ['--seed' => true]);
         });
         
         QuestionnaireComponents::observe(QuestionnaireComponentObserver::class);
