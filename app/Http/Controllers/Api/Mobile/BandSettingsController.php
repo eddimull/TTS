@@ -58,13 +58,12 @@ class BandSettingsController extends Controller
     {
         setPermissionsTeamId($band->id);
 
-        $ownerIds  = $band->owners()->pluck('user_id')->toArray();
-        $memberIds = $band->members()->pluck('user_id')->toArray();
-        $allUserIds = array_unique(array_merge($ownerIds, $memberIds));
+        $ownerIds = $band->owners()->pluck('user_id')->toArray();
 
-        $members = User::whereIn('id', $allUserIds)->get()->map(function (User $user) use ($ownerIds) {
-            $isOwner = in_array($user->id, $ownerIds);
-            $perms = [];
+        $members = $band->everyone()->map(function ($record) use ($ownerIds) {
+            $isOwner = in_array($record->user_id, $ownerIds);
+            $user    = $record->user;
+            $perms   = [];
             foreach ($this->allPermissionNames() as $perm) {
                 $perms[$perm] = $isOwner || $user->hasPermissionTo($perm);
             }
