@@ -95,22 +95,72 @@ class MediaController extends Controller
 
     // ── Serve / thumbnail ──────────────────────────────────────────────────────
 
-    public function serve(Bands $band, MediaFile $media)
+    public function serve(Request $request, Bands $band, MediaFile $media)
     {
         if ($media->band_id !== $band->id) {
             abort(404);
         }
 
         try {
-            $stream = Storage::disk($media->disk)->readStream($media->stored_filename);
+            $disk     = Storage::disk($media->disk);
+            $size     = $disk->size($media->stored_filename);
+            $rangeHeader = $request->header('Range');
+
+            $baseHeaders = [
+                'Content-Type'        => $media->mime_type,
+                'Content-Disposition' => 'inline; filename="' . $media->filename . '"',
+                'Accept-Ranges'       => 'bytes',
+                'Cache-Control'       => 'private, max-age=86400',
+            ];
+
+            if ($rangeHeader && preg_match('/bytes=(\d+)-(\d*)/', $rangeHeader, $matches)) {
+                $start = (int) $matches[1];
+                $end   = $matches[2] !== '' ? (int) $matches[2] : $size - 1;
+                $end   = min($end, $size - 1);
+
+                if ($start > $end || $start >= $size) {
+                    return response('', 416, ['Content-Range' => "bytes */{$size}"]);
+                }
+
+                $length = $end - $start + 1;
+                $stream = $disk->readStream($media->stored_filename);
+
+                // Seek to start; for non-seekable streams (e.g. S3) read and discard.
+                if ($start > 0) {
+                    if (stream_get_meta_data($stream)['seekable']) {
+                        fseek($stream, $start);
+                    } else {
+                        $skipped = 0;
+                        while ($skipped < $start) {
+                            $chunk    = min(65536, $start - $skipped);
+                            $skipped += strlen(fread($stream, $chunk));
+                        }
+                    }
+                }
+
+                return response()->stream(function () use ($stream, $length) {
+                    $remaining = $length;
+                    while ($remaining > 0 && !feof($stream)) {
+                        $chunk = fread($stream, min(65536, $remaining));
+                        echo $chunk;
+                        $remaining -= strlen($chunk);
+                        flush();
+                    }
+                    fclose($stream);
+                }, 206, array_merge($baseHeaders, [
+                    'Content-Length' => $length,
+                    'Content-Range'  => "bytes {$start}-{$end}/{$size}",
+                ]));
+            }
+
+            $stream = $disk->readStream($media->stored_filename);
 
             return response()->stream(function () use ($stream) {
                 fpassthru($stream);
-            }, 200, [
-                'Content-Type'        => $media->mime_type,
-                'Content-Disposition' => 'inline; filename="' . $media->filename . '"',
-                'Cache-Control'       => 'private, max-age=86400',
-            ]);
+                fclose($stream);
+            }, 200, array_merge($baseHeaders, [
+                'Content-Length' => $size,
+            ]));
         } catch (\Exception $e) {
             abort(404, 'File not found');
         }
