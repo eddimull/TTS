@@ -36,27 +36,17 @@ class MediaController extends Controller
 
         $paginated = $query->paginate($perPage)->withQueryString();
 
-        $folders = $this->mediaService->getSubfoldersOf($band->id, $filters['folder_path'] ?? null);
-
-        $folderItems = array_map(fn ($f) => [
-            'is_folder'         => true,
-            'filename'          => $f['name'],
-            'path'              => $f['path'],
-            'file_count'        => $f['file_count'],
-            'is_drive_synced'   => $f['is_drive_synced'],
-            'drive_folder_name' => $f['drive_folder_name'],
-        ], $folders);
-
-        $fileItems = $paginated->getCollection()->map(fn ($m) => $this->formatFile($m))->all();
+        $subfolders = $this->mediaService->getSubfoldersOf($band->id, $filters['folder_path'] ?? null);
 
         return response()->json([
-            'data' => array_merge($folderItems, $fileItems),
+            'data' => $paginated->getCollection()->map(fn ($m) => $this->formatFile($m)),
             'meta' => [
                 'current_page' => $paginated->currentPage(),
                 'last_page'    => $paginated->lastPage(),
                 'per_page'     => $paginated->perPage(),
                 'total'        => $paginated->total(),
             ],
+            'folders' => array_column($subfolders, 'path'),
         ]);
     }
 
@@ -226,7 +216,6 @@ class MediaController extends Controller
     private function formatFile(MediaFile $m, bool $detailed = false): array
     {
         $data = [
-            'is_folder'      => false,
             'id'             => $m->id,
             'filename'       => $m->filename,
             'title'          => $m->title,
