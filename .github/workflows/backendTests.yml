@@ -99,4 +99,5 @@ jobs:
         env:
           MEILISEARCH_HOST: http://127.0.0.1:7700
           MEILISEARCH_KEY: masterKey
+          DB_HOST: localhost
         run: php artisan test --parallel
