@@ -24,7 +24,7 @@ jobs:
         image: mysql:8.1
         env:
           MYSQL_ROOT_PASSWORD: "password"
-          MYSQL_DATABASE: "ttsband"
+          MYSQL_DATABASE: "ttsband_test_"
           MYSQL_USER: "tts"
           MYSQL_PASSWORD: "password"
           MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
