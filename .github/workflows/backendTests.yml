@@ -52,7 +52,6 @@ jobs:
       - name: Update .env
         run: |
           echo "GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}" >> .env.testing
-          sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env.testing
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
