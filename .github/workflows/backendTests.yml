@@ -100,4 +100,4 @@ jobs:
           MEILISEARCH_HOST: http://127.0.0.1:7700
           MEILISEARCH_KEY: masterKey
           DB_HOST: 127.0.0.1
-        run: php artisan test --parallel
+        run: php artisan test --parallel --recreate-databases
