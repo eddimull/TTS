@@ -46,10 +46,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        ParallelTesting::setUpTestDatabase(function (string $database, int $token) {
+
+        ParallelTesting::setUpProcess(function() {
             Artisan::call('migrate:fresh', ['--seed' => true]);
         });
-         
         QuestionnaireComponents::observe(QuestionnaireComponentObserver::class);
         Bands::observe(BandObserver::class);
         Inertia::share([
