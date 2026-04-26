@@ -91,10 +91,14 @@ jobs:
       - name: Directory Permissions
         run: chmod -R 777 storage bootstrap/cache
 
+      - name: Grant tts user permissions for parallel test databases
+        run: |
+          mysql -h 127.0.0.1 -u root -ppassword -e "GRANT ALL PRIVILEGES ON *.* TO 'tts'@'%'; FLUSH PRIVILEGES;"
+
       - name: Execute tests via Artisan
         env:
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
           MEILISEARCH_HOST: http://127.0.0.1:7700
           MEILISEARCH_KEY: masterKey
-        run: php artisan test
+        run: php artisan test --parallel
