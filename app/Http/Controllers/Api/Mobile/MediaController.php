@@ -36,6 +36,8 @@ class MediaController extends Controller
 
         $paginated = $query->paginate($perPage)->withQueryString();
 
+        $subfolders = $this->mediaService->getSubfoldersOf($band->id, $filters['folder_path'] ?? null);
+
         return response()->json([
             'data' => $paginated->getCollection()->map(fn ($m) => $this->formatFile($m)),
             'meta' => [
@@ -44,7 +46,7 @@ class MediaController extends Controller
                 'per_page'     => $paginated->perPage(),
                 'total'        => $paginated->total(),
             ],
-            'folders' => $this->mediaService->getSubfoldersOf($band->id, $filters['folder_path'] ?? null),
+            'folders' => array_column($subfolders, 'path'),
         ]);
     }
 
