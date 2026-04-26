@@ -99,9 +99,29 @@ jobs:
             -e "SHOW GRANTS FOR 'tts'@'%';"
 
       - name: Execute tests via Artisan
+        id: tests
         env:
           DB_CONNECTION: mysql
           DB_HOST: 127.0.0.1
           MEILISEARCH_HOST: http://127.0.0.1:7700
           MEILISEARCH_KEY: masterKey
-        run: php artisan test --parallel --recreate-databases -v
+        run: |
+          set +e
+          php artisan test --parallel --recreate-databases -v 2>&1 | tee test-output.log
+          status=${PIPESTATUS[0]}
+          exit $status
+
+      - name: Post test failure log to PR
+        if: failure() && steps.tests.outcome == 'failure' && github.event.pull_request.number
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo '<details><summary>Backend test failure log (tail)</summary>'
+            echo
+            echo '```'
+            tail -200 test-output.log || echo "(no log file produced)"
+            echo '```'
+            echo '</details>'
+          } > comment.md
+          gh pr comment "${{ github.event.pull_request.number }}" -R "${{ github.repository }}" -F comment.md
