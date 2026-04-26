@@ -40,6 +40,7 @@
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^3.1",
+        "brianium/paratest": "^7.4",
         "fakerphp/faker": "^1.23",
         "laravel/breeze": "^2.1",
         "laravel/dusk": "^8.2",
@@ -91,6 +92,9 @@
         "sort-packages": true,
         "allow-plugins": {
             "php-http/discovery": true
+        },
+        "platform": {
+            "php": "8.3"
         }
     },
     "minimum-stability": "dev",
