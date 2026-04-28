@@ -25,7 +25,7 @@
         striped-rows
         row-hover
         responsive-layout="scroll"
-        @row-click="(e) => visitEditor(e.data)"
+        @row-click="(e) => visitTemplate(e.data)"
       >
         <Column field="name" header="Name" sortable />
         <Column field="instances_count" header="Times sent" sortable />
@@ -40,7 +40,7 @@
             <Button
               icon="pi pi-pencil"
               text
-              @click.stop="visitEditor(data)"
+              @click.stop="visitTemplate(data)"
             />
             <Button
               v-if="!data.archived_at"
@@ -194,10 +194,10 @@ export default {
       this.saving = false
       this.dialogOpen = false
     },
-    visitEditor(data) {
+    visitTemplate(data) {
       const bandId = data.band_id ?? this.band?.id
       this.$inertia.visit(
-        this.route('questionnaires.edit', { band: bandId, questionnaire: data.slug })
+        this.route('questionnaires.show', { band: bandId, questionnaire: data.slug })
       )
     },
     save() {

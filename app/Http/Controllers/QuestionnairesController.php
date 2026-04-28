@@ -89,6 +89,52 @@ class QuestionnairesController extends Controller
         ]);
     }
 
+    public function show(Bands $band, Questionnaires $questionnaire): Response
+    {
+        $this->authorize('view', $questionnaire);
+        abort_if($questionnaire->band_id !== $band->id, 404);
+
+        $instances = $questionnaire->instances()
+            ->with(['recipientContact:id,name', 'booking:id,name,date,band_id'])
+            ->orderByDesc('sent_at')
+            ->get()
+            ->map(fn ($i) => [
+                'id' => $i->id,
+                'status' => $i->status,
+                'sent_at' => $i->sent_at?->format('M j, Y'),
+                'submitted_at' => $i->submitted_at?->format('M j, Y'),
+                'recipient_name' => $i->recipientContact->name ?? 'Unknown',
+                'booking' => [
+                    'id' => $i->booking->id,
+                    'name' => $i->booking->name,
+                    'date' => $i->booking->date?->format('M j, Y'),
+                ],
+            ]);
+
+        $bookings = $band->bookings()
+            ->with(['contacts:id,name'])
+            ->orderByDesc('date')
+            ->get(['id', 'name', 'date', 'band_id'])
+            ->map(fn ($b) => [
+                'id' => $b->id,
+                'name' => $b->name,
+                'date' => $b->date?->format('M j, Y'),
+                'contacts' => $b->contacts->map(fn ($c) => [
+                    'id' => $c->id,
+                    'name' => $c->name,
+                    'is_primary' => (bool) ($c->pivot->is_primary ?? false),
+                ])->values(),
+            ]);
+
+        return Inertia::render('Questionnaires/Show', [
+            'band' => $band->only(['id', 'name', 'site_name']),
+            'questionnaire' => $questionnaire->only(['id', 'name', 'slug', 'description', 'archived_at', 'created_at', 'updated_at']),
+            'fieldCount' => $questionnaire->fields()->count(),
+            'instances' => $instances,
+            'bookings' => $bookings,
+        ]);
+    }
+
     public function update(UpdateQuestionnaireRequest $request, Bands $band, Questionnaires $questionnaire): RedirectResponse
     {
         abort_if($questionnaire->band_id !== $band->id, 404);
