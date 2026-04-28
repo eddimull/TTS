@@ -133,5 +133,16 @@ Route::middleware(['auth', 'verified'])->group(function ()
     Route::put('bands/{band}/booking/{booking}/payout/configuration', [BookingsController::class, 'updatePayoutConfiguration'])
         ->name('booking.payout.updateConfiguration')
         ->middleware('booking.access');
+
+    Route::post('bands/{band}/booking/{booking}/questionnaires', [\App\Http\Controllers\BookingQuestionnaireController::class, 'send'])
+        ->name('bookings.questionnaires.send');
+    Route::post('bands/{band}/booking/{booking}/questionnaires/{instance}/resend', [\App\Http\Controllers\BookingQuestionnaireController::class, 'resend'])
+        ->name('bookings.questionnaires.resend');
+    Route::post('bands/{band}/booking/{booking}/questionnaires/{instance}/lock', [\App\Http\Controllers\BookingQuestionnaireController::class, 'lock'])
+        ->name('bookings.questionnaires.lock');
+    Route::post('bands/{band}/booking/{booking}/questionnaires/{instance}/unlock', [\App\Http\Controllers\BookingQuestionnaireController::class, 'unlock'])
+        ->name('bookings.questionnaires.unlock');
+    Route::delete('bands/{band}/booking/{booking}/questionnaires/{instance}', [\App\Http\Controllers\BookingQuestionnaireController::class, 'destroy'])
+        ->name('bookings.questionnaires.destroy');
 });
 Route::get('{booking}/downloadReceiptPDF', [BookingsController::class, 'paymentPDF'])->name('bookingpaymentpdf');
