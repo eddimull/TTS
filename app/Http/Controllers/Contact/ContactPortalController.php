@@ -67,13 +67,14 @@ class ContactPortalController extends Controller
         // Get all bookings for this contact with payment information
         $bookings = $contact->bookings()
             ->with([
-                'band', 
-                'eventType', 
+                'band',
+                'eventType',
                 'payments' => function($query) {
                     $query->where('status', 'paid')->orderBy('date', 'desc');
-                }, 
+                },
                 'payments.invoice',
-                'contract'
+                'contract',
+                'questionnaireInstances',
             ])
             ->where('date', '>=', now()->subMonths(6))
             ->orderBy('date', 'desc')
@@ -153,6 +154,21 @@ class ContactPortalController extends Controller
                     'has_balance' => $booking->amount_due > 0,
                     'payments' => $paymentHistory,
                     'contract' => $contract,
+                    'questionnaires' => $booking->questionnaireInstances()
+                        ->whereIn('status', ['sent', 'in_progress', 'submitted'])
+                        ->orderByDesc('sent_at')
+                        ->get()
+                        ->map(fn ($i) => [
+                            'id' => $i->id,
+                            'name' => $i->name,
+                            'status' => $i->status,
+                            'submitted_at' => $i->submitted_at?->format('M j, Y'),
+                            'url' => route('portal.booking.questionnaire.show', [
+                                'booking' => $booking->id,
+                                'instance' => $i->id,
+                            ]),
+                        ])
+                        ->values(),
                 ];
             });
 

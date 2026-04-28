@@ -410,6 +410,23 @@
                         </span>
                       </div>
                     </div>
+                    <!-- Questionnaires -->
+                    <div v-if="booking.questionnaires?.length" class="mt-3 space-y-1">
+                      <h4 class="text-sm font-medium text-gray-700 dark:text-gray-200">Questionnaires</h4>
+                      <div
+                        v-for="q in booking.questionnaires"
+                        :key="q.id"
+                        class="flex items-center gap-2 text-sm"
+                      >
+                        <Link
+                          :href="q.url"
+                          class="text-indigo-600 dark:text-indigo-300 hover:underline"
+                        >📝 {{ q.name }}</Link>
+                        <span v-if="q.status === 'sent'" class="text-xs text-amber-600">— needs your answers</span>
+                        <span v-else-if="q.status === 'in_progress'" class="text-xs text-amber-600">— in progress</span>
+                        <span v-else-if="q.status === 'submitted'" class="text-xs text-emerald-600">— submitted, can still update</span>
+                      </div>
+                    </div>
                   </div>
                   <div class="flex flex-col items-end ml-4">
                     <div class="flex items-center">
