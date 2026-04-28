@@ -208,6 +208,24 @@ class BookingsController extends Controller
             }
         }
         
+        $questionnaireInstances = $booking->questionnaireInstances()
+            ->with(['recipientContact:id,name', 'questionnaire:id,name,slug'])
+            ->orderByDesc('sent_at')
+            ->get()
+            ->map(fn ($i) => [
+                'id' => $i->id,
+                'name' => $i->name,
+                'status' => $i->status,
+                'sent_at' => $i->sent_at?->format('M j, Y'),
+                'submitted_at' => $i->submitted_at?->format('M j, Y'),
+                'recipient_name' => $i->recipientContact->name ?? 'Unknown',
+            ]);
+
+        $availableQuestionnaires = $band->questionnaires()
+            ->whereNull('archived_at')
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug']);
+
         return Inertia::render('Bookings/Show', [
             'booking' => $booking,
             'band' => $band,
@@ -218,6 +236,8 @@ class BookingsController extends Controller
             'recentActivities' => $recentActivities,
             'payoutConfig' => $payoutConfig,
             'payoutResult' => $payoutResult,
+            'questionnaireInstances' => $questionnaireInstances,
+            'availableQuestionnaires' => $availableQuestionnaires,
         ]);
     }
 
