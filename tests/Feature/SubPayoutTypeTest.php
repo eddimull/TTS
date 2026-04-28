@@ -251,6 +251,78 @@ class SubPayoutTypeTest extends TestCase
         $this->assertEquals('member', $result['member_payouts'][0]['type']);
     }
 
+    private function makeConfigWithRoleFilter(string $memberTypeFilter, array $filterByRoleId): BandPayoutConfig
+    {
+        return BandPayoutConfig::create([
+            'band_id' => $this->band->id,
+            'name' => 'Test Config With Role Filter',
+            'is_active' => true,
+            'band_cut_type' => 'none',
+            'band_cut_value' => 0,
+            'member_payout_type' => 'equal_split',
+            'include_owners' => true,
+            'include_members' => true,
+            'minimum_payout' => 0,
+            'flow_diagram' => [
+                'nodes' => [
+                    [
+                        'id' => 'income-1',
+                        'type' => 'income',
+                        'data' => ['label' => 'Income'],
+                    ],
+                    [
+                        'id' => 'payout-all',
+                        'type' => 'payoutGroup',
+                        'data' => [
+                            'label' => 'Payout Group',
+                            'sourceType' => 'roster',
+                            'rosterConfig' => [
+                                'memberTypeFilter' => $memberTypeFilter,
+                                'filterByRoleId' => $filterByRoleId,
+                            ],
+                            'incomingAllocationType' => 'remainder',
+                            'distributionMode' => 'fixed',
+                            'fixedAmountPerMember' => 400,
+                        ],
+                    ],
+                ],
+                'edges' => [
+                    ['source' => 'income-1', 'target' => 'payout-all'],
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * A sub with no band_role_id must pass through a filterByRoleId filter.
+     * Real-world case: a sub added ad-hoc with no role assigned was silently
+     * excluded from a "Static Sub Pay" node that had filterByRoleId set to all
+     * role IDs, because in_array(null, [1,2,3]) returns false.
+     */
+    public function test_sub_with_null_role_passes_filterByRoleId_filter(): void
+    {
+        $config = $this->makeConfigWithRoleFilter('substitutes_only', [1, 2, 3, 4, 5]);
+
+        $event = $this->createEvent();
+
+        EventMember::create([
+            'event_id' => $event->id,
+            'band_id' => $this->band->id,
+            'user_id' => null,
+            'roster_member_id' => null,
+            'band_role_id' => null,
+            'name' => 'Ad Hoc Sub',
+            'email' => 'adhoc@example.com',
+            'attendance_status' => 'confirmed',
+        ]);
+
+        $result = $config->calculatePayouts(1000, null, $this->booking);
+
+        $payout = collect($result['member_payouts'])->firstWhere('name', 'Ad Hoc Sub');
+        $this->assertNotNull($payout, 'Sub with null band_role_id should appear in payout results when filterByRoleId is set');
+        $this->assertEquals(400, $payout['amount']);
+    }
+
     /**
      * A registered user added as sub on two different events should be 'substitute' on both.
      * This is the exact scenario that triggered the original bug report.

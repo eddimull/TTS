@@ -3,16 +3,18 @@
 namespace App\Providers;
 
 use App\Contracts\StripeClientInterface;
-use App\Services\Stripe\StripeClientWrapper;
-use Inertia\Inertia;
-use Illuminate\Support\Str;
-use App\Models\QuestionnaireComponents;
 use App\Models\Bands;
-use App\Services\GoogleCalendarService;
-use Illuminate\Support\ServiceProvider;
-use App\Observers\QuestionnaireComponentObserver;
+use App\Models\QuestionnaireComponents;
 use App\Observers\BandObserver;
+use App\Observers\QuestionnaireComponentObserver;
+use App\Services\GoogleCalendarService;
+use App\Services\Stripe\StripeClientWrapper;
 use Google\Client;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\ParallelTesting;
+use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
+use Inertia\Inertia;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -44,6 +46,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+
+        ParallelTesting::setUpProcess(function() {
+            Artisan::call('migrate:fresh', ['--seed' => true]);
+        });
         QuestionnaireComponents::observe(QuestionnaireComponentObserver::class);
         Bands::observe(BandObserver::class);
         Inertia::share([
