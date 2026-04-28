@@ -1,5 +1,5 @@
 <template>
-  <Layout>
+  <breeze-authenticated-layout>
     <template #header>
       <div class="flex justify-between items-center">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-50">
@@ -53,7 +53,7 @@
         </div>
       </div>
     </Container>
-  </Layout>
+  </breeze-authenticated-layout>
 </template>
 
 <script setup>
