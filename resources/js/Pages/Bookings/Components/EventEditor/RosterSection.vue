@@ -748,6 +748,7 @@ const addMember = async () => {
   if (!props.modelValue.id || !newMember.value.name) return;
 
   try {
+    const isReusedSub = !!(newMember.value.roster_member_id || newMember.value.user_id);
     const response = await axios.post(`/events/${props.modelValue.id}/members`, {
       roster_member_id: newMember.value.roster_member_id || null,
       user_id: newMember.value.user_id || null,
@@ -757,7 +758,7 @@ const addMember = async () => {
       email: newMember.value.email,
       phone: newMember.value.phone,
       attendance_status: 'confirmed',
-      invite_substitute: newMember.value.invite_substitute,
+      ...(isReusedSub ? {} : { invite_substitute: newMember.value.invite_substitute }),
     });
 
     if (response.data.invited) {

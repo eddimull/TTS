@@ -145,6 +145,44 @@ class EventMemberSubInvitationTest extends TestCase
         ]);
     }
 
+    /**
+     * Re-inviting a sub who already has an event_subs record for this event
+     * must not throw a duplicate-key error. It should update the existing record
+     * and re-send the invitation instead of attempting a second INSERT.
+     */
+    public function test_reinviting_existing_sub_updates_record_instead_of_failing(): void
+    {
+        Mail::fake();
+
+        $existingUser = User::factory()->create(['email' => 'returning@example.com']);
+
+        // Pre-existing accepted invitation (e.g. from a previous invite flow)
+        EventSubs::create([
+            'event_id'       => $this->event->id,
+            'band_id'        => $this->band->id,
+            'user_id'        => $existingUser->id,
+            'email'          => 'returning@example.com',
+            'name'           => 'Returning Sub',
+            'pending'        => false,
+            'invitation_key' => \Illuminate\Support\Str::random(36),
+        ]);
+
+        // Re-invite the same user — should not throw a duplicate-key error
+        $response = $this->actingAs($this->owner)
+            ->postJson("/events/{$this->event->id}/members", [
+                'name'              => 'Returning Sub',
+                'email'             => 'returning@example.com',
+                'invite_substitute' => true,
+            ]);
+
+        $response->assertStatus(201);
+
+        // Still only one event_subs record for this event/user
+        $this->assertDatabaseCount('event_subs', 1);
+
+        Mail::assertSent(SubInvitation::class);
+    }
+
     public function test_event_member_invitation_requires_email()
     {
         $response = $this->actingAs($this->owner)
