@@ -9,8 +9,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::prefix('bands/{band}/questionnaires')->group(function () {
         Route::get('/{questionnaire:slug}/edit', [QuestionnairesController::class, 'edit'])->name('questionnaires.edit');
-        Route::put('/{questionnaire:slug}', [QuestionnairesController::class, 'update'])->name('questionnaires.update');
         Route::get('/{questionnaire:slug}/preview', [QuestionnairesController::class, 'preview'])->name('questionnaires.preview');
+        Route::get('/{questionnaire:slug}', [QuestionnairesController::class, 'show'])->name('questionnaires.show');
+        Route::put('/{questionnaire:slug}', [QuestionnairesController::class, 'update'])->name('questionnaires.update');
         Route::post('/{questionnaire:slug}/archive', [QuestionnairesController::class, 'archive'])->name('questionnaires.archive');
         Route::post('/{questionnaire:slug}/restore', [QuestionnairesController::class, 'restore'])->name('questionnaires.restore');
         Route::delete('/{questionnaire:slug}', [QuestionnairesController::class, 'destroy'])->name('questionnaires.destroy');
