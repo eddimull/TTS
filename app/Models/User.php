@@ -149,6 +149,15 @@ class User extends Authenticatable
         return $charts;
     }
 
+    public function questionnaires()
+    {
+        $bandIds = $this->allBands()->pluck('id')->toArray();
+        return \App\Models\Questionnaires::whereIn('band_id', $bandIds)
+            ->whereNull('archived_at')
+            ->orderBy('name')
+            ->get();
+    }
+
     public function getNav()
     {
         $nav = collect(BandResource::cases())
