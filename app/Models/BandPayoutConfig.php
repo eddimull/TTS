@@ -780,7 +780,7 @@ class BandPayoutConfig extends Model
                     // Filter by role if specified
                     // Prefer band_role_id filtering (new way), fall back to text role (old way for backward compatibility)
                     if (!empty($filterByRoleId)) {
-                        return in_array($member['band_role_id'], $filterByRoleId);
+                        return $member['band_role_id'] === null || in_array($member['band_role_id'], $filterByRoleId);
                     } elseif (!empty($filterByRole)) {
                         return in_array($member['role'], $filterByRole);
                     }
