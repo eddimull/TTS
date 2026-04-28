@@ -418,13 +418,44 @@ class BookingsController extends Controller
             'events.attachments',
             'events.eventable',
             'events.eventMembers.rosterMember',
-            'events.eventMembers.user'
+            'events.eventMembers.user',
+            'questionnaireInstances.fields',
+            'questionnaireInstances.responses',
+            'questionnaireInstances.recipientContact',
         ]);
 
-        $events = $booking->events->map(function ($event) {
+        $registry = app(\App\Services\QuestionnaireMappingRegistry::class);
+
+        $questionnaireInstances = $booking->questionnaireInstances->map(fn ($i) => [
+            'id' => $i->id,
+            'name' => $i->name,
+            'status' => $i->status,
+            'sent_at' => $i->sent_at?->format('M j, Y'),
+            'submitted_at' => $i->submitted_at?->format('M j, Y'),
+            'recipient_name' => $i->recipientContact->name ?? 'Unknown',
+            'fields' => $i->fields->map(fn ($f) => [
+                'id' => $f->id,
+                'type' => $f->type,
+                'label' => $f->label,
+                'position' => $f->position,
+                'mapping_target' => $f->mapping_target,
+                'mapping_label' => $f->mapping_target ? $registry->label($f->mapping_target) : null,
+            ]),
+            'responses' => $i->responses->mapWithKeys(fn ($r) => [
+                $r->instance_field_id => [
+                    'value' => $r->value,
+                    'applied_to_event_at' => $r->applied_to_event_at?->toIso8601String(),
+                    'updated_at' => $r->updated_at->toIso8601String(),
+                    'response_id' => $r->id,
+                ],
+            ]),
+        ]);
+
+        $events = $booking->events->map(function ($event) use ($questionnaireInstances) {
             $this->appendLastUpdatedBy($event);
             $this->appendFormattedAttachmentSizes($event);
             $event->roster_members = $this->formatRosterMembers($event);
+            $event->questionnaire_instances = $questionnaireInstances;
 
             return $event;
         });
