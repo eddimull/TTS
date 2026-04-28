@@ -69,9 +69,10 @@ class QuestionnairePresetRegistry
     }
 
     /**
-     * Lightweight catalog for the New Questionnaire dialog.
+     * Catalog for the New Questionnaire dialog. Includes a slim field list
+     * so the dialog can preview the preset before it's cloned.
      *
-     * @return array<int, array{key: string, name: string, description: string, field_count: int}>
+     * @return array<int, array{key: string, name: string, description: string, field_count: int, fields: array}>
      */
     public function catalog(): array
     {
@@ -80,6 +81,11 @@ class QuestionnairePresetRegistry
             'name' => $preset['name'],
             'description' => $preset['description'],
             'field_count' => count($preset['fields']),
+            'fields' => array_map(fn ($f) => [
+                'type' => $f['type'],
+                'label' => $f['label'],
+                'required' => $f['required'] ?? false,
+            ], $preset['fields']),
         ])->values()->all();
     }
 

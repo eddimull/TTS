@@ -287,6 +287,35 @@ const props = defineProps({
 const emit = defineEmits(["save", "cancel", "removeEvent"]);
 
 const event = ref(JSON.parse(JSON.stringify(props.initialEvent)));
+
+// Keep questionnaire-related fields in sync with prop refreshes (e.g., after
+// Apply / Append-to-notes). Other fields stay locally-controlled so unsaved
+// edits aren't clobbered.
+watch(
+    () => props.initialEvent.questionnaire_instances,
+    (val) => { event.value.questionnaire_instances = val ? JSON.parse(JSON.stringify(val)) : []; },
+    { deep: true }
+);
+watch(
+    () => props.initialEvent.notes,
+    (val) => {
+        // Only sync notes from the server when the user has no unsaved changes —
+        // append-to-notes triggers a server-side update we want to surface.
+        if (!hasUnsavedChanges.value) {
+            event.value.notes = val;
+        }
+    }
+);
+watch(
+    () => props.initialEvent.additional_data,
+    (val) => {
+        // Same guard: refresh additional_data only if user has no unsaved edits.
+        if (!hasUnsavedChanges.value && val) {
+            event.value.additional_data = JSON.parse(JSON.stringify(val));
+        }
+    },
+    { deep: true }
+);
 const editorContainer = ref(null);
 const showHistoryModal = ref(false);
 const showNotesModal = ref(false);
