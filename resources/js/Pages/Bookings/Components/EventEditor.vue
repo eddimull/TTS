@@ -226,6 +226,21 @@
       >
         <WeddingSection v-model="event" />
       </SectionCard>
+
+      <!-- Questionnaires Section -->
+      <SectionCard
+        v-show="!showNotesModal"
+        v-if="event.questionnaire_instances && event.questionnaire_instances.length"
+        title="Questionnaires"
+        icon="data"
+        :is-open="openSections.questionnaires"
+        @toggle="toggleSection('questionnaires')"
+      >
+        <QuestionnaireSection
+          :event-id="event.id"
+          :instances="event.questionnaire_instances"
+        />
+      </SectionCard>
     </div>
 
     <ActionButtons
@@ -260,6 +275,7 @@ import PerformanceSection from "./EventEditor/PerformanceSection.vue";
 import ActionButtons from "./EventEditor/ActionButtons.vue";
 import SectionCard from "./EventEditor/SectionCard.vue";
 import ActivityHistoryModal from "@/Components/ActivityHistoryModal.vue";
+import QuestionnaireSection from "./EventEditor/QuestionnaireSection.vue";
 
 const props = defineProps({
     initialEvent: {
@@ -347,6 +363,7 @@ const openSections = reactive({
     lodging: true,
     performance: true,
     wedding: true,
+    questionnaires: true,
 });
 
 const toggleSection = (section) => {
