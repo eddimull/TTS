@@ -111,15 +111,21 @@ class QuestionnairesController extends Controller
                 ],
             ]);
 
+        $bookingIdsAlreadySent = $questionnaire->instances()
+            ->whereNull('deleted_at')
+            ->pluck('booking_id')
+            ->all();
+
         $bookings = $band->bookings()
             ->with(['contacts:id,name'])
             ->whereDate('date', '>=', today())
-            ->orderBy('date')
+            ->orderByDesc('date')
             ->get(['id', 'name', 'date', 'band_id'])
             ->map(fn ($b) => [
                 'id' => $b->id,
                 'name' => $b->name,
                 'date' => $b->date?->format('M j, Y'),
+                'already_sent' => in_array($b->id, $bookingIdsAlreadySent, true),
                 'contacts' => $b->contacts->map(fn ($c) => [
                     'id' => $c->id,
                     'name' => $c->name,
