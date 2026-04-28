@@ -82,10 +82,14 @@ class EventMembersController extends Controller
         }
 
         $validated = $request->validate([
-            'name'             => ['nullable', 'string', 'max:255'],
-            'email'            => ['nullable', 'email', 'max:255'],
-            'phone'            => ['nullable', 'string', 'max:50'],
+            'name'              => ['nullable', 'string', 'max:255'],
+            'email'             => ['nullable', 'email', 'max:255'],
+            'phone'             => ['nullable', 'string', 'max:50'],
             'invite_substitute' => ['boolean'],
+            'roster_member_id'  => ['nullable', 'exists:roster_members,id'],
+            'slot_id'           => ['nullable', 'exists:roster_slots,id'],
+            'band_role_id'      => ['nullable', 'exists:band_roles,id'],
+            'attendance_status' => ['nullable', 'in:confirmed,attended,absent,excused'],
         ]);
 
         $band = $event->eventable->band;
@@ -97,19 +101,31 @@ class EventMembersController extends Controller
                 email: $validated['email'],
                 name: $validated['name'] ?? null,
                 phone: $validated['phone'] ?? null,
+                bandRoleId: $validated['band_role_id'] ?? null,
             );
 
             return response()->json(['message' => 'Substitute invited'], 201);
         }
 
+        $slotId = $validated['slot_id'] ?? null;
+        $bandRoleId = $validated['band_role_id'] ?? null;
+
+        // Inherit band_role_id from the slot when not explicitly provided
+        if ($slotId && !$bandRoleId) {
+            $slot = \App\Models\RosterSlot::find($slotId);
+            $bandRoleId = $slot?->band_role_id;
+        }
+
         $eventMember = EventMember::create([
-            'event_id'       => $event->id,
-            'band_id'        => $band->id,
-            'name'           => $validated['name'] ?? null,
-            'email'          => $validated['email'] ?? null,
-            'phone'          => $validated['phone'] ?? null,
-            'status'         => 'substitute',
-            'is_band_member' => false,
+            'event_id'          => $event->id,
+            'band_id'           => $band->id,
+            'name'              => $validated['name'] ?? null,
+            'email'             => $validated['email'] ?? null,
+            'phone'             => $validated['phone'] ?? null,
+            'roster_member_id'  => $validated['roster_member_id'] ?? null,
+            'slot_id'           => $slotId,
+            'band_role_id'      => $bandRoleId,
+            'attendance_status' => $validated['attendance_status'] ?? 'confirmed',
         ]);
 
         return response()->json(['message' => 'Member added', 'member' => $eventMember], 201);
