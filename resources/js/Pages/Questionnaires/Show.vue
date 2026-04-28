@@ -104,21 +104,37 @@
                       <span v-if="instance.submitted_at"> · Submitted {{ instance.submitted_at }}</span>
                     </div>
                   </div>
-                  <span
-                    class="text-xs uppercase px-2 py-0.5 rounded flex-shrink-0"
-                    :class="{
-                      'bg-blue-100 text-blue-800': instance.status === 'sent',
-                      'bg-amber-100 text-amber-800': instance.status === 'in_progress',
-                      'bg-emerald-100 text-emerald-800': instance.status === 'submitted',
-                      'bg-gray-200 text-gray-800': instance.status === 'locked',
-                    }"
-                  >{{ instance.status.replace('_', ' ') }}</span>
+                  <div class="flex items-center gap-2 flex-shrink-0">
+                    <Button
+                      v-tooltip.bottom="'View answers'"
+                      icon="pi pi-eye"
+                      text
+                      size="small"
+                      data-test="preview-instance"
+                      @click="openSubmissionPreview(instance)"
+                    />
+                    <span
+                      class="text-xs uppercase px-2 py-0.5 rounded"
+                      :class="{
+                        'bg-blue-100 text-blue-800': instance.status === 'sent',
+                        'bg-amber-100 text-amber-800': instance.status === 'in_progress',
+                        'bg-emerald-100 text-emerald-800': instance.status === 'submitted',
+                        'bg-gray-200 text-gray-800': instance.status === 'locked',
+                      }"
+                    >{{ instance.status.replace('_', ' ') }}</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- Submission Preview Modal -->
+      <SubmissionPreview
+        v-model="previewOpen"
+        :instance="previewInstance"
+      />
 
       <!-- Send dialog -->
       <Dialog
@@ -196,6 +212,7 @@ import Container from '@/Components/Container.vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Select from 'primevue/select'
+import SubmissionPreview from '@/Components/Questionnaires/SubmissionPreview.vue'
 
 const props = defineProps({
   band: { type: Object, required: true },
@@ -212,6 +229,13 @@ onMounted(() => {
     b.label = b.date ? `${b.name} — ${b.date}` : b.name
   })
 })
+
+const previewOpen = ref(false)
+const previewInstance = ref(null)
+function openSubmissionPreview(instance) {
+  previewInstance.value = instance
+  previewOpen.value = true
+}
 
 const sendDialogOpen = ref(false)
 const sending = ref(false)

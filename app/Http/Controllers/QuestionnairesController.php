@@ -126,11 +126,17 @@ class QuestionnairesController extends Controller
         abort_if($questionnaire->band_id !== $band->id, 404);
 
         $instances = $questionnaire->instances()
-            ->with(['recipientContact:id,name', 'booking:id,name,date,band_id'])
+            ->with([
+                'recipientContact:id,name',
+                'booking:id,name,date,band_id',
+                'fields' => fn ($q) => $q->orderBy('position'),
+                'responses',
+            ])
             ->orderByDesc('sent_at')
             ->get()
             ->map(fn ($i) => [
                 'id' => $i->id,
+                'name' => $i->name,
                 'status' => $i->status,
                 'sent_at' => $i->sent_at?->format('M j, Y'),
                 'submitted_at' => $i->submitted_at?->format('M j, Y'),
@@ -140,6 +146,16 @@ class QuestionnairesController extends Controller
                     'name' => $i->booking->name,
                     'date' => $i->booking->date?->format('M j, Y'),
                 ],
+                'fields' => $i->fields->map(fn ($f) => [
+                    'id' => $f->id,
+                    'type' => $f->type,
+                    'label' => $f->label,
+                    'required' => (bool) $f->required,
+                    'settings' => $f->settings,
+                ])->values(),
+                'responses' => $i->responses->mapWithKeys(fn ($r) => [
+                    $r->instance_field_id => ['value' => $r->value],
+                ]),
             ]);
 
         $bookingIdsAlreadySent = $questionnaire->instances()

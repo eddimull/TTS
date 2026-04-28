@@ -10,6 +10,7 @@ use App\Services\Stripe\StripeClientWrapper;
 use Google\Client;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\ParallelTesting;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -44,6 +45,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+        // Force Vite to resolve via the build manifest (not the dev server)
+        // when running Dusk tests — even if a contributor has `npm run dev`
+        // running, the selenium container can't reach 127.0.0.1:5173.
+        if (env('VITE_FORCE_BUILD')) {
+            Vite::useHotFile(storage_path('framework/vite.dusk.never-exists'));
+        }
 
         ParallelTesting::setUpProcess(function() {
             Artisan::call('migrate:fresh', ['--seed' => true]);

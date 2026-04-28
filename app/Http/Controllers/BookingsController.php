@@ -209,7 +209,12 @@ class BookingsController extends Controller
         }
         
         $questionnaireInstances = $booking->questionnaireInstances()
-            ->with(['recipientContact:id,name', 'questionnaire:id,name,slug'])
+            ->with([
+                'recipientContact:id,name',
+                'questionnaire:id,name,slug',
+                'fields' => fn ($q) => $q->orderBy('position'),
+                'responses',
+            ])
             ->orderByDesc('sent_at')
             ->get()
             ->map(fn ($i) => [
@@ -219,6 +224,16 @@ class BookingsController extends Controller
                 'sent_at' => $i->sent_at?->format('M j, Y'),
                 'submitted_at' => $i->submitted_at?->format('M j, Y'),
                 'recipient_name' => $i->recipientContact->name ?? 'Unknown',
+                'fields' => $i->fields->map(fn ($f) => [
+                    'id' => $f->id,
+                    'type' => $f->type,
+                    'label' => $f->label,
+                    'required' => (bool) $f->required,
+                    'settings' => $f->settings,
+                ])->values(),
+                'responses' => $i->responses->mapWithKeys(fn ($r) => [
+                    $r->instance_field_id => ['value' => $r->value],
+                ]),
             ]);
 
         $availableQuestionnaires = $band->questionnaires()
