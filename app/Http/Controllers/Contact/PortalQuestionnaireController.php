@@ -8,6 +8,8 @@ use App\Models\Bookings;
 use App\Models\QuestionnaireInstanceFields;
 use App\Models\QuestionnaireInstances;
 use App\Models\QuestionnaireResponses;
+use App\Notifications\QuestionnaireSubmitted;
+use App\Services\QuestionnaireVisibilityEvaluator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -112,5 +114,71 @@ class PortalQuestionnaireController extends Controller
             return is_array($value) ? json_encode(array_values($value)) : json_encode([$value]);
         }
         return is_array($value) ? implode(',', $value) : (string) $value;
+    }
+
+    public function submit(Request $request, Bookings $booking, QuestionnaireInstances $instance, QuestionnaireVisibilityEvaluator $evaluator): RedirectResponse
+    {
+        $this->authorizeAccess($booking, $instance);
+        abort_if($instance->isLocked(), 403, 'This questionnaire is locked.');
+
+        $fields = $instance->fields()->orderBy('position')->get();
+        $responses = $instance->responses()->get()->keyBy('instance_field_id');
+
+        $fieldsArray = $fields->map(fn ($f) => [
+            'id' => $f->id,
+            'visibility_rule' => $f->visibility_rule,
+        ])->all();
+        $responsesArray = $responses->map(fn ($r) => $this->decodeValue($r->value))->all();
+
+        // Wipe responses for hidden fields
+        foreach ($fields as $f) {
+            if (!$evaluator->isVisible($f->id, $fieldsArray, $responsesArray)) {
+                $instance->responses()->where('instance_field_id', $f->id)->delete();
+                unset($responsesArray[$f->id]);
+            }
+        }
+
+        // Validate visible required fields
+        $missing = [];
+        foreach ($fields as $f) {
+            if (!$f->required) {
+                continue;
+            }
+            if (!$evaluator->isVisible($f->id, $fieldsArray, $responsesArray)) {
+                continue;
+            }
+
+            $value = $responsesArray[$f->id] ?? null;
+            if ($value === null || $value === '' || $value === [] || (is_array($value) && empty($value))) {
+                $missing[] = $f->id;
+            }
+        }
+
+        if (!empty($missing)) {
+            return back()->withErrors(['fields' => $missing])->setStatusCode(422);
+        }
+
+        $wasAlreadySubmitted = $instance->status === QuestionnaireInstances::STATUS_SUBMITTED;
+
+        $instance->update([
+            'status' => QuestionnaireInstances::STATUS_SUBMITTED,
+            'submitted_at' => now(),
+        ]);
+
+        $this->notifyBandOwner($instance, $wasAlreadySubmitted);
+
+        return redirect()->route('portal.dashboard')
+            ->with('success', 'Thanks! Your answers have been saved.');
+    }
+
+    private function notifyBandOwner(QuestionnaireInstances $instance, bool $isUpdate): void
+    {
+        $owner = $instance->booking->band->owners()->orderBy('created_at')->first();
+        if ($owner && $owner->user_id) {
+            $user = \App\Models\User::find($owner->user_id);
+            if ($user) {
+                $user->notify(new QuestionnaireSubmitted($instance, $isUpdate));
+            }
+        }
     }
 }

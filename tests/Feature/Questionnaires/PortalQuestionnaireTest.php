@@ -218,4 +218,160 @@ class PortalQuestionnaireTest extends TestCase
         $stored = \App\Models\QuestionnaireResponses::where('instance_field_id', $multiField->id)->first();
         $this->assertSame(['rock', 'jazz'], json_decode($stored->value, true));
     }
+
+    public function test_submit_transitions_status_to_submitted(): void
+    {
+        $field = $this->instance->fields()->first();
+        \App\Models\QuestionnaireResponses::create([
+            'instance_id' => $this->instance->id,
+            'instance_field_id' => $field->id,
+            'value' => 'Jane',
+        ]);
+
+        $this->actingAs($this->contact, 'contact')
+            ->post(route('portal.booking.questionnaire.submit', [$this->booking->id, $this->instance->id]))
+            ->assertStatus(302);
+
+        $this->instance->refresh();
+        $this->assertSame('submitted', $this->instance->status);
+        $this->assertNotNull($this->instance->submitted_at);
+    }
+
+    public function test_submit_validation_fails_when_required_field_missing(): void
+    {
+        $this->instance->fields()->first()->update(['required' => true]);
+
+        $this->actingAs($this->contact, 'contact')
+            ->withHeaders(['Accept' => 'application/json'])
+            ->post(route('portal.booking.questionnaire.submit', [$this->booking->id, $this->instance->id]))
+            ->assertStatus(422);
+
+        $this->instance->refresh();
+        $this->assertSame('sent', $this->instance->status);
+    }
+
+    public function test_submit_validation_succeeds_when_required_field_is_hidden_by_visibility_rule(): void
+    {
+        $controller = $this->instance->fields()->first();
+        $controller->update(['type' => 'yes_no', 'label' => 'Have a wedding party?']);
+
+        $hiddenRequired = QuestionnaireInstanceFields::factory()->create([
+            'instance_id' => $this->instance->id,
+            'type' => 'short_text',
+            'label' => 'How many?',
+            'required' => true,
+            'position' => 20,
+            'visibility_rule' => [
+                'depends_on' => $controller->id,
+                'operator' => 'equals',
+                'value' => 'yes',
+            ],
+        ]);
+
+        // Controller answered 'no' → hiddenRequired is invisible, so its emptiness shouldn't block submit
+        \App\Models\QuestionnaireResponses::create([
+            'instance_id' => $this->instance->id,
+            'instance_field_id' => $controller->id,
+            'value' => 'no',
+        ]);
+
+        $this->actingAs($this->contact, 'contact')
+            ->post(route('portal.booking.questionnaire.submit', [$this->booking->id, $this->instance->id]))
+            ->assertStatus(302);
+
+        $this->instance->refresh();
+        $this->assertSame('submitted', $this->instance->status);
+    }
+
+    public function test_submit_wipes_responses_for_hidden_fields(): void
+    {
+        $controller = $this->instance->fields()->first();
+        $controller->update(['type' => 'yes_no']);
+
+        $hidden = QuestionnaireInstanceFields::factory()->create([
+            'instance_id' => $this->instance->id,
+            'type' => 'short_text',
+            'position' => 20,
+            'visibility_rule' => [
+                'depends_on' => $controller->id,
+                'operator' => 'equals',
+                'value' => 'yes',
+            ],
+        ]);
+
+        \App\Models\QuestionnaireResponses::create([
+            'instance_id' => $this->instance->id,
+            'instance_field_id' => $controller->id,
+            'value' => 'no',
+        ]);
+        \App\Models\QuestionnaireResponses::create([
+            'instance_id' => $this->instance->id,
+            'instance_field_id' => $hidden->id,
+            'value' => 'stale data',
+        ]);
+
+        $this->actingAs($this->contact, 'contact')
+            ->post(route('portal.booking.questionnaire.submit', [$this->booking->id, $this->instance->id]))
+            ->assertStatus(302);
+
+        $this->assertDatabaseMissing('questionnaire_responses', [
+            'instance_field_id' => $hidden->id,
+        ]);
+    }
+
+    public function test_submit_re_submit_updates_submitted_at(): void
+    {
+        $field = $this->instance->fields()->first();
+        \App\Models\QuestionnaireResponses::create([
+            'instance_id' => $this->instance->id,
+            'instance_field_id' => $field->id,
+            'value' => 'a',
+        ]);
+
+        $this->actingAs($this->contact, 'contact')
+            ->post(route('portal.booking.questionnaire.submit', [$this->booking->id, $this->instance->id]))
+            ->assertStatus(302);
+        $this->instance->refresh();
+        $firstSubmittedAt = $this->instance->submitted_at;
+
+        // Wait 1 second so the timestamp differs
+        $this->travel(1)->seconds();
+
+        $this->actingAs($this->contact, 'contact')
+            ->post(route('portal.booking.questionnaire.submit', [$this->booking->id, $this->instance->id]))
+            ->assertStatus(302);
+        $this->instance->refresh();
+
+        $this->assertGreaterThan($firstSubmittedAt->timestamp, $this->instance->submitted_at->timestamp);
+    }
+
+    public function test_submit_blocked_when_locked(): void
+    {
+        $this->instance->update(['status' => 'locked', 'locked_at' => now()]);
+
+        $this->actingAs($this->contact, 'contact')
+            ->post(route('portal.booking.questionnaire.submit', [$this->booking->id, $this->instance->id]))
+            ->assertStatus(403);
+    }
+
+    public function test_submit_notifies_band_owner(): void
+    {
+        \Illuminate\Support\Facades\Notification::fake();
+
+        $owner = \App\Models\User::factory()->create();
+        $this->band->owners()->create(['user_id' => $owner->id]);
+
+        $field = $this->instance->fields()->first();
+        \App\Models\QuestionnaireResponses::create([
+            'instance_id' => $this->instance->id,
+            'instance_field_id' => $field->id,
+            'value' => 'a',
+        ]);
+
+        $this->actingAs($this->contact, 'contact')
+            ->post(route('portal.booking.questionnaire.submit', [$this->booking->id, $this->instance->id]))
+            ->assertStatus(302);
+
+        \Illuminate\Support\Facades\Notification::assertSentTo($owner, \App\Notifications\QuestionnaireSubmitted::class);
+    }
 }
