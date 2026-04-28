@@ -43,19 +43,26 @@ class SubInvitationService
         // Check if user exists
         $user = User::where('email', $email)->first();
 
-        // Create event_subs record
-        $eventSub = EventSubs::create([
-            'event_id' => $eventId,
-            'band_id' => $bandId,
-            'band_role_id' => $bandRoleId,
-            'user_id' => $user?->id,
-            'email' => $email,
-            'name' => $name,
-            'phone' => $phone,
-            'payout_amount' => $payoutAmount,
-            'notes' => $notes,
-            'pending' => true,
-        ]);
+        // Upsert event_subs record — a prior invitation may already exist for this user/event.
+        // Match on user_id when we have one (covers the unique constraint); fall back to email.
+        $matchKey = $user
+            ? ['event_id' => $eventId, 'user_id' => $user->id]
+            : ['event_id' => $eventId, 'email'   => $email];
+
+        $eventSub = EventSubs::updateOrCreate(
+            $matchKey,
+            [
+                'band_id'       => $bandId,
+                'band_role_id'  => $bandRoleId,
+                'user_id'       => $user?->id,
+                'email'         => $email,
+                'name'          => $name,
+                'phone'         => $phone,
+                'payout_amount' => $payoutAmount,
+                'notes'         => $notes,
+                'pending'       => true,
+            ]
+        );
 
         // If user exists, add them to band_subs if not already there
         if ($user) {
