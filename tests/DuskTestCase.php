@@ -21,6 +21,15 @@ abstract class DuskTestCase extends BaseTestCase
     {
         // Use the remote Selenium container instead of a local chromedriver binary.
         // DUSK_DRIVER_URL is read from .env.dusk.local.
+
+        // Force production-build asset resolution: if a contributor has
+        // `npm run dev` running, public/hot points Vite at a host-only URL
+        // the selenium container can't reach. Removing it makes the
+        // app render via the manifest (which we just built).
+        $hot = dirname(__DIR__) . '/public/hot';
+        if (is_file($hot)) {
+            @unlink($hot);
+        }
     }
 
     /**

@@ -168,4 +168,88 @@ class QuestionnaireFlowTest extends DuskTestCase
         $this->event->refresh();
         $this->assertSame(true, data_get($this->event->additional_data, 'wedding.onsite'));
     }
+
+    public function test_owner_can_preview_submitted_data_from_booking_page(): void
+    {
+        // Build a submitted instance with a recognisable answer
+        [$instance] = $this->seedSubmittedInstance();
+
+        $this->browse(function (Browser $browser) use ($instance) {
+            $browser->loginAs($this->owner)
+                ->visit("/bands/{$this->band->id}/booking/{$this->booking->id}")
+                ->waitForText('Questionnaires', 10)
+                ->assertSee($instance->name)
+                ->scrollIntoView('[data-test="preview-instance"]')
+                ->script("document.querySelector('[data-test=\"preview-instance\"]').click();");
+            $browser->waitForText("Bride's Full Name", 5)
+                ->assertSee("Jane O'Brien")
+                ->assertSee('Yes'); // yes_no answer rendered as "Yes"
+        });
+    }
+
+    public function test_owner_can_preview_submitted_data_from_template_show_page(): void
+    {
+        [$instance, $template] = $this->seedSubmittedInstance();
+
+        $this->browse(function (Browser $browser) use ($template) {
+            $browser->loginAs($this->owner)
+                ->visit("/bands/{$this->band->id}/questionnaires/{$template->slug}")
+                ->waitForText('Sent', 10)
+                ->scrollIntoView('[data-test="preview-instance"]')
+                ->script("document.querySelector('[data-test=\"preview-instance\"]').click();");
+            $browser->waitForText("Bride's Full Name", 5)
+                ->assertSee("Jane O'Brien")
+                ->assertSee('Yes');
+        });
+    }
+
+    /**
+     * @return array{0: \App\Models\QuestionnaireInstances, 1: \App\Models\Questionnaires}
+     */
+    private function seedSubmittedInstance(): array
+    {
+        $template = \App\Models\Questionnaires::factory()->create([
+            'band_id' => $this->band->id,
+            'name' => 'Submitted Smoke Template',
+        ]);
+
+        \App\Models\QuestionnaireFields::factory()->create([
+            'questionnaire_id' => $template->id,
+            'type' => 'short_text',
+            'label' => "Bride's Full Name",
+            'required' => true,
+            'position' => 10,
+        ]);
+        \App\Models\QuestionnaireFields::factory()->create([
+            'questionnaire_id' => $template->id,
+            'type' => 'yes_no',
+            'label' => 'Onsite ceremony?',
+            'required' => true,
+            'position' => 20,
+        ]);
+
+        $instance = app(\App\Services\QuestionnaireSnapshotService::class)
+            ->snapshot($template, $this->booking, $this->contact, $this->owner);
+
+        $brideField = $instance->fields()->where('label', "Bride's Full Name")->first();
+        $onsiteField = $instance->fields()->where('label', 'Onsite ceremony?')->first();
+
+        \App\Models\QuestionnaireResponses::create([
+            'instance_id' => $instance->id,
+            'instance_field_id' => $brideField->id,
+            'value' => "Jane O'Brien",
+        ]);
+        \App\Models\QuestionnaireResponses::create([
+            'instance_id' => $instance->id,
+            'instance_field_id' => $onsiteField->id,
+            'value' => 'yes',
+        ]);
+
+        $instance->update([
+            'status' => \App\Models\QuestionnaireInstances::STATUS_SUBMITTED,
+            'submitted_at' => now(),
+        ]);
+
+        return [$instance, $template];
+    }
 }

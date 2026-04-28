@@ -393,6 +393,14 @@
                   }"
                 >{{ instance.status.replace('_', ' ') }}</span>
                 <Button
+                  v-tooltip.bottom="'View answers'"
+                  icon="pi pi-eye"
+                  text
+                  size="small"
+                  data-test="preview-instance"
+                  @click="openSubmissionPreview(instance)"
+                />
+                <Button
                   v-tooltip.bottom="'Resend email'"
                   icon="pi pi-send"
                   text
@@ -428,6 +436,12 @@
           </div>
         </div>
       </div>
+
+      <!-- Submission Preview Modal -->
+      <SubmissionPreview
+        v-model="previewOpen"
+        :instance="previewInstance"
+      />
 
       <!-- Send Questionnaire Dialog -->
       <Dialog
@@ -587,6 +601,7 @@ import Button from 'primevue/button'
 import BookingPayout from './BookingPayout.vue'
 import Dialog from 'primevue/dialog'
 import Select from 'primevue/select'
+import SubmissionPreview from '@/Components/Questionnaires/SubmissionPreview.vue'
 import { useStore } from 'vuex'
 import { DateTime } from 'luxon'
 
@@ -770,6 +785,13 @@ const truncate = (text, length) => {
 }
 
 // ─── Questionnaires ────────────────────────────────────────────────────────
+const previewOpen = ref(false)
+const previewInstance = ref(null)
+const openSubmissionPreview = (instance) => {
+  previewInstance.value = instance
+  previewOpen.value = true
+}
+
 const sendDialogOpen = ref(false)
 const sending = ref(false)
 const sendErrors = reactive({})
