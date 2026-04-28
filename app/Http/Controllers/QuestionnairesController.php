@@ -125,7 +125,7 @@ class QuestionnairesController extends Controller
         $this->authorize('view', $questionnaire);
         abort_if($questionnaire->band_id !== $band->id, 404);
 
-        $instances = $questionnaire->instances()
+        $rawInstances = $questionnaire->instances()
             ->with([
                 'recipientContact:id,name',
                 'booking:id,name,date,band_id',
@@ -133,30 +133,34 @@ class QuestionnairesController extends Controller
                 'responses',
             ])
             ->orderByDesc('sent_at')
-            ->get()
-            ->map(fn ($i) => [
-                'id' => $i->id,
-                'name' => $i->name,
-                'status' => $i->status,
-                'sent_at' => $i->sent_at?->format('M j, Y'),
-                'submitted_at' => $i->submitted_at?->format('M j, Y'),
-                'recipient_name' => $i->recipientContact->name ?? 'Unknown',
-                'booking' => [
-                    'id' => $i->booking->id,
-                    'name' => $i->booking->name,
-                    'date' => $i->booking->date?->format('M j, Y'),
-                ],
-                'fields' => $i->fields->map(fn ($f) => [
-                    'id' => $f->id,
-                    'type' => $f->type,
-                    'label' => $f->label,
-                    'required' => (bool) $f->required,
-                    'settings' => $f->settings,
-                ])->values(),
-                'responses' => $i->responses->mapWithKeys(fn ($r) => [
-                    $r->instance_field_id => ['value' => $r->value],
-                ]),
-            ]);
+            ->get();
+
+        $songLookup = $this->buildSongLookupForInstances($rawInstances, $band->id);
+
+        $instances = $rawInstances->map(fn ($i) => [
+            'id' => $i->id,
+            'name' => $i->name,
+            'status' => $i->status,
+            'sent_at' => $i->sent_at?->format('M j, Y'),
+            'submitted_at' => $i->submitted_at?->format('M j, Y'),
+            'recipient_name' => $i->recipientContact->name ?? 'Unknown',
+            'booking' => [
+                'id' => $i->booking->id,
+                'name' => $i->booking->name,
+                'date' => $i->booking->date?->format('M j, Y'),
+            ],
+            'fields' => $i->fields->map(fn ($f) => [
+                'id' => $f->id,
+                'type' => $f->type,
+                'label' => $f->label,
+                'required' => (bool) $f->required,
+                'settings' => $f->settings,
+            ])->values(),
+            'responses' => $i->responses->mapWithKeys(fn ($r) => [
+                $r->instance_field_id => ['value' => $r->value],
+            ]),
+            'song_lookup' => $songLookup,
+        ]);
 
         $bookingIdsAlreadySent = $questionnaire->instances()
             ->whereNull('deleted_at')
@@ -367,5 +371,52 @@ class QuestionnairesController extends Controller
                 'visibility_rule' => json_encode($rewritten),
             ]);
         }
+    }
+
+    /**
+     * Build a song-id => {title, artist} lookup for any song_picker
+     * responses across the given instances. Removed songs appear with a
+     * "(removed song #N)" placeholder title.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\QuestionnaireInstances>  $instances
+     */
+    private function buildSongLookupForInstances($instances, int $bandId): array
+    {
+        $songIds = collect();
+        foreach ($instances as $instance) {
+            $songPickerFieldIds = $instance->fields
+                ->where('type', 'song_picker')
+                ->pluck('id');
+
+            foreach ($instance->responses as $response) {
+                if (!$songPickerFieldIds->contains($response->instance_field_id)) {
+                    continue;
+                }
+                $decoded = json_decode((string) $response->value, true);
+                if (is_array($decoded)) {
+                    $songIds = $songIds->merge($decoded);
+                }
+            }
+        }
+        $songIds = $songIds->unique()->filter(fn ($id) => is_numeric($id))->values();
+
+        if ($songIds->isEmpty()) {
+            return [];
+        }
+
+        $songs = \App\Models\Song::where('band_id', $bandId)
+            ->whereIn('id', $songIds)
+            ->get(['id', 'title', 'artist']);
+
+        $lookup = [];
+        foreach ($songs as $song) {
+            $lookup[$song->id] = ['title' => $song->title, 'artist' => $song->artist];
+        }
+        foreach ($songIds as $id) {
+            if (!isset($lookup[$id])) {
+                $lookup[$id] = ['title' => "(removed song #{$id})", 'artist' => null];
+            }
+        }
+        return $lookup;
     }
 }

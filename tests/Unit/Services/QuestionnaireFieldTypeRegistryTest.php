@@ -15,11 +15,11 @@ class QuestionnaireFieldTypeRegistryTest extends TestCase
         $this->registry = new QuestionnaireFieldTypeRegistry();
     }
 
-    public function test_known_types_returns_all_twelve_field_types(): void
+    public function test_known_types_returns_all_thirteen_field_types(): void
     {
         $types = $this->registry->knownTypes();
 
-        $this->assertCount(12, $types);
+        $this->assertCount(13, $types);
         $this->assertContains('short_text', $types);
         $this->assertContains('long_text', $types);
         $this->assertContains('date', $types);
@@ -30,6 +30,7 @@ class QuestionnaireFieldTypeRegistryTest extends TestCase
         $this->assertContains('multi_select', $types);
         $this->assertContains('checkbox_group', $types);
         $this->assertContains('yes_no', $types);
+        $this->assertContains('song_picker', $types);
         $this->assertContains('header', $types);
         $this->assertContains('instructions', $types);
     }
@@ -42,7 +43,7 @@ class QuestionnaireFieldTypeRegistryTest extends TestCase
 
     public function test_is_known_type_returns_false_for_unknown_type(): void
     {
-        $this->assertFalse($this->registry->isKnownType('song_picker'));
+        $this->assertFalse($this->registry->isKnownType('mystery_type'));
         $this->assertFalse($this->registry->isKnownType(''));
     }
 

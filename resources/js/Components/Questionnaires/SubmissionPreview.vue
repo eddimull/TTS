@@ -94,6 +94,17 @@ function formatAnswer(field) {
   try {
     const decoded = JSON.parse(raw)
     if (Array.isArray(decoded)) {
+      if (field.type === 'song_picker') {
+        if (decoded.length === 0) return '(none selected)'
+        const lookup = props.instance?.song_lookup ?? {}
+        return decoded
+          .map((id) => {
+            const song = lookup[id]
+            if (!song) return `(removed song #${id})`
+            return song.artist ? `${song.title} — ${song.artist}` : song.title
+          })
+          .join(', ')
+      }
       // For dropdown/multi-select with options, prefer label over value when possible
       const opts = field.settings?.options ?? []
       return decoded
