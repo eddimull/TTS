@@ -100,4 +100,122 @@ class PortalQuestionnaireTest extends TestCase
 
         $response->assertStatus(200);
     }
+
+    public function test_response_save_upserts_response_row(): void
+    {
+        $field = $this->instance->fields()->first();
+
+        $response = $this->actingAs($this->contact, 'contact')
+            ->withHeaders(['Accept' => 'application/json'])
+            ->patch(
+                route('portal.booking.questionnaire.respond', [$this->booking->id, $this->instance->id]),
+                ['instance_field_id' => $field->id, 'value' => 'Jane Smith']
+            );
+
+        $response->assertStatus(200);
+        $this->assertDatabaseHas('questionnaire_responses', [
+            'instance_id' => $this->instance->id,
+            'instance_field_id' => $field->id,
+            'value' => 'Jane Smith',
+        ]);
+
+        // Second save with new value upserts (does not duplicate)
+        $this->actingAs($this->contact, 'contact')
+            ->withHeaders(['Accept' => 'application/json'])
+            ->patch(
+                route('portal.booking.questionnaire.respond', [$this->booking->id, $this->instance->id]),
+                ['instance_field_id' => $field->id, 'value' => 'Jane Doe']
+            );
+
+        $this->assertSame(
+            1,
+            \App\Models\QuestionnaireResponses::where('instance_field_id', $field->id)->count()
+        );
+        $this->assertDatabaseHas('questionnaire_responses', [
+            'instance_field_id' => $field->id,
+            'value' => 'Jane Doe',
+        ]);
+    }
+
+    public function test_response_save_transitions_status_from_sent_to_in_progress(): void
+    {
+        $this->assertSame('sent', $this->instance->status);
+        $field = $this->instance->fields()->first();
+
+        $this->actingAs($this->contact, 'contact')
+            ->withHeaders(['Accept' => 'application/json'])
+            ->patch(
+                route('portal.booking.questionnaire.respond', [$this->booking->id, $this->instance->id]),
+                ['instance_field_id' => $field->id, 'value' => 'X']
+            )
+            ->assertStatus(200);
+
+        $this->instance->refresh();
+        $this->assertSame('in_progress', $this->instance->status);
+    }
+
+    public function test_response_save_does_not_change_status_when_already_submitted(): void
+    {
+        $this->instance->update(['status' => 'submitted', 'submitted_at' => now()]);
+        $field = $this->instance->fields()->first();
+
+        $this->actingAs($this->contact, 'contact')
+            ->withHeaders(['Accept' => 'application/json'])
+            ->patch(
+                route('portal.booking.questionnaire.respond', [$this->booking->id, $this->instance->id]),
+                ['instance_field_id' => $field->id, 'value' => 'updated']
+            )
+            ->assertStatus(200);
+
+        $this->instance->refresh();
+        $this->assertSame('submitted', $this->instance->status);
+    }
+
+    public function test_response_save_blocked_when_locked(): void
+    {
+        $this->instance->update(['status' => 'locked', 'locked_at' => now()]);
+        $field = $this->instance->fields()->first();
+
+        $this->actingAs($this->contact, 'contact')
+            ->withHeaders(['Accept' => 'application/json'])
+            ->patch(
+                route('portal.booking.questionnaire.respond', [$this->booking->id, $this->instance->id]),
+                ['instance_field_id' => $field->id, 'value' => 'X']
+            )
+            ->assertStatus(403);
+    }
+
+    public function test_response_save_rejects_field_from_different_instance(): void
+    {
+        $otherInstance = QuestionnaireInstances::factory()->create();
+        $foreignField = QuestionnaireInstanceFields::factory()->create(['instance_id' => $otherInstance->id]);
+
+        $this->actingAs($this->contact, 'contact')
+            ->withHeaders(['Accept' => 'application/json'])
+            ->patch(
+                route('portal.booking.questionnaire.respond', [$this->booking->id, $this->instance->id]),
+                ['instance_field_id' => $foreignField->id, 'value' => 'X']
+            )
+            ->assertStatus(422);
+    }
+
+    public function test_response_save_encodes_array_for_multi_value_field(): void
+    {
+        $multiField = QuestionnaireInstanceFields::factory()->create([
+            'instance_id' => $this->instance->id,
+            'type' => 'multi_select',
+            'position' => 20,
+        ]);
+
+        $this->actingAs($this->contact, 'contact')
+            ->withHeaders(['Accept' => 'application/json'])
+            ->patch(
+                route('portal.booking.questionnaire.respond', [$this->booking->id, $this->instance->id]),
+                ['instance_field_id' => $multiField->id, 'value' => ['rock', 'jazz']]
+            )
+            ->assertStatus(200);
+
+        $stored = \App\Models\QuestionnaireResponses::where('instance_field_id', $multiField->id)->first();
+        $this->assertSame(['rock', 'jazz'], json_decode($stored->value, true));
+    }
 }
