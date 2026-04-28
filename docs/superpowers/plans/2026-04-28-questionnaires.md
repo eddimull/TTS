@@ -14,7 +14,7 @@
 
 ## Critical project rules (read before starting)
 
-1. **All shell commands run inside the Docker container** via `docker-compose exec app …` for PHP/Composer/artisan or `docker-compose exec node …` for npm/Vitest. Never run on the host.
+1. **All shell commands run inside the Docker container** via `docker-compose exec app …` (the `app` container handles both PHP/Composer/artisan AND npm/Vitest — there is no separate `node` container despite what CLAUDE.md says). Never run on the host.
 2. **Test method names use the `test_` prefix** — never `it_`, never `/** @test */` doc-comment, never `#[Test]` attribute.
 3. **All migrations are generated via `php artisan make:migration`**, then edited. Never write migration files from scratch.
 4. **Never alter previously deployed migrations.** Fix forward with new migrations only.
@@ -1090,7 +1090,7 @@ Expected: PASS — no regressions from the structural changes.
 
 - [ ] **Step 2: Run the frontend tests** (no questionnaire frontend yet, but make sure nothing else broke)
 
-Run: `docker-compose exec node npm run test:run`
+Run: `docker-compose exec app npx vitest run`
 
 Expected: PASS
 
@@ -1969,7 +1969,7 @@ describe('visibility evaluator (JS)', () => {
 
 - [ ] **Step 2: Run the failing tests**
 
-Run: `docker-compose exec node npx vitest run resources/js/Pages/Contact/Questionnaire/__tests__/visibility.spec.js`
+Run: `docker-compose exec app npx vitest run resources/js/Pages/Contact/Questionnaire/__tests__/visibility.spec.js`
 
 Expected: FAIL — module not found.
 
@@ -2043,7 +2043,7 @@ function valueIsEmpty(value) {
 
 - [ ] **Step 4: Run tests to verify they pass**
 
-Run: `docker-compose exec node npx vitest run resources/js/Pages/Contact/Questionnaire/__tests__/visibility.spec.js`
+Run: `docker-compose exec app npx vitest run resources/js/Pages/Contact/Questionnaire/__tests__/visibility.spec.js`
 
 Expected: PASS — 8 tests (multi-assertion).
 
@@ -2270,7 +2270,7 @@ Expected: PASS — 4 test classes, ~36 tests total.
 
 - [ ] **Step 2: Run all frontend tests**
 
-Run: `docker-compose exec node npm run test:run`
+Run: `docker-compose exec app npx vitest run`
 
 Expected: PASS — including the new visibility.spec.js.
 
@@ -3331,7 +3331,7 @@ function restore(data) {
 
 - [ ] **Step 2: Confirm Vite picks up the new file**
 
-Run: `docker-compose exec node npm run build`
+Run: `docker-compose exec app npm run build`
 
 Expected: build completes without errors. (Run dev mode in your normal workflow; this is just a sanity check.)
 
@@ -3747,13 +3747,13 @@ onBeforeMount(() => {
 
 - [ ] **Step 3: Build the frontend**
 
-Run: `docker-compose exec node npm run build`
+Run: `docker-compose exec app npm run build`
 
 Expected: PASS without errors.
 
 - [ ] **Step 4: Manual smoke test**
 
-Run dev server in another terminal: `docker-compose exec node npm run dev`
+Run dev server in another terminal: `docker-compose exec app npm run dev`
 
 Then in a browser:
 1. Sign in as a band owner.
@@ -3890,7 +3890,7 @@ If the `needsBand: true` convention isn't used elsewhere, replicate whatever pat
 
 - [ ] **Step 3: Build and manual-test**
 
-Run: `docker-compose exec node npm run build`
+Run: `docker-compose exec app npm run build`
 
 Visit `/bands/{id}/questionnaires/{slug}/preview` in a browser. Confirm the form renders read-only with all field types visible.
 
@@ -3922,13 +3922,13 @@ Expected: PASS — all tests including the 13 in `TemplateBuilderTest`.
 
 - [ ] **Step 2: Run all frontend tests**
 
-Run: `docker-compose exec node npm run test:run`
+Run: `docker-compose exec app npx vitest run`
 
 Expected: PASS
 
 - [ ] **Step 3: Confirm Vite builds clean**
 
-Run: `docker-compose exec node npm run build`
+Run: `docker-compose exec app npm run build`
 
 Expected: PASS
 
@@ -4749,7 +4749,7 @@ Expected: PASS
 
 - [ ] **Step 2: Confirm Vite still builds**
 
-Run: `docker-compose exec node npm run build`
+Run: `docker-compose exec app npm run build`
 
 Expected: PASS
 
