@@ -119,7 +119,6 @@ class QuestionnairesController extends Controller
         $bookings = $band->bookings()
             ->with(['contacts:id,name'])
             ->whereDate('date', '>=', today())
-            ->orderByDesc('date')
             ->get(['id', 'name', 'date', 'band_id'])
             ->map(fn ($b) => [
                 'id' => $b->id,
