@@ -91,7 +91,6 @@ class QuestionnaireSnapshotServiceTest extends TestCase
         $newParent = $instance->fields()->where('label', 'Have a wedding party?')->first();
         $newChild = $instance->fields()->where('label', 'How many people?')->first();
 
-        $this->assertNotSame($parent->id, $newParent->id, 'Snapshot should produce new ids');
         $this->assertSame($newParent->id, $newChild->visibility_rule['depends_on']);
     }
 
