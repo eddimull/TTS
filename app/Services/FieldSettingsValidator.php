@@ -14,6 +14,8 @@ class FieldSettingsValidator
      *
      * @return array<string>
      */
+    public const SONG_PICKER_PURPOSES = ['must_play', 'do_not_play', 'general'];
+
     public function validate(string $type, ?array $settings): array
     {
         if (!$this->registry->isKnownType($type)) {
@@ -24,6 +26,23 @@ class FieldSettingsValidator
 
         if (in_array('options', $required, true)) {
             return $this->validateOptions($settings);
+        }
+
+        if (in_array('purpose', $required, true)) {
+            return $this->validatePurpose($settings);
+        }
+
+        return [];
+    }
+
+    private function validatePurpose(?array $settings): array
+    {
+        if (!is_array($settings) || !isset($settings['purpose']) || !is_string($settings['purpose'])) {
+            return ['settings.purpose is required and must be a string'];
+        }
+
+        if (!in_array($settings['purpose'], self::SONG_PICKER_PURPOSES, true)) {
+            return ['settings.purpose must be one of: ' . implode(', ', self::SONG_PICKER_PURPOSES)];
         }
 
         return [];

@@ -141,6 +141,15 @@
                   </div>
                 </div>
 
+                <SongPickerField
+                  v-else-if="field.type === 'song_picker'"
+                  v-model="answers[field.id]"
+                  :songs="bandSongs"
+                  :purpose="field.settings?.purpose || 'general'"
+                  :disabled="instance.is_locked"
+                  @change="saveField(field)"
+                />
+
                 <p
                   v-if="savedField === field.id"
                   class="text-xs text-emerald-600 mt-1 transition-opacity duration-500"
@@ -182,6 +191,7 @@ import Select from 'primevue/select'
 import MultiSelect from 'primevue/multiselect'
 import Checkbox from 'primevue/checkbox'
 import RadioButton from 'primevue/radiobutton'
+import SongPickerField from './Components/SongPickerField.vue'
 import Button from 'primevue/button'
 import { isFieldVisible } from './visibility.js'
 
@@ -190,6 +200,7 @@ const props = defineProps({
   instance: { type: Object, required: true },
   fields: { type: Array, default: () => [] },
   responses: { type: Object, default: () => ({}) },
+  bandSongs: { type: Array, default: () => [] },
 })
 
 // Initialize answers from server-provided responses, defaulting types appropriately
@@ -198,7 +209,7 @@ props.fields.forEach((f) => {
   const fromServer = props.responses[f.id]
   if (fromServer !== undefined && fromServer !== null) {
     answers[f.id] = fromServer
-  } else if (f.type === 'multi_select' || f.type === 'checkbox_group') {
+  } else if (['multi_select', 'checkbox_group', 'song_picker'].includes(f.type)) {
     answers[f.id] = []
   } else {
     answers[f.id] = ''

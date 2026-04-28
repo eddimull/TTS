@@ -22,6 +22,7 @@ class QuestionnaireFieldTypeRegistry
             'multi_select'   => ['label' => 'Multi-select',    'is_input' => true, 'required_settings' => ['options']],
             'checkbox_group' => ['label' => 'Checkboxes',      'is_input' => true, 'required_settings' => ['options']],
             'yes_no'         => ['label' => 'Yes / No',        'is_input' => true],
+            'song_picker'    => ['label' => 'Song picker',     'is_input' => true, 'required_settings' => ['purpose']],
             'header'         => ['label' => 'Section header',  'is_input' => false],
             'instructions'   => ['label' => 'Instruction text', 'is_input' => false],
         ];

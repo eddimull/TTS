@@ -55,8 +55,10 @@ class QuestionnairePresetRegistry
                     ['type' => 'long_text', 'label' => 'Names and order of toasts', 'help_text' => 'Who is giving toasts and in what order?'],
 
                     ['type' => 'header', 'label' => 'Music Preferences'],
-                    ['type' => 'long_text', 'label' => 'Must-play songs / artists', 'help_text' => 'Songs you absolutely want to hear'],
-                    ['type' => 'long_text', 'label' => 'Do-not-play songs / artists', 'help_text' => 'Songs we should avoid'],
+                    ['type' => 'song_picker', 'label' => 'Must-play songs from our list', 'help_text' => 'Pick from our catalog — these are songs you definitely want to hear', 'settings' => ['purpose' => 'must_play']],
+                    ['type' => 'song_picker', 'label' => 'Do-not-play songs from our list', 'help_text' => 'Pick songs we should skip', 'settings' => ['purpose' => 'do_not_play']],
+                    ['type' => 'long_text', 'label' => 'Other must-play songs / artists not on our list', 'help_text' => 'Free-form: songs or artists you want that aren\'t in our catalog'],
+                    ['type' => 'long_text', 'label' => 'Other do-not-play songs / artists not on our list', 'help_text' => 'Free-form: songs or artists to avoid'],
 
                     ['type' => 'header', 'label' => 'Color Scheme'],
                     ['type' => 'long_text', 'label' => 'Wedding colors', 'help_text' => 'Helpful for the band\'s attire choice'],

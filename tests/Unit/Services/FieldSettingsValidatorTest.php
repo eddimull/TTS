@@ -87,4 +87,25 @@ class FieldSettingsValidatorTest extends TestCase
         $errors = $this->validator->validate('mystery_type', null);
         $this->assertNotEmpty($errors);
     }
+
+    public function test_song_picker_rejects_null_settings(): void
+    {
+        $errors = $this->validator->validate('song_picker', null);
+        $this->assertNotEmpty($errors);
+        $this->assertStringContainsString('purpose', strtolower(implode(' ', $errors)));
+    }
+
+    public function test_song_picker_rejects_invalid_purpose(): void
+    {
+        $errors = $this->validator->validate('song_picker', ['purpose' => 'mystery']);
+        $this->assertNotEmpty($errors);
+    }
+
+    public function test_song_picker_accepts_each_valid_purpose(): void
+    {
+        foreach (['must_play', 'do_not_play', 'general'] as $purpose) {
+            $errors = $this->validator->validate('song_picker', ['purpose' => $purpose]);
+            $this->assertEmpty($errors, "purpose '{$purpose}' should be valid");
+        }
+    }
 }

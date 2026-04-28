@@ -203,6 +203,82 @@ class QuestionnaireFlowTest extends DuskTestCase
         });
     }
 
+    public function test_client_can_pick_songs_and_owner_sees_titles_in_preview(): void
+    {
+        // Seed two songs in the band's catalog
+        $song1 = \App\Models\Song::factory()->create([
+            'band_id' => $this->band->id,
+            'title' => 'Evergreen',
+            'artist' => 'Yebba',
+            'active' => true,
+        ]);
+        $song2 = \App\Models\Song::factory()->create([
+            'band_id' => $this->band->id,
+            'title' => 'Mr Brightside',
+            'artist' => 'The Killers',
+            'active' => true,
+        ]);
+
+        // Build a template with a single song_picker
+        $template = \App\Models\Questionnaires::factory()->create([
+            'band_id' => $this->band->id,
+            'name' => 'Song Picker Smoke',
+        ]);
+        \App\Models\QuestionnaireFields::factory()->create([
+            'questionnaire_id' => $template->id,
+            'type' => 'song_picker',
+            'label' => 'Must-play songs',
+            'required' => false,
+            'position' => 10,
+            'settings' => ['purpose' => 'must_play'],
+        ]);
+
+        $instance = app(\App\Services\QuestionnaireSnapshotService::class)
+            ->snapshot($template, $this->booking, $this->contact, $this->owner);
+
+        // Client opens the portal, picks a song, submits
+        $this->browse(function (Browser $browser) use ($instance, $song1) {
+            $browser->loginAs($this->contact, 'contact')
+                ->visit("/portal/booking/{$this->booking->id}/questionnaire/{$instance->id}")
+                ->waitForText('Must-play songs', 10)
+                ->assertSee('Evergreen')
+                ->assertSee('Mr Brightside');
+
+            // Click the checkbox for the first song; PrimeVue Checkbox renders
+            // a div.p-checkbox-box wrapper that catches the click.
+            $browser->script(<<<JS
+                const labels = Array.from(document.querySelectorAll('label'));
+                const target = labels.find(l => l.textContent.includes('Evergreen'));
+                target.click();
+            JS);
+            $browser->pause(300);
+        });
+
+        // Verify the response was saved
+        $response = $instance->responses()->first();
+        $this->assertNotNull($response, 'Expected a saved response after clicking the song checkbox');
+        $decoded = json_decode($response->value, true);
+        $this->assertContains($song1->id, $decoded);
+
+        // Mark the instance submitted (skip UI submit; covered elsewhere)
+        $instance->update([
+            'status' => \App\Models\QuestionnaireInstances::STATUS_SUBMITTED,
+            'submitted_at' => now(),
+        ]);
+
+        // Owner views the booking and confirms the song title appears in preview
+        $this->browse(function (Browser $browser) {
+            $browser->loginAs($this->owner)
+                ->visit("/bands/{$this->band->id}/booking/{$this->booking->id}")
+                ->waitForText('Questionnaires', 10)
+                ->scrollIntoView('[data-test="preview-instance"]')
+                ->script("document.querySelector('[data-test=\"preview-instance\"]').click();");
+            $browser->waitForText('Must-play songs', 5)
+                ->assertSee('Evergreen')
+                ->assertSee('Yebba');
+        });
+    }
+
     /**
      * @return array{0: \App\Models\QuestionnaireInstances, 1: \App\Models\Questionnaires}
      */

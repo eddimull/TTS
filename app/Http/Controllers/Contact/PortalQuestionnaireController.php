@@ -36,6 +36,13 @@ class PortalQuestionnaireController extends Controller
             fn ($r) => [$r->instance_field_id => $this->decodeValue($r->value)]
         );
 
+        $bandSongs = $fields->contains('type', 'song_picker')
+            ? \App\Models\Song::where('band_id', $booking->band_id)
+                ->where('active', true)
+                ->orderBy('title')
+                ->get(['id', 'title', 'artist', 'genre'])
+            : collect();
+
         return Inertia::render('Contact/Questionnaire/Show', [
             'booking' => [
                 'id' => $booking->id,
@@ -53,6 +60,7 @@ class PortalQuestionnaireController extends Controller
             ],
             'fields' => $fields,
             'responses' => $responses,
+            'bandSongs' => $bandSongs,
         ]);
     }
 
@@ -110,7 +118,7 @@ class PortalQuestionnaireController extends Controller
         if ($value === null) {
             return null;
         }
-        if (in_array($type, ['multi_select', 'checkbox_group'], true)) {
+        if (in_array($type, ['multi_select', 'checkbox_group', 'song_picker'], true)) {
             return is_array($value) ? json_encode(array_values($value)) : json_encode([$value]);
         }
         return is_array($value) ? implode(',', $value) : (string) $value;

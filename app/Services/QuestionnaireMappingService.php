@@ -107,6 +107,8 @@ class QuestionnaireMappingService
         $responses = $instance->responses()->get()->keyBy('instance_field_id');
         $date = now()->format('M j, Y');
 
+        $songLookup = $this->buildSongLookup($instance, $fields, $responses);
+
         $html = "<hr>\n<p><strong>Customer submitted \"" . htmlspecialchars($instance->name, ENT_COMPAT | ENT_HTML5) . "\" on {$date}</strong></p>\n<ul>\n";
 
         foreach ($fields as $f) {
@@ -117,17 +119,94 @@ class QuestionnaireMappingService
                 $html .= "</ul>\n<h4>" . htmlspecialchars($f->label, ENT_COMPAT | ENT_HTML5) . "</h4>\n<ul>\n";
                 continue;
             }
-            $value = $responses->get($f->id)?->value;
-            $value = $value !== null && $value !== '' ? $value : '(not answered)';
-            // Decode JSON-encoded multi-values for display
-            $decoded = json_decode((string) $value, true);
-            if (is_array($decoded)) {
-                $value = implode(', ', $decoded);
+            $rawValue = $responses->get($f->id)?->value;
+
+            if ($f->type === 'song_picker') {
+                $display = $this->renderSongPickerForNotes($rawValue, $songLookup);
+            } else {
+                $value = $rawValue !== null && $rawValue !== '' ? $rawValue : '(not answered)';
+                $decoded = json_decode((string) $value, true);
+                if (is_array($decoded)) {
+                    $value = implode(', ', $decoded);
+                }
+                $display = $value;
             }
-            $html .= '<li><strong>' . htmlspecialchars($f->label, ENT_COMPAT | ENT_HTML5) . ':</strong> ' . htmlspecialchars((string) $value, ENT_COMPAT | ENT_HTML5) . "</li>\n";
+
+            $html .= '<li><strong>' . htmlspecialchars($f->label, ENT_COMPAT | ENT_HTML5) . ':</strong> ' . htmlspecialchars((string) $display, ENT_COMPAT | ENT_HTML5) . "</li>\n";
         }
 
         $html .= '</ul>';
         return $html;
+    }
+
+    /**
+     * Resolve song IDs referenced by song_picker responses to {title, artist}
+     * tuples for the band that owns the instance's booking.
+     *
+     * @return array<int, array{title: string, artist: string|null}>
+     */
+    private function buildSongLookup(
+        QuestionnaireInstances $instance,
+        \Illuminate\Support\Collection $fields,
+        \Illuminate\Support\Collection $responses,
+    ): array {
+        $songPickerFieldIds = $fields->where('type', 'song_picker')->pluck('id');
+        if ($songPickerFieldIds->isEmpty()) {
+            return [];
+        }
+
+        $songIds = collect();
+        foreach ($responses as $r) {
+            if (!$songPickerFieldIds->contains($r->instance_field_id)) {
+                continue;
+            }
+            $decoded = json_decode((string) $r->value, true);
+            if (is_array($decoded)) {
+                $songIds = $songIds->merge($decoded);
+            }
+        }
+        $songIds = $songIds->unique()->filter(fn ($id) => is_numeric($id))->values();
+
+        if ($songIds->isEmpty()) {
+            return [];
+        }
+
+        $bandId = $instance->booking->band_id;
+        $songs = \App\Models\Song::where('band_id', $bandId)
+            ->whereIn('id', $songIds)
+            ->get(['id', 'title', 'artist']);
+
+        $lookup = [];
+        foreach ($songs as $song) {
+            $lookup[$song->id] = ['title' => $song->title, 'artist' => $song->artist];
+        }
+        foreach ($songIds as $id) {
+            if (!isset($lookup[$id])) {
+                $lookup[$id] = ['title' => "(removed song #{$id})", 'artist' => null];
+            }
+        }
+        return $lookup;
+    }
+
+    private function renderSongPickerForNotes(?string $rawValue, array $songLookup): string
+    {
+        if ($rawValue === null || $rawValue === '') {
+            return '(not answered)';
+        }
+        $decoded = json_decode($rawValue, true);
+        if (!is_array($decoded) || empty($decoded)) {
+            return '(none selected)';
+        }
+        return collect($decoded)
+            ->map(function ($id) use ($songLookup) {
+                $song = $songLookup[$id] ?? null;
+                if (!$song) {
+                    return "(removed song #{$id})";
+                }
+                return $song['artist']
+                    ? "{$song['title']} — {$song['artist']}"
+                    : $song['title'];
+            })
+            ->implode(', ');
     }
 }
