@@ -120,6 +120,78 @@ class EventMemberStoreTest extends TestCase
     }
 
     /**
+     * When a registered user is added by email without invite_substitute,
+     * the event_member record must be linked to their user_id so their
+     * name resolves correctly rather than falling back to the name field.
+     * Bug: the controller never resolved email → user_id for direct adds.
+     */
+    public function test_adding_registered_user_by_email_links_user_id(): void
+    {
+        $existingUser = User::factory()->create([
+            'name'  => 'Registered Player',
+            'email' => 'registered@example.com',
+        ]);
+
+        $response = $this->actingAs($this->owner)
+            ->postJson("/events/{$this->event->id}/members", [
+                'name'              => 'Registered Player',
+                'email'             => 'registered@example.com',
+                'attendance_status' => 'confirmed',
+                'slot_id'           => $this->slot->id,
+                // invite_substitute intentionally omitted (false by default)
+            ]);
+
+        $response->assertStatus(201);
+
+        $this->assertDatabaseHas('event_members', [
+            'event_id' => $this->event->id,
+            'user_id'  => $existingUser->id,
+            'email'    => 'registered@example.com',
+        ]);
+    }
+
+    /**
+     * Re-adding a registered user who was previously soft-deleted from the event
+     * must restore the record rather than crash with a unique-key violation.
+     * This mirrors the restore logic already in EventMemberController (singular).
+     */
+    public function test_readding_soft_deleted_user_restores_record(): void
+    {
+        $existingUser = User::factory()->create([
+            'name'  => 'Returning Member',
+            'email' => 'returning@example.com',
+        ]);
+
+        // Simulate a previously removed event member (soft-deleted)
+        $member = \App\Models\EventMember::create([
+            'event_id' => $this->event->id,
+            'band_id'  => $this->band->id,
+            'user_id'  => $existingUser->id,
+            'email'    => 'returning@example.com',
+        ]);
+        $member->delete();
+
+        $response = $this->actingAs($this->owner)
+            ->postJson("/events/{$this->event->id}/members", [
+                'name'              => 'Returning Member',
+                'email'             => 'returning@example.com',
+                'attendance_status' => 'confirmed',
+                'slot_id'           => $this->slot->id,
+            ]);
+
+        $response->assertStatus(201);
+
+        // Only one event_member for this user/event (the restored one)
+        $this->assertDatabaseCount('event_members', 1);
+        $this->assertDatabaseHas('event_members', [
+            'event_id'   => $this->event->id,
+            'user_id'    => $existingUser->id,
+            'slot_id'    => $this->slot->id,
+            'deleted_at' => null,
+        ]);
+    }
+
+    /**
      * Sending invite_substitute without an email must be rejected with 422 and
      * must not create an event_subs record or send mail.
      * Bug: a call-list entry with null custom_email sent invite_substitute=true
