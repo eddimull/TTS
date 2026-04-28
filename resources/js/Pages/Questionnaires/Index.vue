@@ -116,8 +116,8 @@ function visitEditor(data) {
 function save() {
   saving.value = true
   router.post(
-    route('questionnaires.store', props.band.id),
-    { name: form.name, description: form.description },
+    route('questionnaires.store'),
+    { name: form.name, description: form.description, band_id: props.band.id },
     {
       preserveState: true,
       onError: (e) => {
