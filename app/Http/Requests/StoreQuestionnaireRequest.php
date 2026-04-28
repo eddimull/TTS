@@ -18,6 +18,7 @@ class StoreQuestionnaireRequest extends FormRequest
             'band_id' => 'required|integer|exists:bands,id',
             'name' => 'required|string|max:120',
             'description' => 'nullable|string',
+            'preset_key' => 'nullable|string|max:60',
         ];
     }
 }

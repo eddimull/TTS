@@ -68,6 +68,29 @@
         :modal="true"
       >
         <div class="flex flex-col space-y-4">
+          <div
+            v-if="presets.length > 0"
+            class="flex flex-col"
+          >
+            <label class="mb-2 font-medium">Start from</label>
+            <SelectButton
+              v-model="form.presetKey"
+              :options="presetOptions"
+              option-label="label"
+              option-value="value"
+              :allow-empty="false"
+              @change="onPresetChanged"
+            />
+            <small
+              v-if="selectedPreset"
+              class="text-gray-500 dark:text-gray-400 mt-2 leading-snug"
+            >{{ selectedPreset.description }} — {{ selectedPreset.field_count }} fields included.</small>
+            <small
+              v-else
+              class="text-gray-500 dark:text-gray-400 mt-2"
+            >Build the questionnaire from scratch.</small>
+          </div>
+
           <div class="flex flex-col">
             <label for="name" class="mb-2 font-medium">Name</label>
             <InputText
@@ -147,6 +170,7 @@ import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
+import SelectButton from 'primevue/selectbutton'
 
 export default {
   components: {
@@ -158,11 +182,13 @@ export default {
     Textarea,
     Button,
     Select,
+    SelectButton,
   },
   props: {
     band: { type: Object, default: null },
     questionnaires: { type: Array, default: () => [] },
     availableBands: { type: Array, default: () => [] },
+    presets: { type: Array, default: () => [] },
   },
   data() {
     return {
@@ -174,8 +200,22 @@ export default {
         name: '',
         description: '',
         band: null,
+        presetKey: '',
       },
     }
+  },
+  computed: {
+    presetOptions() {
+      return [
+        { label: 'Blank', value: '' },
+        ...this.presets.map(p => ({ label: p.name, value: p.key })),
+      ]
+    },
+    selectedPreset() {
+      return this.form.presetKey
+        ? this.presets.find(p => p.key === this.form.presetKey) ?? null
+        : null
+    },
   },
   methods: {
     openNew() {
@@ -187,8 +227,17 @@ export default {
         band: this.band && this.band.id
           ? this.availableBands.find((b) => b.id === this.band.id) || null
           : null,
+        presetKey: '',
       }
       this.dialogOpen = true
+    },
+    onPresetChanged() {
+      const preset = this.selectedPreset
+      if (preset) {
+        // Pre-fill name and description from the preset (only if untouched)
+        if (!this.form.name) this.form.name = preset.name
+        if (!this.form.description) this.form.description = preset.description
+      }
     },
     closeDialog() {
       this.saving = false
@@ -213,6 +262,7 @@ export default {
           name: this.form.name,
           description: this.form.description,
           band_id: this.form.band.id,
+          preset_key: this.form.presetKey || null,
         },
         {
           preserveState: true,
