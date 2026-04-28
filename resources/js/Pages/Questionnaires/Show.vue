@@ -207,6 +207,7 @@ const props = defineProps({
 
 // Augment booking labels for the Select
 onMounted(() => {
+  props.bookings.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
   props.bookings.forEach(b => {
     b.label = b.date ? `${b.name} — ${b.date}` : b.name
   })
