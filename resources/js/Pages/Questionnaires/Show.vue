@@ -138,6 +138,7 @@
               v-model="sendForm.booking"
               :options="bookings"
               option-label="label"
+              :option-disabled="(opt) => opt.already_sent"
               placeholder="Select a booking"
               filter
               class="w-full"
@@ -145,7 +146,13 @@
             >
               <template #option="slotProps">
                 <div class="flex flex-col">
-                  <span>{{ slotProps.option.name }}</span>
+                  <span :class="{ 'text-gray-400': slotProps.option.already_sent }">
+                    {{ slotProps.option.name }}
+                    <span
+                      v-if="slotProps.option.already_sent"
+                      class="ml-1 text-xs italic"
+                    >(already sent)</span>
+                  </span>
                   <span class="text-xs text-gray-500">{{ slotProps.option.date || 'no date' }}</span>
                 </div>
               </template>
