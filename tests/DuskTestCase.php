@@ -19,9 +19,8 @@ abstract class DuskTestCase extends BaseTestCase
      */
     public static function prepare()
     {
-        if (! static::runningInSail()) {
-            static::startChromeDriver();
-        }
+        // Use the remote Selenium container instead of a local chromedriver binary.
+        // DUSK_DRIVER_URL is read from .env.dusk.local.
     }
 
     /**
@@ -34,6 +33,8 @@ abstract class DuskTestCase extends BaseTestCase
         $options = (new ChromeOptions)->addArguments(collect([
             '--headless',
             '--window-size=1920,1080',
+            '--ignore-certificate-errors',
+            '--allow-insecure-localhost',
         ])->unless($this->hasHeadlessDisabled(), function ($items) {
             return $items->merge([
                 '--disable-gpu',
@@ -41,8 +42,13 @@ abstract class DuskTestCase extends BaseTestCase
             ]);
         })->all());
 
+        $url = $_ENV['DUSK_DRIVER_URL']
+            ?? $_SERVER['DUSK_DRIVER_URL']
+            ?? getenv('DUSK_DRIVER_URL')
+            ?: env('DUSK_DRIVER_URL', 'http://localhost:9515');
+
         return RemoteWebDriver::create(
-            $_ENV['DUSK_DRIVER_URL'] ?? 'http://localhost:9515',
+            $url,
             DesiredCapabilities::chrome()->setCapability(
                 ChromeOptions::CAPABILITY, $options
             )
@@ -54,7 +60,7 @@ abstract class DuskTestCase extends BaseTestCase
      *
      * @return bool
      */
-    protected function hasHeadlessDisabled()
+    protected function hasHeadlessDisabled(): bool
     {
         return isset($_SERVER['DUSK_HEADLESS_DISABLED']) ||
                isset($_ENV['DUSK_HEADLESS_DISABLED']);
