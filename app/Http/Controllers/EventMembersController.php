@@ -116,9 +116,15 @@ class EventMembersController extends Controller
             $bandRoleId = $slot?->band_role_id;
         }
 
-        $eventMember = EventMember::create([
-            'event_id'          => $event->id,
+        // Resolve user_id from email so the member record links to the registered user
+        $userId = null;
+        if (!empty($validated['email'])) {
+            $userId = User::where('email', $validated['email'])->value('id');
+        }
+
+        $data = [
             'band_id'           => $band->id,
+            'user_id'           => $userId,
             'name'              => $validated['name'] ?? null,
             'email'             => $validated['email'] ?? null,
             'phone'             => $validated['phone'] ?? null,
@@ -126,7 +132,23 @@ class EventMembersController extends Controller
             'slot_id'           => $slotId,
             'band_role_id'      => $bandRoleId,
             'attendance_status' => $validated['attendance_status'] ?? 'confirmed',
-        ]);
+        ];
+
+        // Restore a soft-deleted record rather than crash on the unique constraint
+        $existing = EventMember::withTrashed()
+            ->where('event_id', $event->id)
+            ->when($userId, fn($q) => $q->where('user_id', $userId))
+            ->when(!$userId && isset($validated['roster_member_id']), fn($q) => $q->where('roster_member_id', $validated['roster_member_id']))
+            ->whereNotNull('deleted_at')
+            ->first();
+
+        if ($existing) {
+            $existing->restore();
+            $existing->update($data);
+            $eventMember = $existing;
+        } else {
+            $eventMember = EventMember::create(['event_id' => $event->id] + $data);
+        }
 
         return response()->json(['message' => 'Member added', 'member' => $eventMember], 201);
     }
