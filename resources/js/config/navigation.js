@@ -92,6 +92,12 @@ export const navigationGroups = [
         routeName: 'songs.index',
         permission: 'Songs',
         activeMatch: (route) => route === 'songs.index'
+      },
+      {
+        label: 'Questionnaires',
+        routeName: 'questionnaires.index',
+        permission: 'Questionnaires',
+        activeMatch: (route) => route.includes('questionnaires')
       }
     ]
   }
