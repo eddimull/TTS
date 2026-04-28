@@ -4,9 +4,7 @@ namespace App\Providers;
 
 use App\Contracts\StripeClientInterface;
 use App\Models\Bands;
-use App\Models\QuestionnaireComponents;
 use App\Observers\BandObserver;
-use App\Observers\QuestionnaireComponentObserver;
 use App\Services\GoogleCalendarService;
 use App\Services\Stripe\StripeClientWrapper;
 use Google\Client;
@@ -50,7 +48,6 @@ class AppServiceProvider extends ServiceProvider
         ParallelTesting::setUpProcess(function() {
             Artisan::call('migrate:fresh', ['--seed' => true]);
         });
-        QuestionnaireComponents::observe(QuestionnaireComponentObserver::class);
         Bands::observe(BandObserver::class);
         Inertia::share([
             'config' => [
