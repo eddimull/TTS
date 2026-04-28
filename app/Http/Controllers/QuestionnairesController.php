@@ -9,6 +9,7 @@ use App\Models\Questionnaires;
 use App\Services\FieldSettingsValidator;
 use App\Services\QuestionnaireFieldTypeRegistry;
 use App\Services\QuestionnaireMappingRegistry;
+use App\Services\QuestionnairePresetRegistry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -23,6 +24,7 @@ class QuestionnairesController extends Controller
         private QuestionnaireFieldTypeRegistry $typeRegistry,
         private QuestionnaireMappingRegistry $mappingRegistry,
         private FieldSettingsValidator $settingsValidator,
+        private QuestionnairePresetRegistry $presetRegistry,
     ) {
     }
 
@@ -58,21 +60,50 @@ class QuestionnairesController extends Controller
             'band' => $band->only(['id', 'name', 'site_name']),
             'questionnaires' => $questionnaires,
             'availableBands' => $availableBands->map->only(['id', 'name']),
+            'presets' => $this->presetRegistry->catalog(),
         ]);
     }
 
     public function store(StoreQuestionnaireRequest $request): RedirectResponse
     {
         $band = Bands::findOrFail($request->input('band_id'));
+        $presetKey = $request->input('preset_key');
 
-        $questionnaire = new Questionnaires([
-            'description' => $request->input('description'),
-        ]);
-        $questionnaire->band_id = $band->id;
-        $questionnaire->name = $request->input('name'); // triggers slug generation
-        $questionnaire->save();
+        $questionnaire = DB::transaction(function () use ($request, $band, $presetKey) {
+            $row = new Questionnaires([
+                'description' => $request->input('description'),
+            ]);
+            $row->band_id = $band->id;
+            $row->name = $request->input('name'); // triggers slug generation
+            $row->save();
+
+            if ($presetKey && $this->presetRegistry->exists($presetKey)) {
+                $this->cloneFieldsFromPreset($row, $presetKey);
+            }
+
+            return $row;
+        });
 
         return redirect()->route('questionnaires.edit', [$band, $questionnaire]);
+    }
+
+    private function cloneFieldsFromPreset(Questionnaires $questionnaire, string $key): void
+    {
+        $preset = $this->presetRegistry->get($key);
+        $position = 10;
+        foreach ($preset['fields'] as $field) {
+            $questionnaire->fields()->create([
+                'type' => $field['type'],
+                'label' => $field['label'],
+                'help_text' => $field['help_text'] ?? null,
+                'required' => $field['required'] ?? false,
+                'position' => $position,
+                'settings' => $field['settings'] ?? null,
+                'mapping_target' => $field['mapping_target'] ?? null,
+                'visibility_rule' => null,
+            ]);
+            $position += 10;
+        }
     }
 
     public function edit(Bands $band, Questionnaires $questionnaire): Response

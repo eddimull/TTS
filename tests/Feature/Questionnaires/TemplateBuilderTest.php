@@ -373,4 +373,53 @@ class TemplateBuilderTest extends TestCase
         $response->assertStatus(302);
         $this->assertSoftDeleted('questionnaires', ['id' => $template->id]);
     }
+
+    public function test_store_with_preset_clones_preset_fields(): void
+    {
+        $response = $this->actingAs($this->owner)->post(
+            route('questionnaires.store'),
+            [
+                'name' => 'My Wedding Form',
+                'band_id' => $this->band->id,
+                'preset_key' => 'wedding',
+            ]
+        );
+
+        $response->assertStatus(302);
+
+        $template = Questionnaires::where('band_id', $this->band->id)
+            ->where('name', 'My Wedding Form')
+            ->firstOrFail();
+
+        $registry = app(\App\Services\QuestionnairePresetRegistry::class);
+        $expectedCount = count($registry->get('wedding')['fields']);
+
+        $this->assertSame($expectedCount, $template->fields()->count());
+
+        // Spot-check that one of the mapped fields actually carries its mapping target
+        $this->assertDatabaseHas('questionnaire_fields', [
+            'questionnaire_id' => $template->id,
+            'mapping_target' => 'wedding.dance.first',
+        ]);
+    }
+
+    public function test_store_with_unknown_preset_creates_blank_template(): void
+    {
+        $response = $this->actingAs($this->owner)->post(
+            route('questionnaires.store'),
+            [
+                'name' => 'Custom Form',
+                'band_id' => $this->band->id,
+                'preset_key' => 'nonexistent',
+            ]
+        );
+
+        $response->assertStatus(302);
+
+        $template = Questionnaires::where('band_id', $this->band->id)
+            ->where('name', 'Custom Form')
+            ->firstOrFail();
+
+        $this->assertSame(0, $template->fields()->count());
+    }
 }
