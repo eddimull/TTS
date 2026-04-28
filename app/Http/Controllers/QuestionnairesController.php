@@ -11,6 +11,7 @@ use App\Services\QuestionnaireFieldTypeRegistry;
 use App\Services\QuestionnaireMappingRegistry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -25,9 +26,27 @@ class QuestionnairesController extends Controller
     ) {
     }
 
-    public function index(Bands $band): Response
+    public function index(Request $request): Response
     {
-        $this->authorize('viewAny', [Questionnaires::class, $band]);
+        $user = Auth::user();
+        $availableBands = $user->allBands();
+
+        if ($availableBands->isEmpty()) {
+            abort(403);
+        }
+
+        $bandId = $request->query('band_id');
+        $band = $bandId
+            ? $availableBands->firstWhere('id', (int) $bandId)
+            : $availableBands->first();
+
+        if (!$band) {
+            abort(403);
+        }
+
+        if (!$user->canRead('questionnaires', $band->id)) {
+            abort(403);
+        }
 
         $questionnaires = $band->questionnaires()
             ->orderBy('archived_at')
@@ -38,11 +57,14 @@ class QuestionnairesController extends Controller
         return Inertia::render('Questionnaires/Index', [
             'band' => $band->only(['id', 'name', 'site_name']),
             'questionnaires' => $questionnaires,
+            'availableBands' => $availableBands->map->only(['id', 'name']),
         ]);
     }
 
-    public function store(StoreQuestionnaireRequest $request, Bands $band): RedirectResponse
+    public function store(StoreQuestionnaireRequest $request): RedirectResponse
     {
+        $band = Bands::findOrFail($request->input('band_id'));
+
         $questionnaire = new Questionnaires([
             'description' => $request->input('description'),
         ]);
@@ -128,7 +150,7 @@ class QuestionnairesController extends Controller
 
         $questionnaire->delete();
 
-        return redirect()->route('questionnaires.index', $band)->with('success', 'Deleted.');
+        return redirect()->route('questionnaires.index', ['band_id' => $band->id])->with('success', 'Deleted.');
     }
 
     /**

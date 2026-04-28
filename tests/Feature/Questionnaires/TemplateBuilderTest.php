@@ -34,7 +34,7 @@ class TemplateBuilderTest extends TestCase
         Questionnaires::factory()->count(2)->create(['band_id' => $this->band->id]);
 
         $response = $this->actingAs($this->owner)
-            ->get(route('questionnaires.index', $this->band));
+            ->get(route('questionnaires.index', ['band_id' => $this->band->id]));
 
         $response->assertStatus(200);
         $response->assertInertia(fn ($a) => $a
@@ -45,7 +45,7 @@ class TemplateBuilderTest extends TestCase
     public function test_outsider_cannot_view_index(): void
     {
         $response = $this->actingAs($this->outsider)
-            ->get(route('questionnaires.index', $this->band));
+            ->get(route('questionnaires.index'));
 
         $response->assertStatus(403);
     }
@@ -53,8 +53,8 @@ class TemplateBuilderTest extends TestCase
     public function test_band_owner_can_create_questionnaire(): void
     {
         $response = $this->actingAs($this->owner)->post(
-            route('questionnaires.store', $this->band),
-            ['name' => 'Wedding Day', 'description' => 'Wedding details']
+            route('questionnaires.store'),
+            ['name' => 'Wedding Day', 'description' => 'Wedding details', 'band_id' => $this->band->id]
         );
 
         $response->assertStatus(302);
@@ -68,8 +68,8 @@ class TemplateBuilderTest extends TestCase
     public function test_member_without_write_permission_cannot_create(): void
     {
         $response = $this->actingAs($this->member)->post(
-            route('questionnaires.store', $this->band),
-            ['name' => 'Wedding Day']
+            route('questionnaires.store'),
+            ['name' => 'Wedding Day', 'band_id' => $this->band->id]
         );
 
         $response->assertStatus(403);
@@ -81,8 +81,8 @@ class TemplateBuilderTest extends TestCase
         Questionnaires::factory()->create(['band_id' => $otherBand->id, 'name' => 'Wedding Day']);
 
         $response = $this->actingAs($this->owner)->post(
-            route('questionnaires.store', $this->band),
-            ['name' => 'Wedding Day']
+            route('questionnaires.store'),
+            ['name' => 'Wedding Day', 'band_id' => $this->band->id]
         );
 
         $response->assertStatus(302);
@@ -97,8 +97,8 @@ class TemplateBuilderTest extends TestCase
         Questionnaires::factory()->create(['band_id' => $this->band->id, 'name' => 'Wedding Day']);
 
         $response = $this->actingAs($this->owner)->post(
-            route('questionnaires.store', $this->band),
-            ['name' => 'Wedding Day']
+            route('questionnaires.store'),
+            ['name' => 'Wedding Day', 'band_id' => $this->band->id]
         );
 
         $response->assertStatus(302);

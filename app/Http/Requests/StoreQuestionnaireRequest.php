@@ -8,13 +8,14 @@ class StoreQuestionnaireRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $band = $this->route('band');
-        return $this->user()->canWrite('questionnaires', $band->id);
+        $bandId = (int) $this->input('band_id');
+        return $this->user()->canWrite('questionnaires', $bandId);
     }
 
     public function rules(): array
     {
         return [
+            'band_id' => 'required|integer|exists:bands,id',
             'name' => 'required|string|max:120',
             'description' => 'nullable|string',
         ];
