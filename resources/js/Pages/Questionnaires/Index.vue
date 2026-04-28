@@ -89,6 +89,38 @@
               v-else
               class="text-gray-500 dark:text-gray-400 mt-2"
             >Build the questionnaire from scratch.</small>
+
+            <div
+              v-if="selectedPreset"
+              class="mt-2"
+            >
+              <button
+                type="button"
+                class="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                @click="showPresetFields = !showPresetFields"
+              >
+                {{ showPresetFields ? 'Hide fields' : 'Preview fields' }}
+              </button>
+              <ul
+                v-if="showPresetFields"
+                class="mt-2 ml-1 max-h-64 overflow-y-auto border border-gray-200 dark:border-slate-600 rounded p-2 text-sm"
+              >
+                <li
+                  v-for="(field, i) in selectedPreset.fields"
+                  :key="i"
+                  class="py-0.5"
+                  :class="{ 'font-semibold mt-2 first:mt-0 text-gray-800 dark:text-gray-100': field.type === 'header', 'italic text-gray-500 dark:text-gray-400 text-xs': field.type === 'instructions' }"
+                >
+                  <span v-if="field.type === 'header'">— {{ field.label }} —</span>
+                  <span v-else-if="field.type === 'instructions'">{{ field.label }}</span>
+                  <span v-else>
+                    {{ field.label }}
+                    <span v-if="field.required" class="text-red-600">*</span>
+                    <span class="text-xs text-gray-400 ml-1">({{ formatType(field.type) }})</span>
+                  </span>
+                </li>
+              </ul>
+            </div>
           </div>
 
           <div class="flex flex-col">
@@ -196,6 +228,7 @@ export default {
       saving: false,
       submitted: false,
       errors: {},
+      showPresetFields: false,
       form: {
         name: '',
         description: '',
@@ -221,6 +254,7 @@ export default {
     openNew() {
       this.submitted = false
       this.errors = {}
+      this.showPresetFields = false
       this.form = {
         name: '',
         description: '',
@@ -232,12 +266,28 @@ export default {
       this.dialogOpen = true
     },
     onPresetChanged() {
+      this.showPresetFields = false
       const preset = this.selectedPreset
       if (preset) {
         // Pre-fill name and description from the preset (only if untouched)
         if (!this.form.name) this.form.name = preset.name
         if (!this.form.description) this.form.description = preset.description
       }
+    },
+    formatType(type) {
+      const map = {
+        short_text: 'short text',
+        long_text: 'long text',
+        date: 'date',
+        time: 'time',
+        email: 'email',
+        phone: 'phone',
+        dropdown: 'dropdown',
+        multi_select: 'multi-select',
+        checkbox_group: 'checkboxes',
+        yes_no: 'yes/no',
+      }
+      return map[type] ?? type
     },
     closeDialog() {
       this.saving = false
