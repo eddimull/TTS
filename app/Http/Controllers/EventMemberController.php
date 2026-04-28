@@ -144,6 +144,14 @@ class EventMemberController extends Controller
             }
         }
 
+        // If a slot was specified but band_role_id is still unset, inherit from the slot
+        if ($data['slot_id'] && empty($data['band_role_id'])) {
+            $slot = \App\Models\RosterSlot::find($data['slot_id']);
+            if ($slot?->band_role_id) {
+                $data['band_role_id'] = $slot->band_role_id;
+            }
+        }
+
         if ($existing) {
             $existing->restore();
             $existing->update($data);
