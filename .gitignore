@@ -56,3 +56,6 @@ node_modules/
 # Task files
 tasks.json
 tasks/ 
+.mcp.json
+CLAUDE.md
+.claude/
