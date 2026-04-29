@@ -158,6 +158,11 @@ class Bands extends Model
         return $this->hasMany(Bookings::class, 'band_id')->orderBy('date', 'desc');
     }
 
+    public function questionnaires()
+    {
+        return $this->hasMany(Questionnaires::class, 'band_id');
+    }
+
     public function getUnpaidBookings($snapshotDate = null)
     {
         $unpaidBookings = $this->bookings()->unpaid();
