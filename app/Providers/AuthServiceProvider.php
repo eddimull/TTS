@@ -6,8 +6,10 @@ use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvid
 use Illuminate\Support\Facades\Gate;
 use App\Models\Bookings;
 use App\Models\Events;
+use App\Models\Questionnaires;
 use App\Policies\BookingsPolicy;
 use App\Policies\EventsPolicy;
+use App\Policies\QuestionnairePolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -20,6 +22,7 @@ class AuthServiceProvider extends ServiceProvider
         // 'App\Models\Model' => 'App\Policies\ModelPolicy',
         Bookings::class => BookingsPolicy::class,
         Events::class => EventsPolicy::class,
+        Questionnaires::class => QuestionnairePolicy::class,
     ];
 
     /**

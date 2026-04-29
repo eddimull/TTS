@@ -332,6 +332,163 @@
         </div>
       </div>
 
+      <!-- Questionnaires Section -->
+      <div class="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-50 flex items-center">
+            <i class="pi pi-clipboard mr-2" />
+            Questionnaires
+          </h2>
+          <Button
+            label="Send Questionnaire"
+            icon="pi pi-send"
+            size="small"
+            severity="secondary"
+            text
+            :disabled="availableQuestionnaires.length === 0"
+            @click="openSendDialog"
+          />
+        </div>
+
+        <div
+          v-if="availableQuestionnaires.length === 0"
+          class="text-sm text-gray-500 dark:text-gray-400 py-2"
+        >
+          No active questionnaire templates exist for this band.
+          <Link
+            :href="route('questionnaires.index')"
+            class="text-blue-600 dark:text-blue-400 hover:underline ml-1"
+          >Create one →</Link>
+        </div>
+
+        <div
+          v-else-if="!questionnaireInstances || questionnaireInstances.length === 0"
+          class="text-sm text-gray-500 dark:text-gray-400 py-2"
+        >
+          No questionnaires sent yet for this booking.
+        </div>
+
+        <div v-else class="space-y-2">
+          <div
+            v-for="instance in questionnaireInstances"
+            :key="instance.id"
+            class="border border-gray-200 dark:border-slate-600 rounded p-3"
+          >
+            <div class="flex items-center justify-between">
+              <div class="min-w-0 flex-1">
+                <div class="font-medium text-gray-900 dark:text-gray-50">{{ instance.name }}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  Sent to {{ instance.recipient_name }} · {{ instance.sent_at }}
+                  <span v-if="instance.submitted_at"> · Submitted {{ instance.submitted_at }}</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 flex-shrink-0">
+                <span
+                  class="text-xs uppercase px-2 py-0.5 rounded"
+                  :class="{
+                    'bg-blue-100 text-blue-800': instance.status === 'sent',
+                    'bg-amber-100 text-amber-800': instance.status === 'in_progress',
+                    'bg-emerald-100 text-emerald-800': instance.status === 'submitted',
+                    'bg-gray-200 text-gray-800': instance.status === 'locked',
+                  }"
+                >{{ instance.status.replace('_', ' ') }}</span>
+                <Button
+                  v-tooltip.bottom="'View answers'"
+                  icon="pi pi-eye"
+                  text
+                  size="small"
+                  data-test="preview-instance"
+                  @click="openSubmissionPreview(instance)"
+                />
+                <Button
+                  v-tooltip.bottom="'Resend email'"
+                  icon="pi pi-send"
+                  text
+                  size="small"
+                  @click="resendQuestionnaire(instance)"
+                />
+                <Button
+                  v-if="instance.status !== 'locked'"
+                  v-tooltip.bottom="'Lock'"
+                  icon="pi pi-lock"
+                  text
+                  size="small"
+                  @click="lockQuestionnaire(instance)"
+                />
+                <Button
+                  v-else
+                  v-tooltip.bottom="'Unlock'"
+                  icon="pi pi-lock-open"
+                  text
+                  size="small"
+                  @click="unlockQuestionnaire(instance)"
+                />
+                <Button
+                  v-tooltip.bottom="'Delete'"
+                  icon="pi pi-trash"
+                  text
+                  size="small"
+                  severity="danger"
+                  @click="deleteQuestionnaireInstance(instance)"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Submission Preview Modal -->
+      <SubmissionPreview
+        v-model="previewOpen"
+        :instance="previewInstance"
+      />
+
+      <!-- Send Questionnaire Dialog -->
+      <Dialog
+        v-model:visible="sendDialogOpen"
+        :style="{ width: '450px' }"
+        header="Send Questionnaire"
+        modal
+      >
+        <div class="flex flex-col space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Template</label>
+            <Select
+              v-model="sendForm.questionnaire"
+              :options="availableQuestionnaires"
+              option-label="name"
+              placeholder="Select a template"
+              class="w-full"
+            />
+            <small v-if="sendErrors.questionnaire_id" class="text-red-600">{{ sendErrors.questionnaire_id }}</small>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Recipient</label>
+            <Select
+              v-model="sendForm.recipient"
+              :options="contactsForRecipient"
+              option-label="name"
+              placeholder="Select a recipient"
+              class="w-full"
+            />
+            <small class="text-xs text-gray-500 dark:text-gray-400">
+              The recipient receives the email; any contact on this booking can edit the responses.
+            </small>
+            <div v-if="sendErrors.recipient_contact_id" class="text-red-600 text-xs mt-1">
+              {{ sendErrors.recipient_contact_id }}
+            </div>
+          </div>
+        </div>
+        <template #footer>
+          <Button label="Cancel" text @click="sendDialogOpen = false" />
+          <Button
+            :label="sending ? 'Sending…' : 'Send'"
+            :disabled="sending || !sendForm.questionnaire || !sendForm.recipient"
+            @click="sendQuestionnaire"
+          />
+        </template>
+      </Dialog>
+
       <!-- Recent History Section -->
       <div
         v-if="recentActivities && recentActivities.length > 0"
@@ -437,11 +594,14 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, reactive } from 'vue'
 import { router, Link } from '@inertiajs/vue3'
 import Container from '@/Components/Container.vue'
 import Button from 'primevue/button'
 import BookingPayout from './BookingPayout.vue'
+import Dialog from 'primevue/dialog'
+import Select from 'primevue/select'
+import SubmissionPreview from '@/Components/Questionnaires/SubmissionPreview.vue'
 import { useStore } from 'vuex'
 import { DateTime } from 'luxon'
 
@@ -465,6 +625,14 @@ const props = defineProps({
   payoutResult: {
     type: Object,
     default: null
+  },
+  questionnaireInstances: {
+    type: Array,
+    default: () => []
+  },
+  availableQuestionnaires: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -614,6 +782,109 @@ const formatCategory = (category) => {
 const truncate = (text, length) => {
   if (!text || text.length <= length) return text
   return text.substring(0, length) + '...'
+}
+
+// ─── Questionnaires ────────────────────────────────────────────────────────
+const previewOpen = ref(false)
+const previewInstance = ref(null)
+const openSubmissionPreview = (instance) => {
+  previewInstance.value = instance
+  previewOpen.value = true
+}
+
+const sendDialogOpen = ref(false)
+const sending = ref(false)
+const sendErrors = reactive({})
+const sendForm = reactive({
+  questionnaire: null,
+  recipient: null,
+})
+
+const contactsForRecipient = computed(() =>
+  (props.booking.contacts ?? []).map(c => ({ id: c.id, name: c.name }))
+)
+
+const openSendDialog = () => {
+  sendForm.questionnaire = null
+  const primary = (props.booking.contacts ?? []).find(c => c.pivot?.is_primary)
+    ?? (props.booking.contacts ?? [])[0]
+  sendForm.recipient = primary ? { id: primary.id, name: primary.name } : null
+  Object.keys(sendErrors).forEach(k => delete sendErrors[k])
+  sendDialogOpen.value = true
+}
+
+const sendQuestionnaire = () => {
+  if (!sendForm.questionnaire || !sendForm.recipient) {
+    return
+  }
+  sending.value = true
+  Object.keys(sendErrors).forEach(k => delete sendErrors[k])
+  router.post(
+    route('bookings.questionnaires.send', { band: props.band.id, booking: props.booking.id }),
+    {
+      questionnaire_id: sendForm.questionnaire.id,
+      recipient_contact_id: sendForm.recipient.id,
+    },
+    {
+      preserveScroll: true,
+      onError: (e) => {
+        Object.assign(sendErrors, e)
+        sending.value = false
+      },
+      onSuccess: () => {
+        sending.value = false
+        sendDialogOpen.value = false
+      },
+    }
+  )
+}
+
+const resendQuestionnaire = (instance) => {
+  router.post(
+    route('bookings.questionnaires.resend', {
+      band: props.band.id,
+      booking: props.booking.id,
+      instance: instance.id,
+    }),
+    {},
+    { preserveScroll: true }
+  )
+}
+
+const lockQuestionnaire = (instance) => {
+  router.post(
+    route('bookings.questionnaires.lock', {
+      band: props.band.id,
+      booking: props.booking.id,
+      instance: instance.id,
+    }),
+    {},
+    { preserveScroll: true }
+  )
+}
+
+const unlockQuestionnaire = (instance) => {
+  router.post(
+    route('bookings.questionnaires.unlock', {
+      band: props.band.id,
+      booking: props.booking.id,
+      instance: instance.id,
+    }),
+    {},
+    { preserveScroll: true }
+  )
+}
+
+const deleteQuestionnaireInstance = (instance) => {
+  if (!confirm(`Delete the "${instance.name}" questionnaire? This will not affect the template.`)) return
+  router.delete(
+    route('bookings.questionnaires.destroy', {
+      band: props.band.id,
+      booking: props.booking.id,
+      instance: instance.id,
+    }),
+    { preserveScroll: true }
+  )
 }
 </script>
 
