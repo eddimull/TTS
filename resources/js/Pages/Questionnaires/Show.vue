@@ -63,69 +63,112 @@
         <!-- Right column: sent instances -->
         <div class="lg:col-span-2">
           <div class="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4">
-            <div class="flex items-center justify-between mb-3">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
               <h3 class="text-base font-semibold text-gray-900 dark:text-gray-50 flex items-center">
                 <i class="pi pi-send mr-2" />
                 Sent
               </h3>
-              <span class="text-xs text-gray-500">{{ instances.length }} total</span>
-            </div>
+              <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
 
-            <div
-              v-if="instances.length === 0"
-              class="text-sm text-gray-500 dark:text-gray-400 py-6 text-center"
-            >
-              This template hasn't been sent yet.
-              <span v-if="bookings.length > 0">
-                Click <strong>Send</strong> above to send it to a booking contact.
-              </span>
-            </div>
-
-            <div v-else class="space-y-2">
-              <div
-                v-for="instance in instances"
-                :key="instance.id"
-                class="border border-gray-200 dark:border-slate-600 rounded p-3"
-              >
-                <div class="flex items-center justify-between gap-3">
-                  <div class="min-w-0 flex-1">
-                    <Link
-                      :href="route('Booking Details', [band.id, instance.booking.id])"
-                      class="font-medium text-blue-600 dark:text-blue-300 hover:underline"
-                    >
-                      {{ instance.booking.name }}
-                    </Link>
-                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      Recipient: {{ instance.recipient_name }}
-                      <span v-if="instance.booking.date"> · Event {{ instance.booking.date }}</span>
-                    </div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">
-                      Sent {{ instance.sent_at }}
-                      <span v-if="instance.submitted_at"> · Submitted {{ instance.submitted_at }}</span>
-                    </div>
-                  </div>
-                  <div class="flex items-center gap-2 flex-shrink-0">
-                    <Button
-                      v-tooltip.bottom="'View answers'"
-                      icon="pi pi-eye"
-                      text
-                      size="small"
-                      data-test="preview-instance"
-                      @click="openSubmissionPreview(instance)"
-                    />
-                    <span
-                      class="text-xs uppercase px-2 py-0.5 rounded"
-                      :class="{
-                        'bg-blue-100 text-blue-800': instance.status === 'sent',
-                        'bg-amber-100 text-amber-800': instance.status === 'in_progress',
-                        'bg-emerald-100 text-emerald-800': instance.status === 'submitted',
-                        'bg-gray-200 text-gray-800': instance.status === 'locked',
-                      }"
-                    >{{ instance.status.replace('_', ' ') }}</span>
-                  </div>
-                </div>
+                <IconField class="w-full md:w-auto" :class="{ 'flex-1': search }">
+                  <InputIcon class="pi pi-search" />
+                  <InputText
+                    class="w-full"
+                    name="search questionnaire instances"
+                    v-model="search"
+                    placeholder="Search"
+                  />
+                </IconField>
+                                <MultiSelect
+                  class="w-full md:w-auto"
+                  v-model="statusFilter"
+                  :options="statusOptions"
+                  option-label="label"
+                  option-value="value"
+                  placeholder="Filter status"
+                  display="chip"
+                />
               </div>
             </div>
+
+            <DataTable
+              :value="filteredInstances"
+              :paginator="instances.length > 10"
+              :rows="10"
+              :rows-per-page-options="[10, 25, 50]"
+              striped-rows
+              row-hover
+              sort-field="sent_at_iso"
+              :sort-order="-1"
+              responsive-layout="scroll"
+              data-key="id"
+            >
+              <Column field="booking.name" header="Booking" sortable>
+                <template #body="{ data }">
+                  <Link
+                    :href="route('Booking Details', [band.id, data.booking.id])"
+                    class="font-medium text-blue-600 dark:text-blue-300 hover:underline"
+                  >
+                    {{ data.booking.name }}
+                  </Link>
+                  <div
+                    v-if="data.booking.date"
+                    class="text-xs text-gray-500 dark:text-gray-400"
+                  >
+                    Event {{ data.booking.date }}
+                  </div>
+                </template>
+              </Column>
+              <Column field="recipient_name" header="Recipient" sortable class="hidden md:table-cell" header-class="hidden md:table-cell"/>
+              <Column field="sent_at_iso" header="Sent" sortable>
+                <template #body="{ data }">
+                  {{ data.sent_at }}
+                </template>
+              </Column>
+              <Column field="submitted_at_iso" header="Submitted" sortable class="hidden md:table-cell" header-class="hidden md:table-cell">
+                <template #body="{ data }">
+                  {{ data.submitted_at || '—' }}
+                </template>
+              </Column>
+              <Column field="status" header="Status" sortable>
+                <template #body="{ data }">
+                  <span
+                    class="text-xs uppercase px-2 py-0.5 rounded"
+                    :class="{
+                      'bg-blue-100 text-blue-800': data.status === 'sent',
+                      'bg-amber-100 text-amber-800': data.status === 'in_progress',
+                      'bg-emerald-100 text-emerald-800': data.status === 'submitted',
+                      'bg-gray-200 text-gray-800': data.status === 'locked',
+                    }"
+                  >{{ data.status.replace('_', ' ') }}</span>
+                </template>
+              </Column>
+              <Column header="" :style="{ width: '4rem' }">
+                <template #body="{ data }">
+                  <Button
+                    v-tooltip.bottom="'View answers'"
+                    icon="pi pi-eye"
+                    text
+                    size="small"
+                    data-test="preview-instance"
+                    @click="openSubmissionPreview(data)"
+                  />
+                </template>
+              </Column>
+              <template #empty>
+                <div class="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">
+                  <template v-if="instances.length === 0">
+                    This template hasn't been sent yet.
+                    <span v-if="bookings.length > 0">
+                      Click <strong>Send</strong> above to send it to a booking contact.
+                    </span>
+                  </template>
+                  <template v-else>
+                    No matches for the current filters.
+                  </template>
+                </div>
+              </template>
+            </DataTable>
           </div>
         </div>
       </div>
@@ -212,6 +255,12 @@ import Container from '@/Components/Container.vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Select from 'primevue/select'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import InputText from 'primevue/inputtext'
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
+import MultiSelect from 'primevue/multiselect'
 import SubmissionPreview from '@/Components/Questionnaires/SubmissionPreview.vue'
 
 const props = defineProps({
@@ -227,6 +276,28 @@ onMounted(() => {
   props.bookings.sort((a, b) => new Date(a.date || 0) - new Date(b.date || 0));
   props.bookings.forEach(b => {
     b.label = b.date ? `${b.name} — ${b.date}` : b.name
+  })
+})
+
+const search = ref('')
+const statusOptions = [
+  { label: 'Sent', value: 'sent' },
+  { label: 'In progress', value: 'in_progress' },
+  { label: 'Submitted', value: 'submitted' },
+  { label: 'Locked', value: 'locked' },
+]
+const statusFilter = ref([])
+
+const filteredInstances = computed(() => {
+  const term = search.value.trim().toLowerCase()
+  const statuses = statusFilter.value
+  return props.instances.filter((i) => {
+    if (statuses.length > 0 && !statuses.includes(i.status)) return false
+    if (!term) return true
+    return (
+      (i.booking?.name ?? '').toLowerCase().includes(term)
+      || (i.recipient_name ?? '').toLowerCase().includes(term)
+    )
   })
 })
 

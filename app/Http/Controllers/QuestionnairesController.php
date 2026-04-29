@@ -142,7 +142,9 @@ class QuestionnairesController extends Controller
             'name' => $i->name,
             'status' => $i->status,
             'sent_at' => $i->sent_at?->format('M j, Y'),
+            'sent_at_iso' => $i->sent_at?->toIso8601String(),
             'submitted_at' => $i->submitted_at?->format('M j, Y'),
+            'submitted_at_iso' => $i->submitted_at?->toIso8601String(),
             'recipient_name' => $i->recipientContact->name ?? 'Unknown',
             'booking' => [
                 'id' => $i->booking->id,
