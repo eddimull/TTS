@@ -86,7 +86,7 @@
   </div>
 </template>
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import EventEditor from "./EventEditor.vue";
 import EventDetails from "./EventDetails.vue";
 import { router, usePage } from "@inertiajs/vue3";
@@ -107,6 +107,26 @@ const events = ref(props.initialEvents);
 const editingEvent = ref(null);
 const viewingEvent = ref(null);
 const isAddingEvent = ref(false);
+
+watch(
+    () => props.initialEvents,
+    (newEvents) => {
+        events.value = newEvents;
+
+        if (editingEvent.value?.id) {
+            const fresh = newEvents.find((e) => e.id === editingEvent.value.id);
+            if (fresh) {
+                editingEvent.value.questionnaire_instances = JSON.parse(
+                    JSON.stringify(fresh.questionnaire_instances ?? [])
+                );
+                editingEvent.value.notes = fresh.notes ?? '';
+                editingEvent.value.additional_data = JSON.parse(
+                    JSON.stringify(fresh.additional_data ?? {})
+                );
+            }
+        }
+    }
+);
 
 // Check if we should auto-open an event for editing (from query param)
 onMounted(() => {
@@ -164,7 +184,7 @@ const cancelView = () => {
     viewingEvent.value = null;
 };
 
-const saveEvent = (updatedEvent) => {
+const saveEvent = (updatedEvent, { silent = false } = {}) => {
     if (updatedEvent.id) {
         // Updating an existing event
         router.put(
@@ -173,7 +193,7 @@ const saveEvent = (updatedEvent) => {
                 props.booking.id,
                 updatedEvent.id,
             ]),
-            updatedEvent,
+            { ...updatedEvent, silent: silent ? 1 : 0 },
             {
                 preserveState: true,
                 preserveScroll: true,

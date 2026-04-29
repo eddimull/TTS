@@ -444,6 +444,11 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         return $this->morphOne(GoogleEvents::class, 'google_eventable');
     }
 
+    public function questionnaireInstances()
+    {
+        return $this->hasMany(QuestionnaireInstances::class, 'booking_id');
+    }
+
     public function getGoogleEvent(BandCalendars $bandCalendar = null): GoogleEvents|null
     {
         if (!$bandCalendar) {

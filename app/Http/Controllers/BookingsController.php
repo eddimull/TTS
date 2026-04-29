@@ -208,6 +208,43 @@ class BookingsController extends Controller
             }
         }
         
+        $questionnaireInstances = $booking->questionnaireInstances()
+            ->with([
+                'recipientContact:id,name',
+                'questionnaire:id,name,slug',
+                'fields' => fn ($q) => $q->orderBy('position'),
+                'responses',
+            ])
+            ->orderByDesc('sent_at')
+            ->get();
+
+        $songLookup = $this->buildSongLookupForInstances($questionnaireInstances, $band->id);
+
+        $questionnaireInstances = $questionnaireInstances->map(fn ($i) => [
+            'id' => $i->id,
+            'name' => $i->name,
+            'status' => $i->status,
+            'sent_at' => $i->sent_at?->format('M j, Y'),
+            'submitted_at' => $i->submitted_at?->format('M j, Y'),
+            'recipient_name' => $i->recipientContact->name ?? 'Unknown',
+            'fields' => $i->fields->map(fn ($f) => [
+                'id' => $f->id,
+                'type' => $f->type,
+                'label' => $f->label,
+                'required' => (bool) $f->required,
+                'settings' => $f->settings,
+            ])->values(),
+            'responses' => $i->responses->mapWithKeys(fn ($r) => [
+                $r->instance_field_id => ['value' => $r->value],
+            ]),
+            'song_lookup' => $songLookup,
+        ]);
+
+        $availableQuestionnaires = $band->questionnaires()
+            ->whereNull('archived_at')
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug']);
+
         return Inertia::render('Bookings/Show', [
             'booking' => $booking,
             'band' => $band,
@@ -218,6 +255,8 @@ class BookingsController extends Controller
             'recentActivities' => $recentActivities,
             'payoutConfig' => $payoutConfig,
             'payoutResult' => $payoutResult,
+            'questionnaireInstances' => $questionnaireInstances,
+            'availableQuestionnaires' => $availableQuestionnaires,
         ]);
     }
 
@@ -418,13 +457,44 @@ class BookingsController extends Controller
             'events.attachments',
             'events.eventable',
             'events.eventMembers.rosterMember',
-            'events.eventMembers.user'
+            'events.eventMembers.user',
+            'questionnaireInstances.fields',
+            'questionnaireInstances.responses',
+            'questionnaireInstances.recipientContact',
         ]);
 
-        $events = $booking->events->map(function ($event) {
+        $registry = app(\App\Services\QuestionnaireMappingRegistry::class);
+
+        $questionnaireInstances = $booking->questionnaireInstances->map(fn ($i) => [
+            'id' => $i->id,
+            'name' => $i->name,
+            'status' => $i->status,
+            'sent_at' => $i->sent_at?->format('M j, Y'),
+            'submitted_at' => $i->submitted_at?->format('M j, Y'),
+            'recipient_name' => $i->recipientContact->name ?? 'Unknown',
+            'fields' => $i->fields->map(fn ($f) => [
+                'id' => $f->id,
+                'type' => $f->type,
+                'label' => $f->label,
+                'position' => $f->position,
+                'mapping_target' => $f->mapping_target,
+                'mapping_label' => $f->mapping_target ? $registry->label($f->mapping_target) : null,
+            ]),
+            'responses' => $i->responses->mapWithKeys(fn ($r) => [
+                $r->instance_field_id => [
+                    'value' => $r->value,
+                    'applied_to_event_at' => $r->applied_to_event_at?->toIso8601String(),
+                    'updated_at' => $r->updated_at->toIso8601String(),
+                    'response_id' => $r->id,
+                ],
+            ]),
+        ]);
+
+        $events = $booking->events->map(function ($event) use ($questionnaireInstances) {
             $this->appendLastUpdatedBy($event);
             $this->appendFormattedAttachmentSizes($event);
             $event->roster_members = $this->formatRosterMembers($event);
+            $event->questionnaire_instances = $questionnaireInstances;
 
             return $event;
         });
@@ -532,6 +602,11 @@ class BookingsController extends Controller
         // If creating a new event and no value was provided, redistribute values evenly
         if ($isNewEvent && !isset($validatedData['value'])) {
             $this->redistributeEventValues($booking);
+        }
+
+        if ($request->boolean('silent') && !$event->wasRecentlyCreated)
+        {
+            return redirect()->back();
         }
 
         $message = $event->wasRecentlyCreated ? 'Event Created' : 'Event Updated';
@@ -1027,5 +1102,53 @@ class BookingsController extends Controller
             'base_amount' => $baseAmount,
             'adjusted_amount' => $baseAmount,
         ]);
+    }
+
+    /**
+     * Build a song-id => {title, artist, removed} lookup for any song_picker
+     * responses across the given instances. Songs that have been removed from
+     * the band's catalog still appear with removed=true.
+     *
+     * @param  \Illuminate\Support\Collection<int, \App\Models\QuestionnaireInstances>  $instances
+     */
+    private function buildSongLookupForInstances($instances, int $bandId): array
+    {
+        $songIds = collect();
+        foreach ($instances as $instance) {
+            $songPickerFieldIds = $instance->fields
+                ->where('type', 'song_picker')
+                ->pluck('id');
+
+            foreach ($instance->responses as $response) {
+                if (!$songPickerFieldIds->contains($response->instance_field_id)) {
+                    continue;
+                }
+                $decoded = json_decode((string) $response->value, true);
+                if (is_array($decoded)) {
+                    $songIds = $songIds->merge($decoded);
+                }
+            }
+        }
+        $songIds = $songIds->unique()->filter(fn ($id) => is_numeric($id))->values();
+
+        if ($songIds->isEmpty()) {
+            return [];
+        }
+
+        $songs = \App\Models\Song::where('band_id', $bandId)
+            ->whereIn('id', $songIds)
+            ->get(['id', 'title', 'artist']);
+
+        $lookup = [];
+        foreach ($songs as $song) {
+            $lookup[$song->id] = ['title' => $song->title, 'artist' => $song->artist];
+        }
+        // Mark removed songs (referenced but not found)
+        foreach ($songIds as $id) {
+            if (!isset($lookup[$id])) {
+                $lookup[$id] = ['title' => "(removed song #{$id})", 'artist' => null];
+            }
+        }
+        return $lookup;
     }
 }

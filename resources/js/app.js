@@ -56,13 +56,11 @@ import 'sweetalert2/dist/sweetalert2.min.css';
 // import 'primeflex/primeflex.css';
 import 'primeicons/primeicons.css'
 
-import questionnaire from '@/Store/questionnaire';
 import user from '@/Store/userStore';
 import eventTypes from '@/Store/eventTypesStore';
 
 const store = createStore({
     modules: {
-        questionnaire,
         user,
         eventTypes
     }

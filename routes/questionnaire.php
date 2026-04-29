@@ -1,11 +1,19 @@
 <?php
 
+use App\Http\Controllers\QuestionnairesController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\QuestionnaireController;
 
-Route::middleware(['auth', 'verified'])->prefix('questionnaire')->group(function () {
-    Route::get('/', [QuestionnaireController::class, 'index'])->name('questionnaire');
-    Route::post('/new', [QuestionnaireController::class, 'store'])->name('questionnaire.new');
-    Route::get('/{questionnaire:slug}', [QuestionnaireController::class, 'edit'])->name('questionnaire.edit');
-    Route::post('/{questionnaire:slug}/add', [QuestionnaireController::class, 'addQuestion'])->name('questionnaire.addQuestion');
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/questionnaires', [QuestionnairesController::class, 'index'])->name('questionnaires.index');
+    Route::post('/questionnaires', [QuestionnairesController::class, 'store'])->name('questionnaires.store');
+
+    Route::prefix('bands/{band}/questionnaires')->group(function () {
+        Route::get('/{questionnaire:slug}/edit', [QuestionnairesController::class, 'edit'])->name('questionnaires.edit');
+        Route::get('/{questionnaire:slug}/preview', [QuestionnairesController::class, 'preview'])->name('questionnaires.preview');
+        Route::get('/{questionnaire:slug}', [QuestionnairesController::class, 'show'])->name('questionnaires.show');
+        Route::put('/{questionnaire:slug}', [QuestionnairesController::class, 'update'])->name('questionnaires.update');
+        Route::post('/{questionnaire:slug}/archive', [QuestionnairesController::class, 'archive'])->name('questionnaires.archive');
+        Route::post('/{questionnaire:slug}/restore', [QuestionnairesController::class, 'restore'])->name('questionnaires.restore');
+        Route::delete('/{questionnaire:slug}', [QuestionnairesController::class, 'destroy'])->name('questionnaires.destroy');
+    });
 });

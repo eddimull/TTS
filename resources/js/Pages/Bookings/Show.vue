@@ -6,6 +6,8 @@
     :recent-activities="recentActivities"
     :payout-config="payoutConfig"
     :payout-result="payoutResult"
+    :questionnaire-instances="questionnaireInstances"
+    :available-questionnaires="availableQuestionnaires"
   />
   <BookingForm
     v-else
@@ -45,6 +47,14 @@ const props = defineProps({
   payoutResult: {
     type: Object,
     default: null,
+  },
+  questionnaireInstances: {
+    type: Array,
+    default: () => [],
+  },
+  availableQuestionnaires: {
+    type: Array,
+    default: () => [],
   },
 })
 
