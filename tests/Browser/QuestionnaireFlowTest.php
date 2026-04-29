@@ -279,6 +279,159 @@ class QuestionnaireFlowTest extends DuskTestCase
         });
     }
 
+    public function test_client_sees_clear_feedback_when_submitting_with_empty_required_field(): void
+    {
+        $template = \App\Models\Questionnaires::factory()->create([
+            'band_id' => $this->band->id,
+            'name' => 'Required Field Smoke',
+        ]);
+
+        \App\Models\QuestionnaireFields::factory()->create([
+            'questionnaire_id' => $template->id,
+            'type' => 'short_text',
+            'label' => "Bride's Full Name",
+            'required' => true,
+            'position' => 10,
+        ]);
+
+        $instance = app(\App\Services\QuestionnaireSnapshotService::class)
+            ->snapshot($template, $this->booking, $this->contact, $this->owner);
+
+        $this->browse(function (Browser $browser) use ($instance) {
+            $browser->loginAs($this->contact, 'contact')
+                ->visit("/portal/booking/{$this->booking->id}/questionnaire/{$instance->id}")
+                ->waitForText('Required Field Smoke', 10)
+                ->press('Submit')
+                ->waitForText('Please complete the required fields', 5)
+                ->assertSee('This field is required.');
+        });
+
+        // Status should remain unchanged on validation failure
+        $instance->refresh();
+        $this->assertNotSame(\App\Models\QuestionnaireInstances::STATUS_SUBMITTED, $instance->status);
+    }
+
+    public function test_clicking_apply_updates_status_without_page_refresh(): void
+    {
+        // Build a submitted instance with a mappable response that has not been
+        // applied yet. The Apply button should switch to "Applied" immediately
+        // after the request completes — without a manual page reload.
+        $template = \App\Models\Questionnaires::factory()->create([
+            'band_id' => $this->band->id,
+            'name' => 'Apply Refresh Smoke',
+        ]);
+
+        \App\Models\QuestionnaireFields::factory()->create([
+            'questionnaire_id' => $template->id,
+            'type' => 'yes_no',
+            'label' => 'Onsite ceremony?',
+            'required' => true,
+            'position' => 10,
+            'mapping_target' => 'wedding.onsite',
+        ]);
+
+        $instance = app(\App\Services\QuestionnaireSnapshotService::class)
+            ->snapshot($template, $this->booking, $this->contact, $this->owner);
+
+        $onsiteField = $instance->fields()->where('label', 'Onsite ceremony?')->first();
+        \App\Models\QuestionnaireResponses::create([
+            'instance_id' => $instance->id,
+            'instance_field_id' => $onsiteField->id,
+            'value' => 'yes',
+        ]);
+
+        $instance->update([
+            'status' => \App\Models\QuestionnaireInstances::STATUS_SUBMITTED,
+            'submitted_at' => now(),
+        ]);
+
+        $this->browse(function (Browser $browser) {
+            $browser->loginAs($this->owner)
+                ->visit("/bands/{$this->band->id}/booking/{$this->booking->id}/events?edit={$this->event->key}")
+                ->waitForText('Questionnaires', 10)
+                ->waitForText('Onsite ceremony?', 5)
+                ->assertSee('Apply')
+                ->assertDontSee('Applied');
+
+            // Click the per-response Apply button. Use a script click rather
+            // than press() to avoid matching the "Apply all pending" button.
+            $browser->script(<<<JS
+                const buttons = Array.from(document.querySelectorAll('button'));
+                const applyBtn = buttons.find(b => b.textContent.trim() === 'Apply');
+                applyBtn.click();
+            JS);
+
+            // The UI should reflect the new state without a manual refresh.
+            $browser->waitForText('Applied', 5)
+                ->assertSee('Applied');
+        });
+
+        // Server-side state should match what the UI is showing.
+        $response = $instance->responses()->first();
+        $this->assertNotNull($response->fresh()->applied_to_event_at);
+
+        // Regression guard: after Apply, the prop refresh must not trigger the
+        // autosave watcher. Wait past the 3s autosave debounce and confirm the
+        // event's updated_at is unchanged.
+        $updatedAtBefore = $this->event->fresh()->updated_at;
+        sleep(5);
+        $this->assertEquals(
+            $updatedAtBefore->toIso8601String(),
+            $this->event->fresh()->updated_at->toIso8601String(),
+            'Apply triggered an unwanted autosave loop'
+        );
+    }
+
+    public function test_clicking_append_to_notes_updates_notes_without_page_refresh(): void
+    {
+        $template = \App\Models\Questionnaires::factory()->create([
+            'band_id' => $this->band->id,
+            'name' => 'Append Notes Smoke',
+        ]);
+
+        \App\Models\QuestionnaireFields::factory()->create([
+            'questionnaire_id' => $template->id,
+            'type' => 'short_text',
+            'label' => "Bride's Full Name",
+            'required' => true,
+            'position' => 10,
+        ]);
+
+        $instance = app(\App\Services\QuestionnaireSnapshotService::class)
+            ->snapshot($template, $this->booking, $this->contact, $this->owner);
+
+        $brideField = $instance->fields()->where('label', "Bride's Full Name")->first();
+        \App\Models\QuestionnaireResponses::create([
+            'instance_id' => $instance->id,
+            'instance_field_id' => $brideField->id,
+            'value' => 'Jane O\'Brien',
+        ]);
+
+        $instance->update([
+            'status' => \App\Models\QuestionnaireInstances::STATUS_SUBMITTED,
+            'submitted_at' => now(),
+        ]);
+
+        $this->browse(function (Browser $browser) {
+            $browser->loginAs($this->owner)
+                ->visit("/bands/{$this->band->id}/booking/{$this->booking->id}/events?edit={$this->event->key}")
+                ->waitForText('Questionnaires', 10);
+
+            // Click "Append all to notes". Use a script click to disambiguate
+            // from the per-response Apply buttons.
+            $browser->script(<<<JS
+                const buttons = Array.from(document.querySelectorAll('button'));
+                const appendBtn = buttons.find(b => b.textContent.includes('Append all to notes'));
+                appendBtn.click();
+            JS);
+
+            // The notes preview rendered inside the editor should reflect the
+            // appended content without a manual page refresh.
+            $browser->waitForText("Jane O'Brien", 5)
+                ->assertSee("Jane O'Brien");
+        });
+    }
+
     /**
      * @return array{0: \App\Models\QuestionnaireInstances, 1: \App\Models\Questionnaires}
      */

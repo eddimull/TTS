@@ -109,34 +109,40 @@ class QuestionnaireMappingService
 
         $songLookup = $this->buildSongLookup($instance, $fields, $responses);
 
-        $html = "<hr>\n<p><strong>Customer submitted \"" . htmlspecialchars($instance->name, ENT_COMPAT | ENT_HTML5) . "\" on {$date}</strong></p>\n<ul>\n";
+        $lines = [];
+        $lines[] = '----------';
+        $lines[] = "Customer submitted \"{$instance->name}\" on {$date}";
+        $lines[] = '';
 
         foreach ($fields as $f) {
             if ($f->type === 'instructions') {
                 continue;
             }
             if ($f->type === 'header') {
-                $html .= "</ul>\n<h4>" . htmlspecialchars($f->label, ENT_COMPAT | ENT_HTML5) . "</h4>\n<ul>\n";
+                $lines[] = '';
+                $lines[] = "== {$f->label} ==";
                 continue;
             }
             $rawValue = $responses->get($f->id)?->value;
 
             if ($f->type === 'song_picker') {
-                $display = $this->renderSongPickerForNotes($rawValue, $songLookup);
-            } else {
-                $value = $rawValue !== null && $rawValue !== '' ? $rawValue : '(not answered)';
-                $decoded = json_decode((string) $value, true);
-                if (is_array($decoded)) {
-                    $value = implode(', ', $decoded);
+                $lines[] = "{$f->label}:";
+                foreach ($this->renderSongPickerLines($rawValue, $songLookup) as $songLine) {
+                    $lines[] = "  - {$songLine}";
                 }
-                $display = $value;
+                continue;
             }
 
-            $html .= '<li><strong>' . htmlspecialchars($f->label, ENT_COMPAT | ENT_HTML5) . ':</strong> ' . htmlspecialchars((string) $display, ENT_COMPAT | ENT_HTML5) . "</li>\n";
+            $value = $rawValue !== null && $rawValue !== '' ? $rawValue : '(not answered)';
+            $decoded = json_decode((string) $value, true);
+            if (is_array($decoded)) {
+                $value = implode(', ', $decoded);
+            }
+
+            $lines[] = "{$f->label}: {$value}";
         }
 
-        $html .= '</ul>';
-        return $html;
+        return implode("\n", $lines);
     }
 
     /**
@@ -188,15 +194,19 @@ class QuestionnaireMappingService
         return $lookup;
     }
 
-    private function renderSongPickerForNotes(?string $rawValue, array $songLookup): string
+    /**
+     * @return array<int, string>
+     */
+    private function renderSongPickerLines(?string $rawValue, array $songLookup): array
     {
         if ($rawValue === null || $rawValue === '') {
-            return '(not answered)';
+            return ['(not answered)'];
         }
         $decoded = json_decode($rawValue, true);
         if (!is_array($decoded) || empty($decoded)) {
-            return '(none selected)';
+            return ['(none selected)'];
         }
+
         return collect($decoded)
             ->map(function ($id) use ($songLookup) {
                 $song = $songLookup[$id] ?? null;
@@ -207,6 +217,7 @@ class QuestionnaireMappingService
                     ? "{$song['title']} — {$song['artist']}"
                     : $song['title'];
             })
-            ->implode(', ');
+            ->values()
+            ->all();
     }
 }

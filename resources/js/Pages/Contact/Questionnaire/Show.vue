@@ -29,9 +29,17 @@
           Save your answers as you go. Click <strong>Submit</strong> when finished.
         </div>
 
+        <div
+          v-if="submitError"
+          class="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-900"
+          data-test="submit-error-banner"
+        >
+          {{ submitError }}
+        </div>
+
         <form @submit.prevent="submit">
           <template v-for="field in fields" :key="field.id">
-            <div v-if="isVisible(field.id)" class="mb-5">
+            <div v-if="isVisible(field.id)" class="mb-5" :data-field-id="field.id">
               <h3 v-if="field.type === 'header'" class="text-xl font-semibold mt-6 mb-2 border-b dark:border-slate-700 pb-1">
                 {{ field.label }}
               </h3>
@@ -182,7 +190,7 @@
 
 <script setup>
 import { ref, reactive, computed } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { router, usePage } from '@inertiajs/vue3'
 import axios from 'axios'
 import ContactLayout from '@/Layouts/ContactLayout.vue'
 import InputText from 'primevue/inputtext'
@@ -219,6 +227,8 @@ props.fields.forEach((f) => {
 const submitting = ref(false)
 const savedField = ref(null)
 const errors = reactive({})
+const submitError = ref(null)
+const page = usePage()
 
 function isVisible(fieldId) {
   return isFieldVisible(fieldId, props.fields, answers)
@@ -251,6 +261,9 @@ async function saveField(field) {
 function submit() {
   if (props.instance.is_locked) return
   submitting.value = true
+  submitError.value = null
+  Object.keys(errors).forEach((k) => { errors[k] = null })
+
   router.post(
     route('portal.booking.questionnaire.submit', {
       booking: props.booking.id,
@@ -260,13 +273,15 @@ function submit() {
     {
       onError: (e) => {
         submitting.value = false
-        if (e.fields) {
-          ;(Array.isArray(e.fields) ? e.fields : [e.fields]).forEach((id) => {
-            errors[id] = 'This field is required.'
-          })
-          // Scroll to first error
-          const firstId = Array.isArray(e.fields) ? e.fields[0] : e.fields
-          const el = document.querySelector(`[data-field-id="${firstId}"]`)
+        submitError.value = e.submit || 'Please complete the required fields below before submitting.'
+
+        const missing = page.props.flash?.missing_fields ?? []
+        missing.forEach((id) => {
+          errors[id] = 'This field is required.'
+        })
+
+        if (missing.length > 0) {
+          const el = document.querySelector(`[data-field-id="${missing[0]}"]`)
           if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
         }
       },

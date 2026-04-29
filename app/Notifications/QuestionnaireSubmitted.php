@@ -45,10 +45,18 @@ class QuestionnaireSubmitted extends Notification implements ShouldQueue
 
     public function toArray(object $notifiable): array
     {
+        $clientName = $this->instance->recipientContact->name ?? 'A client';
+        $verb = $this->isUpdate ? 'updated' : 'submitted';
+        $event = $this->instance->booking->events->first();
+
         return [
             'instance_id' => $this->instance->id,
             'questionnaire_name' => $this->instance->name,
             'is_update' => $this->isUpdate,
+            'text' => "{$clientName} {$verb} the {$this->instance->name}",
+            'route' => $event && $event->key ? 'events.show' : 'dashboard',
+            'routeParams' => $event && $event->key ? ['key' => $event->key] : [],
+            'url' => $event && $event->key ? '/events/' . $event->key : '/dashboard',
         ];
     }
 }

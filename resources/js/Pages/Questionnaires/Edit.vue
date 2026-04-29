@@ -27,7 +27,7 @@
         <Textarea v-model="form.description" rows="2" class="w-full" @input="markDirty" />
       </div>
 
-      <div class="card bg-white dark:bg-slate-800 rounded-xl shadow p-4">
+      <div class="card bg-white dark:bg-slate-900 rounded-xl shadow p-4">
         <h3 class="text-lg font-semibold mb-3">Fields</h3>
         <draggable
           v-model="form.fields"

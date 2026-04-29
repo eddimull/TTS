@@ -163,7 +163,15 @@ class PortalQuestionnaireController extends Controller
         }
 
         if (!empty($missing)) {
-            return back()->withErrors(['fields' => $missing])->setStatusCode(422);
+            $response = back()
+                ->withErrors(['submit' => 'Please complete the required fields below before submitting.'])
+                ->with('missing_fields', $missing);
+
+            if (!$request->header('X-Inertia')) {
+                $response->setStatusCode(422);
+            }
+
+            return $response;
         }
 
         $wasAlreadySubmitted = $instance->status === QuestionnaireInstances::STATUS_SUBMITTED;
