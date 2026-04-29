@@ -374,4 +374,30 @@ class PortalQuestionnaireTest extends TestCase
 
         \Illuminate\Support\Facades\Notification::assertSentTo($owner, \App\Notifications\QuestionnaireSubmitted::class);
     }
+
+    public function test_submitted_notification_payload_links_to_event(): void
+    {
+        $event = \App\Models\Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $this->booking->id,
+            'title' => 'Smith Wedding',
+        ]);
+
+        $notification = new \App\Notifications\QuestionnaireSubmitted($this->instance->fresh());
+        $payload = $notification->toArray($this->contact);
+
+        $this->assertSame('events.show', $payload['route']);
+        $this->assertSame(['key' => $event->key], $payload['routeParams']);
+        $this->assertNotEmpty($payload['text']);
+        $this->assertStringContainsString($this->instance->name, $payload['text']);
+    }
+
+    public function test_submitted_notification_payload_falls_back_to_dashboard_without_event(): void
+    {
+        $notification = new \App\Notifications\QuestionnaireSubmitted($this->instance->fresh());
+        $payload = $notification->toArray($this->contact);
+
+        $this->assertSame('dashboard', $payload['route']);
+        $this->assertSame([], $payload['routeParams']);
+    }
 }

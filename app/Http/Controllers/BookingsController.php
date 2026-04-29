@@ -604,6 +604,11 @@ class BookingsController extends Controller
             $this->redistributeEventValues($booking);
         }
 
+        if ($request->boolean('silent') && !$event->wasRecentlyCreated)
+        {
+            return redirect()->back();
+        }
+
         $message = $event->wasRecentlyCreated ? 'Event Created' : 'Event Updated';
 
         return redirect()->back()->with('successMessage', $message);

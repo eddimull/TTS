@@ -167,6 +167,7 @@ export default {
         { name: 'songs' },
         { name: 'rehearsals' },
         { name: 'media' },
+        { name: 'questionnaires' },
       ]
     }
   },

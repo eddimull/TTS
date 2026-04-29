@@ -233,7 +233,42 @@ class QuestionnaireMappingServiceTest extends TestCase
         $this->service->appendAllToNotes($instance, User::factory()->create());
 
         $event->refresh();
-        $this->assertStringContainsString('<h4>Bride and Groom</h4>', $event->notes);
+        $this->assertStringContainsString('== Bride and Groom ==', $event->notes);
         $this->assertStringNotContainsString('Some helper text', $event->notes);
+    }
+
+    public function test_append_all_to_notes_renders_song_picker_one_song_per_line(): void
+    {
+        [$instance, $event, $booking] = $this->makeInstanceWithEvent();
+
+        $song1 = \App\Models\Song::factory()->create([
+            'band_id' => $booking->band_id,
+            'title' => 'Evergreen',
+            'artist' => 'Yebba',
+        ]);
+        $song2 = \App\Models\Song::factory()->create([
+            'band_id' => $booking->band_id,
+            'title' => 'Mr Brightside',
+            'artist' => 'The Killers',
+        ]);
+
+        $field = QuestionnaireInstanceFields::factory()->create([
+            'instance_id' => $instance->id,
+            'type' => 'song_picker',
+            'label' => 'Must-play songs',
+            'position' => 10,
+        ]);
+        QuestionnaireResponses::create([
+            'instance_id' => $instance->id,
+            'instance_field_id' => $field->id,
+            'value' => json_encode([$song1->id, $song2->id]),
+        ]);
+
+        $this->service->appendAllToNotes($instance, User::factory()->create());
+
+        $event->refresh();
+        $this->assertStringContainsString("Must-play songs:\n  - Evergreen — Yebba\n  - Mr Brightside — The Killers", $event->notes);
+        // Songs should not be jammed onto a single comma-separated line.
+        $this->assertStringNotContainsString('Evergreen — Yebba, Mr Brightside', $event->notes);
     }
 }

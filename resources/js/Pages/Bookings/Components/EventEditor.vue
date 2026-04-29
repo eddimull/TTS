@@ -288,31 +288,41 @@ const emit = defineEmits(["save", "cancel", "removeEvent"]);
 
 const event = ref(JSON.parse(JSON.stringify(props.initialEvent)));
 
+// Tracks server-driven prop syncs so the autosave watcher can ignore them.
+const isSyncingFromProps = ref(false);
+
 // Keep questionnaire-related fields in sync with prop refreshes (e.g., after
 // Apply / Append-to-notes). Other fields stay locally-controlled so unsaved
 // edits aren't clobbered.
 watch(
     () => props.initialEvent.questionnaire_instances,
-    (val) => { event.value.questionnaire_instances = val ? JSON.parse(JSON.stringify(val)) : []; },
+    (val) => {
+        isSyncingFromProps.value = true;
+        event.value.questionnaire_instances = val ? JSON.parse(JSON.stringify(val)) : [];
+        nextTick(() => { isSyncingFromProps.value = false; });
+    },
     { deep: true }
 );
 watch(
     () => props.initialEvent.notes,
     (val) => {
-        // Only sync notes from the server when the user has no unsaved changes —
-        // append-to-notes triggers a server-side update we want to surface.
-        if (!hasUnsavedChanges.value) {
-            event.value.notes = val;
-        }
+        // Always surface server-driven notes updates (e.g., append-to-notes).
+        // The autosave watcher ignores these because of isSyncingFromProps.
+        if (val === event.value.notes) return;
+        isSyncingFromProps.value = true;
+        event.value.notes = val;
+        nextTick(() => { isSyncingFromProps.value = false; });
     }
 );
 watch(
     () => props.initialEvent.additional_data,
     (val) => {
-        // Same guard: refresh additional_data only if user has no unsaved edits.
-        if (!hasUnsavedChanges.value && val) {
-            event.value.additional_data = JSON.parse(JSON.stringify(val));
-        }
+        if (!val) return;
+        const next = JSON.parse(JSON.stringify(val));
+        if (JSON.stringify(next) === JSON.stringify(event.value.additional_data)) return;
+        isSyncingFromProps.value = true;
+        event.value.additional_data = next;
+        nextTick(() => { isSyncingFromProps.value = false; });
     },
     { deep: true }
 );
@@ -405,7 +415,12 @@ watch(
     () => {
         // Skip if component hasn't finished initializing
         if (!isInitialized.value) return;
-        
+
+        // Skip changes that came from a server-driven prop sync (e.g., the
+        // questionnaire instances refreshing after an Apply) — those don't
+        // represent user edits and shouldn't trigger autosave.
+        if (isSyncingFromProps.value) return;
+
         hasUnsavedChanges.value = true;
         
         // Clear existing timer
@@ -456,7 +471,7 @@ const autoSave = () => {
     isSaving.value = true;
     
     try {
-        emit("save", event.value);
+        emit("save", event.value, { silent: true });
         hasUnsavedChanges.value = false;
         lastSaved.value = Date.now();
     } catch (error) {
