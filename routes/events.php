@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\EventsController;
 use App\Http\Controllers\EventAttachmentsController;
 use App\Http\Controllers\EventMembersController;
+use App\Http\Controllers\EventQuestionnaireController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('events')->group(function () {
@@ -42,5 +43,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{event}/members/substitutes', [EventMembersController::class, 'addSubstitute'])->name('events.members.addSubstitute');
         Route::patch('/{event}/members/substitutes/{eventMember}', [EventMembersController::class, 'updateSubstitute'])->name('events.members.updateSubstitute');
         Route::delete('/{event}/members/substitutes/{eventMember}', [EventMembersController::class, 'removeSubstitute'])->name('events.members.removeSubstitute');
+
+        // Event questionnaire mapping
+        Route::post('/{event}/questionnaires/{instance}/responses/{response}/apply', [EventQuestionnaireController::class, 'applyResponse'])
+            ->name('events.questionnaires.apply_response');
+        Route::post('/{event}/questionnaires/{instance}/apply_all', [EventQuestionnaireController::class, 'applyAll'])
+            ->name('events.questionnaires.apply_all');
+        Route::post('/{event}/questionnaires/{instance}/append_to_notes', [EventQuestionnaireController::class, 'appendToNotes'])
+            ->name('events.questionnaires.append_to_notes');
     });
 });

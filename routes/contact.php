@@ -63,4 +63,12 @@ Route::middleware('auth:contact')->group(function () {
     // Payment callbacks
     Route::get('/payment/success', [ContactPortalController::class, 'paymentSuccess'])->name('portal.payment.success');
     Route::get('/payment/cancelled', [ContactPortalController::class, 'paymentCancelled'])->name('portal.payment.cancelled');
+
+    // Questionnaire routes
+    Route::get('/booking/{booking}/questionnaire/{instance}', [\App\Http\Controllers\Contact\PortalQuestionnaireController::class, 'show'])
+        ->name('portal.booking.questionnaire.show');
+    Route::patch('/booking/{booking}/questionnaire/{instance}/responses', [\App\Http\Controllers\Contact\PortalQuestionnaireController::class, 'saveResponse'])
+        ->name('portal.booking.questionnaire.respond');
+    Route::post('/booking/{booking}/questionnaire/{instance}/submit', [\App\Http\Controllers\Contact\PortalQuestionnaireController::class, 'submit'])
+        ->name('portal.booking.questionnaire.submit');
 });

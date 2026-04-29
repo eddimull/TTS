@@ -50,6 +50,7 @@ class HandleInertiaRequests extends Middleware
                 ],
                 'flash' => [
                     'status' => fn () => $request->session()->get('status'),
+                    'missing_fields' => fn () => $request->session()->get('missing_fields', []),
                 ],
             ]);
         }

@@ -226,6 +226,21 @@
       >
         <WeddingSection v-model="event" />
       </SectionCard>
+
+      <!-- Questionnaires Section -->
+      <SectionCard
+        v-show="!showNotesModal"
+        v-if="event.questionnaire_instances && event.questionnaire_instances.length"
+        title="Questionnaires"
+        icon="data"
+        :is-open="openSections.questionnaires"
+        @toggle="toggleSection('questionnaires')"
+      >
+        <QuestionnaireSection
+          :event-id="event.id"
+          :instances="event.questionnaire_instances"
+        />
+      </SectionCard>
     </div>
 
     <ActionButtons
@@ -260,6 +275,7 @@ import PerformanceSection from "./EventEditor/PerformanceSection.vue";
 import ActionButtons from "./EventEditor/ActionButtons.vue";
 import SectionCard from "./EventEditor/SectionCard.vue";
 import ActivityHistoryModal from "@/Components/ActivityHistoryModal.vue";
+import QuestionnaireSection from "./EventEditor/QuestionnaireSection.vue";
 
 const props = defineProps({
     initialEvent: {
@@ -271,6 +287,45 @@ const props = defineProps({
 const emit = defineEmits(["save", "cancel", "removeEvent"]);
 
 const event = ref(JSON.parse(JSON.stringify(props.initialEvent)));
+
+// Tracks server-driven prop syncs so the autosave watcher can ignore them.
+const isSyncingFromProps = ref(false);
+
+// Keep questionnaire-related fields in sync with prop refreshes (e.g., after
+// Apply / Append-to-notes). Other fields stay locally-controlled so unsaved
+// edits aren't clobbered.
+watch(
+    () => props.initialEvent.questionnaire_instances,
+    (val) => {
+        isSyncingFromProps.value = true;
+        event.value.questionnaire_instances = val ? JSON.parse(JSON.stringify(val)) : [];
+        nextTick(() => { isSyncingFromProps.value = false; });
+    },
+    { deep: true }
+);
+watch(
+    () => props.initialEvent.notes,
+    (val) => {
+        // Always surface server-driven notes updates (e.g., append-to-notes).
+        // The autosave watcher ignores these because of isSyncingFromProps.
+        if (val === event.value.notes) return;
+        isSyncingFromProps.value = true;
+        event.value.notes = val;
+        nextTick(() => { isSyncingFromProps.value = false; });
+    }
+);
+watch(
+    () => props.initialEvent.additional_data,
+    (val) => {
+        if (!val) return;
+        const next = JSON.parse(JSON.stringify(val));
+        if (JSON.stringify(next) === JSON.stringify(event.value.additional_data)) return;
+        isSyncingFromProps.value = true;
+        event.value.additional_data = next;
+        nextTick(() => { isSyncingFromProps.value = false; });
+    },
+    { deep: true }
+);
 const editorContainer = ref(null);
 const showHistoryModal = ref(false);
 const showNotesModal = ref(false);
@@ -347,6 +402,7 @@ const openSections = reactive({
     lodging: true,
     performance: true,
     wedding: true,
+    questionnaires: true,
 });
 
 const toggleSection = (section) => {
@@ -359,7 +415,12 @@ watch(
     () => {
         // Skip if component hasn't finished initializing
         if (!isInitialized.value) return;
-        
+
+        // Skip changes that came from a server-driven prop sync (e.g., the
+        // questionnaire instances refreshing after an Apply) — those don't
+        // represent user edits and shouldn't trigger autosave.
+        if (isSyncingFromProps.value) return;
+
         hasUnsavedChanges.value = true;
         
         // Clear existing timer
@@ -410,7 +471,7 @@ const autoSave = () => {
     isSaving.value = true;
     
     try {
-        emit("save", event.value);
+        emit("save", event.value, { silent: true });
         hasUnsavedChanges.value = false;
         lastSaved.value = Date.now();
     } catch (error) {

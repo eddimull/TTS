@@ -151,25 +151,11 @@ class User extends Authenticatable
 
     public function questionnaires()
     {
-        $bandIds = [];
-
-        $ownedBands = $this->bandOwner;
-        $bandMember = $this->bandMember;
-
-        foreach ($ownedBands as $band)
-        {
-            array_push($bandIds, $band->id);
-        }
-
-        foreach ($bandMember as $band)
-        {
-            array_push($bandIds, $band->id);
-        }
-        $bandIds = array_unique($bandIds);
-
-        $charts = Questionnairres::whereIn('band_id', $bandIds)->orderBy('name')->get();
-
-        return $charts;
+        $bandIds = $this->allBands()->pluck('id')->toArray();
+        return \App\Models\Questionnaires::whereIn('band_id', $bandIds)
+            ->whereNull('archived_at')
+            ->orderBy('name')
+            ->get();
     }
 
     public function getNav()
