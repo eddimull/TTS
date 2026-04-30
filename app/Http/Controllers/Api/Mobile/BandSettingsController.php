@@ -108,6 +108,7 @@ class BandSettingsController extends Controller
     {
         $invitations = $band->invitations()
             ->where('pending', true)
+            ->whereNotNull('email')
             ->get()
             ->map(fn($inv) => [
                 'id'          => $inv->id,
