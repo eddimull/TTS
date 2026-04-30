@@ -47,9 +47,11 @@ class TokenService
     public function formatBands(User $user): array
     {
         return $user->allBands()->map(fn ($b) => [
-            'id'       => $b->id,
-            'name'     => $b->name,
-            'is_owner' => $user->ownsBand($b->id),
+            'id'          => $b->id,
+            'name'        => $b->name,
+            'is_owner'    => $user->ownsBand($b->id),
+            'is_personal' => (bool) $b->is_personal,
+            'logo_url'    => $b->logo ? asset('storage/' . ltrim($b->logo, '/')) : null,
         ])->values()->all();
     }
 }
