@@ -4,6 +4,7 @@ namespace Tests\Feature\Api\Mobile;
 
 use App\Models\BandOwners;
 use App\Models\Bands;
+use App\Models\BandSubs;
 use App\Models\Bookings;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -79,5 +80,80 @@ class MeBookingsTest extends TestCase
         $names = collect($bookings)->pluck('name')->all();
         $this->assertContains('Mine Gig', $names);
         $this->assertNotContains('Other Gig', $names);
+    }
+
+    public function test_returns_empty_array_when_user_has_no_bands(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('test')->plainTextToken;
+
+        $response = $this->withToken($token)->getJson('/api/mobile/me/bookings');
+
+        $response->assertOk();
+        $this->assertSame([], $response->json('bookings'));
+    }
+
+    public function test_excludes_bookings_from_bands_user_is_only_a_sub_for(): void
+    {
+        $user = User::factory()->create();
+        $myBand = Bands::create([
+            'name' => 'Mine', 'site_name' => 'mine-' . uniqid(), 'is_personal' => false,
+        ]);
+        $subBand = Bands::create([
+            'name' => 'Sub For', 'site_name' => 'sub-' . uniqid(), 'is_personal' => false,
+        ]);
+        BandOwners::create(['user_id' => $user->id, 'band_id' => $myBand->id]);
+        BandSubs::create(['user_id' => $user->id, 'band_id' => $subBand->id]);
+
+        Bookings::factory()->create([
+            'name' => 'Mine Gig', 'date' => '2026-06-01', 'band_id' => $myBand->id,
+        ]);
+        Bookings::factory()->create([
+            'name' => 'Sub Band Gig', 'date' => '2026-06-02', 'band_id' => $subBand->id,
+        ]);
+
+        $token = $user->createToken('test')->plainTextToken;
+        $response = $this->withToken($token)->getJson('/api/mobile/me/bookings');
+        $response->assertOk();
+
+        $names = collect($response->json('bookings'))->pluck('name')->all();
+        $this->assertContains('Mine Gig', $names);
+        $this->assertNotContains('Sub Band Gig', $names,
+            'Bookings carry money/contract info subs should not see');
+    }
+
+    public function test_filters_by_status_upcoming_and_year(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::create([
+            'name' => 'B', 'site_name' => 'b-' . uniqid(), 'is_personal' => false,
+        ]);
+        BandOwners::create(['user_id' => $user->id, 'band_id' => $band->id]);
+
+        // Past confirmed booking (should be excluded by upcoming=1).
+        Bookings::factory()->create([
+            'name' => 'Past', 'date' => '2024-01-01', 'band_id' => $band->id, 'status' => 'confirmed',
+        ]);
+        // Future confirmed booking in 2026 (should match all three filters).
+        Bookings::factory()->create([
+            'name' => 'Future Confirmed 2026', 'date' => '2026-12-31', 'band_id' => $band->id, 'status' => 'confirmed',
+        ]);
+        // Future pending booking in 2026 (should be excluded by status=confirmed).
+        Bookings::factory()->create([
+            'name' => 'Future Pending 2026', 'date' => '2026-11-01', 'band_id' => $band->id, 'status' => 'pending',
+        ]);
+        // Future confirmed booking in 2027 (should be excluded by year=2026).
+        Bookings::factory()->create([
+            'name' => 'Future Confirmed 2027', 'date' => '2027-06-01', 'band_id' => $band->id, 'status' => 'confirmed',
+        ]);
+
+        $token = $user->createToken('test')->plainTextToken;
+        $response = $this->withToken($token)->getJson(
+            '/api/mobile/me/bookings?status=confirmed&upcoming=1&year=2026'
+        );
+        $response->assertOk();
+
+        $names = collect($response->json('bookings'))->pluck('name')->all();
+        $this->assertSame(['Future Confirmed 2026'], $names);
     }
 }

@@ -67,7 +67,11 @@ class BookingsController extends Controller
     public function indexForUser(Request $request): JsonResponse
     {
         $user = $request->user();
-        $bandIds = $user->allBands()->pluck('id');
+        // Use bands() not allBands(): subs are authorized at the event level
+        // (see User::getEventsAttribute) and bookings carry money/contract info
+        // they shouldn't see. Subs get an empty Bookings tab; their assigned
+        // events still surface via the Dashboard/events endpoints.
+        $bandIds = $user->bands()->pluck('id');
 
         $query = Bookings::query()
             ->with(['band', 'contacts'])
