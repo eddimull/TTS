@@ -51,7 +51,28 @@ class TokenService
             'name'        => $b->name,
             'is_owner'    => $user->ownsBand($b->id),
             'is_personal' => (bool) $b->is_personal,
-            'logo_url'    => $b->logo ? asset('storage/' . ltrim($b->logo, '/')) : null,
+            'logo_url'    => self::resolveLogoUrl($b->logo),
         ])->values()->all();
+    }
+
+    /**
+     * Resolve a stored bands.logo value to a public URL.
+     *
+     * Convention:
+     *  - Empty/null  -> null
+     *  - Starts with '/'  -> public-root path (legacy/default), e.g. '/images/default.png'
+     *  - Otherwise   -> storage-relative path (uploaded file), e.g. 'logos/real.png'
+     */
+    public static function resolveLogoUrl(?string $logo): ?string
+    {
+        if ($logo === null || $logo === '') {
+            return null;
+        }
+
+        if (str_starts_with($logo, '/')) {
+            return asset(ltrim($logo, '/'));
+        }
+
+        return asset('storage/' . $logo);
     }
 }
