@@ -14,10 +14,16 @@ use Google\Service\Calendar\EventDateTime;
 use Illuminate\Foundation\Testing\WithFaker;
 use Google\Service\Calendar\Event as GoogleEvent;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Jobs\ProcessBookingUpdated;
+use App\Jobs\ProcessEventUpdated;
+use App\Models\Events;
+use App\Models\EventTypes;
+use Illuminate\Support\Facades\Queue;
+use Tests\Concerns\AccessesProtectedProperties;
 
 class BookingsToGoogleCalendarTest extends TestCase
 {
-    use RefreshDatabase, WithFaker;
+    use RefreshDatabase, WithFaker, AccessesProtectedProperties;
     protected $booking;
 
     protected function setUp(): void
@@ -137,5 +143,83 @@ class BookingsToGoogleCalendarTest extends TestCase
         ->andReturn(true);
         $this->assertTrue($this->booking->deleteFromGoogleCalendar($this->booking->band->bookingCalendar));
         $this->assertDatabaseMissing('google_events', ['id' => $googleEvent->id]);
+    }
+
+    public function test_status_change_dispatches_event_update_for_each_child_event(): void
+    {
+        BandCalendars::factory()->create([
+            'band_id' => $this->booking->band->id,
+            'type' => 'booking',
+        ]);
+
+        $eventType = EventTypes::factory()->create();
+        $event1 = Events::withoutEvents(fn () => Events::factory()->create([
+            'eventable_id' => $this->booking->id,
+            'eventable_type' => Bookings::class,
+            'event_type_id' => $eventType->id,
+        ]));
+        $event2 = Events::withoutEvents(fn () => Events::factory()->create([
+            'eventable_id' => $this->booking->id,
+            'eventable_type' => Bookings::class,
+            'event_type_id' => $eventType->id,
+        ]));
+
+        // Mock the calendar write so the job's first step is a no-op.
+        // The job class's writeToGoogleCalendar() requires the returned event to have an id,
+        // so use setId() (per the Google API client) — bare `new GoogleEvent()` would fail the id-check.
+        $mockService = $this->mock(GoogleCalendarService::class);
+        $mockService->shouldReceive('insertEvent')->andReturnUsing(function () {
+            $event = new GoogleEvent();
+            $event->setId('fake-google-event-id');
+            return $event;
+        });
+
+        $this->booking->status = 'pending';
+        $this->booking->save();
+
+        Queue::fake();
+
+        $job = new ProcessBookingUpdated($this->booking, ['status' => 'draft']);
+        $job->handle();
+
+        Queue::assertPushed(ProcessEventUpdated::class, 2);
+        Queue::assertPushed(ProcessEventUpdated::class, fn ($job) =>
+            $this->getProtectedProperty($job, 'event')->id === $event1->id
+        );
+        Queue::assertPushed(ProcessEventUpdated::class, fn ($job) =>
+            $this->getProtectedProperty($job, 'event')->id === $event2->id
+        );
+    }
+
+    public function test_status_change_to_cancelled_does_not_dispatch_event_updates(): void
+    {
+        BandCalendars::factory()->create([
+            'band_id' => $this->booking->band->id,
+            'type' => 'booking',
+        ]);
+
+        $eventType = EventTypes::factory()->create();
+        Events::withoutEvents(fn () => Events::factory()->create([
+            'eventable_id' => $this->booking->id,
+            'eventable_type' => Bookings::class,
+            'event_type_id' => $eventType->id,
+        ]));
+
+        $mockService = $this->mock(GoogleCalendarService::class);
+        $mockService->shouldReceive('insertEvent')->andReturnUsing(function () {
+            $event = new GoogleEvent();
+            $event->setId('fake-google-event-id');
+            return $event;
+        });
+
+        $this->booking->status = 'cancelled';
+        $this->booking->save();
+
+        Queue::fake();
+
+        $job = new ProcessBookingUpdated($this->booking, ['status' => 'pending']);
+        $job->handle();
+
+        Queue::assertNotPushed(ProcessEventUpdated::class);
     }
 }
