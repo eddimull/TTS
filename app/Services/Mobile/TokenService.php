@@ -38,9 +38,10 @@ class TokenService
     public function formatUser(User $user): array
     {
         return [
-            'id'    => $user->id,
-            'name'  => $user->name,
-            'email' => $user->email,
+            'id'         => $user->id,
+            'name'       => $user->name,
+            'email'      => $user->email,
+            'avatar_url' => null,
         ];
     }
 
