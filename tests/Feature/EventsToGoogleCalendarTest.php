@@ -73,6 +73,18 @@ class EventsToGoogleCalendarTest extends TestCase
         $this->assertStringContainsString('Test Event', $this->event->getGoogleCalendarSummary());
     }
 
+    public function test_summary_appends_booking_status_when_eventable_is_booking(): void
+    {
+        // The factory already creates an Events with a Bookings as eventable.
+        $this->event->title = 'Test Event';
+        $this->event->eventable->status = 'pending';
+        $this->event->eventable->save();
+
+        $summary = $this->event->getGoogleCalendarSummary();
+
+        $this->assertEquals('Test Event (Pending)', $summary);
+    }
+
     public function test_returns_google_calendar_description(): void
     {
         $this->event->notes = 'Test Description';
