@@ -19,10 +19,11 @@ use App\Jobs\ProcessEventUpdated;
 use App\Models\Events;
 use App\Models\EventTypes;
 use Illuminate\Support\Facades\Queue;
+use Tests\Concerns\AccessesProtectedProperties;
 
 class BookingsToGoogleCalendarTest extends TestCase
 {
-    use RefreshDatabase, WithFaker;
+    use RefreshDatabase, WithFaker, AccessesProtectedProperties;
     protected $booking;
 
     protected function setUp(): void
@@ -220,13 +221,5 @@ class BookingsToGoogleCalendarTest extends TestCase
         $job->handle();
 
         Queue::assertNotPushed(ProcessEventUpdated::class);
-    }
-
-    private function getProtectedProperty(object $object, string $property)
-    {
-        $reflection = new \ReflectionClass($object);
-        $prop = $reflection->getProperty($property);
-        $prop->setAccessible(true);
-        return $prop->getValue($object);
     }
 }
