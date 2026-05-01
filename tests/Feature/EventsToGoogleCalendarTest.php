@@ -85,6 +85,17 @@ class EventsToGoogleCalendarTest extends TestCase
         $this->assertEquals('Test Event (Pending)', $summary);
     }
 
+    public function test_summary_returns_bare_title_when_eventable_is_not_a_booking(): void
+    {
+        $this->event->title = 'Test Event';
+        $this->event->eventable_type = 'App\\Models\\BandEvents';
+        // Don't reload eventable; the type check alone should short-circuit.
+
+        $summary = $this->event->getGoogleCalendarSummary();
+
+        $this->assertEquals('Test Event', $summary);
+    }
+
     public function test_returns_google_calendar_description(): void
     {
         $this->event->notes = 'Test Description';
