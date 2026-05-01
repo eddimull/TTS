@@ -37,7 +37,45 @@ class BookingsController extends Controller
      */
     public function index(BookingIndexRequest $request, Bands $band): JsonResponse
     {
-        $query = $band->bookings()->with('contacts');
+        $query = $band->bookings()->with(['contacts', 'band']);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->boolean('upcoming')) {
+            $query->whereDate('date', '>=', now()->toDateString());
+        }
+
+        if ($request->filled('year')) {
+            $query->whereYear('date', $request->integer('year'));
+        }
+
+        $bookings = $query->orderBy('date', 'desc')->get();
+
+        return response()->json([
+            'bookings' => $bookings->map(fn ($b) => $this->formatter->format($b))->values(),
+        ]);
+    }
+
+    /**
+     * GET /api/mobile/me/bookings
+     *
+     * Returns bookings across every band the authenticated user belongs to.
+     * Used by the multi-band Bookings tab on mobile.
+     */
+    public function indexForUser(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        // Use bands() not allBands(): subs are authorized at the event level
+        // (see User::getEventsAttribute) and bookings carry money/contract info
+        // they shouldn't see. Subs get an empty Bookings tab; their assigned
+        // events still surface via the Dashboard/events endpoints.
+        $bandIds = $user->bands()->pluck('id');
+
+        $query = Bookings::query()
+            ->with(['band', 'contacts'])
+            ->whereIn('band_id', $bandIds);
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
@@ -63,7 +101,7 @@ class BookingsController extends Controller
      */
     public function show(Request $request, Bands $band, Bookings $booking): JsonResponse
     {
-        $booking->load(['contacts', 'events', 'contract', 'payments']);
+        $booking->load(['contacts', 'events', 'contract', 'payments', 'band']);
 
         return response()->json(['booking' => $this->formatter->format($booking)]);
     }
@@ -78,7 +116,9 @@ class BookingsController extends Controller
 
         $status = ($validated['contract_option'] ?? 'default') === 'none' ? 'confirmed' : 'draft';
 
-        $booking = Bookings::create([
+        // venue_name has a NOT NULL DEFAULT 'TBD' in the schema. Omit the key
+        // entirely (rather than passing null) so MySQL's column default fires.
+        $attrs = [
             'band_id'         => $band->id,
             'author_id'       => Auth::id(),
             'name'            => $validated['name'],
@@ -86,13 +126,16 @@ class BookingsController extends Controller
             'date'            => $validated['date'],
             'start_time'      => $validated['start_time'],
             'end_time'        => $endTime,
-            'price'           => $validated['price'],
-            'venue_name'      => $validated['venue_name'] ?? null,
+            'price'           => $validated['price'] ?? null,
             'venue_address'   => $validated['venue_address'] ?? null,
             'contract_option' => $validated['contract_option'] ?? 'default',
             'notes'           => $validated['notes'] ?? null,
             'status'          => $status,
-        ]);
+        ];
+        if (!empty($validated['venue_name'])) {
+            $attrs['venue_name'] = $validated['venue_name'];
+        }
+        $booking = Bookings::create($attrs);
 
         $booking->contract()->create([
             'author_id'    => Auth::id(),
@@ -106,7 +149,7 @@ class BookingsController extends Controller
 
         return response()->json([
             'booking' => $this->formatter->format(
-                $booking->fresh()->load(['contacts', 'events', 'contract', 'payments'])
+                $booking->fresh()->load(['contacts', 'events', 'contract', 'payments', 'band'])
             ),
         ], 201);
     }
@@ -116,6 +159,12 @@ class BookingsController extends Controller
         $validated = $request->validated();
         $oldPrice  = (float) $booking->price;
 
+        // venue_name is NOT NULL in the schema; drop the key when blank so
+        // we don't overwrite the existing value with null.
+        if (array_key_exists('venue_name', $validated) && empty($validated['venue_name'])) {
+            unset($validated['venue_name']);
+        }
+
         $booking->update($validated);
 
         if (isset($validated['price']) && (float) $validated['price'] !== $oldPrice) {
@@ -124,7 +173,7 @@ class BookingsController extends Controller
 
         return response()->json([
             'booking' => $this->formatter->format(
-                $booking->fresh()->load(['contacts', 'events', 'contract', 'payments'])
+                $booking->fresh()->load(['contacts', 'events', 'contract', 'payments', 'band'])
             ),
         ]);
     }
@@ -144,7 +193,7 @@ class BookingsController extends Controller
 
         return response()->json([
             'booking' => $this->formatter->format(
-                $booking->fresh()->load(['contacts', 'events', 'contract', 'payments'])
+                $booking->fresh()->load(['contacts', 'events', 'contract', 'payments', 'band'])
             ),
         ]);
     }
@@ -279,7 +328,7 @@ class BookingsController extends Controller
 
         return response()->json([
             'booking' => $this->formatter->format(
-                $booking->fresh()->load(['contacts', 'events', 'contract', 'payments'])
+                $booking->fresh()->load(['contacts', 'events', 'contract', 'payments', 'band'])
             ),
         ]);
     }
@@ -318,7 +367,7 @@ class BookingsController extends Controller
 
             return response()->json([
                 'booking' => $this->formatter->format(
-                    $booking->fresh()->load(['contacts', 'events', 'contract', 'payments'])
+                    $booking->fresh()->load(['contacts', 'events', 'contract', 'payments', 'band'])
                 ),
             ]);
         } catch (\Exception $e) {

@@ -192,8 +192,11 @@ class OnboardingController extends Controller
             $user->assignBandMemberDefaults($invitation->band_id);
         }
 
-        $invitation->pending = false;
-        $invitation->save();
+        // Reusable QR invitations have no email and stay pending so the same key can be scanned by multiple members.
+        if ($invitation->email !== null) {
+            $invitation->pending = false;
+            $invitation->save();
+        }
 
         return response()->json([
             'bands' => $this->tokenService->formatBands($user),

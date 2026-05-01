@@ -19,7 +19,7 @@ class UpdateBookingRequest extends FormRequest
             'date'          => 'sometimes|date',
             'start_time'    => 'sometimes|nullable|date_format:H:i',
             'end_time'      => 'sometimes|nullable|date_format:H:i',
-            'price'         => 'sometimes|numeric|min:0',
+            'price'         => 'sometimes|nullable|numeric|min:0',
             'venue_name'    => 'sometimes|nullable|string|max:255',
             'venue_address' => 'sometimes|nullable|string',
             'notes'         => 'sometimes|nullable|string',
