@@ -80,7 +80,7 @@ class BookingService
             'date'            => $validated['date'],
             'time'            => $validated['start_time'],
             'event_type_id'   => $validated['event_type_id'],
-            'value'           => $validated['price'],
+            'value'           => $validated['price'] ?? 0,
             'additional_data' => $additionalData,
             'key'             => Str::uuid()->toString(),
             'roster_id'       => $defaultRoster?->id,

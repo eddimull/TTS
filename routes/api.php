@@ -80,6 +80,9 @@ Route::prefix('mobile')->group(function () {
         // Search (band-agnostic — user's bands are derived from the authenticated user)
         Route::get('/search', [App\Http\Controllers\Api\Mobile\SearchController::class, 'search'])->name('mobile.search');
 
+        // Aggregating bookings across all of the user's bands (band-agnostic).
+        Route::get('/me/bookings', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'indexForUser'])->name('mobile.me.bookings');
+
         // Events
         Route::get('/events/{event}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'show'])->name('mobile.events.show');
         Route::patch('/events/{event}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'update'])->name('mobile.events.update');

@@ -30,7 +30,7 @@ class DashboardController extends Controller
             ? $events
             : collect($events);
 
-        $normalized = $collection->map(fn ($e) => $this->formatter->normalizeEvent($e))->values();
+        $normalized = $this->formatter->formatEvents($collection);
 
         return response()->json([
             'events'          => $normalized,
