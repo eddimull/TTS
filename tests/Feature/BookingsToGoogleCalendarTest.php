@@ -190,6 +190,38 @@ class BookingsToGoogleCalendarTest extends TestCase
         );
     }
 
+    public function test_status_change_to_cancelled_does_not_dispatch_event_updates(): void
+    {
+        BandCalendars::factory()->create([
+            'band_id' => $this->booking->band->id,
+            'type' => 'booking',
+        ]);
+
+        $eventType = EventTypes::factory()->create();
+        Events::withoutEvents(fn () => Events::factory()->create([
+            'eventable_id' => $this->booking->id,
+            'eventable_type' => Bookings::class,
+            'event_type_id' => $eventType->id,
+        ]));
+
+        $mockService = $this->mock(GoogleCalendarService::class);
+        $mockService->shouldReceive('insertEvent')->andReturnUsing(function () {
+            $event = new GoogleEvent();
+            $event->setId('fake-google-event-id');
+            return $event;
+        });
+
+        $this->booking->status = 'cancelled';
+        $this->booking->save();
+
+        Queue::fake();
+
+        $job = new ProcessBookingUpdated($this->booking, ['status' => 'pending']);
+        $job->handle();
+
+        Queue::assertNotPushed(ProcessEventUpdated::class);
+    }
+
     private function getProtectedProperty(object $object, string $property)
     {
         $reflection = new \ReflectionClass($object);
