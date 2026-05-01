@@ -19,7 +19,7 @@ class StoreBookingRequest extends FormRequest
             'date'            => 'required|date',
             'start_time'      => 'required|date_format:H:i',
             'duration'        => 'required|numeric|min:0.5|max:24',
-            'price'           => 'required|numeric|min:0',
+            'price'           => 'nullable|numeric|min:0',
             'venue_name'      => 'nullable|string|max:255',
             'venue_address'   => 'nullable|string',
             'contract_option' => 'nullable|in:default,none,external',

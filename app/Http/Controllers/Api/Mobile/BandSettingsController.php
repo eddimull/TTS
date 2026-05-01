@@ -7,6 +7,7 @@ use App\Models\Bands;
 use App\Models\Invitations;
 use App\Models\User;
 use App\Services\BandMemberRemovalService;
+use App\Services\Mobile\TokenService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -27,7 +28,7 @@ class BandSettingsController extends Controller
                 'city'     => $band->city ?? '',
                 'state'    => $band->state ?? '',
                 'zip'      => $band->zip ?? '',
-                'logo_url' => $band->logo ? asset('storage/' . ltrim($band->logo, '/')) : null,
+                'logo_url' => TokenService::resolveLogoUrl($band->logo),
             ],
         ]);
     }
