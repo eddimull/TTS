@@ -16,10 +16,11 @@ use App\Services\GoogleCalendarService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
 use Mockery;
+use Tests\Concerns\AccessesProtectedProperties;
 
 class BookingDeletionTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, AccessesProtectedProperties;
 
     protected User $user;
     protected Bands $band;
@@ -270,14 +271,6 @@ class BookingDeletionTest extends TestCase
             $this->getProtectedProperty($job, 'event')->id === $event2->id
         );
         Bus::assertDispatched(ProcessBookingDeleted::class, 1);
-    }
-
-    private function getProtectedProperty(object $object, string $property)
-    {
-        $reflection = new \ReflectionClass($object);
-        $prop = $reflection->getProperty($property);
-        $prop->setAccessible(true);
-        return $prop->getValue($object);
     }
 
     protected function tearDown(): void
