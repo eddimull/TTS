@@ -116,7 +116,9 @@ class BookingsController extends Controller
 
         $status = ($validated['contract_option'] ?? 'default') === 'none' ? 'confirmed' : 'draft';
 
-        $booking = Bookings::create([
+        // venue_name has a NOT NULL DEFAULT 'TBD' in the schema. Omit the key
+        // entirely (rather than passing null) so MySQL's column default fires.
+        $attrs = [
             'band_id'         => $band->id,
             'author_id'       => Auth::id(),
             'name'            => $validated['name'],
@@ -124,13 +126,16 @@ class BookingsController extends Controller
             'date'            => $validated['date'],
             'start_time'      => $validated['start_time'],
             'end_time'        => $endTime,
-            'price'           => $validated['price'],
-            'venue_name'      => $validated['venue_name'] ?? null,
+            'price'           => $validated['price'] ?? null,
             'venue_address'   => $validated['venue_address'] ?? null,
             'contract_option' => $validated['contract_option'] ?? 'default',
             'notes'           => $validated['notes'] ?? null,
             'status'          => $status,
-        ]);
+        ];
+        if (!empty($validated['venue_name'])) {
+            $attrs['venue_name'] = $validated['venue_name'];
+        }
+        $booking = Bookings::create($attrs);
 
         $booking->contract()->create([
             'author_id'    => Auth::id(),
@@ -153,6 +158,12 @@ class BookingsController extends Controller
     {
         $validated = $request->validated();
         $oldPrice  = (float) $booking->price;
+
+        // venue_name is NOT NULL in the schema; drop the key when blank so
+        // we don't overwrite the existing value with null.
+        if (array_key_exists('venue_name', $validated) && empty($validated['venue_name'])) {
+            unset($validated['venue_name']);
+        }
 
         $booking->update($validated);
 
