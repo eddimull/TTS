@@ -30,6 +30,8 @@ class DashboardController extends Controller
             ? $events
             : collect($events);
 
+        $this->formatter->setBandLookup($collection);
+
         $normalized = $collection->map(fn ($e) => $this->formatter->normalizeEvent($e))->values();
 
         return response()->json([
