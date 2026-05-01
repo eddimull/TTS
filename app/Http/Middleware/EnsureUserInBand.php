@@ -20,7 +20,11 @@ class EnsureUserInBand
             ], 422);
         }
 
-        $bandId = $bandHeader;
+        // Prefer the {band} route parameter when present — it's a more specific
+        // signal than the header, which only carries the user's currently
+        // selected band. The header is the default; the URL is the override.
+        $routeBandId = $request->route('band');
+        $bandId = $routeBandId ?: $bandHeader;
 
         $band = $bandId instanceof Bands ? $bandId : Bands::find($bandId);
 
