@@ -37,7 +37,7 @@ class BookingsController extends Controller
      */
     public function index(BookingIndexRequest $request, Bands $band): JsonResponse
     {
-        $query = $band->bookings()->with('contacts');
+        $query = $band->bookings()->with(['contacts', 'band']);
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
@@ -63,7 +63,7 @@ class BookingsController extends Controller
      */
     public function show(Request $request, Bands $band, Bookings $booking): JsonResponse
     {
-        $booking->load(['contacts', 'events', 'contract', 'payments']);
+        $booking->load(['contacts', 'events', 'contract', 'payments', 'band']);
 
         return response()->json(['booking' => $this->formatter->format($booking)]);
     }
@@ -106,7 +106,7 @@ class BookingsController extends Controller
 
         return response()->json([
             'booking' => $this->formatter->format(
-                $booking->fresh()->load(['contacts', 'events', 'contract', 'payments'])
+                $booking->fresh()->load(['contacts', 'events', 'contract', 'payments', 'band'])
             ),
         ], 201);
     }
@@ -124,7 +124,7 @@ class BookingsController extends Controller
 
         return response()->json([
             'booking' => $this->formatter->format(
-                $booking->fresh()->load(['contacts', 'events', 'contract', 'payments'])
+                $booking->fresh()->load(['contacts', 'events', 'contract', 'payments', 'band'])
             ),
         ]);
     }
@@ -144,7 +144,7 @@ class BookingsController extends Controller
 
         return response()->json([
             'booking' => $this->formatter->format(
-                $booking->fresh()->load(['contacts', 'events', 'contract', 'payments'])
+                $booking->fresh()->load(['contacts', 'events', 'contract', 'payments', 'band'])
             ),
         ]);
     }
@@ -279,7 +279,7 @@ class BookingsController extends Controller
 
         return response()->json([
             'booking' => $this->formatter->format(
-                $booking->fresh()->load(['contacts', 'events', 'contract', 'payments'])
+                $booking->fresh()->load(['contacts', 'events', 'contract', 'payments', 'band'])
             ),
         ]);
     }
@@ -318,7 +318,7 @@ class BookingsController extends Controller
 
             return response()->json([
                 'booking' => $this->formatter->format(
-                    $booking->fresh()->load(['contacts', 'events', 'contract', 'payments'])
+                    $booking->fresh()->load(['contacts', 'events', 'contract', 'payments', 'band'])
                 ),
             ]);
         } catch (\Exception $e) {
