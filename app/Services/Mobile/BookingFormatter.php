@@ -4,6 +4,7 @@ namespace App\Services\Mobile;
 
 use App\Models\Bookings;
 use App\Models\Payments;
+use App\Services\Mobile\TokenService;
 
 class BookingFormatter
 {
@@ -25,6 +26,12 @@ class BookingFormatter
             'amount_due'      => (string) $booking->amount_due,
             'is_paid'         => (bool) $booking->is_paid,
             'contract_option' => $booking->contract_option,
+            'band'            => $booking->band ? [
+                'id'          => $booking->band->id,
+                'name'        => $booking->band->name,
+                'is_personal' => (bool) $booking->band->is_personal,
+                'logo_url'    => TokenService::resolveLogoUrl($booking->band->logo),
+            ] : null,
             'contacts'        => $this->formatContacts($booking->contacts),
             'events'          => $booking->relationLoaded('events')
                 ? $booking->events->map(fn ($e) => [
