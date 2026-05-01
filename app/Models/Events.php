@@ -255,6 +255,9 @@ class Events extends Model implements GoogleCalenderable
 
     public function getGoogleCalendarSummary(): string|null
     {
+        if ($this->eventable_type === 'App\\Models\\Bookings' && $this->eventable) {
+            return $this->title . ' (' . ucfirst($this->eventable->status) . ')';
+        }
         return $this->title;
     }
 

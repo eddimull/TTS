@@ -96,9 +96,8 @@ class EventRefreshTest extends TestCase
         $event->save();
 
 
-        $this->assertContains(
-            'test 2',
-            $syncedTitles,
+        $this->assertNotEmpty(
+            array_filter($syncedTitles, fn ($t) => str_starts_with($t, 'test 2')),
             'Google Calendar should receive "test 2" (the final version), not "test 1" (intermediate version). ' .
             'If this fails, the job is not refreshing from the database. ' .
             'Synced titles: ' . implode(', ', $syncedTitles)
@@ -169,7 +168,7 @@ class EventRefreshTest extends TestCase
         $lastSynced = end($syncedEvents);
 
 
-        $this->assertEquals('Final Version', $lastSynced['title'], 'Latest title should be synced');
+        $this->assertStringStartsWith('Final Version', $lastSynced['title'], 'Latest title should be synced');
         $this->assertStringContainsString('Final Notes', $lastSynced['description'], 'Latest notes should be included in description');
 
 
@@ -224,7 +223,10 @@ class EventRefreshTest extends TestCase
         $event->save();
 
         // The last sync should have the final title
-        $this->assertContains('Final Title After Refresh', $syncedTitles);
+        $this->assertNotEmpty(
+            array_filter($syncedTitles, fn ($t) => str_starts_with($t, 'Final Title After Refresh')),
+            'Final title should have been synced. Synced titles: ' . implode(', ', $syncedTitles)
+        );
     }
 
     protected function tearDown(): void

@@ -105,7 +105,7 @@ class RapidEventUpdatesTest extends TestCase
 
         $lastSyncedTitle = end($syncedTitles);
 
-        $this->assertEquals(
+        $this->assertStringStartsWith(
             'test 1234',
             $lastSyncedTitle,
             'Google Calendar should have "test 1234" (the final version), not an intermediate version. ' .
@@ -169,7 +169,7 @@ class RapidEventUpdatesTest extends TestCase
         // The last synced title should be "Version 10"
         $lastSyncedTitle = end($syncedTitles);
 
-        $this->assertEquals(
+        $this->assertStringStartsWith(
             'Version 10',
             $lastSyncedTitle,
             'Google Calendar should have the final version (Version 10), not an intermediate one. ' .
