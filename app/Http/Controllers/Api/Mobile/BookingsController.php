@@ -59,6 +59,40 @@ class BookingsController extends Controller
     }
 
     /**
+     * GET /api/mobile/me/bookings
+     *
+     * Returns bookings across every band the authenticated user belongs to.
+     * Used by the multi-band Bookings tab on mobile.
+     */
+    public function indexForUser(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $bandIds = $user->allBands()->pluck('id');
+
+        $query = Bookings::query()
+            ->with(['band', 'contacts'])
+            ->whereIn('band_id', $bandIds);
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        if ($request->boolean('upcoming')) {
+            $query->whereDate('date', '>=', now()->toDateString());
+        }
+
+        if ($request->filled('year')) {
+            $query->whereYear('date', $request->integer('year'));
+        }
+
+        $bookings = $query->orderBy('date', 'desc')->get();
+
+        return response()->json([
+            'bookings' => $bookings->map(fn ($b) => $this->formatter->format($b))->values(),
+        ]);
+    }
+
+    /**
      * GET /api/mobile/bands/{band}/bookings/{booking}
      */
     public function show(Request $request, Bands $band, Bookings $booking): JsonResponse
