@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\Api\Mobile;
 
+use App\Jobs\ProcessBookingDeleted;
+use App\Jobs\ProcessEventDeleted;
 use App\Models\BandOwners;
 use App\Models\Bands;
 use App\Models\Bookings;
@@ -10,11 +12,13 @@ use App\Models\Events;
 use App\Models\EventTypes;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
+use Tests\Concerns\AccessesProtectedProperties;
 use Tests\TestCase;
 
 class BookingsTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, AccessesProtectedProperties;
 
     // -------------------------------------------------------------------------
     // Helpers
@@ -255,5 +259,49 @@ class BookingsTest extends TestCase
             'name'    => 'Personal gig',
             'band_id' => $headerBand->id,
         ]);
+    }
+
+    public function test_destroy_dispatches_event_deletion_for_each_child_event(): void
+    {
+        [
+            'band'    => $band,
+            'booking' => $booking,
+            'token'   => $token,
+        ] = $this->createUserWithBandAndBooking();
+
+        $eventType = EventTypes::factory()->create();
+
+        $event1 = Events::withoutEvents(fn () => Events::factory()->create([
+            'eventable_id'   => $booking->id,
+            'eventable_type' => Bookings::class,
+            'event_type_id'  => $eventType->id,
+            'date'           => $booking->date,
+            'title'          => 'Event 1',
+        ]));
+
+        $event2 = Events::withoutEvents(fn () => Events::factory()->create([
+            'eventable_id'   => $booking->id,
+            'eventable_type' => Bookings::class,
+            'event_type_id'  => $eventType->id,
+            'date'           => $booking->date,
+            'title'          => 'Event 2',
+        ]));
+
+        Bus::fake();
+
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->deleteJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}");
+
+        $response->assertOk()->assertJson(['message' => 'Booking deleted']);
+
+        Bus::assertDispatched(ProcessEventDeleted::class, 2);
+        Bus::assertDispatched(ProcessEventDeleted::class, fn ($job) =>
+            $this->getProtectedProperty($job, 'event')->id === $event1->id
+        );
+        Bus::assertDispatched(ProcessEventDeleted::class, fn ($job) =>
+            $this->getProtectedProperty($job, 'event')->id === $event2->id
+        );
+        Bus::assertDispatched(ProcessBookingDeleted::class, 1);
     }
 }
