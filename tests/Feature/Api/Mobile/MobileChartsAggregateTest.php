@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\Mobile;
 
+use App\Models\BandMembers;
 use App\Models\BandOwners;
 use App\Models\Bands;
 use App\Models\Charts;
@@ -66,6 +67,21 @@ class MobileChartsAggregateTest extends TestCase
         $titles = collect($response->json('charts'))->pluck('title');
         $this->assertContains('Mine 1', $titles);
         $this->assertNotContains('Theirs 1', $titles);
+    }
+
+    public function test_band_member_also_sees_charts(): void
+    {
+        $user = User::factory()->create();
+        $band = $this->makeBand('Member Band');
+        BandMembers::create(['user_id' => $user->id, 'band_id' => $band->id]);
+        Charts::create(['band_id' => $band->id, 'title' => 'Member Chart']);
+
+        $token = $user->createToken('test')->plainTextToken;
+        $response = $this->withToken($token)->getJson('/api/mobile/charts');
+
+        $response->assertOk();
+        $titles = collect($response->json('charts'))->pluck('title');
+        $this->assertContains('Member Chart', $titles);
     }
 
     public function test_each_chart_includes_band_block(): void
