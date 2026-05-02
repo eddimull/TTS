@@ -13,7 +13,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Services\Mobile\TokenService;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class MusicController extends Controller
@@ -72,9 +71,9 @@ class MusicController extends Controller
      * plus a nested `band` block ({id, name, logo_url, is_personal}) so the
      * mobile client can render the band avatar without an extra round trip.
      */
-    public function chartsForUser(Request $_request): JsonResponse
+    public function chartsForUser(Request $request): JsonResponse
     {
-        $user = Auth::user();
+        $user = $request->user();
         $bands = $user->allBands();
         $bandIds = $bands->pluck('id')->all();
 
