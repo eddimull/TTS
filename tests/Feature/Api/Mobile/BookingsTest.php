@@ -212,4 +212,48 @@ class BookingsTest extends TestCase
             ->getJson("/api/mobile/bands/{$band->id}/bookings/{$otherBooking->id}")
             ->assertNotFound();
     }
+
+    // -------------------------------------------------------------------------
+    // bookings.store — URL {band} should override X-Band-ID header
+    // -------------------------------------------------------------------------
+
+    public function test_bookings_store_writes_to_url_band_not_header_band(): void
+    {
+        // Regression: when the user is "viewing" Band A (header) but creates a
+        // booking under URL `/bands/{B}/bookings` (e.g. a personal gig from
+        // Band A's dashboard), the booking must land on band B, not band A.
+        $user = User::factory()->create();
+
+        $headerBand = Bands::factory()->create();
+        $headerBand->owners()->create(['user_id' => $user->id]);
+
+        $urlBand = Bands::factory()->create();
+        $urlBand->owners()->create(['user_id' => $user->id]);
+
+        $eventType = EventTypes::factory()->create();
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        $payload = [
+            'name'          => 'Personal gig',
+            'event_type_id' => $eventType->id,
+            'date'          => '2030-01-15',
+            'start_time'    => '20:00',
+            'duration'      => 2,
+        ];
+
+        $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $headerBand->id])
+            ->postJson("/api/mobile/bands/{$urlBand->id}/bookings", $payload)
+            ->assertCreated();
+
+        // Booking should be on the URL-specified band, not the header band.
+        $this->assertDatabaseHas('bookings', [
+            'name'    => 'Personal gig',
+            'band_id' => $urlBand->id,
+        ]);
+        $this->assertDatabaseMissing('bookings', [
+            'name'    => 'Personal gig',
+            'band_id' => $headerBand->id,
+        ]);
+    }
 }

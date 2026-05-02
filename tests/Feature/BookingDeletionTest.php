@@ -10,13 +10,17 @@ use App\Models\Bookings;
 use App\Models\EventTypes;
 use App\Models\GoogleEvents;
 use App\Models\BandCalendars;
+use App\Jobs\ProcessBookingDeleted;
+use App\Jobs\ProcessEventDeleted;
 use App\Services\GoogleCalendarService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Mockery;
+use Tests\Concerns\AccessesProtectedProperties;
 
 class BookingDeletionTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, AccessesProtectedProperties;
 
     protected User $user;
     protected Bands $band;
@@ -33,6 +37,7 @@ class BookingDeletionTest extends TestCase
 
         $this->user = User::factory()->create();
         $this->band = Bands::factory()->create();
+        $this->band->owners()->create(['user_id' => $this->user->id]);
 
         $this->bookingCalendar = BandCalendars::factory()->create([
             'band_id' => $this->band->id,
@@ -221,6 +226,51 @@ class BookingDeletionTest extends TestCase
         $booking->delete();
 
         $this->assertDatabaseMissing('bookings', ['id' => $bookingId]);
+    }
+
+    public function test_web_destroy_dispatches_event_deletion_for_each_child_event(): void
+    {
+        $booking = Bookings::withoutEvents(function () {
+            return Bookings::factory()->create([
+                'band_id' => $this->band->id,
+                'date' => now()->addDays(10),
+                'event_type_id' => $this->eventType->id,
+            ]);
+        });
+
+        $event1 = Events::withoutEvents(fn () => Events::factory()->create([
+            'eventable_id' => $booking->id,
+            'eventable_type' => Bookings::class,
+            'event_type_id' => $this->eventType->id,
+            'date' => $booking->date,
+            'title' => 'Event 1',
+        ]));
+
+        $event2 = Events::withoutEvents(fn () => Events::factory()->create([
+            'eventable_id' => $booking->id,
+            'eventable_type' => Bookings::class,
+            'event_type_id' => $this->eventType->id,
+            'date' => $booking->date,
+            'title' => 'Event 2',
+        ]));
+
+        Bus::fake();
+
+        $response = $this->delete(route('bands.booking.destroy', [
+            'band' => $this->band,
+            'booking' => $booking,
+        ]));
+
+        $response->assertRedirect(route('Bookings Home'));
+
+        Bus::assertDispatched(ProcessEventDeleted::class, 2);
+        Bus::assertDispatched(ProcessEventDeleted::class, fn ($job) =>
+            $this->getProtectedProperty($job, 'event')->id === $event1->id
+        );
+        Bus::assertDispatched(ProcessEventDeleted::class, fn ($job) =>
+            $this->getProtectedProperty($job, 'event')->id === $event2->id
+        );
+        Bus::assertDispatched(ProcessBookingDeleted::class, 1);
     }
 
     protected function tearDown(): void
