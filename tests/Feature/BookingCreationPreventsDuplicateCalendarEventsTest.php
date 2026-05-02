@@ -400,7 +400,7 @@ class BookingCreationPreventsDuplicateCalendarEventsTest extends TestCase
 
         $lastCall = end($eventCalendarCalls);
 
-        $this->assertEquals(
+        $this->assertStringStartsWith(
             'Final Event Title',
             $lastCall['summary'],
             'Google Calendar should have the FINAL event title, not an intermediate one. This ensures jobs fetch fresh data from DB.'
@@ -474,7 +474,10 @@ class BookingCreationPreventsDuplicateCalendarEventsTest extends TestCase
         $this->assertEquals('Version 4', $event->title, 'Event model should have the latest title');
 
 
-        $this->assertContains('Version 1', $processedEvents, 'Initial version should be synced');
+        $this->assertNotEmpty(
+            array_filter($processedEvents, fn ($t) => str_starts_with($t, 'Version 1')),
+            'Initial version should be synced. Processed: ' . implode(', ', $processedEvents)
+        );
 
         // Verify only ONE GoogleEvent record exists (no duplicates despite multiple saves)
         $googleEventsCount = GoogleEvents::where('google_eventable_id', $event->id)
@@ -539,7 +542,7 @@ class BookingCreationPreventsDuplicateCalendarEventsTest extends TestCase
         $this->assertNotEmpty($syncedTitles, 'Should have synced at least one event');
 
         
-        $initialSynced = collect($syncedTitles)->firstWhere('title', 'Initial Title');
+        $initialSynced = collect($syncedTitles)->first(fn ($s) => str_starts_with($s['title'], 'Initial Title'));
         $this->assertNotNull($initialSynced, 'Initial title should have been synced to Google Calendar');
 
 

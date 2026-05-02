@@ -38,7 +38,29 @@ class ProcessBookingUpdated implements ShouldQueue, ShouldBeUniqueUntilProcessin
         Log::debug('Refreshed booking from database');
 
         $this->writeToGoogleCalendar($this->booking->band->bookingCalendar);
+        $this->propagateStatusChangeToEvents();
         $this->SendNotification();
+    }
+
+    private function propagateStatusChangeToEvents(): void
+    {
+        $oldStatus = $this->originalData['status'] ?? null;
+        $newStatus = $this->booking->status;
+
+        if (!$oldStatus || $oldStatus === $newStatus) {
+            return;
+        }
+
+        // Cancelled bookings have their child events deleted by BookingObserver::updated;
+        // skip dispatch to avoid racing the delete.
+        if ($newStatus === 'cancelled') {
+            return;
+        }
+
+        foreach ($this->booking->events as $event) {
+            ProcessEventUpdated::dispatch($event, $event->getOriginal())
+                ->delay(now()->addSeconds(2));
+        }
     }
 
     public function writeToGoogleCalendar($calendar)
