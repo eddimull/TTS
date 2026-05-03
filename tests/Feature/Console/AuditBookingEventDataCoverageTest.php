@@ -140,4 +140,29 @@ class AuditBookingEventDataCoverageTest extends TestCase
 
         unlink($path);
     }
+
+    public function test_csv_handles_booking_with_no_events_without_crashing(): void
+    {
+        // Regression test for null-dereference bug: prior to the fix, writing
+        // a NO_EVENTS booking row to CSV crashed with "Attempt to read property
+        // on null" under PHP 8.1+ because $primary is null.
+        $this->makeBookingWithPrimaryEvent(
+            ['date' => '2026-06-01'],
+            null
+        );
+
+        $path = storage_path('app/test-audit-no-events.csv');
+        if (file_exists($path)) {
+            unlink($path);
+        }
+
+        $this->artisan('bookings:audit-event-data-coverage', ['--csv' => $path])
+            ->assertExitCode(1);
+
+        $this->assertFileExists($path);
+        $contents = file_get_contents($path);
+        $this->assertStringContainsString('NO_EVENTS', $contents);
+
+        unlink($path);
+    }
 }
