@@ -77,6 +77,9 @@ Route::prefix('mobile')->group(function () {
         // Dashboard
         Route::get('/dashboard', [App\Http\Controllers\Api\Mobile\DashboardController::class, 'index'])->name('mobile.dashboard');
 
+        // Aggregating charts across all of the user's bands (band-agnostic).
+        Route::get('/charts', [App\Http\Controllers\Api\Mobile\MusicController::class, 'chartsForUser'])->name('mobile.charts.for-user');
+
         // Search (band-agnostic — user's bands are derived from the authenticated user)
         Route::get('/search', [App\Http\Controllers\Api\Mobile\SearchController::class, 'search'])->name('mobile.search');
 
