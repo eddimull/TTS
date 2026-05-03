@@ -11,6 +11,7 @@ use App\Models\Charts;
 use App\Models\ChartUploads;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Services\Mobile\TokenService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
@@ -60,6 +61,53 @@ class MusicController extends Controller
                 'public'        => (bool) $ch->public,
                 'uploads_count' => $ch->uploads_count ?? 0,
             ])->values(),
+        ]);
+    }
+
+    /**
+     * List all charts across every band the authenticated user belongs to.
+     *
+     * Each chart is shaped via the same fields as the per-band `charts` method
+     * plus a nested `band` block ({id, name, logo_url, is_personal}) so the
+     * mobile client can render the band avatar without an extra round trip.
+     */
+    public function chartsForUser(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $bands = $user->allBands();
+        $bandIds = $bands->pluck('id')->all();
+
+        if (empty($bandIds)) {
+            return response()->json(['charts' => []]);
+        }
+
+        $bandLookup = $bands->keyBy('id');
+
+        $charts = Charts::whereIn('band_id', $bandIds)
+            ->withCount('uploads')
+            ->orderBy('title')
+            ->get();
+
+        return response()->json([
+            'charts' => $charts->map(function ($ch) use ($bandLookup) {
+                $band = $bandLookup[$ch->band_id] ?? null;
+                return [
+                    'id'            => $ch->id,
+                    'band_id'       => $ch->band_id,
+                    'title'         => $ch->title ?? '',
+                    'composer'      => $ch->composer ?? '',
+                    'description'   => $ch->description ?? '',
+                    'price'         => $ch->price ?? 0,
+                    'public'        => (bool) $ch->public,
+                    'uploads_count' => $ch->uploads_count ?? 0,
+                    'band'          => $band ? [
+                        'id'          => $band->id,
+                        'name'        => $band->name,
+                        'is_personal' => (bool) $band->is_personal,
+                        'logo_url'    => TokenService::resolveLogoUrl($band->logo),
+                    ] : null,
+                ];
+            })->values(),
         ]);
     }
 
