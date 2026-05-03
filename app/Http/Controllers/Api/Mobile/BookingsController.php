@@ -24,6 +24,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class BookingsController extends Controller
 {
@@ -66,6 +67,20 @@ class BookingsController extends Controller
      */
     public function indexForUser(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'from' => 'nullable|date_format:Y-m-d',
+            'to'   => 'nullable|date_format:Y-m-d',
+        ]);
+        if (
+            !empty($validated['from']) &&
+            !empty($validated['to']) &&
+            $validated['from'] > $validated['to']
+        ) {
+            throw ValidationException::withMessages([
+                'from' => ['from must be on or before to'],
+            ]);
+        }
+
         $user = $request->user();
         // Use bands() not allBands(): subs are authorized at the event level
         // (see User::getEventsAttribute) and bookings carry money/contract info
@@ -87,6 +102,14 @@ class BookingsController extends Controller
 
         if ($request->filled('year')) {
             $query->whereYear('date', $request->integer('year'));
+        }
+
+        if (!empty($validated['from'])) {
+            $query->whereDate('date', '>=', $validated['from']);
+        }
+
+        if (!empty($validated['to'])) {
+            $query->whereDate('date', '<=', $validated['to']);
         }
 
         $bookings = $query->orderBy('date', 'desc')->get();
