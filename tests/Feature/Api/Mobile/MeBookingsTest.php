@@ -156,4 +156,91 @@ class MeBookingsTest extends TestCase
         $names = collect($response->json('bookings'))->pluck('name')->all();
         $this->assertSame(['Future Confirmed 2026'], $names);
     }
+
+    public function test_from_param_filters_to_on_or_after(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::create([
+            'name' => 'Band', 'site_name' => 'b-' . uniqid(), 'is_personal' => false,
+        ]);
+        BandOwners::create(['user_id' => $user->id, 'band_id' => $band->id]);
+
+        Bookings::factory()->for($band, 'band')->create(['date' => '2026-01-15', 'name' => 'Old']);
+        Bookings::factory()->for($band, 'band')->create(['date' => '2026-06-01', 'name' => 'New']);
+
+        $response = $this->actingAs($user)
+            ->getJson('/api/mobile/me/bookings?from=2026-05-01');
+
+        $response->assertOk();
+        $names = collect($response->json('bookings'))->pluck('name')->all();
+        $this->assertEqualsCanonicalizing(['New'], $names);
+    }
+
+    public function test_to_param_filters_to_on_or_before(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::create([
+            'name' => 'Band', 'site_name' => 'b-' . uniqid(), 'is_personal' => false,
+        ]);
+        BandOwners::create(['user_id' => $user->id, 'band_id' => $band->id]);
+
+        Bookings::factory()->for($band, 'band')->create(['date' => '2026-01-15', 'name' => 'Old']);
+        Bookings::factory()->for($band, 'band')->create(['date' => '2026-06-01', 'name' => 'New']);
+
+        $response = $this->actingAs($user)
+            ->getJson('/api/mobile/me/bookings?to=2026-05-01');
+
+        $response->assertOk();
+        $names = collect($response->json('bookings'))->pluck('name')->all();
+        $this->assertEqualsCanonicalizing(['Old'], $names);
+    }
+
+    public function test_from_and_to_together_narrow_to_inclusive_range(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::create([
+            'name' => 'Band', 'site_name' => 'b-' . uniqid(), 'is_personal' => false,
+        ]);
+        BandOwners::create(['user_id' => $user->id, 'band_id' => $band->id]);
+
+        Bookings::factory()->for($band, 'band')->create(['date' => '2026-01-01', 'name' => 'Before']);
+        Bookings::factory()->for($band, 'band')->create(['date' => '2026-03-15', 'name' => 'Inside']);
+        Bookings::factory()->for($band, 'band')->create(['date' => '2026-12-01', 'name' => 'After']);
+
+        $response = $this->actingAs($user)
+            ->getJson('/api/mobile/me/bookings?from=2026-02-01&to=2026-05-01');
+
+        $response->assertOk();
+        $names = collect($response->json('bookings'))->pluck('name')->all();
+        $this->assertEqualsCanonicalizing(['Inside'], $names);
+    }
+
+    public function test_from_after_to_returns_422(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)
+            ->getJson('/api/mobile/me/bookings?from=2026-06-01&to=2026-05-01');
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('from');
+    }
+
+    public function test_no_params_still_returns_all_bookings(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::create([
+            'name' => 'Band', 'site_name' => 'b-' . uniqid(), 'is_personal' => false,
+        ]);
+        BandOwners::create(['user_id' => $user->id, 'band_id' => $band->id]);
+
+        Bookings::factory()->for($band, 'band')->create(['date' => '2020-01-01']);
+        Bookings::factory()->for($band, 'band')->create(['date' => '2026-06-01']);
+        Bookings::factory()->for($band, 'band')->create(['date' => '2030-12-01']);
+
+        $response = $this->actingAs($user)->getJson('/api/mobile/me/bookings');
+
+        $response->assertOk();
+        $this->assertCount(3, $response->json('bookings'));
+    }
 }
