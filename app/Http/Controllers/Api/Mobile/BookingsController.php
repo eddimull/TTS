@@ -181,7 +181,6 @@ class BookingsController extends Controller
     public function destroy(Request $request, Bands $band, Bookings $booking): JsonResponse
     {
         $booking->contacts()->detach();
-        $booking->events()->delete();
         $booking->delete();
 
         return response()->json(['message' => 'Booking deleted']);
