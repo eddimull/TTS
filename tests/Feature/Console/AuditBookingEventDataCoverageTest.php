@@ -7,6 +7,7 @@ use App\Models\Bookings;
 use App\Models\Events;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class AuditBookingEventDataCoverageTest extends TestCase
@@ -19,6 +20,17 @@ class AuditBookingEventDataCoverageTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // The audit command counts global table state, so any residual rows
+        // from prior tests in the suite would corrupt our counts. RefreshDatabase
+        // should make this unnecessary, but other tests in the suite leave bookings
+        // behind that survive the transactional rollback. Explicitly clear the
+        // relevant tables so each audit test starts with a guaranteed clean slate.
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        DB::table('events')->truncate();
+        DB::table('bookings')->truncate();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+
         $this->user = User::factory()->create();
         $this->band = Bands::factory()->create();
     }
