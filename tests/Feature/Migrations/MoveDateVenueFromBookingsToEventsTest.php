@@ -59,10 +59,39 @@ class MoveDateVenueFromBookingsToEventsTest extends TestCase
 
     public function test_event_columns_can_hold_expected_values(): void
     {
-        // BLOCKED: Task 4 (Bookings factory update) must be completed first.
-        // The Bookings factory still tries to insert the dropped columns (date, start_time,
-        // end_time, venue_name, venue_address, price) into the bookings table.
-        // Once Task 4 removes those from the factory, this test can be un-skipped.
-        $this->markTestSkipped('Blocked on Task 4: Bookings factory still references dropped columns.');
+        // Use DB::table() insert to bypass the factory's Model::unguarded() call,
+        // which would try to insert the now-dropped columns into the bookings table.
+        $now = now()->toDateTimeString();
+        $bookingId = DB::table('bookings')->insertGetId([
+            'band_id' => $this->band->id,
+            'author_id' => $this->user->id,
+            'name' => 'Test Booking',
+            'event_type_id' => 1,
+            'price' => 100000,
+            'status' => 'confirmed',
+            'contract_option' => 'default',
+            'enable_portal_media_access' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+        $booking = Bookings::find($bookingId);
+        $event = Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking->id,
+            'date' => '2026-06-01',
+            'start_time' => '19:00:00',
+            'end_time' => '22:00:00',
+            'venue_name' => 'Symphony Hall',
+            'venue_address' => '1 Main St',
+            'price' => 2500,  // dollars; Price cast multiplies by 100 on set() to store as cents
+        ]);
+        $event->refresh();
+        // start_time/end_time are cast to Carbon (datetime:H:i), so equality
+        // assertions format the Carbon instance to a string.
+        $this->assertSame('19:00:00', $event->start_time->format('H:i:s'));
+        $this->assertSame('22:00:00', $event->end_time->format('H:i:s'));
+        $this->assertSame('Symphony Hall', $event->venue_name);
+        $this->assertSame('1 Main St', $event->venue_address);
+        $this->assertSame('2500.00', (string) $event->price);
     }
 }
