@@ -59,10 +59,10 @@ class MoveDateVenueFromBookingsToEventsTest extends TestCase
 
     public function test_event_columns_can_hold_expected_values(): void
     {
-        // Re-enable in Task 3 once Bookings factory drops the moved fillables
-        // and Events factory supports the new ones. Will assert that the
-        // new event columns (start_time, end_time, venue_name, venue_address,
-        // price) round-trip values correctly.
-        $this->markTestSkipped('Pending Task 3: Bookings factory + Events fillable/casts update required.');
+        // BLOCKED: Task 4 (Bookings factory update) must be completed first.
+        // The Bookings factory still tries to insert the dropped columns (date, start_time,
+        // end_time, venue_name, venue_address, price) into the bookings table.
+        // Once Task 4 removes those from the factory, this test can be un-skipped.
+        $this->markTestSkipped('Blocked on Task 4: Bookings factory still references dropped columns.');
     }
 }
