@@ -103,7 +103,7 @@ class BookingsControllerTest extends TestCase
         setPermissionsTeamId(0);
 
 
-        $bookingData = Bookings::factory()->duration($duration)->make(['band_id' => $this->band->id])->toArray();
+        $bookingData = Bookings::factory()->withGigDetails()->duration($duration)->make(['band_id' => $this->band->id])->toArray();
         $bookingData['duration'] = $duration;
         $bookingData['start_time'] = Carbon::parse($bookingData['start_time'])->format('H:i');
         unset($bookingData['end_time']);
@@ -139,9 +139,9 @@ class BookingsControllerTest extends TestCase
 
     public function test_non_member_cannot_create_booking()
     {
-        $bookingData = Bookings::factory()->make(['band_id' => $this->band->id])->toArray();
+        $bookingData = Bookings::factory()->withGigDetails()->make(['band_id' => $this->band->id])->toArray();
         unset($bookingData['author_id']);
-        unset($bookingData['amount_paid']); 
+        unset($bookingData['amount_paid']);
         unset($bookingData['is_paid']);
         unset($bookingData['amount_due']);
 
@@ -154,7 +154,7 @@ class BookingsControllerTest extends TestCase
     public function test_owner_can_update_booking()
     {
         $booking = Bookings::factory()->create(['band_id' => $this->band->id]);
-        $updatedData = Bookings::factory()->make(['band_id' => $this->band->id])->toArray();
+        $updatedData = Bookings::factory()->withGigDetails()->make(['band_id' => $this->band->id])->toArray();
         $updatedName = $updatedData['name'];
 
         $response = $this->actingAs($this->owner)->put(route('bands.booking.update', [$this->band, $booking]), $updatedData);

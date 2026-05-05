@@ -46,9 +46,6 @@ class BookingsFactory extends Factory
 
     public function definition()
     {
-        $startDate = $this->faker->dateTimeBetween('now', '+1 year');
-        $endDate = (clone $startDate)->modify('+' . $this->faker->numberBetween(1, 6) . ' hours');
-
         $band = Bands::factory()->withOwners()->create();
 
         return [
@@ -56,16 +53,36 @@ class BookingsFactory extends Factory
             'author_id' => $band->owners->first()->user_id,
             'name' => $this->faker->sentence,
             'event_type_id' => $this->faker->numberBetween(1, 6),
-            'date' => $startDate->format('Y-m-d'),
-            'start_time' => $startDate->format('H:i'),
-            'end_time' => $endDate->format('H:i'),
-            'venue_name' => $this->faker->company,
-            'venue_address' => $this->faker->address,
             'price' => $this->faker->numberBetween(500, 10000),
             'status' => $this->faker->randomElement(['pending', 'confirmed', 'cancelled']),
             'contract_option' => $this->faker->randomElement(['default', 'none', 'external']),
             'notes' => $this->faker->optional()->text,
         ];
+    }
+
+    /**
+     * Add legacy gig detail fields (date, start_time, end_time, venue_name, venue_address).
+     * These columns no longer live on the bookings table but the store/update controller
+     * endpoints still accept them as request parameters to create the associated event.
+     * Use this state when building request payloads for controller tests:
+     *
+     *   Bookings::factory()->withGigDetails()->make()->toArray()
+     *
+     * Must be chained BEFORE duration() if that state is also used.
+     */
+    public function withGigDetails()
+    {
+        return $this->state(function (array $attributes) {
+            $startDate = $this->faker->dateTimeBetween('now', '+1 year');
+            $endDate = (clone $startDate)->modify('+3 hours');
+            return [
+                'date' => $startDate->format('Y-m-d'),
+                'start_time' => $startDate->format('H:i'),
+                'end_time' => $endDate->format('H:i'),
+                'venue_name' => $this->faker->company,
+                'venue_address' => $this->faker->address,
+            ];
+        });
     }
 
     public function confirmed()
