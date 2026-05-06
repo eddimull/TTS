@@ -105,14 +105,14 @@ class EventsController extends Controller
         }
 
         $events = $query->orderBy('date', 'asc')
-            ->orderBy('time', 'asc')
+            ->orderBy('start_time', 'asc')
             ->get()
             ->map(function ($event) {
                 $date = is_string($event->date) ? $event->date : $event->date->format('Y-m-d');
                 $time = null;
 
-                if ($event->time) {
-                    $time = is_string($event->time) ? $event->time : $event->time->format('H:i');
+                if ($event->start_time) {
+                    $time = $event->start_time->format('H:i');
                 }
 
                 return [
@@ -126,8 +126,8 @@ class EventsController extends Controller
                     'event_type_id' => $event->event_type_id,
                     'eventable_type' => class_basename($event->eventable_type),
                     'eventable_id' => $event->eventable_id,
-                    'venue_name' => $event->eventable?->venue_name ?? null,
-                    'venue_address' => $event->eventable?->venue_address ?? null,
+                    'venue_name' => $event->venue_name,
+                    'venue_address' => $event->venue_address,
                     'status' => $event->eventable?->status ?? null,
                     'price' => $event->eventable?->price ?? null,
                     'notes' => $event->notes,

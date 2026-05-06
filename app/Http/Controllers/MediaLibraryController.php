@@ -127,14 +127,16 @@ class MediaLibraryController extends Controller
 
         $bookings = Inertia::lazy(fn () =>
             Bands::find($currentBandId)->bookings()
-                ->select('id', 'name', 'date')
-                ->orderBy('date', 'desc')
-                ->limit(100)
+                ->select('id', 'name')
+                ->with(['events' => fn ($q) => $q->select('id', 'eventable_id', 'eventable_type', 'date')->orderBy('date')])
                 ->get()
+                ->sortByDesc(fn ($booking) => $booking->start_date?->format('Y-m-d') ?? '')
+                ->take(100)
+                ->values()
                 ->map(fn($booking) => [
                     'id' => $booking->id,
                     'name' => $booking->name,
-                    'date' => $booking->date,
+                    'date' => $booking->start_date?->format('Y-m-d'),
                 ])
         );
 

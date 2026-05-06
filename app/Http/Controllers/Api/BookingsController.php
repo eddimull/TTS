@@ -117,19 +117,42 @@ class BookingsController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        // Capture event-level fields before stripping them from the booking payload
+        $eventDate    = $validated['date'];
+        $eventStart   = $validated['start_time'];
+        $eventDuration = $validated['duration'];
+        $venueName    = $validated['venue_name'] ?? null;
+        $venueAddress = $validated['venue_address'] ?? null;
+
         // Calculate end_time from duration
-        $startTime = Carbon::parse($validated['date'] . ' ' . $validated['start_time']);
-        $endTime = $startTime->copy()->addHours($validated['duration']);
-        $validated['end_time'] = $endTime->format('H:i');
-        unset($validated['duration']);
+        $startDateTime = Carbon::parse($eventDate . ' ' . $eventStart);
+        $endDateTime   = $startDateTime->copy()->addHours($eventDuration);
+        $eventEnd      = $endDateTime->format('H:i');
+
+        // Strip event-level fields from the booking payload
+        $bookingData = collect($validated)->except([
+            'date', 'start_time', 'end_time', 'venue_name', 'venue_address', 'duration',
+        ])->toArray();
 
         // Add band_id and set defaults
-        $validated['band_id'] = $band->id;
-        $validated['status'] = $validated['status'] ?? 'draft';
+        $bookingData['band_id'] = $band->id;
+        $bookingData['status']  = $validated['status'] ?? 'draft';
         // Use the first band owner as the author for API-created bookings
-        $validated['author_id'] = $band->owners->first()?->user_id ?? $band->members->first()?->user_id;
+        $bookingData['author_id'] = $band->owners->first()?->user_id ?? $band->members->first()?->user_id;
 
-        $booking = Bookings::create($validated);
+        $booking = Bookings::create($bookingData);
+
+        // Create the initial event with the date/time/venue data
+        $booking->events()->create([
+            'event_type_id' => $booking->event_type_id,
+            'key'           => \Illuminate\Support\Str::uuid(),
+            'title'         => $booking->name,
+            'date'          => $eventDate,
+            'start_time'    => $eventStart,
+            'end_time'      => $eventEnd,
+            'venue_name'    => $venueName,
+            'venue_address' => $venueAddress,
+        ]);
 
         return response()->json([
             'success' => true,
@@ -267,7 +290,16 @@ class BookingsController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $booking->update($validated);
+        $movedFields   = ['date', 'start_time', 'end_time', 'venue_name', 'venue_address'];
+        $bookingFields = collect($validated)->except($movedFields)->toArray();
+        $eventFields   = collect($validated)->only($movedFields)->toArray();
+
+        $booking->update($bookingFields);
+
+        if (!empty($eventFields)) {
+            $primaryEvent = $booking->events()->orderBy('date')->orderBy('id')->first();
+            $primaryEvent?->update($eventFields);
+        }
 
         return response()->json([
             'success' => true,
@@ -331,11 +363,11 @@ class BookingsController extends Controller
         return [
             'id' => $booking->id,
             'name' => $booking->name,
-            'date' => $booking->date->format('Y-m-d'),
-            'start_time' => $booking->start_time?->format('H:i'),
-            'end_time' => $booking->end_time?->format('H:i'),
-            'venue_name' => $booking->venue_name,
-            'venue_address' => $booking->venue_address,
+            'start_date' => $booking->start_date?->format('Y-m-d'),
+            'end_date' => $booking->end_date?->format('Y-m-d'),
+            'event_count' => $booking->event_count,
+            'is_multi_event' => $booking->is_multi_event,
+            'venue_summary' => $booking->venue_summary,
             'price' => $booking->price,
             'status' => $booking->status,
             'contract_option' => $booking->contract_option,
@@ -343,7 +375,15 @@ class BookingsController extends Controller
             'event_type_id' => $booking->event_type_id,
             'created_at' => $booking->created_at->toISOString(),
             'updated_at' => $booking->updated_at->toISOString(),
-            'events' => $booking->events ?? [],
+            'events' => ($booking->events ?? collect())->map(fn ($event) => [
+                'id' => $event->id,
+                'title' => $event->title,
+                'date' => $event->date?->format('Y-m-d'),
+                'start_time' => $event->start_time?->format('H:i'),
+                'end_time' => $event->end_time?->format('H:i'),
+                'venue_name' => $event->venue_name,
+                'venue_address' => $event->venue_address,
+            ])->values(),
             'contacts' => $booking->contacts ?? [],
             'payments' => $booking->payments ?? [],
             'amount_paid' => $booking->amount_paid ?? 0,

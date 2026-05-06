@@ -61,52 +61,55 @@ class BookedDatesController extends Controller
 
         // Query bookings directly for this band
         $query = Bookings::where('band_id', $band->id)
-            ->with(['eventType']);
+            ->with(['eventType', 'events']);
 
-        // Apply date filters
+        // Apply date filters — filter against events.date since that column moved to events
         if ($request->has('date')) {
-            // Exact date match
-            $query->whereDate('date', $validated['date']);
+            $query->whereHas('events', fn ($q) => $q->whereDate('date', $validated['date']));
         }
 
         if ($request->has('from')) {
-            // Start of date range
-            $query->whereDate('date', '>=', $validated['from']);
+            $query->whereHas('events', fn ($q) => $q->whereDate('date', '>=', $validated['from']));
         }
 
         if ($request->has('to')) {
-            // End of date range
-            $query->whereDate('date', '<=', $validated['to']);
+            $query->whereHas('events', fn ($q) => $q->whereDate('date', '<=', $validated['to']));
         }
 
         if ($request->has('before')) {
-            // Before a specific date
-            $query->whereDate('date', '<', $validated['before']);
+            $query->whereHas('events', fn ($q) => $q->whereDate('date', '<', $validated['before']));
         }
 
         if ($request->has('after')) {
-            // After a specific date
-            $query->whereDate('date', '>', $validated['after']);
+            $query->whereHas('events', fn ($q) => $q->whereDate('date', '>', $validated['after']));
         }
 
-        $bookings = $query->orderBy('date', 'asc')
-            ->orderBy('start_time', 'asc')
-            ->get()
+        $bookings = $query->get()
+            ->sortBy(fn ($booking) => $booking->start_date?->format('Y-m-d H:i') ?? '')
+            ->values()
             ->map(function ($booking) {
+                $primaryEvent = $booking->events->sortBy([['date', 'asc'], ['id', 'asc']])->first();
                 return [
                     'id' => $booking->id,
                     'name' => $booking->name,
-                    'date' => $booking->date->format('Y-m-d'),
-                    'start_time' => $booking->start_time?->format('H:i'),
-                    'end_time' => $booking->end_time?->format('H:i'),
-                    'duration' => $booking->duration,
+                    'start_date' => $booking->start_date?->format('Y-m-d'),
+                    'end_date' => $booking->end_date?->format('Y-m-d'),
+                    'event_count' => $booking->event_count,
+                    'is_multi_event' => $booking->is_multi_event,
+                    'venue_summary' => $booking->venue_summary,
                     'event_type' => $booking->eventType?->name,
                     'event_type_id' => $booking->event_type_id,
-                    'venue_name' => $booking->venue_name,
-                    'venue_address' => $booking->venue_address,
                     'status' => $booking->status,
                     'price' => $booking->price,
                     'notes' => $booking->notes,
+                    'events' => $booking->events->map(fn ($event) => [
+                        'id' => $event->id,
+                        'date' => $event->date?->format('Y-m-d'),
+                        'start_time' => $event->start_time?->format('H:i'),
+                        'end_time' => $event->end_time?->format('H:i'),
+                        'venue_name' => $event->venue_name,
+                        'venue_address' => $event->venue_address,
+                    ])->values(),
                 ];
             });
 
