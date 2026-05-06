@@ -121,7 +121,7 @@ class UserStatsService
                     $totalBookingCount++;
 
                     // Add to year earnings
-                    $year = $booking->date->year;
+                    $year = $booking->start_date?->year;
                     if (!isset($yearEarnings[$year])) {
                         $yearEarnings[$year] = 0;
                     }
@@ -132,14 +132,15 @@ class UserStatsService
                         $bookingsByYear[$year] = [];
                     }
 
+                    $primary = $booking->events()->orderBy('date')->orderBy('id')->first();
                     $bookingsByYear[$year][] = [
                         'id' => $booking->id,
                         'booking_name' => $booking->name,
                         'band_name' => $band->name,
                         'band_id' => $band->id,
-                        'venue_name' => $booking->venue_name ?? 'TBD',
-                        'venue_address' => $booking->venue_address ?? '',
-                        'date' => $booking->date->format('Y-m-d'),
+                        'venue_name' => $booking->venue_summary ?? 'TBD',
+                        'venue_address' => $primary?->venue_address ?? '',
+                        'date' => $booking->start_date?->format('Y-m-d'),
                         'status' => $booking->status,
                         'total_price' => number_format(floatval($booking->price), 2, '.', ''),
                         'user_share' => number_format($userShare / 100, 2, '.', ''),

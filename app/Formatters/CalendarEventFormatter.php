@@ -77,18 +77,19 @@ class CalendarEventFormatter
 
     public static function formatBookingDescription(Bookings $booking)
     {
+        $primary = $booking->events()->orderBy('date')->orderBy('id')->first();
         $description = "Status: " . ucfirst($booking->status) . "\n\n";
-        $description .= "Venue: " . $booking->venue_name . "\n";
-        
-        if($booking->venue_address) {
-            $description .= "Address: " . $booking->venue_address . "\n";
+        $description .= "Venue: " . ($booking->venue_summary ?? 'TBD') . "\n";
+
+        if ($primary?->venue_address) {
+            $description .= "Address: " . $primary->venue_address . "\n";
         }
-        
+
         if($booking->price) {
             $description .= "Price: $" . number_format($booking->price, 2) . "\n";
         }
 
-        $description .= "Duration: " . $booking->duration . " hours\n";
+        $description .= "Duration: " . $booking->total_duration . " hours\n";
 
         if($booking->notes) {
             $description .= "\nNotes: " . strip_tags($booking->notes) . "\n";

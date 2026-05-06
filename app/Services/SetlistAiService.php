@@ -477,23 +477,24 @@ PROMPT;
 
         if ($event->eventable) {
             $booking = $event->eventable;
+            $primary = $booking->events->sortBy(['date', 'id'])->first();
 
-            if (!empty($booking->venue_name)) {
-                $venueLine = 'Venue: ' . $booking->venue_name;
-                if (!empty($booking->venue_address)) {
-                    $venueLine .= ' — ' . $booking->venue_address;
+            if (!empty($primary?->venue_name)) {
+                $venueLine = 'Venue: ' . $primary->venue_name;
+                if (!empty($primary->venue_address)) {
+                    $venueLine .= ' — ' . $primary->venue_address;
                 }
                 $lines[] = $venueLine;
             }
 
-            if (!empty($booking->start_time) && !empty($booking->end_time)) {
-                $start   = $booking->start_time->format('g:i A');
-                $end     = $booking->end_time->format('g:i A');
-                $minutes = (int) round($booking->duration * 60);
+            if (!empty($primary?->start_time) && !empty($primary?->end_time)) {
+                $start   = $primary->start_time->format('g:i A');
+                $end     = $primary->end_time->format('g:i A');
+                $minutes = (int) round($booking->total_duration * 60);
                 $lines[] = "Performance Time: {$start} – {$end} ({$minutes} minutes total)";
             }
-        } elseif ($event->time) {
-            $lines[] = 'Start Time: ' . $event->time;
+        } elseif ($event->start_time) {
+            $lines[] = 'Start Time: ' . $event->start_time->format('g:i A');
         }
 
         if ($event->notes) {
