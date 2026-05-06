@@ -58,17 +58,18 @@ class ContactPortalController extends Controller
                     'booking' => [
                         'id' => $invoice->booking->id,
                         'name' => $invoice->booking->name,
-                        'date' => $invoice->booking->date->format('M j, Y'),
+                        'start_date' => $invoice->booking->start_date?->format('M j, Y'),
                         'band_name' => $invoice->booking->band->name,
                     ],
                 ];
             });
-        
+
         // Get all bookings for this contact with payment information
         $bookings = $contact->bookings()
             ->with([
                 'band',
                 'eventType',
+                'events',
                 'payments' => function($query) {
                     $query->where('status', 'paid')->orderBy('date', 'desc');
                 },
@@ -76,9 +77,9 @@ class ContactPortalController extends Controller
                 'contract',
                 'questionnaireInstances',
             ])
-            ->where('date', '>=', now()->subMonths(6))
-            ->orderBy('date', 'desc')
+            ->whereHas('events', fn ($q) => $q->where('date', '>=', now()->subMonths(6)))
             ->get()
+            ->sortByDesc(fn ($booking) => $booking->start_date?->format('Y-m-d') ?? '')
             ->map(function ($booking) {
                 // Get the last time the status was changed from activity log
                 $statusChangedAt = $booking->activities()
@@ -135,14 +136,17 @@ class ContactPortalController extends Controller
                     ];
                 }
 
+                $primaryEvent = $booking->events->sortBy([['date', 'asc'], ['id', 'asc']])->first();
                 return [
                     'id' => $booking->id,
                     'name' => $booking->name,
-                    'date' => $booking->date->format('M j, Y'),
-                    'start_time' => $booking->start_time->format('g:i A'),
-                    'end_time' => $booking->end_time->format('g:i A'),
-                    'venue_name' => $booking->venue_name,
-                    'venue_address' => $booking->venue_address,
+                    'start_date' => $booking->start_date?->format('M j, Y'),
+                    'end_date' => $booking->end_date?->format('M j, Y'),
+                    'event_count' => $booking->event_count,
+                    'is_multi_event' => $booking->is_multi_event,
+                    'start_time' => $primaryEvent?->start_time?->format('g:i A'),
+                    'end_time' => $primaryEvent?->end_time?->format('g:i A'),
+                    'venue_summary' => $booking->venue_summary,
                     'status' => $booking->status,
                     'status_changed_at' => $statusChangedAt?->format('M j, Y'),
                     'price' => $booking->price,
@@ -200,8 +204,8 @@ class ContactPortalController extends Controller
             'booking' => [
                 'id' => $booking->id,
                 'name' => $booking->name,
-                'date' => $booking->date->format('Y-m-d'),
-                'venue_name' => $booking->venue_name,
+                'start_date' => $booking->start_date?->format('Y-m-d'),
+                'venue_summary' => $booking->venue_summary,
                 'band_name' => $booking->band->name,
                 'price' => $booking->price,
                 'amount_paid' => $booking->amount_paid,
@@ -302,7 +306,7 @@ class ContactPortalController extends Controller
                         'name' => $payment->name ?? 'Payment',
                         'booking_id' => $booking->id,
                         'booking_name' => $booking->name,
-                        'booking_date' => $booking->date->format('M j, Y'),
+                        'booking_date' => $booking->start_date?->format('M j, Y'),
                         'amount' => $payment->amount,
                         'date' => $payment->date?->format('M j, Y'),
                         'status' => $payment->status,
@@ -373,9 +377,9 @@ class ContactPortalController extends Controller
                     'booking' => [
                         'id' => $invoice->booking->id,
                         'name' => $invoice->booking->name,
-                        'date' => $invoice->booking->date->format('M j, Y'),
+                        'start_date' => $invoice->booking->start_date?->format('M j, Y'),
                         'band_name' => $invoice->booking->band->name,
-                        'venue_name' => $invoice->booking->venue_name,
+                        'venue_summary' => $invoice->booking->venue_summary,
                         'contract' => $contractData,
                     ],
                     'payment' => $payment ? [

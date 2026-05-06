@@ -491,7 +491,7 @@ class EventsController extends Controller
                 'key' => $event->key,
                 'title' => $event->title,
                 'date' => $event->date->format('Y-m-d'),
-                'time' => $event->time,
+                'time' => $event->start_time?->format('H:i'),
                 'band_name' => $event->eventable->band->name ?? 'Unknown',
                 'event_type' => $event->type->name ?? 'Unknown',
             ],
