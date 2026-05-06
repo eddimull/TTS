@@ -62,7 +62,7 @@ class SendFinalPaymentReminders extends Command
                             'contact_id' => $contact->id,
                             'contact_email' => $contact->email,
                             'amount_due' => $booking->amount_due,
-                            'days_until_event' => now()->diffInDays($booking->date, false),
+                            'days_until_event' => $booking->start_date ? now()->diffInDays($booking->start_date, false) : null,
                         ]);
 
                         // Log activity on the booking
@@ -72,7 +72,7 @@ class SendFinalPaymentReminders extends Command
                                 'contact_id' => $contact->id,
                                 'contact_email' => $contact->email,
                                 'amount_due' => $booking->amount_due,
-                                'days_until_event' => now()->diffInDays($booking->date, false),
+                                'days_until_event' => $booking->start_date ? now()->diffInDays($booking->start_date, false) : null,
                                 'reminder_type' => 'final_payment',
                             ])
                             ->log('Final payment reminder sent to contact');
