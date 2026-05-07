@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\Contacts;
+use App\Models\Events;
 use App\Models\EventTypes;
 use App\Models\MediaFile;
 use App\Models\Payments;
@@ -43,12 +44,12 @@ class ContactPortalControllerTest extends TestCase
         // Create a booking associated with this contact
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
         ]);
         $booking->contacts()->attach($contact->id, [
             'role' => 'Primary Contact',
             'is_primary' => true,
         ]);
+        $this->createEventForBooking($booking);
 
         $response = $this->actingAs($contact, 'contact')
             ->get(route('portal.dashboard'));
@@ -75,18 +76,18 @@ class ContactPortalControllerTest extends TestCase
         // Create recent booking
         $recentBooking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
             'name' => 'Recent Event',
         ]);
         $recentBooking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($recentBooking, now()->addDays(7)->format('Y-m-d'));
 
-        // Create old booking (should not appear)
+        // Create old booking (should not appear — event date is 7 months ago, excluded by 6-month filter)
         $oldBooking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->subMonths(7),
             'name' => 'Old Event',
         ]);
         $oldBooking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($oldBooking, now()->subMonths(7)->format('Y-m-d'));
 
         $response = $this->actingAs($contact, 'contact')
             ->get(route('portal.dashboard'));
@@ -112,10 +113,10 @@ class ContactPortalControllerTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
             'price' => 2000,
         ]);
         $booking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
 
         // Add a payment
         Payments::create([
@@ -165,10 +166,10 @@ class ContactPortalControllerTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
             'price' => 2000,
         ]);
         $booking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
 
         $response = $this->actingAs($contact, 'contact')
             ->get(route('portal.booking.payment', $booking));
@@ -199,9 +200,9 @@ class ContactPortalControllerTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
         ]);
         $booking->contacts()->attach($otherContact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
 
         $response = $this->actingAs($contact, 'contact')
             ->get(route('portal.booking.payment', $booking));
@@ -229,10 +230,10 @@ class ContactPortalControllerTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
             'price' => 2000,
         ]);
         $booking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
 
         // Mock the ContactPaymentService
         $mockService = Mockery::mock(ContactPaymentService::class);
@@ -272,10 +273,10 @@ class ContactPortalControllerTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
             'price' => 2000,
         ]);
         $booking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
 
         // Test with amount exceeding amount_due
         $response = $this->actingAs($contact, 'contact')
@@ -300,10 +301,10 @@ class ContactPortalControllerTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
             'price' => 2000,
         ]);
         $booking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
 
         $response = $this->actingAs($contact, 'contact')
             ->postJson(route('portal.booking.checkout', $booking), [
@@ -331,10 +332,10 @@ class ContactPortalControllerTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
             'price' => 2000,
         ]);
         $booking->contacts()->attach($otherContact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
 
         $response = $this->actingAs($contact, 'contact')
             ->postJson(route('portal.booking.checkout', $booking), [
@@ -357,11 +358,11 @@ class ContactPortalControllerTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
             'price' => 2000,
             'name' => 'Test Event',
         ]);
         $booking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
 
         // Add payments
         Payments::create([
@@ -400,10 +401,10 @@ class ContactPortalControllerTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
             'price' => 2000,
         ]);
         $booking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
 
         // Add paid payment
         Payments::create([
@@ -492,11 +493,11 @@ class ContactPortalControllerTest extends TestCase
         // Create fully paid booking
         $paidBooking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
             'price' => 1000,
             'name' => 'Paid Event',
         ]);
         $paidBooking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($paidBooking, now()->addDays(7)->format('Y-m-d'));
         Payments::create([
             'payable_type' => Bookings::class,
             'payable_id' => $paidBooking->id,
@@ -507,14 +508,14 @@ class ContactPortalControllerTest extends TestCase
             'name' => 'Full Payment',
         ]);
 
-        // Create partially paid booking
+        // Create partially paid booking (14 days out — sorts first in desc order)
         $partialBooking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(14),
             'price' => 2000,
             'name' => 'Partial Event',
         ]);
         $partialBooking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($partialBooking, now()->addDays(14)->format('Y-m-d'));
         Payments::create([
             'payable_type' => Bookings::class,
             'payable_id' => $partialBooking->id,
@@ -558,10 +559,10 @@ class ContactPortalControllerTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
             'price' => 2000,
         ]);
         $booking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
 
         // Mock the ContactPaymentService to throw an exception
         $mockService = Mockery::mock(ContactPaymentService::class);
@@ -596,11 +597,11 @@ class ContactPortalControllerTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
             'price' => 1500, // $1,500.00 (cast will multiply by 100 to store as cents)
             'name' => 'Test Event',
         ]);
         $booking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
 
         // Add payment in dollars (Price cast will convert to cents for storage)
         Payments::create([
@@ -640,11 +641,11 @@ class ContactPortalControllerTest extends TestCase
         // Booking with price in dollars (cast will multiply by 100)
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
             'price' => 1500, // $1,500.00 (cast will store as 150000 cents)
             'name' => 'Partially Paid Event',
         ]);
         $booking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
 
         // Add partial payment in dollars (Price cast will convert to cents)
         Payments::create([
@@ -682,11 +683,11 @@ class ContactPortalControllerTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
             'price' => 1500, // $1,500.00 (cast will store as 150000 cents)
             'name' => 'Fully Paid Event',
         ]);
         $booking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
 
         // Add full payment in dollars (Price cast will convert to cents)
         Payments::create([
@@ -724,11 +725,11 @@ class ContactPortalControllerTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
             'price' => 1000, // $1,000.00 (cast will store as 100000 cents)
             'name' => 'Overpaid Event',
         ]);
         $booking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
 
         // Add payment that exceeds price (Price cast will convert to cents)
         Payments::create([
@@ -765,11 +766,11 @@ class ContactPortalControllerTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
             'price' => 2500, // $2,500.00 (cast will store as 250000 cents)
             'name' => 'Wedding Event',
         ]);
         $booking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
 
         // Add payment in dollars (Price cast will convert to cents)
         Payments::create([
@@ -805,11 +806,11 @@ class ContactPortalControllerTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
             'price' => 1000, // $1,000.00 (cast will store as 100000 cents)
             'name' => 'Event with Pending Payments',
         ]);
         $booking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
 
         // Add paid payment in dollars (Price cast will convert to cents)
         Payments::create([
@@ -858,11 +859,11 @@ class ContactPortalControllerTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
             'price' => 3000, // $3,000.00 (cast will store as 300000 cents)
             'name' => 'Event with Multiple Payments',
         ]);
         $booking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
 
         // Add multiple payments in dollars (Price cast will convert to cents)
         Payments::create([
@@ -951,7 +952,6 @@ class ContactPortalControllerTest extends TestCase
         // Create a booking with contact and media
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'date' => now()->addDays(7),
             'enable_portal_media_access' => true,
         ]);
         $booking->contacts()->attach($contact->id, ['is_primary' => true]);
@@ -961,8 +961,8 @@ class ContactPortalControllerTest extends TestCase
             'eventable_type' => Bookings::class,
             'eventable_id' => $booking->id,
             'title' => 'Booking Event with Media',
-            'date' => $booking->date,
-            'time' => '19:00:00',
+            'date' => now()->addDays(7)->format('Y-m-d'),
+            'start_time' => '19:00:00',
             'media_folder_path' => $sharedFolderPath,  // Same path as rehearsal
             'enable_portal_media_access' => true,
         ]);
@@ -996,7 +996,7 @@ class ContactPortalControllerTest extends TestCase
             'eventable_id' => $rehearsal->id,
             'title' => 'Rehearsal Event',
             'date' => now()->addDays(3),
-            'time' => '18:00:00',
+            'start_time' => '18:00:00',
             'media_folder_path' => $sharedFolderPath,  // Same path as booking!
             'enable_portal_media_access' => true,
         ]);
@@ -1015,6 +1015,19 @@ class ContactPortalControllerTest extends TestCase
                 ->where('folders.0.path', $sharedFolderPath)
                 ->where('folders.0.file_count', 1)
         );
+    }
+
+    /**
+     * Create a basic event for a booking so it passes the portal's
+     * whereHas('events', date >= 6 months ago) filter.
+     */
+    private function createEventForBooking(Bookings $booking, string $date = null): Events
+    {
+        return Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking->id,
+            'date' => $date ?? now()->addDays(7)->format('Y-m-d'),
+        ]);
     }
 
     protected function tearDown(): void

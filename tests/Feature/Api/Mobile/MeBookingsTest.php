@@ -6,6 +6,7 @@ use App\Models\BandOwners;
 use App\Models\Bands;
 use App\Models\BandSubs;
 use App\Models\Bookings;
+use App\Models\Events;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -38,9 +39,9 @@ class MeBookingsTest extends TestCase
             BandOwners::create(['user_id' => $user->id, 'band_id' => $b->id]);
         }
 
-        Bookings::factory()->create(['name' => 'A Gig', 'date' => '2026-06-01', 'band_id' => $bandA->id]);
-        Bookings::factory()->create(['name' => 'B Gig', 'date' => '2026-06-02', 'band_id' => $bandB->id]);
-        Bookings::factory()->create(['name' => 'Church', 'date' => '2026-06-03', 'band_id' => $personal->id]);
+        Bookings::factory()->create(['name' => 'A Gig', 'band_id' => $bandA->id]);
+        Bookings::factory()->create(['name' => 'B Gig', 'band_id' => $bandB->id]);
+        Bookings::factory()->create(['name' => 'Church', 'band_id' => $personal->id]);
 
         $token = $user->createToken('test')->plainTextToken;
         $response = $this->withToken($token)->getJson('/api/mobile/me/bookings');
@@ -69,8 +70,8 @@ class MeBookingsTest extends TestCase
         ]);
         BandOwners::create(['user_id' => $user->id, 'band_id' => $myBand->id]);
 
-        Bookings::factory()->create(['name' => 'Mine Gig', 'date' => '2026-06-01', 'band_id' => $myBand->id]);
-        Bookings::factory()->create(['name' => 'Other Gig', 'date' => '2026-06-02', 'band_id' => $otherBand->id]);
+        Bookings::factory()->create(['name' => 'Mine Gig', 'band_id' => $myBand->id]);
+        Bookings::factory()->create(['name' => 'Other Gig', 'band_id' => $otherBand->id]);
 
         $token = $user->createToken('test')->plainTextToken;
         $response = $this->withToken($token)->getJson('/api/mobile/me/bookings');
@@ -106,10 +107,10 @@ class MeBookingsTest extends TestCase
         BandSubs::create(['user_id' => $user->id, 'band_id' => $subBand->id]);
 
         Bookings::factory()->create([
-            'name' => 'Mine Gig', 'date' => '2026-06-01', 'band_id' => $myBand->id,
+            'name' => 'Mine Gig', 'band_id' => $myBand->id,
         ]);
         Bookings::factory()->create([
-            'name' => 'Sub Band Gig', 'date' => '2026-06-02', 'band_id' => $subBand->id,
+            'name' => 'Sub Band Gig', 'band_id' => $subBand->id,
         ]);
 
         $token = $user->createToken('test')->plainTextToken;
@@ -131,20 +132,36 @@ class MeBookingsTest extends TestCase
         BandOwners::create(['user_id' => $user->id, 'band_id' => $band->id]);
 
         // Past confirmed booking (should be excluded by upcoming=1).
-        Bookings::factory()->create([
-            'name' => 'Past', 'date' => '2024-01-01', 'band_id' => $band->id, 'status' => 'confirmed',
+        $pastBooking = Bookings::factory()->create([
+            'name' => 'Past', 'band_id' => $band->id, 'status' => 'confirmed',
+        ]);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class, 'eventable_id' => $pastBooking->id,
+            'date' => '2024-01-01',
         ]);
         // Future confirmed booking in 2026 (should match all three filters).
-        Bookings::factory()->create([
-            'name' => 'Future Confirmed 2026', 'date' => '2026-12-31', 'band_id' => $band->id, 'status' => 'confirmed',
+        $futureConfirmed2026 = Bookings::factory()->create([
+            'name' => 'Future Confirmed 2026', 'band_id' => $band->id, 'status' => 'confirmed',
+        ]);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class, 'eventable_id' => $futureConfirmed2026->id,
+            'date' => '2026-12-31',
         ]);
         // Future pending booking in 2026 (should be excluded by status=confirmed).
-        Bookings::factory()->create([
-            'name' => 'Future Pending 2026', 'date' => '2026-11-01', 'band_id' => $band->id, 'status' => 'pending',
+        $futurePending2026 = Bookings::factory()->create([
+            'name' => 'Future Pending 2026', 'band_id' => $band->id, 'status' => 'pending',
+        ]);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class, 'eventable_id' => $futurePending2026->id,
+            'date' => '2026-11-01',
         ]);
         // Future confirmed booking in 2027 (should be excluded by year=2026).
-        Bookings::factory()->create([
-            'name' => 'Future Confirmed 2027', 'date' => '2027-06-01', 'band_id' => $band->id, 'status' => 'confirmed',
+        $futureConfirmed2027 = Bookings::factory()->create([
+            'name' => 'Future Confirmed 2027', 'band_id' => $band->id, 'status' => 'confirmed',
+        ]);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class, 'eventable_id' => $futureConfirmed2027->id,
+            'date' => '2027-06-01',
         ]);
 
         $token = $user->createToken('test')->plainTextToken;
@@ -165,8 +182,16 @@ class MeBookingsTest extends TestCase
         ]);
         BandOwners::create(['user_id' => $user->id, 'band_id' => $band->id]);
 
-        Bookings::factory()->for($band, 'band')->create(['date' => '2026-01-15', 'name' => 'Old']);
-        Bookings::factory()->for($band, 'band')->create(['date' => '2026-06-01', 'name' => 'New']);
+        $oldBooking = Bookings::factory()->for($band, 'band')->create(['name' => 'Old']);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class, 'eventable_id' => $oldBooking->id,
+            'date' => '2026-01-15',
+        ]);
+        $newBooking = Bookings::factory()->for($band, 'band')->create(['name' => 'New']);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class, 'eventable_id' => $newBooking->id,
+            'date' => '2026-06-01',
+        ]);
 
         $response = $this->actingAs($user)
             ->getJson('/api/mobile/me/bookings?from=2026-05-01');
@@ -184,8 +209,16 @@ class MeBookingsTest extends TestCase
         ]);
         BandOwners::create(['user_id' => $user->id, 'band_id' => $band->id]);
 
-        Bookings::factory()->for($band, 'band')->create(['date' => '2026-01-15', 'name' => 'Old']);
-        Bookings::factory()->for($band, 'band')->create(['date' => '2026-06-01', 'name' => 'New']);
+        $oldBooking2 = Bookings::factory()->for($band, 'band')->create(['name' => 'Old']);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class, 'eventable_id' => $oldBooking2->id,
+            'date' => '2026-01-15',
+        ]);
+        $newBooking2 = Bookings::factory()->for($band, 'band')->create(['name' => 'New']);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class, 'eventable_id' => $newBooking2->id,
+            'date' => '2026-06-01',
+        ]);
 
         $response = $this->actingAs($user)
             ->getJson('/api/mobile/me/bookings?to=2026-05-01');
@@ -203,9 +236,21 @@ class MeBookingsTest extends TestCase
         ]);
         BandOwners::create(['user_id' => $user->id, 'band_id' => $band->id]);
 
-        Bookings::factory()->for($band, 'band')->create(['date' => '2026-01-01', 'name' => 'Before']);
-        Bookings::factory()->for($band, 'band')->create(['date' => '2026-03-15', 'name' => 'Inside']);
-        Bookings::factory()->for($band, 'band')->create(['date' => '2026-12-01', 'name' => 'After']);
+        $beforeBooking = Bookings::factory()->for($band, 'band')->create(['name' => 'Before']);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class, 'eventable_id' => $beforeBooking->id,
+            'date' => '2026-01-01',
+        ]);
+        $insideBooking = Bookings::factory()->for($band, 'band')->create(['name' => 'Inside']);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class, 'eventable_id' => $insideBooking->id,
+            'date' => '2026-03-15',
+        ]);
+        $afterBooking = Bookings::factory()->for($band, 'band')->create(['name' => 'After']);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class, 'eventable_id' => $afterBooking->id,
+            'date' => '2026-12-01',
+        ]);
 
         $response = $this->actingAs($user)
             ->getJson('/api/mobile/me/bookings?from=2026-02-01&to=2026-05-01');
@@ -234,9 +279,9 @@ class MeBookingsTest extends TestCase
         ]);
         BandOwners::create(['user_id' => $user->id, 'band_id' => $band->id]);
 
-        Bookings::factory()->for($band, 'band')->create(['date' => '2020-01-01']);
-        Bookings::factory()->for($band, 'band')->create(['date' => '2026-06-01']);
-        Bookings::factory()->for($band, 'band')->create(['date' => '2030-12-01']);
+        Bookings::factory()->for($band, 'band')->create();
+        Bookings::factory()->for($band, 'band')->create();
+        Bookings::factory()->for($band, 'band')->create();
 
         $response = $this->actingAs($user)->getJson('/api/mobile/me/bookings');
 

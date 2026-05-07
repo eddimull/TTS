@@ -174,7 +174,8 @@ class ContactPortalController extends Controller
                         ])
                         ->values(),
                 ];
-            });
+            })
+            ->values();
 
         return Inertia::render('Contact/Dashboard', [
             'portal' => [

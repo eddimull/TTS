@@ -109,7 +109,6 @@ class BookingCreationPreventsDuplicateCalendarEventsTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'status' => 'confirmed',
-            'date' => now()->addDays(10),
             'event_type_id' => $this->eventType->id,
             'price' => 1000,
         ]);
@@ -118,7 +117,7 @@ class BookingCreationPreventsDuplicateCalendarEventsTest extends TestCase
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id' => $this->eventType->id,
-            'date' => $booking->date,
+            'date' => now()->addDays(10)->format('Y-m-d'),
             'additional_data' => (object)['public' => true],
         ]);
 
@@ -180,7 +179,6 @@ class BookingCreationPreventsDuplicateCalendarEventsTest extends TestCase
         
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
-            'date' => now()->addDays(10),
             'event_type_id' => $this->eventType->id,
         ]);
 
@@ -189,7 +187,7 @@ class BookingCreationPreventsDuplicateCalendarEventsTest extends TestCase
                 'eventable_id' => $booking->id,
                 'eventable_type' => Bookings::class,
                 'event_type_id' => $this->eventType->id,
-                'date' => $booking->date,
+                'date' => now()->addDays(10)->format('Y-m-d'),
                 'additional_data' => (object)['public' => true],
             ]);
         });
@@ -299,7 +297,6 @@ class BookingCreationPreventsDuplicateCalendarEventsTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
-            'date' => now()->addDays(10),
             'event_type_id' => $this->eventType->id,
         ]);
 
@@ -307,7 +304,7 @@ class BookingCreationPreventsDuplicateCalendarEventsTest extends TestCase
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id' => $this->eventType->id,
-            'date' => $booking->date,
+            'date' => now()->addDays(10)->format('Y-m-d'),
         ]);
 
         $this->assertEquals(1, $insertCounts['booking'], "Booking calendar should have 1 insert");
@@ -373,7 +370,6 @@ class BookingCreationPreventsDuplicateCalendarEventsTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
-            'date' => now()->addDays(10),
             'event_type_id' => $this->eventType->id,
         ]);
 
@@ -381,7 +377,7 @@ class BookingCreationPreventsDuplicateCalendarEventsTest extends TestCase
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id' => $this->eventType->id,
-            'date' => $booking->date,
+            'date' => now()->addDays(10)->format('Y-m-d'),
             'title' => 'Original Event Title',
         ]);
 
@@ -448,7 +444,6 @@ class BookingCreationPreventsDuplicateCalendarEventsTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
-            'date' => now()->addDays(10),
             'event_type_id' => $this->eventType->id,
         ]);
 
@@ -456,7 +451,7 @@ class BookingCreationPreventsDuplicateCalendarEventsTest extends TestCase
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id' => $this->eventType->id,
-            'date' => $booking->date,
+            'date' => now()->addDays(10)->format('Y-m-d'),
             'title' => 'Version 1',
         ]);
 
@@ -526,7 +521,6 @@ class BookingCreationPreventsDuplicateCalendarEventsTest extends TestCase
         
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
-            'date' => now()->addDays(10),
             'event_type_id' => $this->eventType->id,
         ]);
 
@@ -534,7 +528,7 @@ class BookingCreationPreventsDuplicateCalendarEventsTest extends TestCase
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id' => $this->eventType->id,
-            'date' => $booking->date,
+            'date' => now()->addDays(10)->format('Y-m-d'),
             'title' => 'Initial Title',
         ]);
 

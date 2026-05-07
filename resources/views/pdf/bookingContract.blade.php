@@ -17,10 +17,10 @@
             Details of engagement:
         </h2>
         <ul class="list-disc pl-5">
-            <li><span class="font-bold">Date:</span> {{ date('m/d/Y',strtotime($booking->date)) }}</li>
-            <li><span class="font-bold">Performance Length:</span> {{ $booking->duration }} hours</li>
+            <li><span class="font-bold">Date:</span> {{ $booking->start_date ? $booking->start_date->format('m/d/Y') : 'TBD' }}</li>
+            <li><span class="font-bold">Performance Length:</span> {{ $booking->total_duration }} hours</li>
             <li><span class="font-bold">Sound Check Time:</span> at least 1 hour before performance</li>
-            <li><span class="font-bold">Venue:</span> {{ $booking->venue_name }}</li>
+            <li><span class="font-bold">Venue:</span> {{ $booking->venue_summary ?? 'TBD' }}</li>
             <li>
                 <span class="font-bold">Point(s) of Contact:</span>
                 <ul class="list-disc pl-5">

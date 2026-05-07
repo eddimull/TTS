@@ -283,7 +283,7 @@ class User extends Authenticatable
         // Build the main booking events query
         $bookingQuery = Events::join('bookings', 'events.eventable_id', '=', 'bookings.id')
             ->whereIn('bookings.band_id', $bandIds)
-            ->where('events.eventable_type', 'App\\Models\\Bookings') 
+            ->where('events.eventable_type', 'App\\Models\\Bookings')
             ->select([
                 'events.date',
                 'events.event_type_id',
@@ -291,7 +291,7 @@ class User extends Authenticatable
                 'events.id',
                 'events.title',
                 'events.date',
-                'events.time',
+                'events.start_time',
                 'events.key',
                 'events.additional_data',
                 'events.eventable_id',
@@ -300,8 +300,8 @@ class User extends Authenticatable
                 'bookings.band_id',
                 'bookings.name as booking_name',
                 'bookings.id as booking_id',
-                'bookings.venue_name',
-                'bookings.venue_address',
+                'events.venue_name',
+                'events.venue_address',
                 \DB::raw("'booking' as event_source"),
                 \DB::raw('NULL as is_cancelled'),
                 \DB::raw('FALSE as is_virtual')
@@ -337,7 +337,7 @@ class User extends Authenticatable
                 'events.id',
                 'events.title',
                 'events.date',
-                'events.time',
+                'events.start_time',
                 'events.key',
                 'events.additional_data',
                 'events.eventable_id',

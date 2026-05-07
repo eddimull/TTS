@@ -96,10 +96,11 @@ class UserStatsService
             // Use cached join date
             $joinDate = $bandJoinDates[$band->id];
 
-            // Get all bookings for this band after the user joined
+            // Get all bookings for this band after the user joined.
+            // date column was removed from bookings (moved to events); use created_at as a proxy.
             // Eager load payouts to avoid N+1 queries
             $bookings = \App\Models\Bookings::where('band_id', $band->id)
-                ->where('date', '>=', $joinDate)
+                ->where('created_at', '>=', $joinDate)
                 ->whereIn('status', ['confirmed', 'pending']) // Only count confirmed and pending bookings
                 ->with([
                     'payout.adjustments',
@@ -107,7 +108,7 @@ class UserStatsService
                     'events.eventMembers.rosterMember.bandRole',
                     'events.eventMembers.rosterMember.user',
                 ])
-                ->orderBy('date', 'desc')
+                ->orderBy('created_at', 'desc')
                 ->get();
 
             $bandTotal = 0;
@@ -510,8 +511,11 @@ class UserStatsService
             $dist = $distancesByEventId->get($eventId);
 
             $eventable = $event->eventable;
-            $venueName = $eventable->venue_name ?? null;
-            $venueAddress = $eventable->venue_address
+            // venue_name/venue_address now live on the Events row for Bookings;
+            // for BandEvents they still live on the eventable.
+            $venueName = $event->venue_name ?? $eventable?->venue_name ?? null;
+            $venueAddress = $event->venue_address
+                ?? $eventable?->venue_address
                 ?? (isset($eventable->address_street)
                     ? trim($eventable->address_street . ' ' . ($eventable->city ?? '') . ' ' . ($eventable->zip ?? ''))
                     : null);
@@ -589,9 +593,7 @@ class UserStatsService
             $allowedEventIds = $this->getAllowedEventIds($band->id);
 
             $withClause = [
-                'eventable' => function ($query) {
-                    $query->select('id', 'venue_name', 'venue_address', 'band_id');
-                },
+                'eventable',
                 'eventMembers' => function ($query) {
                     $query->where('user_id', $this->user->id);
                 },
@@ -631,22 +633,25 @@ class UserStatsService
         }
 
         // Sort by date descending and limit to 100 for performance
+        // venue_name / venue_address now live on the Events row (moved from bookings)
         $locations = $allEvents
             ->sortByDesc('date')
             ->take(100)
             ->filter(function ($event) {
-                return $event->eventable
-                    && $event->eventable->venue_name
-                    && $event->eventable->venue_address
-                    && $event->eventable->venue_name !== 'TBD';
+                // Try event-own fields first, fall back to eventable (BandEvents still uses eventable)
+                $venueName = $event->venue_name ?? $event->eventable?->venue_name ?? null;
+                return $venueName && $venueName !== 'TBD'
+                    && ($event->venue_address ?? $event->eventable?->venue_address ?? null);
             })
             ->map(function ($event) {
+                $venueName    = $event->venue_name ?? $event->eventable?->venue_name;
+                $venueAddress = $event->venue_address ?? $event->eventable?->venue_address;
                 return [
-                    'title' => $event->title,
-                    'venue_name' => $event->eventable->venue_name,
-                    'venue_address' => $event->eventable->venue_address,
-                    'date' => $event->date->format('Y-m-d'),
-                    'full_address' => $event->eventable->venue_name . ', ' . $event->eventable->venue_address,
+                    'title'        => $event->title,
+                    'venue_name'   => $venueName,
+                    'venue_address' => $venueAddress,
+                    'date'         => $event->date->format('Y-m-d'),
+                    'full_address' => $venueName . ', ' . $venueAddress,
                 ];
             })
             ->unique('full_address') // Remove duplicate locations

@@ -54,7 +54,7 @@ class FinalPaymentReminder extends Notification implements ShouldQueue
             ->line('Event: ' . $this->booking->name)
             ->line('Date: ' . $this->eventDate)
             ->line('Band: ' . $this->booking->band->name)
-            ->line('Location: ' . $this->booking->venue_name)
+            ->line('Location: ' . ($this->booking->venue_summary ?? 'TBD'))
             ->line('')
             ->line('**Payment Information:**')
             ->line('Remaining Balance: $' . $this->amountDue)

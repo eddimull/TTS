@@ -90,10 +90,18 @@ class CalculateEventDistances implements ShouldQueue
 
     protected function getEventAddress(): ?array
     {
+        // For booking-derived events, venue_name/venue_address now live on the events row itself.
+        if (!empty($this->event->venue_address)) {
+            return [
+                'address' => $this->event->venue_address,
+                'name'    => $this->event->venue_name ?? 'Event Venue',
+            ];
+        }
+
         $eventable = $this->event->eventable;
 
-        // Bookings: single venue_address string
-        if (!empty($eventable->venue_address)) {
+        // Fallback: legacy eventable venues (Rehearsals, BandEvents, etc.)
+        if ($eventable && !empty($eventable->venue_address)) {
             return [
                 'address' => $eventable->venue_address,
                 'name'    => $eventable->venue_name ?? 'Event Venue',
@@ -101,7 +109,7 @@ class CalculateEventDistances implements ShouldQueue
         }
 
         // Legacy BandEvents: split address fields
-        if (!empty($eventable->address_street) && !empty($eventable->city) && !empty($eventable->state_id) && !empty($eventable->zip)) {
+        if ($eventable && !empty($eventable->address_street) && !empty($eventable->city) && !empty($eventable->state_id) && !empty($eventable->zip)) {
             $state = State::where('state_id', $eventable->state_id)->first();
             if ($state) {
                 return [

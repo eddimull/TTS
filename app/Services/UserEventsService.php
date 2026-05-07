@@ -418,10 +418,15 @@ class UserEventsService
             if ($event->eventable) {
                 if ($event->eventable_type === 'App\\Models\\Bookings') {
                     $event->eventable->makeHidden(['amount_paid', 'amount_due', 'is_paid']);
+                    // venue_name/venue_address now live on events, not bookings
+                    // $event->venue_name is already on the events table row
+                    $event->band_id = $event->eventable->band_id ?? null;
+                } else {
+                    // For rehearsals and other eventables, pull venue from eventable
+                    $event->venue_name = $event->eventable->venue_name ?? null;
+                    $event->venue_address = $event->eventable->venue_address ?? null;
+                    $event->band_id = $event->eventable->band_id ?? null;
                 }
-                $event->venue_name = $event->eventable->venue_name ?? null;
-                $event->venue_address = $event->eventable->venue_address ?? null;
-                $event->band_id = $event->eventable->band_id ?? null;
             }
 
             return $event;
