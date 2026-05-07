@@ -112,13 +112,16 @@ class MileageService
      */
     protected function resolveDestination($event): ?string
     {
-        // If this is an Events model with eventable loaded
+        // venue_address now lives on the Events row itself (moved from bookings)
+        if (isset($event->venue_address) && $event->venue_address) {
+            return $event->venue_address;
+        }
+
+        // If this is an Events model with eventable loaded, fall back to eventable fields
         $eventable = isset($event->eventable) ? $event->eventable : $event;
 
         if ($eventable instanceof Bookings) {
-            if ($eventable->venue_address) {
-                return $eventable->venue_address;
-            }
+            // venue_address moved to events; nothing left to read from Bookings
             return null;
         }
 
@@ -141,9 +144,17 @@ class MileageService
      */
     protected function resolveFallbackDestination($event): ?string
     {
-        $eventable = isset($event->eventable) ? $event->eventable : $event;
-        $venueName = $eventable->venue_name ?? null;
-        $zip = $eventable->zip ?? $eventable->venue_address ?? null;
+        // venue_name now lives on the Events row itself (moved from bookings)
+        $venueName = $event->venue_name ?? null;
+        if (!$venueName) {
+            $eventable = isset($event->eventable) ? $event->eventable : $event;
+            $venueName = $eventable->venue_name ?? null;
+        }
+        $zip = $event->venue_address ?? null;
+        if (!$zip) {
+            $eventable = isset($event->eventable) ? $event->eventable : $event;
+            $zip = $eventable->zip ?? null;
+        }
 
         if ($venueName && $zip) {
             return $venueName . ' ' . $zip;

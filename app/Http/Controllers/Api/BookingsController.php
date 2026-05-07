@@ -45,7 +45,6 @@ class BookingsController extends Controller
 
         $bookings = $band->bookings()
             ->with(['events', 'contacts', 'payments'])
-            ->orderBy('date', 'desc')
             ->get()
             ->map(function ($booking) {
                 return $this->formatBooking($booking);

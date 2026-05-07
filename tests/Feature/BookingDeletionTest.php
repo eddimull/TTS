@@ -89,7 +89,6 @@ class BookingDeletionTest extends TestCase
         $booking = Bookings::withoutEvents(function () {
             return Bookings::factory()->create([
                 'band_id' => $this->band->id,
-                'date' => now()->addDays(10),
                 'event_type_id' => $this->eventType->id,
             ]);
         });
@@ -99,7 +98,7 @@ class BookingDeletionTest extends TestCase
                 'eventable_id' => $booking->id,
                 'eventable_type' => Bookings::class,
                 'event_type_id' => $this->eventType->id,
-                'date' => $booking->date,
+                'date' => now()->addDays(10),
                 'title' => 'Event 1',
             ]);
         });
@@ -109,7 +108,7 @@ class BookingDeletionTest extends TestCase
                 'eventable_id' => $booking->id,
                 'eventable_type' => Bookings::class,
                 'event_type_id' => $this->eventType->id,
-                'date' => $booking->date->addDay(),
+                'date' => now()->addDays(11),
                 'title' => 'Event 2',
                 'additional_data' => (object)['public' => true], // This one is public
             ]);
@@ -185,7 +184,6 @@ class BookingDeletionTest extends TestCase
         $booking = Bookings::withoutEvents(function () {
             return Bookings::factory()->create([
                 'band_id' => $this->band->id,
-                'date' => now()->addDays(10),
                 'event_type_id' => $this->eventType->id,
             ]);
         });
@@ -195,7 +193,7 @@ class BookingDeletionTest extends TestCase
                 'eventable_id' => $booking->id,
                 'eventable_type' => Bookings::class,
                 'event_type_id' => $this->eventType->id,
-                'date' => $booking->date,
+                'date' => now()->addDays(10),
             ]);
         });
 
@@ -217,7 +215,6 @@ class BookingDeletionTest extends TestCase
         $booking = Bookings::withoutEvents(function () {
             return Bookings::factory()->create([
                 'band_id' => $this->band->id,
-                'date' => now()->addDays(10),
                 'event_type_id' => $this->eventType->id,
             ]);
         });
@@ -233,7 +230,6 @@ class BookingDeletionTest extends TestCase
         $booking = Bookings::withoutEvents(function () {
             return Bookings::factory()->create([
                 'band_id' => $this->band->id,
-                'date' => now()->addDays(10),
                 'event_type_id' => $this->eventType->id,
             ]);
         });
@@ -242,7 +238,7 @@ class BookingDeletionTest extends TestCase
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id' => $this->eventType->id,
-            'date' => $booking->date,
+            'date' => now()->addDays(10),
             'title' => 'Event 1',
         ]));
 
@@ -250,7 +246,7 @@ class BookingDeletionTest extends TestCase
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id' => $this->eventType->id,
-            'date' => $booking->date,
+            'date' => now()->addDays(10),
             'title' => 'Event 2',
         ]));
 

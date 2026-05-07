@@ -49,7 +49,7 @@ class EventsController extends Controller
             ->with(['eventable', 'type'])
             ->when($request->filled('from'), fn ($q) => $q->whereDate('date', '>=', $request->input('from')))
             ->when($request->filled('to'),   fn ($q) => $q->whereDate('date', '<=', $request->input('to')))
-            ->orderBy('date')->orderBy('time')
+            ->orderBy('date')->orderBy('start_time')
             ->get();
 
         $eventIds = $events->pluck('id')->all();

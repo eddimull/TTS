@@ -57,7 +57,6 @@ class UserEventsServiceTest extends TestCase
         // Arrange
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
-            'venue_name' => 'Test Venue'
         ]);
 
         $event = Events::factory()->create([
@@ -65,7 +64,8 @@ class UserEventsServiceTest extends TestCase
             'eventable_type' => 'App\\Models\\Bookings',
             'title' => 'Test Event',
             'date' => now()->addDays(7),
-            'time' => '19:00:00',
+            'start_time' => '19:00:00',
+            'venue_name' => 'Test Venue',
             'additional_data' => (object)[
                 'performance' => (object)[
                     'charts' => [
@@ -98,7 +98,6 @@ class UserEventsServiceTest extends TestCase
         // Arrange
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
-            'venue_name' => 'Test Venue'
         ]);
 
         $event = Events::factory()->create([
@@ -106,7 +105,7 @@ class UserEventsServiceTest extends TestCase
             'eventable_type' => 'App\\Models\\Bookings',
             'title' => 'Test Event',
             'date' => now()->addDays(7),
-            'time' => '19:00:00',
+            'start_time' => '19:00:00',
             'additional_data' => (object)[
                 'performance' => (object)[
                     'songs' => [
@@ -164,7 +163,7 @@ class UserEventsServiceTest extends TestCase
             'eventable_type' => 'App\\Models\\Rehearsal',
             'title' => 'Weekly Rehearsal',
             'date' => now()->addDays(7),
-            'time' => '19:00:00',
+            'start_time' => '19:00:00',
         ]);
 
         // Act
@@ -223,7 +222,7 @@ class UserEventsServiceTest extends TestCase
             'eventable_id' => $booking1->id,
             'eventable_type' => 'App\\Models\\Bookings',
             'date' => now()->addDays(10),
-            'time' => '20:00:00',
+            'start_time' => '20:00:00',
             'additional_data' => (object)[
                 'performance' => (object)[
                     'charts' => [(object)['id' => 2, 'title' => 'Later Chart']]
@@ -235,7 +234,7 @@ class UserEventsServiceTest extends TestCase
             'eventable_id' => $booking2->id,
             'eventable_type' => 'App\\Models\\Bookings',
             'date' => now()->addDays(5),
-            'time' => '18:00:00',
+            'start_time' => '18:00:00',
             'additional_data' => (object)[
                 'performance' => (object)[
                     'charts' => [(object)['id' => 1, 'title' => 'Earlier Chart']]

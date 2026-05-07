@@ -38,21 +38,23 @@ class BookingsController extends Controller
      */
     public function index(BookingIndexRequest $request, Bands $band): JsonResponse
     {
-        $query = $band->bookings()->with(['contacts', 'band']);
+        $query = $band->bookings()->with(['contacts', 'band', 'events']);
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
 
         if ($request->boolean('upcoming')) {
-            $query->whereDate('date', '>=', now()->toDateString());
+            $query->whereHas('events', fn ($q) => $q->whereDate('date', '>=', now()->toDateString()));
         }
 
         if ($request->filled('year')) {
-            $query->whereYear('date', $request->integer('year'));
+            $query->whereHas('events', fn ($q) => $q->whereYear('date', $request->integer('year')));
         }
 
-        $bookings = $query->orderBy('date', 'desc')->get();
+        $bookings = $query->get()
+            ->sortByDesc(fn ($b) => $b->start_date?->format('Y-m-d') ?? '')
+            ->values();
 
         return response()->json([
             'bookings' => $bookings->map(fn ($b) => $this->formatter->format($b))->values(),
@@ -89,7 +91,7 @@ class BookingsController extends Controller
         $bandIds = $user->bands()->pluck('id');
 
         $query = Bookings::query()
-            ->with(['band', 'contacts'])
+            ->with(['band', 'contacts', 'events'])
             ->whereIn('band_id', $bandIds);
 
         if ($request->filled('status')) {
@@ -97,22 +99,24 @@ class BookingsController extends Controller
         }
 
         if ($request->boolean('upcoming')) {
-            $query->whereDate('date', '>=', now()->toDateString());
+            $query->whereHas('events', fn ($q) => $q->whereDate('date', '>=', now()->toDateString()));
         }
 
         if ($request->filled('year')) {
-            $query->whereYear('date', $request->integer('year'));
+            $query->whereHas('events', fn ($q) => $q->whereYear('date', $request->integer('year')));
         }
 
         if (!empty($validated['from'])) {
-            $query->whereDate('date', '>=', $validated['from']);
+            $query->whereHas('events', fn ($q) => $q->whereDate('date', '>=', $validated['from']));
         }
 
         if (!empty($validated['to'])) {
-            $query->whereDate('date', '<=', $validated['to']);
+            $query->whereHas('events', fn ($q) => $q->whereDate('date', '<=', $validated['to']));
         }
 
-        $bookings = $query->orderBy('date', 'desc')->get();
+        $bookings = $query->get()
+            ->sortByDesc(fn ($b) => $b->start_date?->format('Y-m-d') ?? '')
+            ->values();
 
         return response()->json([
             'bookings' => $bookings->map(fn ($b) => $this->formatter->format($b))->values(),
@@ -139,25 +143,18 @@ class BookingsController extends Controller
 
         $status = ($validated['contract_option'] ?? 'default') === 'none' ? 'confirmed' : 'draft';
 
-        // venue_name has a NOT NULL DEFAULT 'TBD' in the schema. Omit the key
-        // entirely (rather than passing null) so MySQL's column default fires.
+        // date/start_time/end_time/venue_name/venue_address now live on events,
+        // not bookings. Store only booking-level fields here.
         $attrs = [
             'band_id'         => $band->id,
             'author_id'       => Auth::id(),
             'name'            => $validated['name'],
             'event_type_id'   => $validated['event_type_id'],
-            'date'            => $validated['date'],
-            'start_time'      => $validated['start_time'],
-            'end_time'        => $endTime,
             'price'           => $validated['price'] ?? null,
-            'venue_address'   => $validated['venue_address'] ?? null,
             'contract_option' => $validated['contract_option'] ?? 'default',
             'notes'           => $validated['notes'] ?? null,
             'status'          => $status,
         ];
-        if (!empty($validated['venue_name'])) {
-            $attrs['venue_name'] = $validated['venue_name'];
-        }
         $booking = Bookings::create($attrs);
 
         $booking->contract()->create([

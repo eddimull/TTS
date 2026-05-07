@@ -97,10 +97,9 @@ class BookingsApiTest extends TestCase
                     '*' => [
                         'id',
                         'name',
-                        'date',
-                        'start_time',
-                        'end_time',
-                        'venue_name',
+                        'start_date',
+                        'end_date',
+                        'venue_summary',
                         'price',
                         'status',
                     ],
@@ -196,23 +195,22 @@ class BookingsApiTest extends TestCase
                 'booking' => [
                     'id',
                     'name',
-                    'date',
-                    'start_time',
-                    'end_time',
+                    'start_date',
+                    'end_date',
+                    'events',
                 ],
             ])
             ->assertJson([
                 'success' => true,
                 'booking' => [
                     'name' => 'Wedding Reception',
-                    'venue_name' => 'Grand Ballroom',
+                    'venue_summary' => 'Grand Ballroom',
                 ],
             ]);
 
         $this->assertDatabaseHas('bookings', [
             'band_id' => $this->band->id,
             'name' => 'Wedding Reception',
-            'venue_name' => 'Grand Ballroom',
         ]);
     }
 
@@ -295,9 +293,10 @@ class BookingsApiTest extends TestCase
 
         $response->assertStatus(201);
         $booking = Bookings::latest()->first();
+        $event = $booking->events()->first();
 
-        $this->assertEquals('18:00', $booking->start_time->format('H:i'));
-        $this->assertEquals('21:00', $booking->end_time->format('H:i'));
+        $this->assertEquals('18:00', $event->start_time->format('H:i'));
+        $this->assertEquals('21:00', $event->end_time->format('H:i'));
     }
 
     // ========================================
@@ -326,14 +325,12 @@ class BookingsApiTest extends TestCase
                 'booking' => [
                     'id' => $booking->id,
                     'name' => 'Updated Name',
-                    'venue_name' => 'New Venue',
                 ],
             ]);
 
         $this->assertDatabaseHas('bookings', [
             'id' => $booking->id,
             'name' => 'Updated Name',
-            'venue_name' => 'New Venue',
         ]);
     }
 
@@ -376,7 +373,12 @@ class BookingsApiTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'name' => 'Original Name',
+        ]);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking->id,
             'venue_name' => 'Original Venue',
+            'date' => now()->addDays(30)->format('Y-m-d'),
         ]);
 
         $response = $this->withHeaders([
@@ -389,7 +391,7 @@ class BookingsApiTest extends TestCase
         $booking->refresh();
 
         $this->assertEquals('Updated Name Only', $booking->name);
-        $this->assertEquals('Original Venue', $booking->venue_name);
+        $this->assertEquals('Original Venue', $booking->venue_summary);
     }
 
     // ========================================
@@ -459,17 +461,25 @@ class BookingsApiTest extends TestCase
 
     public function test_can_get_all_booked_dates_with_read_bookings_permission(): void
     {
-        // Create some bookings
-        Bookings::factory()->create([
+        // Create some bookings with events
+        $booking1 = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'name' => 'Event 1',
+        ]);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking1->id,
             'date' => '2025-01-15',
             'start_time' => '18:00',
         ]);
 
-        Bookings::factory()->create([
+        $booking2 = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'name' => 'Event 2',
+        ]);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking2->id,
             'date' => '2025-02-20',
             'start_time' => '19:00',
         ]);
@@ -486,17 +496,16 @@ class BookingsApiTest extends TestCase
                     '*' => [
                         'id',
                         'name',
-                        'date',
-                        'start_time',
-                        'end_time',
-                        'duration',
+                        'start_date',
+                        'end_date',
+                        'event_count',
+                        'venue_summary',
                         'event_type',
                         'event_type_id',
-                        'venue_name',
-                        'venue_address',
                         'status',
                         'price',
                         'notes',
+                        'events',
                     ],
                 ],
                 'total',
@@ -506,13 +515,17 @@ class BookingsApiTest extends TestCase
 
     public function test_can_filter_booked_dates_by_specific_date(): void
     {
-        Bookings::factory()->create([
-            'band_id' => $this->band->id,
+        $booking1 = Bookings::factory()->create(['band_id' => $this->band->id]);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking1->id,
             'date' => '2025-01-15',
         ]);
 
-        Bookings::factory()->create([
-            'band_id' => $this->band->id,
+        $booking2 = Bookings::factory()->create(['band_id' => $this->band->id]);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking2->id,
             'date' => '2025-02-20',
         ]);
 
@@ -529,23 +542,27 @@ class BookingsApiTest extends TestCase
             ]);
 
         $bookings = $response->json('bookings');
-        $this->assertEquals('2025-01-15', $bookings[0]['date']);
+        $this->assertEquals('2025-01-15', $bookings[0]['start_date']);
     }
 
     public function test_can_filter_booked_dates_by_date_range(): void
     {
-        // Create bookings in different months
+        // Create bookings with events in different months
         for ($day = 1; $day <= 5; $day++) {
-            Bookings::factory()->create([
-                'band_id' => $this->band->id,
-                'date' => "2025-01-{$day}",
+            $booking = Bookings::factory()->create(['band_id' => $this->band->id]);
+            Events::factory()->create([
+                'eventable_type' => Bookings::class,
+                'eventable_id' => $booking->id,
+                'date' => "2025-01-0{$day}",
             ]);
         }
 
         for ($day = 1; $day <= 3; $day++) {
-            Bookings::factory()->create([
-                'band_id' => $this->band->id,
-                'date' => "2025-02-{$day}",
+            $booking = Bookings::factory()->create(['band_id' => $this->band->id]);
+            Events::factory()->create([
+                'eventable_type' => Bookings::class,
+                'eventable_id' => $booking->id,
+                'date' => "2025-02-0{$day}",
             ]);
         }
 
@@ -564,24 +581,30 @@ class BookingsApiTest extends TestCase
             ]);
 
         foreach ($response->json('bookings') as $booking) {
-            $this->assertStringStartsWith('2025-01', $booking['date']);
+            $this->assertStringStartsWith('2025-01', $booking['start_date']);
         }
     }
 
     public function test_can_filter_booked_dates_after_specific_date(): void
     {
-        Bookings::factory()->create([
-            'band_id' => $this->band->id,
+        $booking1 = Bookings::factory()->create(['band_id' => $this->band->id]);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking1->id,
             'date' => '2025-01-15',
         ]);
 
-        Bookings::factory()->create([
-            'band_id' => $this->band->id,
+        $booking2 = Bookings::factory()->create(['band_id' => $this->band->id]);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking2->id,
             'date' => '2025-02-20',
         ]);
 
-        Bookings::factory()->create([
-            'band_id' => $this->band->id,
+        $booking3 = Bookings::factory()->create(['band_id' => $this->band->id]);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking3->id,
             'date' => '2025-03-25',
         ]);
 
@@ -598,19 +621,23 @@ class BookingsApiTest extends TestCase
             ]);
 
         foreach ($response->json('bookings') as $booking) {
-            $this->assertGreaterThan('2025-02-01', $booking['date']);
+            $this->assertGreaterThan('2025-02-01', $booking['start_date']);
         }
     }
 
     public function test_can_filter_booked_dates_before_specific_date(): void
     {
-        Bookings::factory()->create([
-            'band_id' => $this->band->id,
+        $booking1 = Bookings::factory()->create(['band_id' => $this->band->id]);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking1->id,
             'date' => '2025-01-15',
         ]);
 
-        Bookings::factory()->create([
-            'band_id' => $this->band->id,
+        $booking2 = Bookings::factory()->create(['band_id' => $this->band->id]);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking2->id,
             'date' => '2025-02-20',
         ]);
 
@@ -627,7 +654,7 @@ class BookingsApiTest extends TestCase
             ]);
 
         $bookings = $response->json('bookings');
-        $this->assertEquals('2025-01-15', $bookings[0]['date']);
+        $this->assertEquals('2025-01-15', $bookings[0]['start_date']);
     }
 
     public function test_booked_dates_validates_date_format(): void
@@ -644,7 +671,6 @@ class BookingsApiTest extends TestCase
     {
         Bookings::factory()->create([
             'band_id' => $this->band->id,
-            'date' => '2025-01-15',
         ]);
 
         // Write-only token should not have access
@@ -662,15 +688,19 @@ class BookingsApiTest extends TestCase
     public function test_booked_dates_only_returns_bookings_for_authenticated_band(): void
     {
         // Create booking for authenticated band
-        Bookings::factory()->create([
-            'band_id' => $this->band->id,
+        $myBooking = Bookings::factory()->create(['band_id' => $this->band->id]);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $myBooking->id,
             'date' => '2025-01-15',
         ]);
 
         // Create booking for different band
         $otherBand = Bands::factory()->create();
-        Bookings::factory()->create([
-            'band_id' => $otherBand->id,
+        $otherBooking = Bookings::factory()->create(['band_id' => $otherBand->id]);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $otherBooking->id,
             'date' => '2025-01-16',
         ]);
 
@@ -682,7 +712,7 @@ class BookingsApiTest extends TestCase
             ->assertJson(['total' => 1]);
 
         $bookings = $response->json('bookings');
-        $this->assertEquals('2025-01-15', $bookings[0]['date']);
+        $this->assertEquals('2025-01-15', $bookings[0]['start_date']);
     }
 
     // ========================================
@@ -700,7 +730,7 @@ class BookingsApiTest extends TestCase
             'eventable_type' => Bookings::class,
             'eventable_id' => $booking1->id,
             'date' => '2025-01-15',
-            'time' => '18:00',
+            'start_time' => '18:00',
             'title' => 'Event 1',
         ]);
 
@@ -712,7 +742,7 @@ class BookingsApiTest extends TestCase
             'eventable_type' => Bookings::class,
             'eventable_id' => $booking2->id,
             'date' => '2025-02-20',
-            'time' => '19:00',
+            'start_time' => '19:00',
             'title' => 'Event 2',
         ]);
 

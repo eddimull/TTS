@@ -28,7 +28,6 @@ class DashboardEventBandFieldTest extends TestCase
         $eventType = EventTypes::factory()->create();
         $booking = Bookings::factory()->create([
             'name'   => 'Upcoming Gig',
-            'date'   => now()->addDays(7)->toDateString(),
             'band_id' => $band->id,
             'status' => 'confirmed',
         ]);
@@ -75,7 +74,6 @@ class DashboardEventBandFieldTest extends TestCase
         $eventType = EventTypes::factory()->create();
         $booking = Bookings::factory()->create([
             'name'   => 'Church Sunday',
-            'date'   => now()->addDays(3)->toDateString(),
             'band_id' => $personal->id,
             'status' => 'confirmed',
         ]);
@@ -120,7 +118,6 @@ class DashboardEventBandFieldTest extends TestCase
             $band = $i % 2 === 0 ? $bandA : $bandB;
             $bookings->push(Bookings::factory()->create([
                 'name'    => "Gig $i",
-                'date'    => now()->addDays($i + 1)->toDateString(),
                 'band_id' => $band->id,
                 'status'  => 'confirmed',
             ]));
@@ -128,7 +125,7 @@ class DashboardEventBandFieldTest extends TestCase
         foreach ($bookings as $i => $booking) {
             Events::factory()->create([
                 'title'          => "Gig $i",
-                'date'           => $booking->date,
+                'date'           => now()->addDays($i + 1)->toDateString(),
                 'eventable_id'   => $booking->id,
                 'eventable_type' => 'App\\Models\\Bookings',
                 'event_type_id'  => $eventType->id,

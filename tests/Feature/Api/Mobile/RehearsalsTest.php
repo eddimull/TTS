@@ -40,7 +40,7 @@ class RehearsalsTest extends TestCase
             'eventable_type' => 'App\\Models\\Rehearsal',
             'event_type_id'  => $eventType->id,
             'date'           => now()->addDays(7)->format('Y-m-d'),
-            'time'           => '19:00:00',
+            'start_time'     => '19:00:00',
         ]);
 
         $token = $user->createToken('test-device')->plainTextToken;
