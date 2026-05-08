@@ -60,7 +60,7 @@
           <li><span class="font-bold">Date:</span> {{ formattedDate }}</li>
           <li><span class="font-bold">Performance Length:</span> {{ booking.duration }} hours</li>
           <li><span class="font-bold">Sound Check Time:</span> at least 1 hour before performance</li>
-          <li><span class="font-bold">Venue:</span> {{ booking.venue_name }}</li>
+          <li><span class="font-bold">Venue:</span> {{ booking.venue_summary }}</li>
           <li>
             <span class="font-bold">Point(s) of Contact:</span>
             <ul class="list-disc pl-5">
@@ -244,7 +244,7 @@ import { DateTime } from 'luxon';
   const editMode = ref(false);
 
   const formattedDate = computed(() => {
-    return DateTime.fromISO(props.booking.date).toFormat('MM/dd/yyyy');
+    return DateTime.fromISO(props.booking.start_date).toFormat('MM/dd/yyyy');
   });
 
   onMounted(() => {

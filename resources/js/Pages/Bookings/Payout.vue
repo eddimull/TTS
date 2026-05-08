@@ -9,7 +9,7 @@
               Payout Breakdown
             </h1>
             <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              {{ booking.name }} • {{ formatDate(booking.date) }}
+              {{ booking.name }} • {{ formatDate(booking.start_date) }}
             </p>
           </div>
           <div class="text-right">
