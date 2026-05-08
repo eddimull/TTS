@@ -3,6 +3,7 @@
 namespace App\Services\Mobile;
 
 use App\Models\Bookings;
+use App\Models\Events;
 use App\Models\Payments;
 use App\Services\Mobile\TokenService;
 
@@ -34,16 +35,7 @@ class BookingFormatter
             ] : null,
             'contacts'        => $this->formatContacts($booking->contacts),
             'events'          => $booking->relationLoaded('events')
-                ? $booking->events->map(fn ($e) => [
-                    'id'           => $e->id,
-                    'key'          => $e->key,
-                    'title'        => $e->title,
-                    'date'         => $e->date?->format('Y-m-d'),
-                    'start_time'   => $e->start_time?->format('H:i'),
-                    'end_time'     => $e->end_time?->format('H:i'),
-                    'venue_name'   => $e->venue_name,
-                    'venue_address' => $e->venue_address,
-                ])->values()->all()
+                ? $booking->events->map(fn ($e) => $this->formatEvent($e))->values()->all()
                 : [],
             'contract' => null,
             'payments'  => [],
@@ -66,6 +58,21 @@ class BookingFormatter
         }
 
         return $base;
+    }
+
+    public function formatEvent(Events $event): array
+    {
+        return [
+            'id'            => $event->id,
+            'key'           => $event->key,
+            'title'         => $event->title,
+            'date'          => $event->date?->format('Y-m-d'),
+            'start_time'    => $event->start_time?->format('H:i'),
+            'end_time'      => $event->end_time?->format('H:i'),
+            'venue_name'    => $event->venue_name,
+            'venue_address' => $event->venue_address,
+            'price'         => $event->price !== null ? (string) $event->price : null,
+        ];
     }
 
     public function formatForFinance(Bookings $booking): array
