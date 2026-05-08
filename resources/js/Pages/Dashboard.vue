@@ -755,7 +755,7 @@
                 title: event.title,
                 event_type_id: event.event_type_id,
                 date: event.date,
-                time: event.time,
+                time: event.start_time,
                 notes: event.notes || '',
               }],
               associations: [],

@@ -203,13 +203,13 @@
                   v-if="!expandedView"
                   class="text-sm text-gray-500 dark:text-gray-400"
                 >
-                  {{ formatDate(booking.date) }} 
-                </p>                
+                  {{ formatDate(booking.start_date) }}
+                </p>
                 <p
                   class="text-sm text-gray-500 dark:text-gray-400"
                   :class="expandedView ? '' : 'truncate'"
                 >
-                  {{ booking.venue_name }} • {{ formatDate(booking.date) }}
+                  {{ booking.venue_summary }} • {{ formatDate(booking.start_date) }}
                 </p>
                 <div
                   v-if="expandedView"

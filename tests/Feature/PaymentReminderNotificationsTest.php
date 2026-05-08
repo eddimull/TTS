@@ -37,7 +37,6 @@ class PaymentReminderNotificationsTest extends TestCase
             'band_id' => $this->band->id,
             'name' => 'Summer Wedding',
             'price' => 1500.00,
-            'date' => now()->addMonth(),
         ]);
 
         $booking->contract()->create([
@@ -89,7 +88,11 @@ class PaymentReminderNotificationsTest extends TestCase
             'band_id' => $this->band->id,
             'name' => 'Corporate Event',
             'price' => 2000.00,
-            'date' => now()->addDays(7),
+        ]);
+        \App\Models\Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking->id,
+            'date' => now()->addDays(7)->format('Y-m-d'),
             'venue_name' => 'Grand Ballroom',
         ]);
 
@@ -139,7 +142,6 @@ class PaymentReminderNotificationsTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000.00,
-            'date' => now()->addMonth(),
         ]);
 
         $booking->contract()->create([
@@ -174,7 +176,6 @@ class PaymentReminderNotificationsTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000.00,
-            'date' => now()->addDays(7),
         ]);
 
         $booking->payments()->create([
@@ -206,7 +207,6 @@ class PaymentReminderNotificationsTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000.00,
-            'date' => now()->addDays(7),
         ]);
 
         $contact = Contacts::factory()->create(['band_id' => $this->band->id]);
@@ -225,7 +225,6 @@ class PaymentReminderNotificationsTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000.00,
-            'date' => now()->addMonth(),
         ]);
 
         $booking->contract()->create([
@@ -253,7 +252,6 @@ class PaymentReminderNotificationsTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000.00,
-            'date' => now()->addDays(7),
         ]);
 
         $contact = Contacts::factory()->create([

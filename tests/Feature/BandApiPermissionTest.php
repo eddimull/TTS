@@ -70,7 +70,6 @@ class BandApiPermissionTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'name' => 'Test Event',
-            'date' => '2025-12-01',
             'status' => 'confirmed',
         ]);
 
@@ -289,7 +288,6 @@ class BandApiPermissionTest extends TestCase
         $booking2 = Bookings::factory()->create([
             'band_id' => $band2->id,
             'name' => 'Band 2 Event',
-            'date' => '2025-12-02',
             'status' => 'confirmed',
         ]);
         Events::factory()->create([

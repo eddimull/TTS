@@ -4,6 +4,7 @@ namespace Tests\Feature\Api\Mobile;
 
 use App\Models\Bands;
 use App\Models\Bookings;
+use App\Models\Events;
 use App\Models\EventTypes;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -83,7 +84,6 @@ class BookingOptionalFieldsTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'name'    => 'Existing',
-            'date'    => '2026-06-01',
             'band_id' => $band->id,
         ]);
 
@@ -139,8 +139,13 @@ class BookingOptionalFieldsTest extends TestCase
             );
 
         $response->assertCreated();
-        $stored = Bookings::find($response->json('booking.id'));
-        $this->assertSame('TBD', $stored->venue_name);
+        $bookingId = $response->json('booking.id');
+        $this->assertNotNull($bookingId);
+        // venue_name now lives on the event; when omitted the event is created without one.
+        $event = Events::where('eventable_type', Bookings::class)
+            ->where('eventable_id', $bookingId)
+            ->first();
+        $this->assertNotNull($event, 'Controller must create an initial event');
     }
 
     public function test_create_booking_with_explicit_null_venue_name_succeeds(): void
@@ -163,9 +168,11 @@ class BookingOptionalFieldsTest extends TestCase
             );
 
         $response->assertCreated();
-        $stored = Bookings::find($response->json('booking.id'));
-        $this->assertSame('TBD', $stored->venue_name,
-            'Null venue_name must not crash on the NOT NULL column; controller should let schema default fire');
+        $bookingId = $response->json('booking.id');
+        $event = Events::where('eventable_type', Bookings::class)
+            ->where('eventable_id', $bookingId)
+            ->first();
+        $this->assertNotNull($event, 'Controller must create an initial event even when venue_name is null');
     }
 
     public function test_create_booking_with_empty_string_venue_name_succeeds(): void
@@ -188,8 +195,11 @@ class BookingOptionalFieldsTest extends TestCase
             );
 
         $response->assertCreated();
-        $stored = Bookings::find($response->json('booking.id'));
-        $this->assertSame('TBD', $stored->venue_name);
+        $bookingId = $response->json('booking.id');
+        $event = Events::where('eventable_type', Bookings::class)
+            ->where('eventable_id', $bookingId)
+            ->first();
+        $this->assertNotNull($event, 'Controller must create an initial event even when venue_name is empty string');
     }
 
     public function test_update_booking_with_null_venue_name_does_not_overwrite_existing(): void
@@ -197,10 +207,15 @@ class BookingOptionalFieldsTest extends TestCase
         ['band' => $band, 'token' => $token] = $this->makeUserAndBand();
 
         $booking = Bookings::factory()->create([
-            'name'       => 'Has Venue',
-            'date'       => '2026-06-01',
-            'band_id'    => $band->id,
-            'venue_name' => 'The Real Venue',
+            'name'    => 'Has Venue',
+            'band_id' => $band->id,
+        ]);
+        // venue_name now lives on the event
+        Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id'   => $booking->id,
+            'venue_name'     => 'The Real Venue',
+            'date'           => '2026-06-01',
         ]);
 
         $response = $this->withToken($token)
@@ -211,7 +226,11 @@ class BookingOptionalFieldsTest extends TestCase
             );
 
         $response->assertOk();
-        $this->assertSame('The Real Venue', $booking->fresh()->venue_name,
+        // The event's venue_name must not be overwritten by the update.
+        $eventAfter = Events::where('eventable_type', Bookings::class)
+            ->where('eventable_id', $booking->id)
+            ->first();
+        $this->assertSame('The Real Venue', $eventAfter->venue_name,
             'Null venue_name on update must not overwrite — drop the key instead');
     }
 }

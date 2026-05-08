@@ -165,7 +165,12 @@ class BookingPaymentReminderTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000.00,
-            'date' => now()->addMonth(), // Future event
+        ]);
+        // Create event in the future so start_date is in the future
+        \App\Models\Events::factory()->create([
+            'eventable_type' => \App\Models\Bookings::class,
+            'eventable_id' => $booking->id,
+            'date' => now()->addMonth(),
         ]);
 
         $contract = $booking->contract()->create([
@@ -186,6 +191,10 @@ class BookingPaymentReminderTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000.00,
+        ]);
+        \App\Models\Events::factory()->create([
+            'eventable_type' => \App\Models\Bookings::class,
+            'eventable_id' => $booking->id,
             'date' => now()->addMonth(),
         ]);
 
@@ -216,7 +225,12 @@ class BookingPaymentReminderTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000.00,
-            'date' => now()->subDay(), // Past event
+        ]);
+        // Create event in the past so start_date is in the past
+        \App\Models\Events::factory()->create([
+            'eventable_type' => \App\Models\Bookings::class,
+            'eventable_id' => $booking->id,
+            'date' => now()->subDay(),
         ]);
 
         $contract = $booking->contract()->create([
@@ -236,7 +250,12 @@ class BookingPaymentReminderTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000.00,
-            'date' => now()->addDays(7), // Exactly 7 days away
+        ]);
+        // Create event exactly 7 days away so start_date triggers reminder
+        \App\Models\Events::factory()->create([
+            'eventable_type' => \App\Models\Bookings::class,
+            'eventable_id' => $booking->id,
+            'date' => now()->addDays(7),
         ]);
 
         // Not fully paid
@@ -256,6 +275,10 @@ class BookingPaymentReminderTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000.00,
+        ]);
+        \App\Models\Events::factory()->create([
+            'eventable_type' => \App\Models\Bookings::class,
+            'eventable_id' => $booking->id,
             'date' => now()->addDays(7),
         ]);
 
@@ -276,6 +299,10 @@ class BookingPaymentReminderTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000.00,
+        ]);
+        \App\Models\Events::factory()->create([
+            'eventable_type' => \App\Models\Bookings::class,
+            'eventable_id' => $booking->id,
             'date' => now()->addDays(14), // 2 weeks away
         ]);
 
@@ -295,6 +322,10 @@ class BookingPaymentReminderTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000.00,
+        ]);
+        \App\Models\Events::factory()->create([
+            'eventable_type' => \App\Models\Bookings::class,
+            'eventable_id' => $booking->id,
             'date' => now()->subDay(), // Past event
         ]);
 

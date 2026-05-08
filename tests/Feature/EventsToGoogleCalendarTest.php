@@ -20,7 +20,10 @@ class EventsToGoogleCalendarTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->event = Events::factory()->create();
+        $this->event = Events::factory()->create([
+            'venue_name'    => 'Test Venue',
+            'venue_address' => '123 Test St',
+        ]);
     }
     protected function tearDown(): void
     {

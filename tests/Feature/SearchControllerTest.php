@@ -36,7 +36,6 @@ class SearchControllerTest extends TestCase
             $booking = Bookings::factory()->create([
                 'band_id' => $this->band->id,
                 'name' => "Test Booking {$i}",
-                'venue_name' => 'Test Venue',
             ]);
 
             // Add multiple payments to each booking
@@ -113,7 +112,6 @@ class SearchControllerTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'name' => 'Test Searchable Booking Payment',
-            'venue_name' => 'Unique Venue Name',
             'price' => 1000, // $1000
             'status' => 'confirmed', // Ensure it's searchable (not cancelled/deleted)
         ]);

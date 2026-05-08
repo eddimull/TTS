@@ -445,7 +445,7 @@ export default {
             });
         },
         formatTime(event) {
-            return DateTime.fromISO(event.date + "T" + event.time).toFormat(
+            return DateTime.fromISO(event.date + "T" + event.start_time).toFormat(
                 "MMM dd, yyyy 'at' hh:mm a"
             );
         },

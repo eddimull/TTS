@@ -9,7 +9,7 @@
       <div class="flex items-center justify-between mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">
         <div>
           <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ event.title }}</h2>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ event.date }}<span v-if="event.time"> &middot; {{ event.time }}</span></p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{{ event.date }}<span v-if="event.start_time"> &middot; {{ event.start_time }}</span></p>
         </div>
       </div>
 

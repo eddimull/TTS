@@ -47,7 +47,7 @@ class PortalQuestionnaireController extends Controller
             'booking' => [
                 'id' => $booking->id,
                 'name' => $booking->name,
-                'date' => $booking->date->format('M j, Y'),
+                'start_date' => $booking->start_date?->format('M j, Y'),
                 'band_name' => $booking->band->name,
             ],
             'instance' => [

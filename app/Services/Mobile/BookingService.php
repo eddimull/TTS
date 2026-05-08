@@ -75,15 +75,29 @@ class BookingService
     {
         $defaultRoster = $booking->band->defaultRoster ?? null;
 
-        $booking->events()->create([
+        $startDt = \Carbon\Carbon::parse($validated['date'] . ' ' . $validated['start_time']);
+        $endDt   = $startDt->copy()->addHours((float) ($validated['duration'] ?? 2));
+        $endTime = $endDt->format('H:i');
+
+        $eventAttrs = [
             'title'           => $booking->name,
             'date'            => $validated['date'],
-            'time'            => $validated['start_time'],
+            'start_time'      => $validated['start_time'],
+            'end_time'        => $endTime,
+            'venue_address'   => $validated['venue_address'] ?? null,
             'event_type_id'   => $validated['event_type_id'],
             'value'           => $validated['price'] ?? 0,
             'additional_data' => $additionalData,
             'key'             => Str::uuid()->toString(),
             'roster_id'       => $defaultRoster?->id,
-        ]);
+        ];
+
+        // venue_name defaults to 'TBD' at schema level; omit when blank so the
+        // default fires rather than inserting null into a NOT NULL column.
+        if (!empty($validated['venue_name'])) {
+            $eventAttrs['venue_name'] = $validated['venue_name'];
+        }
+
+        $booking->events()->create($eventAttrs);
     }
 }

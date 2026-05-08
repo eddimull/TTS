@@ -269,9 +269,7 @@ class EventDataService
     public function formatForList(Events $event, Collection $members, $liveSession): array
     {
         $date = is_string($event->date) ? $event->date : $event->date->format('Y-m-d');
-        $time = $event->time
-            ? (is_string($event->time) ? $event->time : $event->time->format('H:i'))
-            : null;
+        $time = $event?->start_time?->format('H:i');
 
         $eventSource = match ($event->eventable_type) {
             Bookings::class, 'App\\Models\\Bookings'     => 'booking',
@@ -302,9 +300,7 @@ class EventDataService
     public function formatForShow(Events $event, bool $canWrite, ?int $liveSessionId): array
     {
         $date = is_string($event->date) ? $event->date : $event->date->format('Y-m-d');
-        $time = $event->time
-            ? (is_string($event->time) ? $event->time : $event->time->format('H:i'))
-            : null;
+        $time = $event?->start_time?->format('H:i');
 
         $members = $event->eventMembers
             ->whereNull('deleted_at')

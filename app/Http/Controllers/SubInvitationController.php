@@ -69,9 +69,9 @@ class SubInvitationController extends Controller
             }
         }
 
-        // Use event's time field as start time (performance start, not load in)
-        if ($event->time) {
-            $startTime = is_string($event->time) ? $event->time : $event->time->format('H:i:s');
+        // Use event's start_time field as start time (performance start, not load in)
+        if ($event->start_time) {
+            $startTime = $event->start_time->format('H:i:s');
         }
 
         // Convert charts/songs to arrays if they're collections

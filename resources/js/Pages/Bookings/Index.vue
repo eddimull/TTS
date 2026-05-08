@@ -113,7 +113,7 @@ export default {
     methods: {
         getFilteredBookings(status) {
             return this.bookings.filter((booking) => {
-                const bookingDate = DateTime.fromISO(booking.date);
+                const bookingDate = DateTime.fromISO(booking.start_date);
                 const isCorrectStatus =
                     booking.status.toLowerCase() === status.toLowerCase();
                 const matchesSearch = this.searchBooking(booking);
@@ -133,12 +133,12 @@ export default {
             const searchTerms = this.searchTerm.toLowerCase().split(" ");
 
             // Convert booking date to different formats for flexible matching
-            const bookingDate = DateTime.fromISO(booking.date);
+            const bookingDate = DateTime.fromISO(booking.start_date);
             const dateFormats = [
                 bookingDate.toLocaleString(DateTime.DATETIME_HUGE),
                 bookingDate.toFormat("MMMM yyyy"), // "February 2025"
                 bookingDate.toFormat("MMM yyyy"), // "Feb 2025"
-                booking.date, // Original ISO format
+                booking.start_date, // Original ISO format
             ];
 
             // Check if ALL search terms are found somewhere in the booking
@@ -150,7 +150,7 @@ export default {
                     ) ||
                     // Check other fields
                     booking.name.toLowerCase().includes(term) ||
-                    booking.venue_name.toLowerCase().includes(term) ||
+                    (booking.venue_summary || '').toLowerCase().includes(term) ||
                     booking.contacts.some((contact) =>
                         contact.name.toLowerCase().includes(term)
                     ) ||
