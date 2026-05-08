@@ -238,7 +238,7 @@
                           {{ booking.name }}
                         </div>
                         <div class="text-sm text-gray-600 dark:text-gray-400">
-                          {{ formatBookingDate(booking.date) }} - {{ booking.venue_name }}
+                          {{ formatBookingDate(booking.start_date) }} - {{ booking.venue_summary }}
                         </div>
                       </div>
                     </label>
@@ -353,7 +353,7 @@ const getEventData = () => {
             event_title: event.title || '',
             event_type_id: event.event_type_id || '',
             event_date: event.date || '',
-            event_time: event.time?.substring(0, 5) || '', // HH:mm format
+            event_time: event.start_time?.substring(0, 5) || '', // HH:mm format
             event_notes: event.notes || '',
         };
     }

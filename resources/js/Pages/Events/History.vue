@@ -26,7 +26,7 @@
               <div class="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
                 <div class="flex items-center gap-2">
                   <i class="pi pi-clock" />
-                  <span>{{ formatDate(event.date) }} at {{ formatTime(event.time) }}</span>
+                  <span>{{ formatDate(event.date) }} at {{ formatTime(event.start_time) }}</span>
                 </div>
                 
                 <div class="flex items-center gap-2">

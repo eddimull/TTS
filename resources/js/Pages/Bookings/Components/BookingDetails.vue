@@ -36,12 +36,12 @@
           <div class="space-y-2 text-sm">
             <div class="flex justify-between">
               <span class="text-gray-500 dark:text-gray-400">Date:</span>
-              <span class="font-medium text-gray-900 dark:text-gray-50">{{ formatDate(booking.date) }}</span>
+              <span class="font-medium text-gray-900 dark:text-gray-50">{{ formatDate(booking.start_date) }}</span>
             </div>
             <div class="flex justify-between">
               <span class="text-gray-500 dark:text-gray-400">Time:</span>
               <span class="font-medium text-gray-900 dark:text-gray-50">
-                {{ formatTime(booking.start_time) }} - {{ formatTime(booking.end_time) }}
+                {{ formatTime(booking.events?.[0]?.start_time) }} - {{ formatTime(booking.events?.[0]?.end_time) }}
                 <span
                   v-if="duration"
                   class="text-gray-500 dark:text-gray-400"
@@ -50,13 +50,13 @@
             </div>
             <div class="flex justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
               <span class="text-gray-500 dark:text-gray-400">Venue:</span>
-              <span class="font-medium text-gray-900 dark:text-gray-50 text-right">{{ booking.venue_name || 'TBD' }}</span>
+              <span class="font-medium text-gray-900 dark:text-gray-50 text-right">{{ booking.venue_summary || 'TBD' }}</span>
             </div>
             <div
-              v-if="booking.venue_address"
+              v-if="booking.events?.[0]?.venue_address"
               class="text-gray-600 dark:text-gray-400 text-xs text-right"
             >
-              {{ booking.venue_address }}
+              {{ booking.events?.[0]?.venue_address }}
             </div>
           </div>
         </div>
@@ -292,11 +292,11 @@
                       {{ formatDateShort(event.date) }}
                     </div>
                     <div
-                      v-if="event.time"
+                      v-if="event.start_time"
                       class="flex items-center"
                     >
                       <i class="pi pi-clock mr-1 text-xs" />
-                      {{ formatTime(event.time) }}
+                      {{ formatTime(event.start_time) }}
                     </div>
                   </div>
                 </div>
@@ -654,10 +654,11 @@ const statusClass = computed(() => {
 })
 
 const duration = computed(() => {
-  if (!props.booking.start_time || !props.booking.end_time) return null
-  
-  const start = DateTime.fromFormat(props.booking.start_time, 'HH:mm:ss')
-  const end = DateTime.fromFormat(props.booking.end_time, 'HH:mm:ss')
+  const firstEvent = props.booking.events?.[0]
+  if (!firstEvent?.start_time || !firstEvent?.end_time) return null
+
+  const start = DateTime.fromFormat(firstEvent.start_time, 'HH:mm:ss')
+  const end = DateTime.fromFormat(firstEvent.end_time, 'HH:mm:ss')
   
   if (!start.isValid || !end.isValid) return null
   

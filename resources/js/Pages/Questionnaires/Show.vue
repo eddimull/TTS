@@ -112,10 +112,10 @@
                     {{ data.booking.name }}
                   </Link>
                   <div
-                    v-if="data.booking.date"
+                    v-if="data.booking.start_date"
                     class="text-xs text-gray-500 dark:text-gray-400"
                   >
-                    Event {{ data.booking.date }}
+                    Event {{ data.booking.start_date }}
                   </div>
                 </template>
               </Column>

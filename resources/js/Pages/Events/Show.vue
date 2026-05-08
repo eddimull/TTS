@@ -35,7 +35,7 @@
             />
             <Tag
               :icon="'pi pi-clock'"
-              :value="formatTime(event.time)"
+              :value="formatTime(event.start_time)"
               severity="info"
               rounded
             />
@@ -108,7 +108,7 @@
         v-if="hasTimeline"
         class="mb-4"
         :event-date="event.date"
-        :event-time="event.time"
+        :event-time="event.start_time"
         :times="event.additional_data.times"
       />
           </template>
