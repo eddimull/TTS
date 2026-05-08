@@ -284,17 +284,8 @@ class BookingsController extends Controller
 
     public function update(UpdateBookingsRequest $request, Bands $band, Bookings $booking)
     {
-        $movedFields   = ['date', 'start_time', 'end_time', 'venue_name', 'venue_address'];
-        $bookingFields = collect($request->validated())->except($movedFields)->toArray();
-        $eventFields   = collect($request->validated())->only($movedFields)->toArray();
-
         $originalPrice = $booking->price;
-        $booking->update($bookingFields);
-
-        if (!empty($eventFields)) {
-            $primaryEvent = $booking->events()->orderBy('date')->orderBy('id')->first();
-            $primaryEvent?->update($eventFields);
-        }
+        $booking->update($request->validated());
 
         if ($booking->wasChanged('price')) {
             \Log::info("Booking price changed from {$originalPrice} to {$booking->price} for booking ID: {$booking->id}, redistributing event values");
@@ -646,6 +637,12 @@ class BookingsController extends Controller
 
     public function deleteEvent(Bands $band, Bookings $booking, Events $event)
     {
+        if ($booking->events()->count() <= 1) {
+            return redirect()->back()->withErrors([
+                'event' => 'Cannot delete the last event of a booking. A booking must have at least one event.',
+            ]);
+        }
+
         $event->delete();
 
         // Redistribute values after deletion
