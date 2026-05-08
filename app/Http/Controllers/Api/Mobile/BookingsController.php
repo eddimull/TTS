@@ -179,12 +179,6 @@ class BookingsController extends Controller
         $validated = $request->validated();
         $oldPrice  = (float) $booking->price;
 
-        // venue_name is NOT NULL in the schema; drop the key when blank so
-        // we don't overwrite the existing value with null.
-        if (array_key_exists('venue_name', $validated) && empty($validated['venue_name'])) {
-            unset($validated['venue_name']);
-        }
-
         $booking->update($validated);
 
         if (isset($validated['price']) && (float) $validated['price'] !== $oldPrice) {
