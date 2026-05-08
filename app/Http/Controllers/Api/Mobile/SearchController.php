@@ -98,12 +98,12 @@ class SearchController extends Controller
     private function formatBooking(\App\Models\Bookings $booking): array
     {
         return [
-            'id'         => $booking->id,
-            'band_id'    => $booking->band_id,
-            'name'       => $booking->name ?? '',
-            'venue_name' => $booking->venue_name ?? '',
-            'date'       => $booking->date?->format('Y-m-d') ?? '',
-            'status'     => $booking->status ?? '',
+            'id'           => $booking->id,
+            'band_id'      => $booking->band_id,
+            'name'         => $booking->name ?? '',
+            'venue_summary' => $booking->venue_summary ?? '',
+            'start_date'   => $booking->start_date?->format('Y-m-d') ?? '',
+            'status'       => $booking->status ?? '',
         ];
     }
 

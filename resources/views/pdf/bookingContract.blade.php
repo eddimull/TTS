@@ -17,10 +17,32 @@
             Details of engagement:
         </h2>
         <ul class="list-disc pl-5">
-            <li><span class="font-bold">Date:</span> {{ date('m/d/Y',strtotime($booking->date)) }}</li>
-            <li><span class="font-bold">Performance Length:</span> {{ $booking->duration }} hours</li>
-            <li><span class="font-bold">Sound Check Time:</span> at least 1 hour before performance</li>
-            <li><span class="font-bold">Venue:</span> {{ $booking->venue_name }}</li>
+            @if ($booking->is_multi_event)
+                <li>
+                    <span class="font-bold">Performances:</span>
+                    <ul class="list-disc pl-5">
+                        @foreach($booking->events->sortBy(['date', 'id']) as $event)
+                            <li>
+                                {{ $event->date->format('D n/j/Y') }} —
+                                {{ $event->title }}
+                                @if($event->venue_name)
+                                    at {{ $event->venue_name }}
+                                @endif
+                                @if($event->start_time && $event->end_time)
+                                    ({{ \Carbon\Carbon::parse($event->start_time)->format('g:i A') }} – {{ \Carbon\Carbon::parse($event->end_time)->format('g:i A') }})
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
+                </li>
+                <li><span class="font-bold">Total Performance Length:</span> {{ $booking->total_duration }} hours</li>
+                <li><span class="font-bold">Sound Check Time:</span> at least 1 hour before each performance</li>
+            @else
+                <li><span class="font-bold">Date:</span> {{ $booking->start_date ? $booking->start_date->format('m/d/Y') : 'TBD' }}</li>
+                <li><span class="font-bold">Performance Length:</span> {{ $booking->total_duration }} hours</li>
+                <li><span class="font-bold">Sound Check Time:</span> at least 1 hour before performance</li>
+                <li><span class="font-bold">Venue:</span> {{ $booking->venue_summary ?? 'TBD' }}</li>
+            @endif
             <li>
                 <span class="font-bold">Point(s) of Contact:</span>
                 <ul class="list-disc pl-5">
@@ -57,7 +79,7 @@
                 elects to pay via Invoice, Venmo, or credit card, payment shall be made to {{ $booking->band->name }}
                 ten (10) days prior to the Performance. (Additional fees may apply to credit card payments.)</strong> In the event
             that Buyer requests that Artist perform past the end time set forth in this Agreement, and Artist chooses
-            to continue performing, Buyer shall pay Artist <strong>${{ number_format(($booking->price/$booking->duration)*1.5,2) }}</strong> directly for each additional sixty minutes of the
+            to continue performing, Buyer shall pay Artist <strong>${{ $booking->total_duration > 0 && $booking->event_count > 0 ? number_format(($booking->price / $booking->total_duration) * 1.5 / $booking->event_count, 2) : '0.00' }}</strong> directly for each additional sixty minutes of the
             Performance, limited to one additional hour, payable immediately following the Performance.
         </p>
     </div>

@@ -20,7 +20,6 @@ class EventFolderCreationTest extends TestCase
         // Create a booking
         $booking = Bookings::factory()->create([
             'enable_portal_media_access' => true,
-            'date' => '2024-05-20',
             'name' => 'Jones Birthday Party',
         ]);
 
@@ -29,8 +28,7 @@ class EventFolderCreationTest extends TestCase
             'event_type_id' => $booking->event_type_id,
             'key' => Str::uuid(),
             'title' => $booking->name,
-            'date' => $booking->date,
-            'time' => $booking->start_time,
+            'date' => '2024-05-20',
             'enable_portal_media_access' => true,
         ];
 
@@ -63,7 +61,6 @@ class EventFolderCreationTest extends TestCase
         // Create a booking with portal access disabled
         $booking = Bookings::factory()->create([
             'enable_portal_media_access' => false,
-            'date' => '2024-05-20',
             'name' => 'Private Event',
         ]);
 
@@ -71,8 +68,7 @@ class EventFolderCreationTest extends TestCase
             'event_type_id' => $booking->event_type_id,
             'key' => Str::uuid(),
             'title' => $booking->name,
-            'date' => $booking->date,
-            'time' => $booking->start_time,
+            'date' => '2024-05-20',
         ];
 
         $event = $booking->events()->create($eventData);
@@ -95,7 +91,6 @@ class EventFolderCreationTest extends TestCase
         // Create a booking with portal access enabled
         $booking = Bookings::factory()->create([
             'enable_portal_media_access' => true,
-            'date' => '2024-05-20',
             'name' => 'Test Event',
         ]);
 
@@ -103,8 +98,7 @@ class EventFolderCreationTest extends TestCase
             'event_type_id' => $booking->event_type_id,
             'key' => Str::uuid(),
             'title' => $booking->name,
-            'date' => $booking->date,
-            'time' => $booking->start_time,
+            'date' => '2024-05-20',
             'enable_portal_media_access' => false, // Disabled on event
         ];
 
@@ -127,7 +121,6 @@ class EventFolderCreationTest extends TestCase
     {
         $booking = Bookings::factory()->create([
             'enable_portal_media_access' => true,
-            'date' => '2024-07-15',
             'name' => 'Summer Festival',
         ]);
 
@@ -135,8 +128,7 @@ class EventFolderCreationTest extends TestCase
             'event_type_id' => $booking->event_type_id,
             'key' => Str::uuid(),
             'title' => $booking->name,
-            'date' => $booking->date,
-            'time' => $booking->start_time,
+            'date' => '2024-07-15',
             'enable_portal_media_access' => true,
         ];
 

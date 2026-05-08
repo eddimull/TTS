@@ -82,7 +82,7 @@ export default {
       return DateTime.fromISO(event.date).toFormat("MMM dd, yyyy");
     },
     formatTime(event) {
-      return DateTime.fromISO(event.date + "T" + event.time).toFormat("h:mm a");
+      return DateTime.fromISO(event.date + "T" + event.start_time).toFormat("h:mm a");
     },
   },
 };

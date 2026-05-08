@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use App\Casts\Price;
-use App\Casts\TimeCast;
 use App\Formatters\CalendarEventFormatter;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Interfaces\GoogleCalenderable;
@@ -53,15 +52,19 @@ class Events extends Model implements GoogleCalenderable
     protected $fillable = [
         'additional_data',
         'date',
+        'end_time',
         'event_type_id',
         'eventable_id',
         'eventable_type',
         'key',
+        'price',
+        'start_time',
         'title',
         'notes',
-        'time',
         'roster_id',
         'value',
+        'venue_address',
+        'venue_name',
         'media_folder_path',
         'enable_portal_media_access',
     ];
@@ -69,8 +72,10 @@ class Events extends Model implements GoogleCalenderable
     protected $casts = [
         'additional_data' => 'object',
         'date' => 'date:Y-m-d',
-        'time' => TimeCast::class,
+        'start_time' => 'datetime:H:i',
+        'end_time' => 'datetime:H:i',
         'value' => Price::class,
+        'price' => Price::class,
         'enable_portal_media_access' => 'boolean',
     ];
 
@@ -106,11 +111,10 @@ class Events extends Model implements GoogleCalenderable
 
     public function getISODateAttribute()
     {
-
         $date = $this->date->toDateString();
 
-        // Assuming $this->time is in 'HH:mm:ss' format after TimeCast
-        $time = $this->time->toTimeString();
+        // Falls back to a noon time if start_time is null (legacy events with no time set).
+        $time = $this->start_time ? $this->start_time->format('H:i:s') : '12:00:00';
 
         return Carbon::parse("{$date} {$time}")->isoFormat('YYYY-MM-DD Thh:mm:ss.sss');
     }
@@ -118,25 +122,28 @@ class Events extends Model implements GoogleCalenderable
     public function getStartDateTimeAttribute()
     {
         $date = $this->date->toDateString();
-
-        // Assuming $this->time is in 'HH:mm:ss' format after TimeCast
-        $time = $this->time;
+        $time = $this->start_time ? $this->start_time->format('H:i') : '12:00';
 
         return Carbon::parse("{$date} {$time}")->isoFormat('YYYY-MM-DDTHH:mm:ss.sss');
     }
 
     public function getEndDateTimeAttribute()
     {
+        // Prefer the dedicated end_time column when populated.
+        if ($this->end_time) {
+            $date = $this->date->toDateString();
+            $time = $this->end_time->format('H:i');
+            return Carbon::parse("{$date} {$time}")->isoFormat('YYYY-MM-DDTHH:mm:ss.sss');
+        }
 
+        // Fall back to additional_data->times (legacy data path).
         $endDateTime = Carbon::parse($this->startDateTime)->addHour()->isoFormat('YYYY-MM-DDTHH:mm:ss.sss');
-        try{   
-            // Check if additional_data exists and has times property
+        try {
             if ($this->additional_data && isset($this->additional_data->times) && $this->additional_data->times) {
                 $endTime = collect($this->additional_data->times)->max('time');
                 $endDateTime = Carbon::parse($endTime)->isoFormat('YYYY-MM-DDTHH:mm:ss.sss');
             }
         } catch (\Exception $e) {
-            // Handle the exception if needed
             \Log::error('Error parsing end time for event ID ' . $this->id . ': ' . $e->getMessage());
         }
         return $endDateTime;
@@ -283,8 +290,8 @@ class Events extends Model implements GoogleCalenderable
 
     public function getGoogleCalendarLocation(): string|null
     {
-        if ($this->eventable) {
-            return $this->eventable->venue_name . ($this->eventable->venue_address ? ', ' . $this->eventable->venue_address : '');
+        if (!empty($this->venue_name)) {
+            return $this->venue_name . (!empty($this->venue_address) ? ', ' . $this->venue_address : '');
         }
         return null;
     }
@@ -308,7 +315,11 @@ class Events extends Model implements GoogleCalenderable
             ->logOnly([
                 'title',
                 'date',
-                'time',
+                'start_time',
+                'end_time',
+                'venue_name',
+                'venue_address',
+                'price',
                 'notes',
                 'event_type_id',
                 'eventable_type',

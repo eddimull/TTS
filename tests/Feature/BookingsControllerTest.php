@@ -40,6 +40,12 @@ class BookingsControllerTest extends TestCase
         $this->band->members()->create(['user_id' => $this->member->id]);
 
         $this->booking = Bookings::factory()->create(['band_id' => $this->band->id]);
+        // Add an event so the booking passes the controller's whereHas('events') filter
+        Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id'   => $this->booking->id,
+            'date'           => now()->addDays(30)->format('Y-m-d'),
+        ]);
     }
 
     protected function tearDown(): void
@@ -67,6 +73,13 @@ class BookingsControllerTest extends TestCase
     public function test_owner_can_view_bookings_index()
     {
         $bookings = Bookings::factory()->count(3)->create(['band_id' => $this->band->id]);
+        foreach ($bookings as $b) {
+            Events::factory()->create([
+                'eventable_type' => Bookings::class,
+                'eventable_id'   => $b->id,
+                'date'           => now()->addDays(30)->format('Y-m-d'),
+            ]);
+        }
 
         $response = $this->actingAs($this->owner)->get(route('Bookings Home', $this->band));
 
@@ -83,6 +96,13 @@ class BookingsControllerTest extends TestCase
     public function test_member_can_view_bookings_index()
     {
         $bookings = Bookings::factory()->count(3)->create(['band_id' => $this->band->id]);
+        foreach ($bookings as $b) {
+            Events::factory()->create([
+                'eventable_type' => Bookings::class,
+                'eventable_id'   => $b->id,
+                'date'           => now()->addDays(30)->format('Y-m-d'),
+            ]);
+        }
 
         $response = $this->actingAs($this->member)->get(route('Bookings Home', $this->band));
 
@@ -103,7 +123,7 @@ class BookingsControllerTest extends TestCase
         setPermissionsTeamId(0);
 
 
-        $bookingData = Bookings::factory()->duration($duration)->make(['band_id' => $this->band->id])->toArray();
+        $bookingData = Bookings::factory()->withGigDetails()->duration($duration)->make(['band_id' => $this->band->id])->toArray();
         $bookingData['duration'] = $duration;
         $bookingData['start_time'] = Carbon::parse($bookingData['start_time'])->format('H:i');
         unset($bookingData['end_time']);
@@ -113,15 +133,19 @@ class BookingsControllerTest extends TestCase
         $response->assertStatus(302); // Assert that a redirect occurred
 
 
-        unset($bookingData['start_time']);
-        unset($bookingData['end_time']);
+        // Strip gig-detail fields that moved to events and aren't on the bookings table,
+        // and strip virtual/appended accessor fields that are not real DB columns.
+        unset($bookingData['date'], $bookingData['start_time'], $bookingData['end_time'],
+              $bookingData['venue_name'], $bookingData['venue_address']);
         unset($bookingData['status']);
         unset($bookingData['duration']);
         unset($bookingData['author_id']); // sometimes an owner or member can create a booking, which results in a different author_id
-        unset($bookingData['amount_paid']); 
-        unset($bookingData['is_paid']);
-        unset($bookingData['amount_due']);
-        
+        unset($bookingData['amount_paid'], $bookingData['is_paid'], $bookingData['amount_due']);
+        // Virtual appended accessors (not DB columns)
+        unset($bookingData['start_date'], $bookingData['end_date'], $bookingData['event_count'],
+              $bookingData['venue_summary'], $bookingData['is_multi_event'], $bookingData['total_duration'],
+              $bookingData['events']);
+
         $bookingData['author_id'] = $this->member->id;
         $bookingData['price'] = $bookingData['price'] * 100;
 
@@ -139,31 +163,42 @@ class BookingsControllerTest extends TestCase
 
     public function test_non_member_cannot_create_booking()
     {
-        $bookingData = Bookings::factory()->make(['band_id' => $this->band->id])->toArray();
+        $bookingData = Bookings::factory()->withGigDetails()->make(['band_id' => $this->band->id])->toArray();
         unset($bookingData['author_id']);
-        unset($bookingData['amount_paid']); 
+        unset($bookingData['amount_paid']);
         unset($bookingData['is_paid']);
         unset($bookingData['amount_due']);
 
         $response = $this->actingAs($this->nonMember)->post(route('bands.booking.store', $this->band), $bookingData);
 
         $response->assertStatus(403);
-        $this->assertDatabaseMissing('bookings', $bookingData);
+        // Strip dropped columns and virtual appended accessors before assertDatabaseMissing
+        $dbCheck = collect($bookingData)->except([
+            'date', 'start_time', 'end_time', 'venue_name', 'venue_address',
+            'start_date', 'end_date', 'event_count', 'venue_summary',
+            'is_multi_event', 'total_duration', 'events',
+        ])->toArray();
+        $this->assertDatabaseMissing('bookings', $dbCheck);
     }
 
     public function test_owner_can_update_booking()
     {
         $booking = Bookings::factory()->create(['band_id' => $this->band->id]);
-        $updatedData = Bookings::factory()->make(['band_id' => $this->band->id])->toArray();
+        $updatedData = Bookings::factory()->withGigDetails()->make(['band_id' => $this->band->id])->toArray();
         $updatedName = $updatedData['name'];
 
         $response = $this->actingAs($this->owner)->put(route('bands.booking.update', [$this->band, $booking]), $updatedData);
 
         //this is two fold. The request excludes the author_id, so this checks that the author_id is not updated and the result exists
         unset($updatedData['author_id']);
-        unset($updatedData['amount_paid']); 
-        unset($updatedData['is_paid']);
-        unset($updatedData['amount_due']);
+        unset($updatedData['amount_paid'], $updatedData['is_paid'], $updatedData['amount_due']);
+        // Strip gig-detail fields that moved to the events table (no longer on bookings)
+        unset($updatedData['date'], $updatedData['start_time'], $updatedData['end_time'],
+              $updatedData['venue_name'], $updatedData['venue_address']);
+        // Strip virtual appended accessors (not real DB columns)
+        unset($updatedData['start_date'], $updatedData['end_date'], $updatedData['event_count'],
+              $updatedData['venue_summary'], $updatedData['is_multi_event'], $updatedData['total_duration'],
+              $updatedData['events']);
         $updatedData['price'] = $updatedData['price'] * 100;
 
         $response->assertSessionHas('successMessage', "$updatedName has been updated.");
@@ -223,7 +258,14 @@ class BookingsControllerTest extends TestCase
     {
         $this->booking->name = 'Updated Booking Name';
 
-        $response = $this->actingAs($this->owner)->put(route('bands.booking.update', [$this->band, $this->booking]), $this->booking->toArray());
+        // date/start_time/end_time are now required by UpdateBookingsRequest but live on events
+        $payload = array_merge($this->booking->toArray(), [
+            'date'       => now()->addDays(30)->format('Y-m-d'),
+            'start_time' => '19:00',
+            'end_time'   => '22:00',
+        ]);
+
+        $response = $this->actingAs($this->owner)->put(route('bands.booking.update', [$this->band, $this->booking]), $payload);
 
         $response->assertRedirect();
         $response->assertSessionHas('successMessage');

@@ -62,14 +62,13 @@ class EventGoogleCalendarUpdateTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'status' => 'confirmed',
-            'date' => now()->addDays(10),
         ]);
 
         $event = Events::factory()->create([
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id' => $this->eventType->id,
-            'date' => $booking->date,
+            'date' => now()->addDays(10)->format('Y-m-d'),
         ]);
 
         // Create a GoogleEvents record (simulating previous creation)
@@ -119,14 +118,13 @@ class EventGoogleCalendarUpdateTest extends TestCase
         // Create event
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
-            'date' => now()->addDays(10),
         ]);
 
         $event = Events::factory()->create([
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id' => $this->eventType->id,
-            'date' => $booking->date,
+            'date' => now()->addDays(10)->format('Y-m-d'),
         ]);
 
         $storedGoogleEventId = 'existing-event-id-456';
@@ -168,14 +166,13 @@ class EventGoogleCalendarUpdateTest extends TestCase
         // Create event WITHOUT GoogleEvents record
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
-            'date' => now()->addDays(10),
         ]);
 
         $event = Events::factory()->create([
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id' => $this->eventType->id,
-            'date' => $booking->date,
+            'date' => now()->addDays(10)->format('Y-m-d'),
         ]);
 
         $newGoogleEventId = 'new-event-id-789';
@@ -203,14 +200,13 @@ class EventGoogleCalendarUpdateTest extends TestCase
         // Create booking with event
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
-            'date' => now()->addDays(10),
         ]);
 
         $event = Events::factory()->create([
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id' => $this->eventType->id,
-            'date' => $booking->date,
+            'date' => now()->addDays(10)->format('Y-m-d'),
         ]);
 
         // Create GoogleEvents record for the EVENT calendar
@@ -254,14 +250,13 @@ class EventGoogleCalendarUpdateTest extends TestCase
         // Create event
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
-            'date' => now()->addDays(10),
         ]);
 
         $event = Events::factory()->create([
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id' => $this->eventType->id,
-            'date' => $booking->date,
+            'date' => now()->addDays(10)->format('Y-m-d'),
             'additional_data' => (object)['public' => true]
         ]);
 

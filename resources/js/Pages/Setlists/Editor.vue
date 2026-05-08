@@ -119,7 +119,7 @@
         <div class="flex gap-3 text-xs text-gray-500 mt-0.5">
           <span v-if="event.type">{{ event.type.name }}</span>
           <span>{{ formatDate(event.date) }}</span>
-          <span v-if="event.time">{{ formatTime(event.time) }}</span>
+          <span v-if="event.start_time">{{ formatTime(event.start_time) }}</span>
           <span v-if="localSetlist">{{ songCount }} songs<span v-if="totalDuration"> · ~{{ totalDuration }} min</span></span>
         </div>
       </div>
@@ -129,7 +129,7 @@
         <div class="flex flex-wrap gap-3 text-sm text-gray-600 dark:text-gray-400">
           <span v-if="event.type"><i class="pi pi-tag mr-1" />{{ event.type.name }}</span>
           <span><i class="pi pi-calendar mr-1" />{{ formatDate(event.date) }}</span>
-          <span v-if="event.time"><i class="pi pi-clock mr-1" />{{ formatTime(event.time) }}</span>
+          <span v-if="event.start_time"><i class="pi pi-clock mr-1" />{{ formatTime(event.start_time) }}</span>
           <span v-if="event.roster_members?.length">
             <i class="pi pi-users mr-1" />{{ event.roster_members.length }} musicians
           </span>

@@ -14,9 +14,7 @@ class RehearsalService
         $date  = $event
             ? (is_string($event->date) ? $event->date : $event->date->format('Y-m-d'))
             : null;
-        $time  = $event && $event->time
-            ? (is_string($event->time) ? $event->time : $event->time->format('H:i'))
-            : null;
+        $time  = $event?->start_time?->format('H:i');
 
         return [
             'id'            => $rehearsal->id,
@@ -36,14 +34,12 @@ class RehearsalService
         $date  = $event
             ? (is_string($event->date) ? $event->date : $event->date->format('Y-m-d'))
             : $fallbackDate;
-        $time  = $event && $event->time
-            ? (is_string($event->time) ? $event->time : $event->time->format('H:i'))
-            : null;
+        $time  = $event?->start_time?->format('H:i');
 
         $schedule = $rehearsal->rehearsalSchedule;
 
         $associatedBookings = $rehearsal->bookings->map(function ($booking) {
-            $bookingDate = is_string($booking->date) ? $booking->date : $booking->date->format('Y-m-d');
+            $bookingDate = $booking->start_date?->format('Y-m-d');
             return [
                 'id'   => $booking->id,
                 'name' => $booking->name,

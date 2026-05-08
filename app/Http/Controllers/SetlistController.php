@@ -48,7 +48,7 @@ class SetlistController extends Controller
                 'key' => $event->key,
                 'title' => $event->title,
                 'date' => $event->date,
-                'time' => $event->time,
+                'time' => $event->start_time?->format('H:i'),
                 'type' => $event->type,
                 'notes' => $event->notes,
                 'roster_members' => $event->eventMembers->map(fn($m) => [

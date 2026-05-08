@@ -233,17 +233,17 @@ const filteredBookingsByYear = computed(() => {
     if (!selectedYear.value) {
         return props.bookings.map(booking => ({
             ...booking,
-            date: new Date(booking.date)
+            date: new Date(booking.start_date)
         }));
     }
 
     return props.bookings
         .filter((booking) => {
-            return booking.date.includes(selectedYear.value.toString());
+            return booking.start_date.includes(selectedYear.value.toString());
         })
         .map(booking => ({
             ...booking,
-            date: new Date(booking.date)
+            date: new Date(booking.start_date)
         }));
 });
 
@@ -302,7 +302,7 @@ const statusOptions = [
 
 const availableYears = computed(() => {
     const years = new Set(
-        props.bookings.map((booking) => new Date(booking.date).getFullYear())
+        props.bookings.map((booking) => new Date(booking.start_date).getFullYear())
     );
     return Array.from(years).sort((a, b) => b - a);
 });
@@ -319,7 +319,7 @@ const getFilteredBookings = (bookings) => {
                 booking.status?.toLowerCase().includes(globalValue) ||
                 booking.price?.toString().toLowerCase().includes(globalValue) ||
                 booking.amount_paid?.toString().toLowerCase().includes(globalValue) ||
-                booking.date?.toString().toLowerCase().includes(globalValue)
+                booking.start_date?.toString().toLowerCase().includes(globalValue)
             );
         });
     }
@@ -337,7 +337,7 @@ const getFilteredBookings = (bookings) => {
         const matchMode = filters.value.date.constraints[0].matchMode;
 
         filtered = filtered.filter(booking => {
-            const bookingDate = new Date(booking.date);
+            const bookingDate = new Date(booking.start_date);
             const compareDate = new Date(filterDate);
 
             // Reset time components for date-only comparison
