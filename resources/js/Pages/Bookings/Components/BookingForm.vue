@@ -95,19 +95,9 @@
 
       <!-- Events section -->
       <div>
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-base font-semibold text-gray-900 dark:text-gray-50">
-            Events
-          </h3>
-          <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-50 cursor-pointer">
-            <input
-              v-model="showItemizedPrice"
-              type="checkbox"
-              class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-            >
-            Set itemized price per event
-          </label>
-        </div>
+        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-50 mb-4">
+          Events
+        </h3>
 
         <p
           v-if="topLevelError"
@@ -121,7 +111,6 @@
             v-for="row in eventRows"
             :key="row._key"
             v-model="eventRows[eventRows.indexOf(row)]"
-            :show-price="showItemizedPrice"
             :can-delete="eventRows.length > 1"
             :save-error="rowErrors[row._key] ?? null"
             @delete="removeRow(row._key)"
@@ -222,7 +211,6 @@ function normalizeEvent(evt) {
     end_time:       evt.end_time    ?? '',
     venue_name:     evt.venue_name  ?? '',
     venue_address:  evt.venue_address ?? '',
-    price:          evt.price   ?? '',
     additional_data: evt.additional_data ?? {},
     roster_id:      evt.roster_id ?? null,
     notes:          evt.notes   ?? null,
@@ -235,11 +223,6 @@ const eventRows = ref(
 
 // Track which event ids existed at load time so we can issue DELETEs for removed ones.
 const originalEventIds = new Set((props.booking.events ?? []).map((e) => e.id));
-
-// ── Itemized price toggle ─────────────────────────────────────────────────────
-const showItemizedPrice = ref(
-  (props.booking.events ?? []).some((e) => e.price != null),
-);
 
 // ── UI state ──────────────────────────────────────────────────────────────────
 const isSaving     = ref(false);
@@ -259,7 +242,6 @@ function addRow() {
     end_time:       '',
     venue_name:     '',
     venue_address:  '',
-    price:          '',
     additional_data: {},
     roster_id:      null,
     notes:          null,
@@ -299,9 +281,6 @@ function eventPayload(row) {
     end_time:       row.end_time    || null,
     venue_name:     row.venue_name  || null,
     venue_address:  row.venue_address || null,
-    price:          showItemizedPrice.value
-                      ? (row.price === '' ? null : row.price)
-                      : null,
     additional_data: row.additional_data ?? {},
     roster_id:      row.roster_id ?? null,
     notes:          row.notes     ?? null,
