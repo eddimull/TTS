@@ -393,7 +393,8 @@ function saveRow(row) {
       venue_name:     row.eventRef.venue_name || null,
       venue_address:  row.eventRef.venue_address || null,
       price:          value,
-      additional_data: row.eventRef.additional_data ?? {},
+      // omit additional_data — the form request treats it as 'sometimes'
+      // so partial updates don't need to round-trip the full event config
       roster_id:      row.eventRef.roster_id ?? null,
       notes:          row.eventRef.notes ?? null,
       silent:         true,
