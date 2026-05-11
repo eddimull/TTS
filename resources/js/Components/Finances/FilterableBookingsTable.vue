@@ -230,20 +230,17 @@ initFilters();
 const selectedYear = ref(new Date().getFullYear());
 
 const filteredBookingsByYear = computed(() => {
-    if (!selectedYear.value) {
-        return props.bookings.map(booking => ({
-            ...booking,
-            date: new Date(booking.start_date)
-        }));
-    }
-
+    const year = selectedYear.value ? String(selectedYear.value) : null;
+    const matches = (booking) => {
+        if (!year) return true;
+        const events = booking.events ?? [];
+        return events.some((e) => (e.date ?? '').startsWith(year));
+    };
     return props.bookings
-        .filter((booking) => {
-            return booking.start_date.includes(selectedYear.value.toString());
-        })
-        .map(booking => ({
+        .filter(matches)
+        .map((booking) => ({
             ...booking,
-            date: new Date(booking.start_date)
+            date: booking.start_date ? new Date(booking.start_date) : null,
         }));
 });
 
@@ -301,9 +298,12 @@ const statusOptions = [
 ];
 
 const availableYears = computed(() => {
-    const years = new Set(
-        props.bookings.map((booking) => new Date(booking.start_date).getFullYear())
-    );
+    const years = new Set();
+    props.bookings.forEach((b) => {
+        (b.events ?? []).forEach((e) => {
+            if (e.date) years.add(new Date(e.date).getFullYear());
+        });
+    });
     return Array.from(years).sort((a, b) => b - a);
 });
 
@@ -318,8 +318,7 @@ const getFilteredBookings = (bookings) => {
                 booking.name?.toLowerCase().includes(globalValue) ||
                 booking.status?.toLowerCase().includes(globalValue) ||
                 booking.price?.toString().toLowerCase().includes(globalValue) ||
-                booking.amount_paid?.toString().toLowerCase().includes(globalValue) ||
-                booking.start_date?.toString().toLowerCase().includes(globalValue)
+                booking.amount_paid?.toString().toLowerCase().includes(globalValue)
             );
         });
     }
@@ -331,32 +330,27 @@ const getFilteredBookings = (bookings) => {
         );
     }
 
-    // Apply date filter
+    // Apply date filter (any-event-in-range)
     if (filters.value?.date?.constraints?.[0]?.value) {
         const filterDate = filters.value.date.constraints[0].value;
         const matchMode = filters.value.date.constraints[0].matchMode;
+        const compareDate = new Date(filterDate);
+        compareDate.setHours(0, 0, 0, 0);
 
-        filtered = filtered.filter(booking => {
-            const bookingDate = new Date(booking.start_date);
-            const compareDate = new Date(filterDate);
-
-            // Reset time components for date-only comparison
-            bookingDate.setHours(0, 0, 0, 0);
-            compareDate.setHours(0, 0, 0, 0);
-
+        const eventMatches = (eventDateStr) => {
+            if (!eventDateStr) return false;
+            const d = new Date(eventDateStr);
+            d.setHours(0, 0, 0, 0);
             switch (matchMode) {
-                case FilterMatchMode.DATE_IS:
-                    return bookingDate.getTime() === compareDate.getTime();
-                case FilterMatchMode.DATE_IS_NOT:
-                    return bookingDate.getTime() !== compareDate.getTime();
-                case FilterMatchMode.DATE_BEFORE:
-                    return bookingDate.getTime() < compareDate.getTime();
-                case FilterMatchMode.DATE_AFTER:
-                    return bookingDate.getTime() > compareDate.getTime();
-                default:
-                    return bookingDate.getTime() === compareDate.getTime();
+                case FilterMatchMode.DATE_IS:     return d.getTime() === compareDate.getTime();
+                case FilterMatchMode.DATE_IS_NOT: return d.getTime() !== compareDate.getTime();
+                case FilterMatchMode.DATE_BEFORE: return d.getTime() <  compareDate.getTime();
+                case FilterMatchMode.DATE_AFTER:  return d.getTime() >  compareDate.getTime();
+                default:                          return d.getTime() === compareDate.getTime();
             }
-        });
+        };
+
+        filtered = filtered.filter((b) => (b.events ?? []).some((e) => eventMatches(e.date)));
     }
 
     return filtered;
