@@ -37,17 +37,24 @@ class UpdateBookingEventRequest extends FormRequest
     {
         return [
             'date' => 'required|date',
-            'time' => 'required',
+            'start_time' => 'nullable|date_format:H:i',
+            'end_time' => 'nullable|date_format:H:i',
+            'venue_name' => 'nullable|string|max:255',
+            'venue_address' => 'nullable|string|max:500',
+            'price' => 'nullable|numeric|min:0',
             'title' => 'required|string',
             'notes' => 'nullable|string',
             'roster_id' => 'nullable|exists:rosters,id',
-            'additional_data' => 'required|array',
+            // additional_data and its sub-keys are 'sometimes' so partial
+            // updates (e.g. the per-event price editor on the Payout block)
+            // don't need to round-trip the entire event config every save.
+            'additional_data' => 'sometimes|array',
             'additional_data.migrated_from_event_id' => 'nullable|integer',
-            'additional_data.public' => 'required|boolean',
-            'additional_data.outside' => 'required|boolean',
-            'additional_data.lodging' => 'required|array',
-            'additional_data.production_needed' => 'required|boolean',
-            'additional_data.backline_provided' => 'required|boolean',
+            'additional_data.public' => 'sometimes|required|boolean',
+            'additional_data.outside' => 'sometimes|required|boolean',
+            'additional_data.lodging' => 'sometimes|required|array',
+            'additional_data.production_needed' => 'sometimes|required|boolean',
+            'additional_data.backline_provided' => 'sometimes|required|boolean',
             'additional_data.attire' => 'nullable|string',
             'additional_data.times' => 'nullable|array',
             'additional_data.times.*.title' => 'required|string',

@@ -143,6 +143,17 @@ Route::prefix('mobile')->group(function () {
             Route::post('/bands/{band}/bookings/{booking}/payments', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'storePayment'])->name('mobile.bookings.payments.store');
             Route::delete('/bands/{band}/bookings/{booking}/payments/{payment}', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'destroyPayment'])->name('mobile.bookings.payments.destroy');
 
+            // Booking events (subresource)
+            Route::post('/bands/{band}/bookings/{booking}/events',
+                [App\Http\Controllers\Api\Mobile\BookingsController::class, 'storeEvent'])
+                ->name('mobile.bookings.events.store');
+            Route::patch('/bands/{band}/bookings/{booking}/events/{event}',
+                [App\Http\Controllers\Api\Mobile\BookingsController::class, 'updateEvent'])
+                ->name('mobile.bookings.events.update');
+            Route::delete('/bands/{band}/bookings/{booking}/events/{event}',
+                [App\Http\Controllers\Api\Mobile\BookingsController::class, 'destroyEvent'])
+                ->name('mobile.bookings.events.destroy');
+
             // Booking contract (write)
             Route::post('/bands/{band}/bookings/{booking}/contract/upload', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'uploadContract'])->name('mobile.bookings.contract.upload');
             Route::post('/bands/{band}/bookings/{booking}/contract/send', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'sendContract'])->name('mobile.bookings.contract.send');

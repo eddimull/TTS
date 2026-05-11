@@ -28,13 +28,13 @@
                     <x-slot name="title">
                         Date
                     </x-slot>
-                    {{$booking->date}}
+                    {{ $booking->start_date?->format('m/d/Y') }}
                 </x-pdf.sectionitem>
                 <x-pdf.sectionitem>
                     <x-slot name="title">
                         Venue
                     </x-slot>
-                    {{$booking->venue_name}}
+                    {{ $booking->venue_summary }}
                 </x-pdf.sectionitem>
                 <x-pdf.sectionitem>
                     <x-slot name="title">

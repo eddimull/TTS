@@ -204,7 +204,7 @@ class CalculateEventDistancesTest extends TestCase
         $firstCalculationTime = $distance->updated_at;
 
         // Sleep to ensure timestamps are different (database precision might be seconds)
-        sleep(1);
+        $this->travel(1)->seconds();
 
         // Update the event (touch it to update timestamp)
         $event->touch();

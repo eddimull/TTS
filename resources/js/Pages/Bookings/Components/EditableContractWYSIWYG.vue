@@ -57,10 +57,32 @@
           Details of engagement:
         </h2>
         <ul class="list-disc pl-5">
-          <li><span class="font-bold">Date:</span> {{ formattedDate }}</li>
-          <li><span class="font-bold">Performance Length:</span> {{ booking.duration }} hours</li>
-          <li><span class="font-bold">Sound Check Time:</span> at least 1 hour before performance</li>
-          <li><span class="font-bold">Venue:</span> {{ booking.venue_summary }}</li>
+          <template v-if="booking.is_multi_event">
+            <li>
+              <span class="font-bold">Performances:</span>
+              <ul class="list-disc pl-5">
+                <li
+                  v-for="event in sortedEvents"
+                  :key="event.id"
+                >
+                  {{ formatEventDate(event.date) }} —
+                  {{ event.title }}
+                  <span v-if="event.venue_name"> at {{ event.venue_name }}</span>
+                  <span v-if="event.start_time && event.end_time">
+                    ({{ formatEventTime(event.start_time) }} – {{ formatEventTime(event.end_time) }})
+                  </span>
+                </li>
+              </ul>
+            </li>
+            <li><span class="font-bold">Total Performance Length:</span> {{ booking.total_duration }} hours</li>
+            <li><span class="font-bold">Sound Check Time:</span> at least 1 hour before each performance</li>
+          </template>
+          <template v-else>
+            <li><span class="font-bold">Date:</span> {{ formattedDate || 'TBD' }}</li>
+            <li><span class="font-bold">Performance Length:</span> {{ booking.total_duration }} hours</li>
+            <li><span class="font-bold">Sound Check Time:</span> at least 1 hour before performance</li>
+            <li><span class="font-bold">Venue:</span> {{ booking.venue_summary || 'TBD' }}</li>
+          </template>
           <li>
             <span class="font-bold">Point(s) of Contact:</span>
             <ul class="list-disc pl-5">
@@ -99,9 +121,9 @@
             payment shall be made to {{ band.name }} and must be received at least ten (10) days prior to Performance. If Buyer elects to pay via Invoice, Venmo, or credit card,
             payment shall be made to {{ band.name }} ten (10) days prior to the Performance. (Additional fees may apply to credit card payments.)</strong> In the event that Buyer requests
           that Artist perform past the end time set forth in this Agreement, and Artist chooses to continue performing, Buyer shall pay Artist <span
-            :title="`(price/duration) x 1.5 = (${booking.price} / ${booking.duration}) * 1.5 = $${((booking.price / booking.duration)*1.5).toFixed(2)}`"
+            :title="overtimeTitle"
             class="font-bold cursor-help"
-          >${{ ((booking.price / booking.duration)*1.5).toFixed(2) }}</span> directly for each additional sixty minutes
+          >${{ overtimeRate }}</span> directly for each additional sixty minutes
           of the Performance, limited to one additional hour, payable immediately following the Performance.
         </p>
       </div>
@@ -244,7 +266,64 @@ import { DateTime } from 'luxon';
   const editMode = ref(false);
 
   const formattedDate = computed(() => {
-    return DateTime.fromISO(props.booking.start_date).toFormat('MM/dd/yyyy');
+    if (!props.booking.start_date) return null;
+    const dt = DateTime.fromISO(props.booking.start_date);
+    if (!dt.isValid) return null;
+    return dt.toFormat('MM/dd/yyyy');
+  });
+
+  // Sorted events for the multi-event "Performances:" list. Mirrors the
+  // Blade template's $booking->events->sortBy(['date', 'id']) ordering.
+  const sortedEvents = computed(() => {
+    const events = props.booking.events ?? [];
+    return [...events].sort((a, b) => {
+      const dateA = a.date ?? '';
+      const dateB = b.date ?? '';
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+      return (a.id ?? 0) - (b.id ?? 0);
+    });
+  });
+
+  // Matches the Blade's Carbon format('D n/j/Y') — e.g. "Wed 6/12/2026".
+  const formatEventDate = (dateStr) => {
+    if (!dateStr) return '';
+    const dt = DateTime.fromISO(dateStr);
+    if (!dt.isValid) return '';
+    return dt.toFormat('ccc M/d/yyyy');
+  };
+
+  // Matches the Blade's Carbon format('g:i A') — e.g. "7:30 PM".
+  // Accepts "HH:mm" or "HH:mm:ss" strings.
+  const formatEventTime = (timeStr) => {
+    if (!timeStr) return '';
+    const parts = timeStr.split(':');
+    if (parts.length < 2) return timeStr;
+    const dt = DateTime.fromObject({
+      hour: parseInt(parts[0], 10),
+      minute: parseInt(parts[1], 10),
+    });
+    if (!dt.isValid) return timeStr;
+    return dt.toFormat('h:mm a');
+  };
+
+  // Mirrors the PDF Blade's overtime formula:
+  //   (price / total_duration) * 1.5 / event_count
+  // Single-event bookings (event_count == 1) collapse to today's value
+  // identically; multi-event bookings divide the per-hour overtime evenly
+  // across each performance so the contract states one rate, once.
+  const overtimeRate = computed(() => {
+    const price = parseFloat(props.booking.price) || 0;
+    const duration = parseFloat(props.booking.total_duration) || 0;
+    const eventCount = props.booking.event_count ?? 0;
+    if (duration <= 0 || eventCount <= 0) return '0.00';
+    return ((price / duration) * 1.5 / eventCount).toFixed(2);
+  });
+
+  const overtimeTitle = computed(() => {
+    const price = parseFloat(props.booking.price) || 0;
+    const duration = parseFloat(props.booking.total_duration) || 0;
+    const eventCount = props.booking.event_count ?? 0;
+    return `(price/duration) x 1.5 / events = (${price} / ${duration}) * 1.5 / ${eventCount} = $${overtimeRate.value}`;
   });
 
   onMounted(() => {
