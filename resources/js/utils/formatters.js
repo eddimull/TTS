@@ -52,3 +52,39 @@ export function formatMoney(value) {
 export function formatPrice(price) {
     return formatMoney(price);
 }
+
+/**
+ * Format a time string to localized time (HH:MM AM/PM)
+ * @param {string} timeString - Time string in HH:MM:SS format
+ * @returns {string} Formatted time string
+ */
+export function formatTime(timeString) {
+    if (!timeString) return '';
+    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString([], {
+        timeStyle: 'short',
+    });
+}
+
+/**
+ * Format a date range between two dates
+ * @param {string|Date} start - Start date
+ * @param {string|Date} end - End date
+ * @returns {string} Formatted date range
+ */
+export function formatDateRange(start, end) {
+    if (!start) return '';
+    const startDate = new Date(start);
+    if (!end) return formatDate(start);
+    const endDate = new Date(end);
+    const sameDay = startDate.toDateString() === endDate.toDateString();
+    if (sameDay) return formatDate(start);
+    const sameMonth =
+        startDate.getMonth() === endDate.getMonth() &&
+        startDate.getFullYear() === endDate.getFullYear();
+    if (sameMonth) {
+        const monthDay = { month: 'short', day: 'numeric' };
+        const dayOnly = { day: 'numeric' };
+        return `${startDate.toLocaleDateString(undefined, monthDay)}–${endDate.toLocaleDateString(undefined, dayOnly)}`;
+    }
+    return `${formatDate(start)} – ${formatDate(end)}`;
+}
