@@ -58,7 +58,7 @@
         </h2>
         <ul class="list-disc pl-5">
           <li><span class="font-bold">Date:</span> {{ formattedDate }}</li>
-          <li><span class="font-bold">Performance Length:</span> {{ booking.duration }} hours</li>
+          <li><span class="font-bold">Performance Length:</span> {{ booking.total_duration }} hours</li>
           <li><span class="font-bold">Sound Check Time:</span> at least 1 hour before performance</li>
           <li><span class="font-bold">Venue:</span> {{ booking.venue_summary }}</li>
           <li>
@@ -99,9 +99,9 @@
             payment shall be made to {{ band.name }} and must be received at least ten (10) days prior to Performance. If Buyer elects to pay via Invoice, Venmo, or credit card,
             payment shall be made to {{ band.name }} ten (10) days prior to the Performance. (Additional fees may apply to credit card payments.)</strong> In the event that Buyer requests
           that Artist perform past the end time set forth in this Agreement, and Artist chooses to continue performing, Buyer shall pay Artist <span
-            :title="`(price/duration) x 1.5 = (${booking.price} / ${booking.duration}) * 1.5 = $${((booking.price / booking.duration)*1.5).toFixed(2)}`"
+            :title="`(price/duration) x 1.5 = (${booking.price} / ${booking.total_duration}) * 1.5 = $${((booking.price / booking.total_duration)*1.5).toFixed(2)}`"
             class="font-bold cursor-help"
-          >${{ ((booking.price / booking.duration)*1.5).toFixed(2) }}</span> directly for each additional sixty minutes
+          >${{ ((booking.price / booking.total_duration)*1.5).toFixed(2) }}</span> directly for each additional sixty minutes
           of the Performance, limited to one additional hour, payable immediately following the Performance.
         </p>
       </div>

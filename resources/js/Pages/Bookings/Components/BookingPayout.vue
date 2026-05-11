@@ -5,6 +5,7 @@
       Estimated Payout
     </h2>
 
+
     <!-- Loading/Error States -->
     <div
       v-if="!payoutConfig"
