@@ -265,6 +265,160 @@ class BookingItemizationTest extends DuskTestCase
         $this->assertEquals('1500.00', $firstEvent->price);
     }
 
+    public function test_multi_event_booking_form_handles_full_add_edit_delete_save(): void
+    {
+        $booking = $this->makeMultiEventBooking('Concert Series');
+
+        // The factory adds 3 events ordered by date: rehearsal (6/12),
+        // Saturday performance (6/13), Sunday performance (6/14).
+        $events = $booking->events()->orderBy('date')->orderBy('id')->get();
+        $rehearsal = $events->get(0);
+        $saturday = $events->get(1);
+        $sunday = $events->get(2);
+
+        $this->browse(function (Browser $browser) use ($booking, $rehearsal, $sunday) {
+            $browser->loginAs($this->owner)
+                // Open the edit form via the ?edit=true query string.
+                ->visit("/bands/{$this->band->id}/booking/{$booking->id}?edit=true")
+                ->waitForText('Save Booking', 10);
+
+            // 1) Rename the booking. TextInput renders <input id="{name}">
+            //    so the booking-level "name" field is `#name`.
+            $browser->script(<<<'JS'
+                const nameInput = document.querySelector('#name');
+                nameInput.focus();
+                nameInput.value = 'Concert Series — Renamed';
+                nameInput.dispatchEvent(new Event('input', { bubbles: true }));
+                nameInput.dispatchEvent(new Event('change', { bubbles: true }));
+            JS);
+
+            // 2) Change the Rehearsal event date (originally 2026-06-12).
+            //    Find the row whose date input currently has that value —
+            //    the form lists events in reverse-chronological order so
+            //    we can't rely on position.
+            $browser->script(<<<'JS'
+                const rows = document.querySelectorAll('.border.border-gray-200');
+                const subFormRows = Array.from(rows).filter((el) =>
+                    el.querySelector('input[type="date"]')
+                );
+                const rehearsalRow = subFormRows.find((row) =>
+                    row.querySelector('input[type="date"]').value === '2026-06-12'
+                );
+                const dateInput = rehearsalRow.querySelector('input[type="date"]');
+                dateInput.value = '2026-06-10';
+                dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+                dateInput.dispatchEvent(new Event('change', { bubbles: true }));
+            JS);
+
+            // 3) Add a new event row via the "Add event" button.
+            $browser->script(<<<'JS'
+                const addBtns = Array.from(document.querySelectorAll('button'))
+                    .filter((b) => b.textContent.trim().toLowerCase().includes('add event'));
+                addBtns[0].click();
+            JS);
+
+            // Wait until the new row appears (4 rows total now).
+            $browser->waitUsing(5, 250, function () use ($browser) {
+                $count = $browser->script(<<<'JS'
+                    return document.querySelectorAll('.border.border-gray-200 input[type="date"]').length;
+                JS)[0];
+                return $count === 4;
+            });
+
+            // Fill in the new event row's title + date. It's the last
+            // EventSubForm in the list.
+            $browser->script(<<<'JS'
+                const rows = document.querySelectorAll('.border.border-gray-200');
+                const subFormRows = Array.from(rows).filter((el) =>
+                    el.querySelector('input[type="date"]')
+                );
+                const lastRow = subFormRows[subFormRows.length - 1];
+                // TextInput renders <input type="text" id="{name}">. The first
+                // text-type input in an EventSubForm is the Title field.
+                const titleInput = lastRow.querySelector('input[type="text"]');
+                titleInput.focus();
+                titleInput.value = 'Encore performance';
+                titleInput.dispatchEvent(new Event('input', { bubbles: true }));
+                titleInput.dispatchEvent(new Event('change', { bubbles: true }));
+                const dateInput = lastRow.querySelector('input[type="date"]');
+                dateInput.value = '2026-06-15';
+                dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+                dateInput.dispatchEvent(new Event('change', { bubbles: true }));
+            JS);
+
+            // 4) Delete the Sunday performance row (originally 3rd by date).
+            //    With the new row appended, the original Sunday is row index 2.
+            $browser->script(<<<'JS'
+                const rows = document.querySelectorAll('.border.border-gray-200');
+                const subFormRows = Array.from(rows).filter((el) =>
+                    el.querySelector('input[type="date"]')
+                );
+                // Find the row whose date is currently 2026-06-14 (the
+                // original Sunday performance).
+                const sundayRow = subFormRows.find((row) =>
+                    row.querySelector('input[type="date"]').value === '2026-06-14'
+                );
+                const deleteBtn = sundayRow.querySelector('button[title*="Remove"]')
+                    ?? sundayRow.querySelector('button .pi-trash')?.closest('button');
+                deleteBtn.click();
+            JS);
+
+            // Wait for the deletion to drop the row count back to 3
+            // (rehearsal + Saturday + the new encore).
+            $browser->waitUsing(5, 250, function () use ($browser) {
+                $count = $browser->script(<<<'JS'
+                    return document.querySelectorAll('.border.border-gray-200 input[type="date"]').length;
+                JS)[0];
+                return $count === 3;
+            });
+
+            // 5) Submit the form.
+            $browser->script(<<<'JS'
+                const saveBtns = Array.from(document.querySelectorAll('button[type="submit"]'))
+                    .filter((b) => b.textContent.trim().toLowerCase().includes('save'));
+                saveBtns[0].click();
+            JS);
+
+            // The sequential save fires:
+            //   1) PATCH booking
+            //   2) PUT existing events
+            //   3) POST new events
+            //   4) DELETE removed events
+            // Poll the DB for the expected end state — equivalent to waiting
+            // for the post-save redirect, but resilient against Inertia
+            // caching the edit-mode URL after navigation.
+            $browser->waitUsing(15, 500, function () use ($booking) {
+                $renamed = (bool) \App\Models\Bookings::where('id', $booking->id)
+                    ->where('name', 'Concert Series — Renamed')
+                    ->exists();
+                $encoreExists = (bool) $booking->events()
+                    ->where('title', 'Encore performance')
+                    ->exists();
+                $count = $booking->events()->count();
+                return $renamed && $encoreExists && $count === 3;
+            });
+        });
+
+        // Assert booking renamed.
+        $booking->refresh();
+        $this->assertEquals('Concert Series — Renamed', $booking->name);
+
+        // Assert rehearsal date changed.
+        $rehearsal->refresh();
+        $this->assertEquals('2026-06-10', $rehearsal->date->format('Y-m-d'));
+
+        // Assert Sunday performance is gone.
+        $this->assertNull(\App\Models\Events::find($sunday->id));
+
+        // Assert new "Encore performance" event exists on 6/15.
+        $encore = $booking->events()->where('title', 'Encore performance')->first();
+        $this->assertNotNull($encore);
+        $this->assertEquals('2026-06-15', $encore->date->format('Y-m-d'));
+
+        // Assert final event count is 3 (rehearsal + Saturday + Encore).
+        $this->assertEquals(3, $booking->events()->count());
+    }
+
     public function test_invalid_per_event_price_is_rejected_by_the_backend(): void
     {
         $booking = $this->makeMultiEventBooking();
