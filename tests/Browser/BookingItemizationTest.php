@@ -175,13 +175,13 @@ class BookingItemizationTest extends DuskTestCase
         $this->assertTrue(true, 'browser assertions completed');
     }
 
-    public function test_multi_event_payout_shows_itemization_section(): void
+    public function test_multi_event_payout_page_shows_itemization_section(): void
     {
         $booking = $this->makeMultiEventBooking();
 
         $this->browse(function (Browser $browser) use ($booking) {
             $browser->loginAs($this->owner)
-                ->visit("/bands/{$this->band->id}/booking/{$booking->id}")
+                ->visit("/bands/{$this->band->id}/booking/{$booking->id}/payout")
                 ->waitForText('Itemized by event', 10)
                 ->assertSee('Itemized by event')
                 ->assertSee('Itemized total')
@@ -190,14 +190,14 @@ class BookingItemizationTest extends DuskTestCase
         $this->assertTrue(true, 'browser assertions completed');
     }
 
-    public function test_single_event_payout_does_not_show_itemization_section(): void
+    public function test_single_event_payout_page_does_not_show_itemization_section(): void
     {
         $booking = $this->makeSingleEventBooking();
 
         $this->browse(function (Browser $browser) use ($booking) {
             $browser->loginAs($this->owner)
-                ->visit("/bands/{$this->band->id}/booking/{$booking->id}")
-                ->waitForText('Anniversary Gig', 10)
+                ->visit("/bands/{$this->band->id}/booking/{$booking->id}/payout")
+                ->waitForText('Payout Breakdown', 10)
                 ->assertDontSee('Itemized by event');
         });
         $this->assertTrue(true, 'browser assertions completed');
@@ -211,7 +211,7 @@ class BookingItemizationTest extends DuskTestCase
 
         $this->browse(function (Browser $browser) use ($booking, $firstEvent) {
             $browser->loginAs($this->owner)
-                ->visit("/bands/{$this->band->id}/booking/{$booking->id}")
+                ->visit("/bands/{$this->band->id}/booking/{$booking->id}/payout")
                 ->waitForText('Itemized by event', 10);
 
             // Headless-chromium + Vue v-model + Dusk's native typing produces
@@ -273,7 +273,7 @@ class BookingItemizationTest extends DuskTestCase
 
         $this->browse(function (Browser $browser) use ($booking, $firstEvent) {
             $browser->loginAs($this->owner)
-                ->visit("/bands/{$this->band->id}/booking/{$booking->id}")
+                ->visit("/bands/{$this->band->id}/booking/{$booking->id}/payout")
                 ->waitForText('Itemized by event', 10);
 
             $url = route('Update Booking Event', [$booking->band_id, $booking->id, $firstEvent->id]);
