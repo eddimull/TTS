@@ -419,6 +419,107 @@ class BookingItemizationTest extends DuskTestCase
         $this->assertEquals(3, $booking->events()->count());
     }
 
+    public function test_booking_form_disables_delete_when_only_one_event_remains(): void
+    {
+        $booking = $this->makeMultiEventBooking('Sole Event Test');
+
+        $this->browse(function (Browser $browser) use ($booking) {
+            $browser->loginAs($this->owner)
+                ->visit("/bands/{$this->band->id}/booking/{$booking->id}?edit=true")
+                ->waitForText('Save Booking', 10);
+
+            // While 3 event rows are present, every delete button is enabled
+            // (canDelete prop is `eventRows.length > 1`).
+            $enabledCount = $browser->script(<<<'JS'
+                const rows = Array.from(document.querySelectorAll('.border.border-gray-200'))
+                    .filter((el) => el.querySelector('input[type="date"]'));
+                return rows
+                    .map((row) => row.querySelector('button .pi-trash')?.closest('button'))
+                    .filter((btn) => btn && !btn.disabled)
+                    .length;
+            JS)[0];
+            $this->assertEquals(3, $enabledCount, 'All three delete buttons should be enabled with 3 events.');
+
+            // Delete two rows, leaving only one event row in the form.
+            // Two synchronous clicks don't give Vue time to re-render, so
+            // call each click separately with a small pause between.
+            $clickLastDeleteJs = <<<'JS'
+                const rows = Array.from(document.querySelectorAll('.border.border-gray-200'))
+                    .filter((el) => el.querySelector('input[type="date"]'));
+                if (rows.length <= 1) return false;
+                const btn = rows[rows.length - 1].querySelector('button .pi-trash')?.closest('button');
+                if (!btn || btn.disabled) return false;
+                btn.click();
+                return true;
+            JS;
+            $browser->script($clickLastDeleteJs);
+            $browser->pause(300);
+            $browser->script($clickLastDeleteJs);
+
+            // Wait for the form state to settle at one row.
+            $browser->waitUsing(5, 250, function () use ($browser) {
+                $count = $browser->script(<<<'JS'
+                    return document.querySelectorAll('.border.border-gray-200 input[type="date"]').length;
+                JS)[0];
+                return $count === 1;
+            });
+
+            // The lone remaining row's delete button should now be disabled.
+            $remainingDisabled = $browser->script(<<<'JS'
+                const rows = Array.from(document.querySelectorAll('.border.border-gray-200'))
+                    .filter((el) => el.querySelector('input[type="date"]'));
+                if (rows.length !== 1) return null;
+                const btn = rows[0].querySelector('button .pi-trash')?.closest('button');
+                return btn ? btn.disabled : null;
+            JS)[0];
+            $this->assertTrue((bool) $remainingDisabled, 'Last event row delete button must be disabled.');
+        });
+    }
+
+    public function test_bookings_list_subtitles_and_chip_reflect_engagement_shape(): void
+    {
+        // One multi-event booking + one single-event booking under the same band.
+        $multi = $this->makeMultiEventBooking('Three Show Run');
+        $single = $this->makeSingleEventBooking('Solo Show');
+
+        $this->browse(function (Browser $browser) use ($multi, $single) {
+            $browser->loginAs($this->owner)
+                ->visit('/bookings')
+                ->waitForText($multi->name, 10)
+                ->assertSee($multi->name)
+                ->assertSee($single->name)
+                // Multi-event card shows the "3 events" subtitle + chip; the
+                // chip is rendered next to the title and reads "3 events".
+                ->assertSee('3 events')
+                // Single-event card uses date · time · venue subtitle —
+                // includes the venue name from the single event.
+                ->assertSee('Lakeshore Club');
+
+            // Verify the multi-event card has a chip and the single-event card
+            // does NOT. The chip class signature is unique enough to count.
+            $cardChips = $browser->script(<<<'JS'
+                const cards = Array.from(document.querySelectorAll('.booking-card'));
+                return cards.map((card) => {
+                    const titleEl = Array.from(card.querySelectorAll('span'))
+                        .find((s) => s.textContent.trim().length > 0);
+                    const chip = card.querySelector('span.inline-flex');
+                    return {
+                        title: titleEl ? titleEl.textContent.trim() : '',
+                        chip: chip ? chip.textContent.trim() : null,
+                    };
+                });
+            JS)[0];
+
+            $multiChip = collect($cardChips)->firstWhere('title', $multi->name);
+            $singleChip = collect($cardChips)->firstWhere('title', $single->name);
+
+            $this->assertNotNull($multiChip, 'Multi-event card not found by title.');
+            $this->assertNotNull($singleChip, 'Single-event card not found by title.');
+            $this->assertEquals('3 events', $multiChip['chip'], 'Multi-event card must show a 3-events chip.');
+            $this->assertNull($singleChip['chip'], 'Single-event card must not show a chip.');
+        });
+    }
+
     public function test_invalid_per_event_price_is_rejected_by_the_backend(): void
     {
         $booking = $this->makeMultiEventBooking();
