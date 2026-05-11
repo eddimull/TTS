@@ -64,16 +64,6 @@
         name="venue_address"
         label="Venue address"
       />
-      <div v-if="showPrice">
-        <label class="block text-sm font-medium text-gray-700 dark:text-gray-50">Price</label>
-        <input
-          v-model="localEvent.price"
-          type="number"
-          step="0.01"
-          min="0"
-          class="mt-1 block w-full rounded-md border-gray-300 dark:bg-slate-700 dark:text-gray-50 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-        >
-      </div>
     </div>
   </div>
 </template>
@@ -88,10 +78,6 @@ const props = defineProps({
     modelValue: {
         type: Object,
         required: true,
-    },
-    showPrice: {
-        type: Boolean,
-        default: false,
     },
     canDelete: {
         type: Boolean,

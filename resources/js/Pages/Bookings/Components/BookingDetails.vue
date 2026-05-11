@@ -278,9 +278,6 @@
         />
       </div>
 
-      <!-- Itemization summary (renders only for multi-event priced bookings) -->
-      <ItemizationSummary :booking="booking" />
-
       <!-- Notes Section - Full Width -->
       <div
         v-if="booking.notes"
@@ -563,7 +560,6 @@ import Container from '@/Components/Container.vue'
 import Button from 'primevue/button'
 import BookingPayout from './BookingPayout.vue'
 import EngagementSummary from './EngagementSummary.vue'
-import ItemizationSummary from './ItemizationSummary.vue'
 import EventList from './EventList.vue'
 import Dialog from 'primevue/dialog'
 import Select from 'primevue/select'

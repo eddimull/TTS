@@ -5,6 +5,76 @@
       Estimated Payout
     </h2>
 
+    <!-- Per-event itemization (multi-event only) -->
+    <div
+      v-if="booking.is_multi_event"
+      class="mb-5 pb-4 border-b border-gray-200 dark:border-gray-700"
+    >
+      <div class="flex items-center justify-between mb-2">
+        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">
+          Itemized by event
+        </h3>
+        <span
+          v-if="itemizationDelta !== 0"
+          :class="itemizationDelta > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'"
+          class="text-xs font-medium"
+        >
+          {{ itemizationDelta > 0 ? 'Unallocated' : 'Over-allocated' }}:
+          ${{ formatMoney(Math.abs(itemizationDelta)) }}
+        </span>
+      </div>
+
+      <div class="space-y-2">
+        <div
+          v-for="row in itemizationRows"
+          :key="row.id"
+          class="flex items-center gap-2 text-sm"
+        >
+          <span class="flex-1 text-gray-700 dark:text-gray-300 truncate">
+            {{ row.label }}
+          </span>
+          <span class="text-gray-500 dark:text-gray-400">$</span>
+          <input
+            v-model="row.priceInput"
+            type="number"
+            step="0.01"
+            min="0"
+            class="w-24 rounded-md border-gray-300 dark:bg-slate-700 dark:text-gray-50 shadow-sm text-right text-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            @change="saveRow(row)"
+          >
+          <span
+            v-if="row.saving"
+            class="text-xs text-gray-400"
+          >
+            <i class="pi pi-spin pi-spinner" />
+          </span>
+          <span
+            v-else-if="row.error"
+            :title="row.error"
+            class="text-xs text-red-500"
+          >
+            <i class="pi pi-exclamation-circle" />
+          </span>
+          <span
+            v-else-if="row.justSaved"
+            class="text-xs text-green-600 dark:text-green-400"
+          >
+            <i class="pi pi-check" />
+          </span>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between mt-3 text-sm font-medium pt-2 border-t border-gray-100 dark:border-gray-800">
+        <span class="text-gray-700 dark:text-gray-200">Itemized total</span>
+        <span class="text-gray-900 dark:text-gray-50">${{ formatMoney(itemizedTotal) }}</span>
+      </div>
+      <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+        <span>Booking total</span>
+        <span>${{ formatMoney(parseFloat(booking.price) || 0) }}</span>
+      </div>
+    </div>
+
+
     <!-- Loading/Error States -->
     <div
       v-if="!payoutConfig"
@@ -194,8 +264,9 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { usePage } from '@inertiajs/vue3'
+import { computed, reactive, watch } from 'vue'
+import { usePage, router } from '@inertiajs/vue3'
+import { DateTime } from 'luxon'
 
 const props = defineProps({
   booking: {
@@ -267,5 +338,81 @@ const formatPayoutType = (type) => {
     'payment_group': 'Group'
   }
   return types[type] || type
+}
+
+// ── Per-event itemization ─────────────────────────────────────────────────────
+
+function eventLabel(event) {
+  if (event.date) {
+    return DateTime.fromISO(event.date).toFormat('ccc M/d') + (event.title ? ` — ${event.title}` : '')
+  }
+  return event.title || `Event ${event.id}`
+}
+
+const itemizationRows = reactive(
+  [...(props.booking.events ?? [])]
+    .sort((a, b) => `${a.date ?? ''}-${a.id}`.localeCompare(`${b.date ?? ''}-${b.id}`))
+    .map((e) => ({
+      id: e.id,
+      eventRef: e,
+      label: eventLabel(e),
+      priceInput: e.price ?? '',
+      saving: false,
+      error: null,
+      justSaved: false,
+    }))
+)
+
+const itemizedTotal = computed(() =>
+  itemizationRows.reduce((sum, r) => sum + (parseFloat(r.priceInput) || 0), 0)
+)
+
+const itemizationDelta = computed(() => (parseFloat(props.booking.price) || 0) - itemizedTotal.value)
+
+function saveRow(row) {
+  const value = row.priceInput === '' || row.priceInput === null ? null : Number(row.priceInput)
+  const prevSnapshot = row.eventRef.price
+  if (value === null && (prevSnapshot === null || prevSnapshot === undefined)) {
+    return
+  }
+  if (value !== null && parseFloat(prevSnapshot) === value) {
+    return
+  }
+
+  row.saving = true
+  row.error = null
+  row.justSaved = false
+
+  router.put(
+    route('Update Booking Event', [props.booking.band_id, props.booking.id, row.id]),
+    {
+      title:          row.eventRef.title,
+      date:           row.eventRef.date,
+      start_time:     row.eventRef.start_time || null,
+      end_time:       row.eventRef.end_time   || null,
+      venue_name:     row.eventRef.venue_name || null,
+      venue_address:  row.eventRef.venue_address || null,
+      price:          value,
+      additional_data: row.eventRef.additional_data ?? {},
+      roster_id:      row.eventRef.roster_id ?? null,
+      notes:          row.eventRef.notes ?? null,
+      silent:         true,
+    },
+    {
+      preserveScroll: true,
+      preserveState:  true,
+      onSuccess: () => {
+        row.eventRef.price = value === null ? null : value.toFixed(2)
+        row.saving = false
+        row.justSaved = true
+        setTimeout(() => { row.justSaved = false }, 2000)
+      },
+      onError: (errors) => {
+        row.saving = false
+        const first = Object.values(errors ?? {})[0]
+        row.error = Array.isArray(first) ? first[0] : (first || 'Save failed')
+      },
+    },
+  )
 }
 </script>
