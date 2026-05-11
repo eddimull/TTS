@@ -78,7 +78,6 @@ class RapidEventUpdatesTest extends TestCase
         
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
-            'date' => now()->addDays(10),
             'event_type_id' => $this->eventType->id,
         ]);
 
@@ -86,7 +85,7 @@ class RapidEventUpdatesTest extends TestCase
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id' => $this->eventType->id,
-            'date' => $booking->date,
+            'date' => now()->addDays(10)->format('Y-m-d'),
             'title' => 'Initial',
         ]);
 
@@ -148,7 +147,6 @@ class RapidEventUpdatesTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
-            'date' => now()->addDays(10),
             'event_type_id' => $this->eventType->id,
         ]);
 
@@ -156,7 +154,7 @@ class RapidEventUpdatesTest extends TestCase
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id' => $this->eventType->id,
-            'date' => $booking->date,
+            'date' => now()->addDays(10)->format('Y-m-d'),
             'title' => 'Initial',
         ]);
 

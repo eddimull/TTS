@@ -11,8 +11,8 @@
         >
             {{ booking.name }}
             <div class="booking-card-info">
-                Date: {{ formatDate(booking.date) }}<br />
-                Venue: {{ booking.venue_name }}
+                Date: {{ formatDate(booking.start_date) }}<br />
+                Venue: {{ booking.venue_summary }}
             </div>
             <hr class="my-2" />
             <div class="booking-card-info">

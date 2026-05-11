@@ -78,8 +78,8 @@ class BookingsTest extends TestCase
             ->assertJsonStructure([
                 'bookings' => [
                     '*' => [
-                        'id', 'name', 'date', 'start_time', 'end_time',
-                        'venue_name', 'venue_address', 'status', 'price',
+                        'id', 'name', 'start_date', 'end_date',
+                        'venue_summary', 'status', 'price',
                         'event_type_id', 'notes', 'amount_paid', 'amount_due',
                         'is_paid', 'contacts',
                     ],
@@ -149,8 +149,8 @@ class BookingsTest extends TestCase
         $response->assertOk()
             ->assertJsonStructure([
                 'booking' => [
-                    'id', 'name', 'date', 'start_time', 'end_time',
-                    'venue_name', 'venue_address', 'status', 'price',
+                    'id', 'name', 'start_date', 'end_date',
+                    'venue_summary', 'status', 'price',
                     'event_type_id', 'notes', 'amount_paid', 'amount_due',
                     'is_paid', 'contacts', 'events',
                 ],
@@ -275,7 +275,7 @@ class BookingsTest extends TestCase
             'eventable_id'   => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id'  => $eventType->id,
-            'date'           => $booking->date,
+            'date'           => now()->addDays(10)->format('Y-m-d'),
             'title'          => 'Event 1',
         ]));
 
@@ -283,7 +283,7 @@ class BookingsTest extends TestCase
             'eventable_id'   => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id'  => $eventType->id,
-            'date'           => $booking->date,
+            'date'           => now()->addDays(10)->format('Y-m-d'),
             'title'          => 'Event 2',
         ]));
 

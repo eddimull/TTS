@@ -113,16 +113,17 @@ class MileageServiceTest extends TestCase
 
     public function test_resolves_destination_from_booking_venue_address()
     {
+        // venue_address now lives on the Events row (moved from bookings)
         $booking = Bookings::factory()->create([
-            'band_id'       => $this->band->id,
-            'venue_name'    => 'The Venue',
-            'venue_address' => '789 Venue St, Springfield, IL 62701',
+            'band_id' => $this->band->id,
         ]);
 
         $event = Events::factory()->create([
             'eventable_type' => 'App\\Models\\Bookings',
             'eventable_id'   => $booking->id,
             'date'           => Carbon::now()->subDay(),
+            'venue_name'     => 'The Venue',
+            'venue_address'  => '789 Venue St, Springfield, IL 62701',
         ]);
         $event->load('eventable');
 
@@ -134,15 +135,16 @@ class MileageServiceTest extends TestCase
 
     public function test_returns_null_destination_when_booking_has_no_venue_address()
     {
+        // venue_address now lives on the Events row (moved from bookings); null by default in factory
         $booking = Bookings::factory()->create([
-            'band_id'       => $this->band->id,
-            'venue_address' => null,
+            'band_id' => $this->band->id,
         ]);
 
         $event = Events::factory()->create([
             'eventable_type' => 'App\\Models\\Bookings',
             'eventable_id'   => $booking->id,
             'date'           => Carbon::now()->subDay(),
+            'venue_address'  => null,
         ]);
         $event->load('eventable');
 
@@ -205,13 +207,13 @@ class MileageServiceTest extends TestCase
         Auth::setUser($userWithNoAddress);
 
         $booking = Bookings::factory()->create([
-            'band_id'       => $bandWithNoAddress->id,
-            'venue_address' => '789 Venue St, Springfield, IL 62701',
+            'band_id' => $bandWithNoAddress->id,
         ]);
         $event = Events::factory()->create([
             'eventable_type' => 'App\\Models\\Bookings',
             'eventable_id'   => $booking->id,
             'date'           => Carbon::now()->subDay(),
+            'venue_address'  => '789 Venue St, Springfield, IL 62701',
         ]);
         $event->load('eventable');
 
@@ -231,14 +233,15 @@ class MileageServiceTest extends TestCase
 
     public function test_uses_cached_distance_and_does_not_call_api_when_record_is_fresh()
     {
+        // venue_address now lives on the Events row (moved from bookings)
         $booking = Bookings::factory()->create([
-            'band_id'       => $this->band->id,
-            'venue_address' => '789 Venue St, Springfield, IL 62701',
+            'band_id' => $this->band->id,
         ]);
         $event = Events::factory()->create([
             'eventable_type' => 'App\\Models\\Bookings',
             'eventable_id'   => $booking->id,
             'date'           => Carbon::now()->subDay(),
+            'venue_address'  => '789 Venue St, Springfield, IL 62701',
             'updated_at'     => Carbon::now()->subDays(5),
         ]);
 
@@ -275,24 +278,18 @@ class MileageServiceTest extends TestCase
             'updated_at' => Carbon::now()->subYear(),
         ]);
 
-        $booking1 = Bookings::factory()->create([
-            'band_id' => $this->band->id,
-            'date'    => Carbon::now()->subDays(10),
-        ]);
-        $booking2 = Bookings::factory()->create([
-            'band_id' => $this->band->id,
-            'date'    => Carbon::now()->subDays(20),
-        ]);
+        $booking1 = Bookings::factory()->create(['band_id' => $this->band->id]);
+        $booking2 = Bookings::factory()->create(['band_id' => $this->band->id]);
 
         $event1 = Events::factory()->create([
             'eventable_type' => 'App\\Models\\Bookings',
             'eventable_id'   => $booking1->id,
-            'date'           => $booking1->date,
+            'date'           => Carbon::now()->subDays(10),
         ]);
         $event2 = Events::factory()->create([
             'eventable_type' => 'App\\Models\\Bookings',
             'eventable_id'   => $booking2->id,
-            'date'           => $booking2->date,
+            'date'           => Carbon::now()->subDays(20),
         ]);
 
         EventDistanceForMembers::create(['user_id' => $this->user->id, 'event_id' => $event1->id, 'miles' => 100, 'minutes' => 120]);
@@ -316,13 +313,13 @@ class MileageServiceTest extends TestCase
             'updated_at' => Carbon::now()->subYears(3),
         ]);
 
-        $booking2023 = Bookings::factory()->create(['band_id' => $this->band->id, 'date' => Carbon::create(2023, 6, 1)]);
-        $booking2024 = Bookings::factory()->create(['band_id' => $this->band->id, 'date' => Carbon::create(2024, 6, 1)]);
-        $booking2024b = Bookings::factory()->create(['band_id' => $this->band->id, 'date' => Carbon::create(2024, 9, 1)]);
+        $booking2023  = Bookings::factory()->create(['band_id' => $this->band->id]);
+        $booking2024  = Bookings::factory()->create(['band_id' => $this->band->id]);
+        $booking2024b = Bookings::factory()->create(['band_id' => $this->band->id]);
 
-        $event2023  = Events::factory()->create(['eventable_type' => 'App\\Models\\Bookings', 'eventable_id' => $booking2023->id,  'date' => $booking2023->date]);
-        $event2024  = Events::factory()->create(['eventable_type' => 'App\\Models\\Bookings', 'eventable_id' => $booking2024->id,  'date' => $booking2024->date]);
-        $event2024b = Events::factory()->create(['eventable_type' => 'App\\Models\\Bookings', 'eventable_id' => $booking2024b->id, 'date' => $booking2024b->date]);
+        $event2023  = Events::factory()->create(['eventable_type' => 'App\\Models\\Bookings', 'eventable_id' => $booking2023->id,  'date' => Carbon::create(2023, 6, 1)]);
+        $event2024  = Events::factory()->create(['eventable_type' => 'App\\Models\\Bookings', 'eventable_id' => $booking2024->id,  'date' => Carbon::create(2024, 6, 1)]);
+        $event2024b = Events::factory()->create(['eventable_type' => 'App\\Models\\Bookings', 'eventable_id' => $booking2024b->id, 'date' => Carbon::create(2024, 9, 1)]);
 
         EventDistanceForMembers::create(['user_id' => $this->user->id, 'event_id' => $event2023->id,  'miles' => 200, 'minutes' => 240]);
         EventDistanceForMembers::create(['user_id' => $this->user->id, 'event_id' => $event2024->id,  'miles' => 100, 'minutes' => 120]);
@@ -358,18 +355,18 @@ class MileageServiceTest extends TestCase
             'updated_at' => Carbon::now()->subYear(),
         ]);
 
-        $attendedBooking = Bookings::factory()->create(['band_id' => $this->band->id, 'date' => Carbon::now()->subDays(5)]);
-        $absentBooking   = Bookings::factory()->create(['band_id' => $this->band->id, 'date' => Carbon::now()->subDays(10)]);
+        $attendedBooking = Bookings::factory()->create(['band_id' => $this->band->id]);
+        $absentBooking   = Bookings::factory()->create(['band_id' => $this->band->id]);
 
         $attendedEvent = Events::factory()->create([
             'eventable_type' => 'App\\Models\\Bookings',
             'eventable_id'   => $attendedBooking->id,
-            'date'           => $attendedBooking->date,
+            'date'           => Carbon::now()->subDays(5),
         ]);
         $absentEvent = Events::factory()->create([
             'eventable_type' => 'App\\Models\\Bookings',
             'eventable_id'   => $absentBooking->id,
-            'date'           => $absentBooking->date,
+            'date'           => Carbon::now()->subDays(10),
         ]);
 
         // Mark user as absent from the second event
@@ -400,11 +397,11 @@ class MileageServiceTest extends TestCase
             'updated_at' => Carbon::now()->subYear(),
         ]);
 
-        $booking = Bookings::factory()->create(['band_id' => $this->band->id, 'date' => Carbon::now()->subDays(5)]);
+        $booking = Bookings::factory()->create(['band_id' => $this->band->id]);
         $event = Events::factory()->create([
             'eventable_type' => 'App\\Models\\Bookings',
             'eventable_id'   => $booking->id,
-            'date'           => $booking->date,
+            'date'           => Carbon::now()->subDays(5),
         ]);
 
         EventMember::factory()->create([
@@ -432,11 +429,11 @@ class MileageServiceTest extends TestCase
             'updated_at' => Carbon::now()->subYear(),
         ]);
 
-        $booking = Bookings::factory()->create(['band_id' => $this->band->id, 'date' => Carbon::now()->subDays(5)]);
+        $booking = Bookings::factory()->create(['band_id' => $this->band->id]);
         $event = Events::factory()->create([
             'eventable_type' => 'App\\Models\\Bookings',
             'eventable_id'   => $booking->id,
-            'date'           => $booking->date,
+            'date'           => Carbon::now()->subDays(5),
         ]);
 
         // No EventMember record — should be treated as attended
@@ -460,11 +457,11 @@ class MileageServiceTest extends TestCase
             'updated_at' => Carbon::now()->subYear(),
         ]);
 
-        $booking = Bookings::factory()->create(['band_id' => $this->band->id, 'date' => Carbon::now()->subDays(5)]);
+        $booking = Bookings::factory()->create(['band_id' => $this->band->id]);
         $event = Events::factory()->create([
             'eventable_type' => 'App\\Models\\Bookings',
             'eventable_id'   => $booking->id,
-            'date'           => $booking->date,
+            'date'           => Carbon::now()->subDays(5),
         ]);
 
         // Only the other user has a distance record
@@ -485,11 +482,11 @@ class MileageServiceTest extends TestCase
             'updated_at' => Carbon::now()->subYear(),
         ]);
 
-        $booking = Bookings::factory()->create(['band_id' => $this->band->id, 'date' => Carbon::now()->subDays(5)]);
+        $booking = Bookings::factory()->create(['band_id' => $this->band->id]);
         Events::factory()->create([
             'eventable_type' => 'App\\Models\\Bookings',
             'eventable_id'   => $booking->id,
-            'date'           => $booking->date,
+            'date'           => Carbon::now()->subDays(5),
         ]);
 
         $service = new \App\Services\UserStatsService($this->user);

@@ -15,6 +15,7 @@ use App\Models\Bands;
 use App\Models\BookingContacts;
 use App\Models\Bookings;
 use App\Models\Contacts;
+use App\Models\Events;
 use App\Models\Payments;
 use App\Services\BookingActivityService;
 use App\Services\Mobile\BookingFormatter;
@@ -24,6 +25,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class BookingsController extends Controller
@@ -38,21 +40,23 @@ class BookingsController extends Controller
      */
     public function index(BookingIndexRequest $request, Bands $band): JsonResponse
     {
-        $query = $band->bookings()->with(['contacts', 'band']);
+        $query = $band->bookings()->with(['contacts', 'band', 'events']);
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
 
         if ($request->boolean('upcoming')) {
-            $query->whereDate('date', '>=', now()->toDateString());
+            $query->whereHas('events', fn ($q) => $q->whereDate('date', '>=', now()->toDateString()));
         }
 
         if ($request->filled('year')) {
-            $query->whereYear('date', $request->integer('year'));
+            $query->whereHas('events', fn ($q) => $q->whereYear('date', $request->integer('year')));
         }
 
-        $bookings = $query->orderBy('date', 'desc')->get();
+        $bookings = $query->get()
+            ->sortByDesc(fn ($b) => $b->start_date?->format('Y-m-d') ?? '')
+            ->values();
 
         return response()->json([
             'bookings' => $bookings->map(fn ($b) => $this->formatter->format($b))->values(),
@@ -89,7 +93,7 @@ class BookingsController extends Controller
         $bandIds = $user->bands()->pluck('id');
 
         $query = Bookings::query()
-            ->with(['band', 'contacts'])
+            ->with(['band', 'contacts', 'events'])
             ->whereIn('band_id', $bandIds);
 
         if ($request->filled('status')) {
@@ -97,22 +101,24 @@ class BookingsController extends Controller
         }
 
         if ($request->boolean('upcoming')) {
-            $query->whereDate('date', '>=', now()->toDateString());
+            $query->whereHas('events', fn ($q) => $q->whereDate('date', '>=', now()->toDateString()));
         }
 
         if ($request->filled('year')) {
-            $query->whereYear('date', $request->integer('year'));
+            $query->whereHas('events', fn ($q) => $q->whereYear('date', $request->integer('year')));
         }
 
         if (!empty($validated['from'])) {
-            $query->whereDate('date', '>=', $validated['from']);
+            $query->whereHas('events', fn ($q) => $q->whereDate('date', '>=', $validated['from']));
         }
 
         if (!empty($validated['to'])) {
-            $query->whereDate('date', '<=', $validated['to']);
+            $query->whereHas('events', fn ($q) => $q->whereDate('date', '<=', $validated['to']));
         }
 
-        $bookings = $query->orderBy('date', 'desc')->get();
+        $bookings = $query->get()
+            ->sortByDesc(fn ($b) => $b->start_date?->format('Y-m-d') ?? '')
+            ->values();
 
         return response()->json([
             'bookings' => $bookings->map(fn ($b) => $this->formatter->format($b))->values(),
@@ -139,25 +145,18 @@ class BookingsController extends Controller
 
         $status = ($validated['contract_option'] ?? 'default') === 'none' ? 'confirmed' : 'draft';
 
-        // venue_name has a NOT NULL DEFAULT 'TBD' in the schema. Omit the key
-        // entirely (rather than passing null) so MySQL's column default fires.
+        // date/start_time/end_time/venue_name/venue_address now live on events,
+        // not bookings. Store only booking-level fields here.
         $attrs = [
             'band_id'         => $band->id,
             'author_id'       => Auth::id(),
             'name'            => $validated['name'],
             'event_type_id'   => $validated['event_type_id'],
-            'date'            => $validated['date'],
-            'start_time'      => $validated['start_time'],
-            'end_time'        => $endTime,
             'price'           => $validated['price'] ?? null,
-            'venue_address'   => $validated['venue_address'] ?? null,
             'contract_option' => $validated['contract_option'] ?? 'default',
             'notes'           => $validated['notes'] ?? null,
             'status'          => $status,
         ];
-        if (!empty($validated['venue_name'])) {
-            $attrs['venue_name'] = $validated['venue_name'];
-        }
         $booking = Bookings::create($attrs);
 
         $booking->contract()->create([
@@ -181,12 +180,6 @@ class BookingsController extends Controller
     {
         $validated = $request->validated();
         $oldPrice  = (float) $booking->price;
-
-        // venue_name is NOT NULL in the schema; drop the key when blank so
-        // we don't overwrite the existing value with null.
-        if (array_key_exists('venue_name', $validated) && empty($validated['venue_name'])) {
-            unset($validated['venue_name']);
-        }
 
         $booking->update($validated);
 
@@ -218,6 +211,62 @@ class BookingsController extends Controller
                 $booking->fresh()->load(['contacts', 'events', 'contract', 'payments', 'band'])
             ),
         ]);
+    }
+
+    public function storeEvent(
+        \App\Http\Requests\Mobile\StoreBookingEventRequest $request,
+        Bands $band,
+        Bookings $booking,
+    ): JsonResponse {
+        $event = $booking->events()->create(array_merge(
+            $request->validated(),
+            ['key' => Str::uuid()],
+        ));
+
+        // Redistribute event values when a new event is added.
+        $this->bookingService->redistributeEventValues($booking->fresh());
+
+        return response()->json([
+            'event' => $this->formatter->formatEvent($event->fresh()),
+        ], 201);
+    }
+
+    public function updateEvent(
+        \App\Http\Requests\Mobile\UpdateBookingEventRequest $request,
+        Bands $band,
+        Bookings $booking,
+        Events $event,
+    ): JsonResponse {
+        if ($event->eventable_type !== Bookings::class || $event->eventable_id !== $booking->id) {
+            return response()->json(['error' => 'Event does not belong to this booking.'], 404);
+        }
+
+        $event->update($request->validated());
+
+        return response()->json([
+            'event' => $this->formatter->formatEvent($event->fresh()),
+        ]);
+    }
+
+    public function destroyEvent(
+        Bands $band,
+        Bookings $booking,
+        Events $event,
+    ): JsonResponse {
+        if ($event->eventable_type !== Bookings::class || $event->eventable_id !== $booking->id) {
+            return response()->json(['error' => 'Event does not belong to this booking.'], 404);
+        }
+
+        if ($booking->events()->count() <= 1) {
+            return response()->json([
+                'error' => 'Cannot delete the last event of a booking. A booking must have at least one event.',
+            ], 422);
+        }
+
+        $event->delete();
+        $this->bookingService->redistributeEventValues($booking->fresh());
+
+        return response()->json(['message' => 'Event deleted.']);
     }
 
     public function contactLibrary(Request $request, Bands $band): JsonResponse

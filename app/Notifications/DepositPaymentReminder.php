@@ -50,7 +50,7 @@ class DepositPaymentReminder extends Notification implements ShouldQueue
             ->line('')
             ->line('**Booking Details:**')
             ->line('Event: ' . $this->booking->name)
-            ->line('Date: ' . $this->booking->date->format('F j, Y'))
+            ->line('Date: ' . ($this->booking->start_date?->format('F j, Y') ?? 'TBD'))
             ->line('Band: ' . $this->booking->band->name)
             ->line('')
             ->line('**Payment Information:**')

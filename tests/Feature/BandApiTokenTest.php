@@ -52,7 +52,6 @@ class BandApiTokenTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'name' => 'Test Event',
-            'date' => '2025-12-01',
             'status' => 'confirmed',
         ]);
 
@@ -181,16 +180,20 @@ class BandApiTokenTest extends TestCase
 
     public function test_booked_dates_returns_correct_booking_structure(): void
     {
-        Bookings::factory()->create([
+        $weddingBooking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'name' => 'Wedding Reception',
+            'status' => 'confirmed',
+            'price' => 150000, // $1500.00
+            'notes' => 'Special requests noted',
+        ]);
+        Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $weddingBooking->id,
             'date' => '2025-12-15',
             'start_time' => '18:00:00',
             'venue_name' => 'Grand Ballroom',
             'venue_address' => '123 Main St',
-            'status' => 'confirmed',
-            'price' => 150000, // $1500.00
-            'notes' => 'Special requests noted',
         ]);
 
         $response = $this->withHeaders([
@@ -203,25 +206,25 @@ class BandApiTokenTest extends TestCase
                     '*' => [
                         'id',
                         'name',
-                        'date',
-                        'start_time',
-                        'end_time',
-                        'duration',
+                        'start_date',
+                        'end_date',
+                        'event_count',
+                        'is_multi_event',
+                        'venue_summary',
                         'event_type',
                         'event_type_id',
-                        'venue_name',
-                        'venue_address',
                         'status',
                         'price',
                         'notes',
+                        'events',
                     ],
                 ],
             ]);
 
         $booking = $response->json('bookings.0');
         $this->assertEquals('Wedding Reception', $booking['name']);
-        $this->assertEquals('2025-12-15', $booking['date']);
-        $this->assertEquals('Grand Ballroom', $booking['venue_name']);
+        $this->assertEquals('2025-12-15', $booking['start_date']);
+        $this->assertEquals('Grand Ballroom', $booking['venue_summary']);
         $this->assertEquals('confirmed', $booking['status']);
     }
 }

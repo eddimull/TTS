@@ -364,12 +364,12 @@
         }}</strong>
       </li>
       <li
-        v-if="event.time"
+        v-if="event.start_time"
         class="p-2"
       >
         Timeline:
         <Times
-          :event-time="event.time"
+          :event-time="event.start_time"
           :event-date="event.date"
           :times="event.additional_data?.times"
         />

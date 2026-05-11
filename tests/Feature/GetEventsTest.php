@@ -142,7 +142,7 @@ class GetEventsTest extends TestCase
         $staticDate = Carbon::now();
         $event = Events::factory()->create([
             'date' => $staticDate,
-            'time' => $staticDate
+            'start_time' => $staticDate->format('H:i:s'),
         ]);
 
         $this->assertEquals($staticDate->copy()->isoFormat('YYYY-MM-DD Thh:mm:ss.sss'), $event->ISODate);

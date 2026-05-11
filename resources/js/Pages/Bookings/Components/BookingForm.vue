@@ -215,11 +215,11 @@
   const form = useForm({
     name: props.booking.name,
     event_type_id: props.booking.event_type_id,
-    date: props.booking.date,
-    start_time: props.booking.start_time,
-    end_time: props.booking.end_time,
-    venue_name: props.booking.venue_name,
-    venue_address: props.booking.venue_address,
+    date: props.booking.events?.[0]?.date ?? '',
+    start_time: props.booking.events?.[0]?.start_time ?? '',
+    end_time: props.booking.events?.[0]?.end_time ?? '',
+    venue_name: props.booking.events?.[0]?.venue_name ?? '',
+    venue_address: props.booking.events?.[0]?.venue_address ?? '',
     price: props.booking.price,
     status: props.booking.status,
     contract_option: props.booking.contract_option,
@@ -227,10 +227,43 @@
   })
   
   const updateBooking = () => {
-    form.put(route('bands.booking.update', [props.band,props.booking], form), {
-      preserveScroll: true,
-      preserveState: true,
-    })
+    const primaryEvent = props.booking.events?.[0];
+
+    form
+      .transform((data) => ({
+        name: data.name,
+        event_type_id: data.event_type_id,
+        price: data.price,
+        status: data.status,
+        contract_option: data.contract_option,
+        notes: data.notes,
+      }))
+      .put(route('bands.booking.update', [props.band, props.booking]), {
+        preserveScroll: true,
+        preserveState: true,
+        onSuccess: () => {
+          if (!primaryEvent) return;
+          router.put(
+            route('Update Booking Event', [props.band.id, props.booking.id, primaryEvent.id]),
+            {
+              title: primaryEvent.title ?? form.name,
+              date: form.date,
+              start_time: form.start_time || null,
+              end_time: form.end_time || null,
+              venue_name: form.venue_name || null,
+              venue_address: form.venue_address || null,
+              additional_data: primaryEvent.additional_data ?? {},
+              roster_id: primaryEvent.roster_id ?? null,
+              notes: primaryEvent.notes ?? null,
+              silent: true,
+            },
+            {
+              preserveScroll: true,
+              preserveState: true,
+            },
+          );
+        },
+      });
   }
 
   const backToView = () => {

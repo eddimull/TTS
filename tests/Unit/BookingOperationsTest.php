@@ -97,22 +97,32 @@ class BookingOperationsTest extends TestCase
 
     public function test_can_calculate_duration()
     {
-        $booking = Bookings::factory()->create([
+        $booking = Bookings::factory()->create();
+        \App\Models\Events::factory()->create([
+            'eventable_type' => \App\Models\Bookings::class,
+            'eventable_id' => $booking->id,
+            'date' => '2026-06-01',
             'start_time' => '19:00:00',
             'end_time' => '23:00:00',
         ]);
+        $booking->refresh();
 
-        $this->assertEquals(4, $booking->duration);
+        $this->assertEquals(4.0, $booking->total_duration);
     }
 
     public function test_can_calculate_duration_after_midnight()
     {
-        $booking = Bookings::factory()->create([
+        $booking = Bookings::factory()->create();
+        \App\Models\Events::factory()->create([
+            'eventable_type' => \App\Models\Bookings::class,
+            'eventable_id' => $booking->id,
+            'date' => '2026-06-01',
             'start_time' => '21:00:00',
             'end_time' => '01:00:00',
         ]);
+        $booking->refresh();
 
-        $this->assertEquals(4, $booking->duration);
+        $this->assertEquals(4.0, $booking->total_duration);
     }
 
     public function test_can_determine_if_booking_is_paid()

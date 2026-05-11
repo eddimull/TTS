@@ -164,7 +164,7 @@
         <div class="p-0 md:p-4">
           <Timeline
             :event-date="event.date"
-            :event-time="event.time"
+            :event-time="event.start_time"
             :times="event.additional_data.times || []"
             @update:times="updateTimes"
           />

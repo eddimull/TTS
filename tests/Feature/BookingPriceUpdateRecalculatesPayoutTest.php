@@ -39,9 +39,8 @@ class BookingPriceUpdateRecalculatesPayoutTest extends TestCase
         // Create a booking with original price
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
-            'price' => 4145, 
+            'price' => 4145,
             'event_type_id' => $this->eventType->id,
-            'date' => now()->addDays(10),
             'status' => 'confirmed'
         ]);
 
@@ -50,14 +49,14 @@ class BookingPriceUpdateRecalculatesPayoutTest extends TestCase
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id' => $this->eventType->id,
-            'date' => $booking->date,
+            'date' => now()->addDays(10)->format('Y-m-d'),
         ]);
 
         $event2 = Events::factory()->create([
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id' => $this->eventType->id,
-            'date' => $booking->date->addDay(),
+            'date' => now()->addDays(11)->format('Y-m-d'),
         ]);
 
         
@@ -113,7 +112,6 @@ class BookingPriceUpdateRecalculatesPayoutTest extends TestCase
             'band_id' => $this->band->id,
             'price' => 3000,
             'event_type_id' => $this->eventType->id,
-            'date' => now()->addDays(10),
             'status' => 'confirmed'
         ]);
 
@@ -124,8 +122,8 @@ class BookingPriceUpdateRecalculatesPayoutTest extends TestCase
                 'eventable_id' => $booking->id,
                 'eventable_type' => Bookings::class,
                 'event_type_id' => $this->eventType->id,
-                'date' => $booking->date->addDays($i),
-                'value' => 1000, 
+                'date' => now()->addDays(10 + $i)->format('Y-m-d'),
+                'value' => 1000,
             ]);
         }
 
@@ -161,7 +159,6 @@ class BookingPriceUpdateRecalculatesPayoutTest extends TestCase
             'band_id' => $this->band->id,
             'price' => 2000,
             'event_type_id' => $this->eventType->id,
-            'date' => now()->addDays(10),
             'status' => 'confirmed'
         ]);
 
@@ -169,7 +166,7 @@ class BookingPriceUpdateRecalculatesPayoutTest extends TestCase
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'event_type_id' => $this->eventType->id,
-            'date' => $booking->date,
+            'date' => now()->addDays(10)->format('Y-m-d'),
             'value' => 2000,
         ]);
 

@@ -24,8 +24,10 @@ class FinalPaymentReminder extends Notification implements ShouldQueue
     {
         $this->booking = $booking;
         $this->amountDue = $booking->amount_due;
-        $this->eventDate = $booking->date->format('F j, Y');
-        $this->daysUntilEvent = (int) now()->diffInDays($booking->date, false);
+        $this->eventDate = $booking->start_date?->format('F j, Y') ?? 'TBD';
+        $this->daysUntilEvent = $booking->start_date
+            ? (int) now()->diffInDays($booking->start_date, false)
+            : 0;
     }
 
     /**
@@ -52,7 +54,7 @@ class FinalPaymentReminder extends Notification implements ShouldQueue
             ->line('Event: ' . $this->booking->name)
             ->line('Date: ' . $this->eventDate)
             ->line('Band: ' . $this->booking->band->name)
-            ->line('Location: ' . $this->booking->venue_name)
+            ->line('Location: ' . ($this->booking->venue_summary ?? 'TBD'))
             ->line('')
             ->line('**Payment Information:**')
             ->line('Remaining Balance: $' . $this->amountDue)

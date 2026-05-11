@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Casts\Price;
 use App\Models\Contracts;
+use App\Models\Events;
 use Laravel\Scout\Searchable;
 use App\Casts\BookingDateTime;
 use App\Formatters\CalendarEventFormatter;
@@ -32,11 +33,6 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         'band_id',
         'name',
         'event_type_id',
-        'date',
-        'start_time',
-        'end_time',
-        'venue_name',
-        'venue_address',
         'price',
         'status',
         'contract_option',
@@ -47,9 +43,6 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
 
     protected $casts = [
         'created_at' => 'datetime:Y-m-d',
-        'date' => 'date:Y-m-d',
-        'start_time' => 'datetime:H:i',
-        'end_time' => 'datetime:H:i',
         'price' => Price::class,
         'enable_portal_media_access' => 'boolean',
     ];
@@ -62,6 +55,12 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         'amount_paid',
         'amount_due',
         'is_paid',
+        'start_date',
+        'end_date',
+        'event_count',
+        'venue_summary',
+        'is_multi_event',
+        'total_duration',
     ];
 
     protected $hidden = [
@@ -85,23 +84,61 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         return $this->contacts()->wherePivot('is_primary', true);
     }
 
-    public function getDurationAttribute()
-    {
-        $start = $this->start_time;
-        $end = $this->end_time;
-
-        // If end time is earlier than start time, add a day to end time
-        if ($end < $start)
-        {
-            $end = $end->addDay();
-        }
-
-        return round($start->diffInHours($end, true), 2);
-    }
-
     public function events(): MorphMany
     {
         return $this->morphMany(Events::class, 'eventable');
+    }
+
+    /**
+     * The booking's primary event (chronologically-first by (date, id)).
+     * Memoized; uses the loaded `events` collection when available, else queries.
+     */
+    private ?Events $cachedPrimaryEvent = null;
+    private bool $primaryEventCached = false;
+
+    protected function primaryEvent(): ?Events
+    {
+        if ($this->primaryEventCached) {
+            return $this->cachedPrimaryEvent;
+        }
+
+        if ($this->relationLoaded('events')) {
+            $primary = $this->events
+                ->sortBy([['date', 'asc'], ['id', 'asc']])
+                ->first();
+        } else {
+            $primary = $this->events()->orderBy('date')->orderBy('id')->first();
+        }
+
+        $this->cachedPrimaryEvent = $primary;
+        $this->primaryEventCached = true;
+        return $primary;
+    }
+
+    /**
+     * The booking's last event (chronologically-last by (date, id)).
+     * Memoized; uses the loaded `events` collection when available, else queries.
+     */
+    private ?Events $cachedLastEvent = null;
+    private bool $lastEventCached = false;
+
+    protected function lastEvent(): ?Events
+    {
+        if ($this->lastEventCached) {
+            return $this->cachedLastEvent;
+        }
+
+        if ($this->relationLoaded('events')) {
+            $last = $this->events
+                ->sortBy([['date', 'asc'], ['id', 'asc']])
+                ->last();
+        } else {
+            $last = $this->events()->orderBy('date', 'desc')->orderBy('id', 'desc')->first();
+        }
+
+        $this->cachedLastEvent = $last;
+        $this->lastEventCached = true;
+        return $last;
     }
 
     public function payments(): MorphMany
@@ -137,21 +174,59 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         return $this->belongsTo(EventTypes::class, 'event_type_id');
     }
 
-    public function getStartDateTimeAttribute(): ?Carbon
+    public function getStartDateAttribute(): ?\Carbon\Carbon
     {
-        return Carbon::parse($this->date->format('Y-m-d') . ' ' . $this->start_time->format('H:i'));
+        return $this->primaryEvent()?->date;
     }
 
-    public function getEndDateTimeAttribute(): ?Carbon
+    public function getEndDateAttribute(): ?\Carbon\Carbon
     {
-        $endTime = Carbon::parse($this->date->format('Y-m-d') . ' ' . $this->end_time->format('H:i'))->copy();
+        return $this->lastEvent()?->date;
+    }
 
-        $startTime = Carbon::parse($this->date->format('Y-m-d') . ' ' . $this->start_time->format('H:i'))->copy();
+    public function getEventCountAttribute(): int
+    {
+        return $this->relationLoaded('events')
+            ? $this->events->count()
+            : $this->events()->count();
+    }
 
-        if ($endTime->lt($startTime)) {
-            $endTime->addDay();
+    public function getIsMultiEventAttribute(): bool
+    {
+        return $this->event_count > 1;
+    }
+
+    public function getVenueSummaryAttribute(): ?string
+    {
+        $names = $this->events->pluck('venue_name')
+            ->filter(fn($n) => !empty($n))
+            ->unique()
+            ->values();
+        if ($names->isEmpty()) {
+            return null;
         }
-        return $endTime;
+        if ($names->count() === 1) {
+            return $names->first();
+        }
+        return 'Multiple venues';
+    }
+
+    public function getTotalDurationAttribute(): float
+    {
+        $events = $this->events;
+        $hours = 0.0;
+        foreach ($events as $event) {
+            if (!$event->start_time || !$event->end_time) {
+                continue;
+            }
+            $start = $event->start_time;
+            $end = $event->end_time;
+            if ($end < $start) {
+                $end = $end->copy()->addDay();
+            }
+            $hours += round($start->diffInHours($end, true), 2);
+        }
+        return $hours;
     }
 
     public function getAmountPaidAttribute($value = null)
@@ -306,7 +381,11 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
      */
     public function getNeedsDepositReminderAttribute(): bool
     {
-        if (!$this->deposit_due_date || $this->is_deposit_paid || $this->date < now()) {
+        if (!$this->deposit_due_date || $this->is_deposit_paid) {
+            return false;
+        }
+        $startDate = $this->start_date;
+        if ($startDate && $startDate < now()) {
             return false;
         }
 
@@ -325,11 +404,15 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
      */
     public function getNeedsFinalPaymentReminderAttribute(): bool
     {
-        if ($this->is_paid || $this->date < now()) {
+        if ($this->is_paid) {
+            return false;
+        }
+        $startDate = $this->start_date;
+        if (!$startDate || $startDate < now()) {
             return false;
         }
 
-        $daysUntilEvent = now()->diffInDays($this->date, false);
+        $daysUntilEvent = now()->diffInDays($startDate, false);
         return $daysUntilEvent >= 6 && $daysUntilEvent <= 8; // 7 days ±1 day
     }
 
@@ -404,13 +487,14 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
      */
     public function toSearchableArray(): array
     {
+        $primary = $this->primaryEvent();
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'venue_name' => $this->venue_name,
-            'venue_address' => $this->venue_address,
+            'venue_name' => $primary?->venue_name,
+            'venue_address' => $primary?->venue_address,
             'status' => $this->status,
-            'date' => $this->date->format('Y-m-d'),
+            'date' => $primary?->date?->format('Y-m-d'),
             'price' => $this->price,
             'band_id' => $this->band_id,
             'event_type_id' => $this->event_type_id,
@@ -490,20 +574,32 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
 
     public function getGoogleCalendarLocation(): string|null
     {
-       if($this->venue_name && $this->venue_name !== 'TBD') {
-           return $this->venue_name . ($this->venue_address ? ', ' . $this->venue_address : '');
-       }
-       return null;
+        $primary = $this->primaryEvent();
+        if (!$primary) {
+            return null;
+        }
+        if ($primary->venue_name && $primary->venue_name !== 'TBD') {
+            return $primary->venue_name . ($primary->venue_address ? ', ' . $primary->venue_address : '');
+        }
+        return null;
     }
 
     public function getGoogleCalendarStartTime(): \Google\Service\Calendar\EventDateTime
     {
-        return new \Google\Service\Calendar\EventDateTime(['dateTime' => $this->startDateTime, 'timeZone' => config('app.timezone')]);
+        $primary = $this->primaryEvent();
+        return new \Google\Service\Calendar\EventDateTime([
+            'dateTime' => $primary?->startDateTime,
+            'timeZone' => config('app.timezone'),
+        ]);
     }
 
     public function getGoogleCalendarEndTime(): \Google\Service\Calendar\EventDateTime
     {
-        return new \Google\Service\Calendar\EventDateTime(['dateTime' => $this->endDateTime, 'timeZone' => config('app.timezone')]);
+        $primary = $this->primaryEvent();
+        return new \Google\Service\Calendar\EventDateTime([
+            'dateTime' => $primary?->endDateTime,
+            'timeZone' => config('app.timezone'),
+        ]);
     }
 
     /**
@@ -516,11 +612,6 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
                 'band_id',
                 'name',
                 'event_type_id',
-                'date',
-                'start_time',
-                'end_time',
-                'venue_name',
-                'venue_address',
                 'price',
                 'status',
                 'contract_option',

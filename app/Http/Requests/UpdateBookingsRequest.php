@@ -30,17 +30,17 @@ class UpdateBookingsRequest extends FormRequest
             'name' => 'required|string|max:255',
             'author_id' => 'exclude',
             'event_type_id' => 'required|in:' . implode(',', EventTypes::all()->pluck('id')->toArray()),
-            'date' => 'required|date',
-            'start_time' => 'required|date_format:H:i',
-            'end_time' => 'required|date_format:H:i',
+            'date'          => 'prohibited',
+            'start_time'    => 'prohibited',
+            'end_time'      => 'prohibited',
             'price' => [
                 'required',
                 'regex:/^\d+(\.\d{1,2})?$/',
                 'min:0',
                 'decimal:0,2'
             ],
-            'venue_name' => 'nullable|string|max:255',
-            'venue_address' => 'nullable|string',
+            'venue_name'    => 'prohibited',
+            'venue_address' => 'prohibited',
             'contract_option' => 'required|in:default,none,external',
             'status' => 'nullable|in:draft,pending,confirmed,cancelled',
             'notes' => 'nullable|string',
@@ -50,9 +50,14 @@ class UpdateBookingsRequest extends FormRequest
     public function messages()
     {
         return [
-            'event_type.in' => 'The selected event type is invalid.',
-            'time.date_format' => 'The time must be in the format HH:MM.',
-            'price.min' => 'The price must be at least $0.',
+            'event_type.in'            => 'The selected event type is invalid.',
+            'time.date_format'         => 'The time must be in the format HH:MM.',
+            'price.min'                => 'The price must be at least $0.',
+            'date.prohibited'          => 'The date field has moved to events. Use POST /bookings/{id}/events or PATCH /events/{eventId} instead.',
+            'start_time.prohibited'    => 'The start_time field has moved to events. Use the event subresource endpoints instead.',
+            'end_time.prohibited'      => 'The end_time field has moved to events. Use the event subresource endpoints instead.',
+            'venue_name.prohibited'    => 'The venue_name field has moved to events. Use the event subresource endpoints instead.',
+            'venue_address.prohibited' => 'The venue_address field has moved to events. Use the event subresource endpoints instead.',
         ];
     }
 }

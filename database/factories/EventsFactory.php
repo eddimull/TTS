@@ -36,7 +36,11 @@ class EventsFactory extends Factory
             'key' => $this->faker->uuid,
             'title' => $this->faker->sentence,
             'notes' => $this->faker->paragraph,
-            'time' => $this->faker->time(),
+            'start_time' => null,
+            'end_time' => null,
+            'venue_name' => null,
+            'venue_address' => null,
+            'price' => null,
         ];
     }
 

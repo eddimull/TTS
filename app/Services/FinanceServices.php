@@ -100,7 +100,7 @@ class FinanceServices
         }
 
         return $bookings->filter(function ($booking) use ($year) {
-            return $booking->date && $booking->date->year === $year;
+            return $booking->start_date && $booking->start_date->year === $year;
         })->values();
     }
 

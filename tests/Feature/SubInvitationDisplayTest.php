@@ -52,7 +52,8 @@ class SubInvitationDisplayTest extends TestCase
             'eventable_type' => 'App\Models\Bookings',
             'date' => now()->addDays(7),
             'title' => 'Jazz Night at Blue Note',
-            'time' => '20:00:00',
+            'start_time' => '20:00:00',
+            'end_time' => '23:00:00',
             'additional_data' => [
                 'performance' => [
                     'charts' => [

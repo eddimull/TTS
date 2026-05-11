@@ -96,14 +96,14 @@ class CalculateEventDistancesTest extends TestCase
         // Create booking with venue address
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'venue_name' => 'The Roxy Theatre',
-            'venue_address' => '9009 Sunset Blvd, West Hollywood, CA 90069',
         ]);
 
         $event = Events::factory()->create([
             'eventable_type' => 'App\\Models\\Bookings',
             'eventable_id' => $booking->id,
             'date' => Carbon::now()->addDays(10),
+            'venue_name' => 'The Roxy Theatre',
+            'venue_address' => '9009 Sunset Blvd, West Hollywood, CA 90069',
         ]);
 
         // Run the job
@@ -141,14 +141,14 @@ class CalculateEventDistancesTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'venue_name' => 'The Roxy Theatre',
-            'venue_address' => '9009 Sunset Blvd, West Hollywood, CA 90069',
         ]);
 
         $event = Events::factory()->create([
             'eventable_type' => 'App\\Models\\Bookings',
             'eventable_id' => $booking->id,
             'date' => Carbon::now()->addDays(10),
+            'venue_name' => 'The Roxy Theatre',
+            'venue_address' => '9009 Sunset Blvd, West Hollywood, CA 90069',
         ]);
 
         $job = new CalculateEventDistances($event);
@@ -182,14 +182,14 @@ class CalculateEventDistancesTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'venue_name' => 'The Roxy Theatre',
-            'venue_address' => '9009 Sunset Blvd, West Hollywood, CA 90069',
         ]);
 
         $event = Events::factory()->create([
             'eventable_type' => 'App\\Models\\Bookings',
             'eventable_id' => $booking->id,
             'date' => Carbon::now()->addDays(10),
+            'venue_name' => 'The Roxy Theatre',
+            'venue_address' => '9009 Sunset Blvd, West Hollywood, CA 90069',
         ]);
 
         // First calculation
@@ -204,7 +204,7 @@ class CalculateEventDistancesTest extends TestCase
         $firstCalculationTime = $distance->updated_at;
 
         // Sleep to ensure timestamps are different (database precision might be seconds)
-        sleep(1);
+        $this->travel(1)->seconds();
 
         // Update the event (touch it to update timestamp)
         $event->touch();
@@ -254,14 +254,14 @@ class CalculateEventDistancesTest extends TestCase
 
         $booking = Bookings::factory()->create([
             'band_id' => $band->id,
-            'venue_name' => 'The Roxy Theatre',
-            'venue_address' => '9009 Sunset Blvd, West Hollywood, CA 90069',
         ]);
 
         $event = Events::factory()->create([
             'eventable_type' => 'App\\Models\\Bookings',
             'eventable_id' => $booking->id,
             'date' => Carbon::now()->addDays(10),
+            'venue_name' => 'The Roxy Theatre',
+            'venue_address' => '9009 Sunset Blvd, West Hollywood, CA 90069',
         ]);
 
         $job = new CalculateEventDistances($event);
