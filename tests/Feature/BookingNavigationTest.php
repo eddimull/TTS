@@ -4,10 +4,13 @@ namespace Tests\Feature;
 
 use App\Models\Bands;
 use App\Models\Bookings;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 class BookingNavigationTest extends TestCase
 {
+    use RefreshDatabase;
+
     /**
      * Can navigate to the route.
      *
