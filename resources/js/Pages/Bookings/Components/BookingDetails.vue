@@ -118,9 +118,10 @@
         </div>
       </div>
 
-      <!-- Payout Section (if available) -->
+      <!-- Payout section: always rendered for multi-event bookings (itemization
+           editor lives here) or whenever a payoutConfig is available. -->
       <BookingPayout
-        v-if="payoutConfig"
+        v-if="payoutConfig || booking.is_multi_event"
         :booking="booking"
         :band="band"
         :payout-config="payoutConfig"
