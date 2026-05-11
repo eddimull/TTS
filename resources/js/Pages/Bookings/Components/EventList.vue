@@ -91,6 +91,7 @@ import EventEditor from "./EventEditor.vue";
 import EventDetails from "./EventDetails.vue";
 import { router, usePage } from "@inertiajs/vue3";
 import { DateTime } from "luxon";
+import { formatTime } from "@/utils/formatters";
 
 const props = defineProps({
     initialEvents: {
@@ -145,12 +146,6 @@ onMounted(() => {
 
 const formatDate = (dateString) => {
     return DateTime.fromISO(dateString).toLocaleString(DateTime.DATE_HUGE);
-};
-
-const formatTime = (timeString) => {
-    return new Date(`2000-01-01T${timeString}`).toLocaleTimeString([], {
-        timeStyle: "short",
-    });
 };
 
 const formatDateTime = (dateTimeString) => {

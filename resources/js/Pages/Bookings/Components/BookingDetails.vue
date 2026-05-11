@@ -23,6 +23,8 @@
             {{ booking.status }}
           </span>
         </div>
+        <!-- Engagement summary: dates, venue, event-type at a glance -->
+        <EngagementSummary :booking="booking" />
       </div>
 
       <!-- Quick Info Grid -->
@@ -109,7 +111,7 @@
                 v-else
                 class="text-xs bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded"
               >
-                None
+                Verbal agreement — no contract on file
               </span>
             </div>
           </div>
@@ -125,8 +127,8 @@
         :payout-result="payoutResult"
       />
 
-      <!-- Three Column Layout for Contacts, Payments, Events -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <!-- Two Column Layout for Contacts and Payments -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <!-- Contacts Section -->
         <div class="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-3 flex items-center justify-between">
@@ -263,59 +265,17 @@
           </div>
         </div>
 
-        <!-- Events Section -->
-        <div class="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-3 flex items-center justify-between">
-            <span>
-              <i class="pi pi-calendar-plus mr-2" />
-              Events
-            </span>
-            <span class="text-sm font-normal text-gray-500 dark:text-gray-400">{{ booking.events?.length || 0 }}</span>
-          </h2>
-          <div
-            v-if="booking.events && booking.events.length > 0"
-            class="space-y-2 max-h-96 overflow-y-auto"
-          >
-            <div
-              v-for="event in booking.events"
-              :key="event.id"
-              class="border border-gray-200 dark:border-slate-600 rounded p-2 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors"
-            >
-              <div class="flex items-start justify-between">
-                <div class="flex-1 min-w-0">
-                  <div class="font-semibold text-gray-900 dark:text-gray-50 text-sm truncate mb-1">
-                    {{ event.title }}
-                  </div>
-                  <div class="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                    <div class="flex items-center">
-                      <i class="pi pi-calendar mr-1 text-xs" />
-                      {{ formatDateShort(event.date) }}
-                    </div>
-                    <div
-                      v-if="event.start_time"
-                      class="flex items-center"
-                    >
-                      <i class="pi pi-clock mr-1 text-xs" />
-                      {{ formatTime(event.start_time) }}
-                    </div>
-                  </div>
-                </div>
-                <Link
-                  :href="route('events.edit', event.key)"
-                  class="text-blue-600 dark:text-blue-400 hover:underline text-xs ml-2 flex-shrink-0"
-                >
-                  View →
-                </Link>
-              </div>
-            </div>
-          </div>
-          <div
-            v-else
-            class="text-center text-sm text-gray-500 dark:text-gray-400 py-4"
-          >
-            No events
-          </div>
-        </div>
+      </div>
+
+      <!-- Events Section — full-width, first-class, backed by EventList -->
+      <div class="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-3">
+          Events
+        </h2>
+        <EventList
+          :initial-events="booking.events ?? []"
+          :booking="booking"
+        />
       </div>
 
       <!-- Notes Section - Full Width -->
@@ -599,6 +559,8 @@ import { router, Link } from '@inertiajs/vue3'
 import Container from '@/Components/Container.vue'
 import Button from 'primevue/button'
 import BookingPayout from './BookingPayout.vue'
+import EngagementSummary from './EngagementSummary.vue'
+import EventList from './EventList.vue'
 import Dialog from 'primevue/dialog'
 import Select from 'primevue/select'
 import SubmissionPreview from '@/Components/Questionnaires/SubmissionPreview.vue'

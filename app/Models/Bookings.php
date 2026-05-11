@@ -184,6 +184,25 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         return $this->lastEvent()?->date;
     }
 
+    /**
+     * Customize serialization of the appended derived date accessors so
+     * the JSON payload carries clean Y-m-d strings instead of full ISO
+     * datetimes (which the frontend parses awkwardly). PHP callers keep
+     * receiving Carbon instances from the accessors.
+     */
+    public function toArray()
+    {
+        $array = parent::toArray();
+        foreach (['start_date', 'end_date'] as $key) {
+            if (array_key_exists($key, $array) && $array[$key] instanceof \Carbon\Carbon) {
+                $array[$key] = $array[$key]->format('Y-m-d');
+            } elseif (isset($array[$key]) && is_string($array[$key]) && strlen($array[$key]) > 10) {
+                $array[$key] = substr($array[$key], 0, 10);
+            }
+        }
+        return $array;
+    }
+
     public function getEventCountAttribute(): int
     {
         return $this->relationLoaded('events')

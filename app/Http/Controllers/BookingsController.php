@@ -48,7 +48,13 @@ class BookingsController extends Controller
         $bookings = $bookings->whereHas('events', function ($q) {
                 $q->where('date', '>=', Carbon::now()->subMonths(6));
             })
-            ->with(['contract', 'contacts'])
+            ->with([
+                'contract',
+                'contacts',
+                'events' => function ($query) {
+                    $query->select('id', 'eventable_type', 'eventable_id', 'date', 'venue_name', 'start_time');
+                },
+            ])
             ->get();
 
 
