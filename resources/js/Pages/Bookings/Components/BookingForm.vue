@@ -211,10 +211,26 @@ function normalizeEvent(evt) {
     end_time:       evt.end_time    ?? '',
     venue_name:     evt.venue_name  ?? '',
     venue_address:  evt.venue_address ?? '',
-    additional_data: evt.additional_data ?? {},
+    additional_data: parseAdditionalData(evt.additional_data),
     roster_id:      evt.roster_id ?? null,
     notes:          evt.notes   ?? null,
   };
+}
+
+// additional_data sometimes comes back as a JSON-encoded string from
+// older event rows that bypassed the model cast. Normalize to an object
+// so the form request's `array` validation passes on re-save.
+function parseAdditionalData(raw) {
+  if (!raw) return {};
+  if (typeof raw === 'string') {
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (_) {
+      return {};
+    }
+  }
+  return raw;
 }
 
 const eventRows = ref(
