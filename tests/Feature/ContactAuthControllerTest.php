@@ -22,7 +22,7 @@ class ContactAuthControllerTest extends TestCase
         $response = $this->get(route('portal.login'));
 
         $response->assertStatus(200);
-        // $response->assertInertia(fn ($page) => $page->component('Contact/Login'));
+        $response->assertInertia(fn ($page) => $page->component('Contact/Login'));
     }
 
     /**
