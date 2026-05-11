@@ -9,10 +9,17 @@
             "
             class="booking-card-title dark:text-white"
         >
-            {{ booking.name }}
+            <div class="flex items-center gap-2 flex-wrap">
+                <span>{{ booking.name }}</span>
+                <span
+                    v-if="booking.is_multi_event"
+                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                >
+                    {{ booking.event_count }} events
+                </span>
+            </div>
             <div class="booking-card-info">
-                Date: {{ formatDate(booking.start_date) }}<br />
-                Venue: {{ booking.venue_summary }}
+                {{ subtitle }}
             </div>
             <hr class="my-2" />
             <div class="booking-card-info">
@@ -57,6 +64,47 @@ const props = defineProps({
 const formatDate = (date) => {
     return DateTime.fromISO(date).toFormat("LLL d, yyyy");
 };
+
+const formatTime = (timeString) => {
+    if (!timeString) return "";
+    // Accept "HH:mm" or "HH:mm:ss"; render as "7:30 PM"
+    const parts = timeString.split(":");
+    if (parts.length < 2) return timeString;
+    return DateTime.fromObject({
+        hour: parseInt(parts[0], 10),
+        minute: parseInt(parts[1], 10),
+    }).toFormat("h:mm a");
+};
+
+const formatDateRange = (start, end) => {
+    if (!start) return "";
+    const startDt = DateTime.fromISO(start);
+    if (!end) return startDt.toFormat("LLL d, yyyy");
+    const endDt = DateTime.fromISO(end);
+    if (startDt.hasSame(endDt, "day")) return startDt.toFormat("LLL d, yyyy");
+    if (startDt.hasSame(endDt, "month")) {
+        return `${startDt.toFormat("LLL d")}–${endDt.toFormat("d")}`;
+    }
+    return `${startDt.toFormat("LLL d, yyyy")} – ${endDt.toFormat("LLL d, yyyy")}`;
+};
+
+const subtitle = computed(() => {
+    const events = props.booking.events ?? [];
+    const count = props.booking.event_count ?? events.length;
+    const venueSummary = props.booking.venue_summary;
+
+    if (count <= 1) {
+        const primary = events[0];
+        if (!primary?.date) return "No date";
+        const parts = [formatDate(primary.date)];
+        if (primary.start_time) parts.push(formatTime(primary.start_time));
+        if (venueSummary) parts.push(venueSummary);
+        return parts.join(" · ");
+    }
+
+    const rangeLabel = formatDateRange(props.booking.start_date, props.booking.end_date);
+    return `${count} events · ${rangeLabel} · ${venueSummary || "Multiple venues"}`;
+});
 
 const showFuelGauge = computed(() => {
     return (
