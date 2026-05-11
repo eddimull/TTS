@@ -47,12 +47,12 @@
                   </dd>
                 </div>
 
-                <div v-if="event.time || event.start_time">
+                <div v-if="event.start_time">
                   <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">
                     Time
                   </dt>
                   <dd class="mt-1 text-sm text-gray-900 dark:text-white">
-                    {{ event.time || event.start_time }}
+                    {{ event.start_time }}
                   </dd>
                 </div>
 
@@ -88,7 +88,7 @@
                     Duration
                   </dt>
                   <dd class="mt-1 text-sm text-gray-900 dark:text-white">
-                    {{ event.start_time || event.time }} - {{ event.end_time || 'TBD' }}
+                    {{ event.start_time }} - {{ event.end_time || 'TBD' }}
                   </dd>
                 </div>
 

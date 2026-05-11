@@ -55,7 +55,7 @@
               Show Time
             </div>
             <div class="text-lg font-medium text-gray-900 dark:text-gray-50">
-              {{ formatTime(event.time) }}
+              {{ formatTime(event.start_time) }}
             </div>
           </div>
         </div>

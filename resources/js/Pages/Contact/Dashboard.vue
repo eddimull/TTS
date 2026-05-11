@@ -221,7 +221,7 @@
                           d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                         />
                       </svg>
-                      {{ booking.date }} at {{ booking.start_time }}
+                      {{ booking.start_date }} at {{ booking.events?.[0]?.start_time }}
                     </div>
                     <div class="mt-1 flex items-center text-sm text-gray-500 dark:text-gray-400">
                       <svg
@@ -243,7 +243,7 @@
                           d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                         />
                       </svg>
-                      {{ booking.venue_name }}
+                      {{ booking.venue_summary }}
                     </div>
                     <div class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                       Band: {{ booking.band_name }}

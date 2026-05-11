@@ -3,7 +3,7 @@
     <div class="max-w-2xl mx-auto py-8 px-4">
       <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl p-6 md:p-8">
         <div class="mb-6">
-          <p class="text-sm text-gray-500 mb-1">{{ booking.band_name }} — {{ booking.name }} · {{ booking.date }}</p>
+          <p class="text-sm text-gray-500 mb-1">{{ booking.band_name }} — {{ booking.name }} · {{ booking.start_date }}</p>
           <h1 class="text-3xl font-bold text-gray-800 dark:text-gray-50">{{ instance.name }}</h1>
           <p v-if="instance.description" class="text-gray-600 dark:text-gray-300 mt-2">
             {{ instance.description }}

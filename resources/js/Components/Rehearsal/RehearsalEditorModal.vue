@@ -615,7 +615,7 @@ const getEventData = () => {
             event_title: event.title || '',
             event_type_id: event.event_type_id || getRehearsalEventTypeId(),
             event_date: event.date || '',
-            event_time: event.time?.substring(0, 5) || '', // HH:mm format
+            event_time: event.start_time?.substring(0, 5) || '', // HH:mm format
         };
     }
     return {

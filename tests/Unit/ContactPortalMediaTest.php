@@ -20,7 +20,6 @@ class ContactPortalMediaTest extends TestCase
     {
         $booking = Bookings::factory()->create([
             'enable_portal_media_access' => true,
-            'date' => '2024-06-15',
             'name' => 'Wedding Event',
         ]);
 
@@ -37,7 +36,7 @@ class ContactPortalMediaTest extends TestCase
             'eventable_type' => 'App\Models\Bookings',
             'eventable_id' => $booking->id,
             'event_type_id' => $booking->event_type_id,
-            'date' => $booking->date,
+            'date' => '2024-06-15',
             'title' => $booking->name,
             'media_folder_path' => '2024/06/wedding-event',
             'enable_portal_media_access' => true,
@@ -81,7 +80,7 @@ class ContactPortalMediaTest extends TestCase
             'eventable_type' => 'App\Models\Bookings',
             'eventable_id' => $booking2->id,
             'event_type_id' => $booking2->event_type_id,
-            'date' => $booking2->date,
+            'date' => '2024-07-01',
             'title' => $booking2->name,
             'media_folder_path' => '2024/07/other-event',
             'enable_portal_media_access' => true,
@@ -119,7 +118,7 @@ class ContactPortalMediaTest extends TestCase
             'eventable_type' => 'App\Models\Bookings',
             'eventable_id' => $booking->id,
             'event_type_id' => $booking->event_type_id,
-            'date' => $booking->date,
+            'date' => '2024-06-15',
             'title' => $booking->name,
             'media_folder_path' => '2024/06/private-event',
             'enable_portal_media_access' => false, // Disabled

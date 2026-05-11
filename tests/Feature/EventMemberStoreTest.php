@@ -30,9 +30,6 @@ class EventMemberStoreTest extends TestCase
     {
         parent::setUp();
 
-        $this->artisan('db:seed', ['--class' => 'SubRolesPermissionsSeeder']);
-        \setPermissionsTeamId(0);
-
         $this->owner = User::factory()->create();
         $this->band = Bands::factory()->create();
 
@@ -182,7 +179,10 @@ class EventMemberStoreTest extends TestCase
         $response->assertStatus(201);
 
         // Only one event_member for this user/event (the restored one)
-        $this->assertDatabaseCount('event_members', 1);
+        $this->assertSame(1, \App\Models\EventMember::withTrashed()
+            ->where('event_id', $this->event->id)
+            ->where('user_id', $existingUser->id)
+            ->count());
         $this->assertDatabaseHas('event_members', [
             'event_id'   => $this->event->id,
             'user_id'    => $existingUser->id,

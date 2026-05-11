@@ -14,7 +14,7 @@
             }}</span>
           </h1>
           <span class="mt-0 text-xs text-gray-500 dark:text-gray-50">{{
-            booking.date
+            booking.start_date
           }}</span>
           <span
             class="mt-0 text-xs text-gray-500 dark:text-gray-50"

@@ -21,7 +21,7 @@
               </p>
               <p class="flex items-center gap-2">
                 <i class="pi pi-clock text-blue-500" />
-                <span>{{ formatTime(event.time) }}</span>
+                <span>{{ formatTime(event.start_time) }}</span>
               </p>
               <p
                 v-if="event.updated_at"
@@ -222,9 +222,14 @@ const cancelEdit = () => {
 
 const addNewEvent = () => {
     isAddingEvent.value = true;
+    const primaryEvent = props.booking.events?.[0];
+    const primaryDate = primaryEvent?.date ?? props.booking.start_date ?? '';
+    const primaryStartTime = primaryEvent?.start_time ?? '';
+    const primaryEndTime = primaryEvent?.end_time ?? '';
+
     editingEvent.value = {
         title: props.booking.name + " Event",
-        date: props.booking.date,
+        date: primaryDate,
         event_type_id: props.booking.event_type_id,
         eventable: {
             band_id: props.booking.band_id,
@@ -233,11 +238,11 @@ const addNewEvent = () => {
             times: [
                 {
                     title: "End",
-                    time: `${props.booking.date}T${props.booking.end_time}`,
+                    time: primaryDate && primaryEndTime ? `${primaryDate}T${primaryEndTime}` : '',
                 },
                 {
                     title: "Band Load-In",
-                    time: `${props.booking.date}T${props.booking.start_time}`,
+                    time: primaryDate && primaryStartTime ? `${primaryDate}T${primaryStartTime}` : '',
                 },
             ],
             public: false,
@@ -259,7 +264,7 @@ const addNewEvent = () => {
                 ],
             },
         },
-        time: props.booking.start_time,
+        start_time: primaryStartTime,
     };
 };
 

@@ -22,11 +22,11 @@
             <div class="flex flex-wrap items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
               <div class="flex items-center gap-2">
                 <i class="pi pi-calendar" />
-                <span>{{ formatDate(booking.date) }} at {{ formatTime(booking.start_time) }} - {{ formatTime(booking.end_time) }}</span>
+                <span>{{ formatDate(booking.start_date) }}</span>
               </div>
               <div class="flex items-center gap-2">
                 <i class="pi pi-building" />
-                <span>{{ booking.venue_name || 'TBD' }}</span>
+                <span>{{ booking.venue_summary || 'TBD' }}</span>
               </div>
               <div class="flex items-center gap-2">
                 <i class="pi pi-users" />

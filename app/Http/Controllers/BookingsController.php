@@ -45,7 +45,9 @@ class BookingsController extends Controller
 
         $bookings = $band ? $band->bookings() : Bookings::whereIn('band_id', $userBands->pluck('id'));
 
-        $bookings = $bookings->where('date', '>=', Carbon::now()->subMonths(6))
+        $bookings = $bookings->whereHas('events', function ($q) {
+                $q->where('date', '>=', Carbon::now()->subMonths(6));
+            })
             ->with(['contract', 'contacts'])
             ->get();
 
@@ -60,31 +62,38 @@ class BookingsController extends Controller
     {
         $eventTypes = EventTypes::all();
         $bookingDetails = $band->bookings()
-            ->with('eventType')
+            ->with(['eventType', 'events'])
             ->where('status', '!=', 'cancelled')
             ->get()
-            ->keyBy('date')
+            ->keyBy(fn ($booking) => $booking->start_date?->format('Y-m-d') ?? '')
             ->map(function ($booking) {
+                $primaryEvent = $booking->events->first();
                 return [
                     'name' => $booking->name,
                     'event_type' => $booking->eventType->name ?? 'Unknown',
-                    'start_time' => $booking->start_time,
+                    'start_time' => $primaryEvent?->start_time?->format('H:i'),
                     'status' => $booking->status,
                 ];
             });
         
+        // Derive booked dates from the primary events (date column moved to events)
+        $bookedDates = $bookingDetails->keys()->filter()->values()->toArray();
+
         return Inertia::render('Bookings/Create', [
             'band' => $band,
             'eventTypes' => $eventTypes,
-            'bookedDates' => $band->bookings()->where('status', '!=', 'cancelled')->pluck('date')->toArray(),
+            'bookedDates' => $bookedDates,
             'bookingDetails' => $bookingDetails,
         ]);
     }
 
     public function store(StoreBookingsRequest $request, Bands $band)
     {
-        
-        $booking = $band->bookings()->create($request->validated());
+        $bookingFields = collect($request->validated())->except([
+            'date', 'start_time', 'end_time', 'venue_name', 'venue_address',
+        ])->toArray();
+
+        $booking = $band->bookings()->create($bookingFields);
 
         if ($booking->contract_option === 'none')
         {
@@ -100,19 +109,32 @@ class BookingsController extends Controller
         // Get default roster for the band
         $defaultRoster = $band->defaultRoster;
 
+        // Build event payload from REQUEST values, not from $booking (those columns are gone).
+        $eventDate    = $request->input('date');
+        $eventStart   = $request->input('start_time');
+        $eventEnd     = $request->input('end_time');
+        $venueName    = $request->input('venue_name');
+        $venueAddress = $request->input('venue_address');
+
+        $startDateTime = \Carbon\Carbon::parse($eventDate . ' ' . $eventStart);
+        $endDateTime   = \Carbon\Carbon::parse($eventDate . ' ' . $eventEnd);
+
         $event = [
             'event_type_id' => $booking->event_type_id,
             'key' => Str::uuid(),
             'title' => $booking->name,
-            'date' => $booking->date,
-            'time' => $booking->start_time,
+            'date' => $eventDate,
+            'start_time' => $eventStart,
+            'end_time' => $eventEnd,
+            'venue_name' => $venueName,
+            'venue_address' => $venueAddress,
             'roster_id' => $defaultRoster?->id,
             'additional_data' => [
                 'times' => [
-                    ['title' => 'Load In', 'time' => $booking->start_date_time->copy()->subHours(4)->format('Y-m-d H:i')],
-                    ['title' => 'Soundcheck', 'time' => $booking->start_date_time->copy()->subHours(3)->format('Y-m-d H:i')],
-                    ['title' => 'Quiet', 'time' => $booking->start_date_time->copy()->subHours(1)->format('Y-m-d H:i')],
-                    ['title' => 'End Time', 'time' => $booking->end_date_time->format('Y-m-d H:i')],
+                    ['title' => 'Load In', 'time' => $startDateTime->copy()->subHours(4)->format('Y-m-d H:i')],
+                    ['title' => 'Soundcheck', 'time' => $startDateTime->copy()->subHours(3)->format('Y-m-d H:i')],
+                    ['title' => 'Quiet', 'time' => $startDateTime->copy()->subHours(1)->format('Y-m-d H:i')],
+                    ['title' => 'End Time', 'time' => $endDateTime->format('Y-m-d H:i')],
                 ],
                 'backline_provided' => false,
                 'production_needed' => true,
@@ -138,7 +160,7 @@ class BookingsController extends Controller
                 ['title' => 'money_dance', 'data' => 'TBD',],
                 ['title' => 'bouquet_garter', 'data' => 'TBD']
             ];
-            $event['additional_data']['times'][] = ['title' => 'Ceremony', 'time' => $booking->start_date_time->copy()->format('Y-m-d H:i')];
+            $event['additional_data']['times'][] = ['title' => 'Ceremony', 'time' => $startDateTime->copy()->format('Y-m-d H:i')];
             $event['additional_data']['onsite'] = true;
             $event['additional_data']['public'] = false;
         }
@@ -615,6 +637,12 @@ class BookingsController extends Controller
 
     public function deleteEvent(Bands $band, Bookings $booking, Events $event)
     {
+        if ($booking->events()->count() <= 1) {
+            return redirect()->back()->withErrors([
+                'event' => 'Cannot delete the last event of a booking. A booking must have at least one event.',
+            ]);
+        }
+
         $event->delete();
 
         // Redistribute values after deletion
@@ -738,7 +766,7 @@ class BookingsController extends Controller
                 'id' => $event->id,
                 'title' => $event->title,
                 'date' => $event->date,
-                'time' => $event->time,
+                'time' => $event->start_time?->format('H:i'),
                 'members' => $event->eventMembers->map(function ($member) {
                     return [
                         'id' => $member->id,
@@ -771,16 +799,17 @@ class BookingsController extends Controller
         $activities = $activityService->getBookingTimeline($booking);
         
         // Load booking with necessary relationships
-        $booking->load('band', 'eventType', 'contacts');
+        $booking->load('band', 'eventType', 'contacts', 'events');
         
         return Inertia::render('Bookings/History', [
             'booking' => [
                 'id' => $booking->id,
                 'name' => $booking->name,
-                'date' => $booking->date->format('Y-m-d'),
-                'start_time' => $booking->start_time->format('H:i'),
-                'end_time' => $booking->end_time->format('H:i'),
-                'venue_name' => $booking->venue_name,
+                'start_date' => $booking->start_date?->format('Y-m-d'),
+                'end_date' => $booking->end_date?->format('Y-m-d'),
+                'event_count' => $booking->event_count,
+                'is_multi_event' => $booking->is_multi_event,
+                'venue_summary' => $booking->venue_summary,
                 'status' => $booking->status,
                 'price' => $booking->price,
                 'band_name' => $booking->band->name,

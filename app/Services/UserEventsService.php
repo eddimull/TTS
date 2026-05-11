@@ -220,9 +220,9 @@ class UserEventsService
                 'events.id',
                 'events.title',
                 'events.date',
-                'events.time',
+                'events.start_time',
                 'events.additional_data',
-                'bookings.venue_name',
+                'events.venue_name',
                 'bookings.band_id'
             ])
             ->get();
@@ -238,7 +238,7 @@ class UserEventsService
                 'events.id',
                 'events.title',
                 'events.date',
-                'events.time',
+                'events.start_time',
                 'events.additional_data',
                 'rehearsals.additional_data as rehearsal_additional_data',
                 'rehearsals.venue_name',
@@ -250,7 +250,7 @@ class UserEventsService
         $upcomingEvents = $bookingEvents->merge($rehearsalEvents)
             ->sortBy([
                 ['date', 'asc'],
-                ['time', 'asc']
+                ['start_time', 'asc']
             ])
             ->values();
 
@@ -290,7 +290,7 @@ class UserEventsService
                         'event_id' => $event->id,
                         'event_title' => $event->title,
                         'event_date' => $event->date->format('Y-m-d'),
-                        'event_time' => $event->time,
+                        'event_time' => $event->start_time?->format('H:i:s'),
                         'venue_name' => $event->venue_name,
                         'band_id' => $event->band_id,
                     ];
@@ -309,7 +309,7 @@ class UserEventsService
                         'event_id' => $event->id,
                         'event_title' => $event->title,
                         'event_date' => $event->date->format('Y-m-d'),
-                        'event_time' => $event->time,
+                        'event_time' => $event->start_time?->format('H:i:s'),
                         'venue_name' => $event->venue_name,
                         'band_id' => $event->band_id,
                     ];
@@ -418,10 +418,15 @@ class UserEventsService
             if ($event->eventable) {
                 if ($event->eventable_type === 'App\\Models\\Bookings') {
                     $event->eventable->makeHidden(['amount_paid', 'amount_due', 'is_paid']);
+                    // venue_name/venue_address now live on events, not bookings
+                    // $event->venue_name is already on the events table row
+                    $event->band_id = $event->eventable->band_id ?? null;
+                } else {
+                    // For rehearsals and other eventables, pull venue from eventable
+                    $event->venue_name = $event->eventable->venue_name ?? null;
+                    $event->venue_address = $event->eventable->venue_address ?? null;
+                    $event->band_id = $event->eventable->band_id ?? null;
                 }
-                $event->venue_name = $event->eventable->venue_name ?? null;
-                $event->venue_address = $event->eventable->venue_address ?? null;
-                $event->band_id = $event->eventable->band_id ?? null;
             }
 
             return $event;
@@ -498,9 +503,9 @@ class UserEventsService
                 'events.id',
                 'events.title',
                 'events.date',
-                'events.time',
+                'events.start_time',
                 'events.additional_data',
-                'bookings.venue_name',
+                'events.venue_name',
                 'bookings.band_id'
             ])
             ->get();
@@ -516,7 +521,7 @@ class UserEventsService
                 'events.id',
                 'events.title',
                 'events.date',
-                'events.time',
+                'events.start_time',
                 'events.additional_data',
                 'rehearsals.additional_data as rehearsal_additional_data',
                 'rehearsals.venue_name',
@@ -528,7 +533,7 @@ class UserEventsService
         $upcomingEvents = $bookingEvents->merge($rehearsalEvents)
             ->sortBy([
                 ['date', 'asc'],
-                ['time', 'asc']
+                ['start_time', 'asc']
             ])
             ->values();
 
@@ -563,7 +568,7 @@ class UserEventsService
                         'event_id' => $event->id,
                         'event_title' => $event->title,
                         'event_date' => $event->date->format('Y-m-d'),
-                        'event_time' => $event->time,
+                        'event_time' => $event->start_time?->format('H:i:s'),
                         'venue_name' => $event->venue_name,
                         'band_id' => $event->band_id,
                     ];
@@ -582,7 +587,7 @@ class UserEventsService
                         'event_id' => $event->id,
                         'event_title' => $event->title,
                         'event_date' => $event->date->format('Y-m-d'),
-                        'event_time' => $event->time,
+                        'event_time' => $event->start_time?->format('H:i:s'),
                         'venue_name' => $event->venue_name,
                         'band_id' => $event->band_id,
                     ];

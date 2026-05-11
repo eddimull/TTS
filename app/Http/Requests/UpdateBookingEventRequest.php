@@ -37,7 +37,11 @@ class UpdateBookingEventRequest extends FormRequest
     {
         return [
             'date' => 'required|date',
-            'time' => 'required',
+            'start_time' => 'nullable|date_format:H:i',
+            'end_time' => 'nullable|date_format:H:i',
+            'venue_name' => 'nullable|string|max:255',
+            'venue_address' => 'nullable|string|max:500',
+            'price' => 'nullable|numeric|min:0',
             'title' => 'required|string',
             'notes' => 'nullable|string',
             'roster_id' => 'nullable|exists:rosters,id',

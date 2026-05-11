@@ -774,6 +774,7 @@ class DevSetupCommand extends Command
 
         $defaultRoster = $band->defaultRoster;
         $created = 0;
+        $faker = \Faker\Factory::create();
 
         foreach ($bookings as $booking) {
             if ($booking->events()->exists() && !$force) {
@@ -784,19 +785,29 @@ class DevSetupCommand extends Command
                 $booking->events()->delete();
             }
 
+            // Generate fake date/time/venue for the event. Booking-level
+            // date/start_time/venue_name/venue_address columns were removed
+            // during the bookings/events redesign; events now own those fields.
+            $eventDateTime = $faker->dateTimeBetween('-6 months', '+1 year');
+            $startDateTime = \Carbon\Carbon::instance($eventDateTime)->setTime((int) $faker->numberBetween(17, 20), 0);
+            $endDateTime   = $startDateTime->copy()->addHours(3);
+
             $event = [
                 'event_type_id' => $booking->event_type_id,
                 'key' => Str::uuid(),
                 'title' => $booking->name,
-                'date' => $booking->date,
-                'time' => $booking->start_time,
+                'date' => $startDateTime->format('Y-m-d'),
+                'start_time' => $startDateTime->format('H:i'),
+                'end_time' => $endDateTime->format('H:i'),
+                'venue_name' => $faker->company,
+                'venue_address' => $faker->address,
                 'roster_id' => $defaultRoster?->id,
                 'additional_data' => [
                     'times' => [
-                        ['title' => 'Load In', 'time' => $booking->start_date_time->copy()->subHours(4)->format('Y-m-d H:i')],
-                        ['title' => 'Soundcheck', 'time' => $booking->start_date_time->copy()->subHours(3)->format('Y-m-d H:i')],
-                        ['title' => 'Quiet', 'time' => $booking->start_date_time->copy()->subHours(1)->format('Y-m-d H:i')],
-                        ['title' => 'End Time', 'time' => $booking->end_date_time->format('Y-m-d H:i')],
+                        ['title' => 'Load In', 'time' => $startDateTime->copy()->subHours(4)->format('Y-m-d H:i')],
+                        ['title' => 'Soundcheck', 'time' => $startDateTime->copy()->subHours(3)->format('Y-m-d H:i')],
+                        ['title' => 'Quiet', 'time' => $startDateTime->copy()->subHours(1)->format('Y-m-d H:i')],
+                        ['title' => 'End Time', 'time' => $endDateTime->format('Y-m-d H:i')],
                     ],
                     'backline_provided' => false,
                     'production_needed' => true,
@@ -822,7 +833,7 @@ class DevSetupCommand extends Command
                     ['title' => 'money_dance', 'data' => 'TBD'],
                     ['title' => 'bouquet_garter', 'data' => 'TBD']
                 ];
-                $event['additional_data']['times'][] = ['title' => 'Ceremony', 'time' => $booking->start_date_time->copy()->format('Y-m-d H:i')];
+                $event['additional_data']['times'][] = ['title' => 'Ceremony', 'time' => $startDateTime->copy()->format('Y-m-d H:i')];
                 $event['additional_data']['onsite'] = true;
                 $event['additional_data']['public'] = false;
             }

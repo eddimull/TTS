@@ -359,7 +359,7 @@ const availableYears = computed(() => {
         : filteredSnapshotBookings.value;
 
     const years = new Set(
-        bookings.map((booking) => new Date(booking.date).getFullYear())
+        bookings.map((booking) => new Date(booking.start_date).getFullYear())
     );
     return Array.from(years).sort((a, b) => b - a);
 });
@@ -371,7 +371,7 @@ const processDataByMonth = (bookings, year) => {
         if (booking?.status === "cancelled") {
             return;
         }
-        const date = new Date(booking.date);
+        const date = new Date(booking.start_date);
         const bookingYear = date.getFullYear();
         if (bookingYear !== year) return;
 

@@ -147,7 +147,6 @@ class UserStatsServiceTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 3000, // $3000 / 3 members = $1000 each
-            'date' => Carbon::now(),
         ]);
 
         $service = new UserStatsService($this->user);
@@ -209,7 +208,6 @@ class UserStatsServiceTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000,
-            'date' => Carbon::now(),
         ]);
 
         $service = new UserStatsService($this->user);
@@ -240,7 +238,7 @@ class UserStatsServiceTest extends TestCase
         Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000,
-            'date' => $joinDate->copy()->subDays(10),
+            'created_at' => $joinDate->copy()->subDays(10),
             'status' => 'confirmed',
         ]);
 
@@ -248,7 +246,7 @@ class UserStatsServiceTest extends TestCase
         Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 2000,
-            'date' => $joinDate->copy()->addDays(10),
+            'created_at' => $joinDate->copy()->addDays(10),
             'status' => 'confirmed',
         ]);
 
@@ -275,28 +273,24 @@ class UserStatsServiceTest extends TestCase
         Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000,
-            'date' => Carbon::now(),
             'status' => 'confirmed',
         ]);
 
         Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000,
-            'date' => Carbon::now(),
             'status' => 'pending',
         ]);
 
         Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000,
-            'date' => Carbon::now(),
             'status' => 'cancelled', // Should NOT count
         ]);
 
         Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000,
-            'date' => Carbon::now(),
             'status' => 'draft', // Should NOT count
         ]);
 
@@ -327,18 +321,26 @@ class UserStatsServiceTest extends TestCase
         ]);
 
         // Create bookings in different years
-        Bookings::factory()->create([
+        $booking2023 = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 2000, // $1000 per member
-            'date' => Carbon::create(2023, 6, 15),
             'status' => 'confirmed',
         ]);
+        Events::factory()->create([
+            'eventable_type' => 'App\\Models\\Bookings',
+            'eventable_id' => $booking2023->id,
+            'date' => Carbon::create(2023, 6, 15),
+        ]);
 
-        Bookings::factory()->create([
+        $booking2024 = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 4000, // $2000 per member
-            'date' => Carbon::create(2024, 3, 20),
             'status' => 'confirmed',
+        ]);
+        Events::factory()->create([
+            'eventable_type' => 'App\\Models\\Bookings',
+            'eventable_id' => $booking2024->id,
+            'date' => Carbon::create(2024, 3, 20),
         ]);
 
         $service = new UserStatsService($this->user);
@@ -377,14 +379,12 @@ class UserStatsServiceTest extends TestCase
         Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 4000, // $2000 per member (2 members)
-            'date' => Carbon::now(),
             'status' => 'confirmed',
         ]);
 
         Bookings::factory()->create([
             'band_id' => $band2->id,
             'price' => 3000, // $3000 (only member)
-            'date' => Carbon::now(),
             'status' => 'confirmed',
         ]);
 
@@ -445,7 +445,6 @@ class UserStatsServiceTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000,
-            'date' => Carbon::now(),
         ]);
 
         $service = new UserStatsService($this->user);
@@ -489,7 +488,6 @@ class UserStatsServiceTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000,
-            'date' => Carbon::now()->subDays(5), // Past event
             'status' => 'confirmed',
         ]);
 
@@ -497,8 +495,8 @@ class UserStatsServiceTest extends TestCase
         $event = Events::factory()->create([
             'eventable_type' => 'App\\Models\\Bookings',
             'eventable_id' => $booking->id,
-            'date' => $booking->date,
-            'time' => '19:00',
+            'date' => Carbon::now()->subDays(5), // Past event
+            'start_time' => '19:00',
             'title' => $booking->name,
         ]);
 
@@ -535,7 +533,6 @@ class UserStatsServiceTest extends TestCase
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000,
-            'date' => Carbon::now()->addDays(10), // Future event
             'status' => 'confirmed',
         ]);
 
@@ -543,8 +540,8 @@ class UserStatsServiceTest extends TestCase
         $event = Events::factory()->create([
             'eventable_type' => 'App\\Models\\Bookings',
             'eventable_id' => $booking->id,
-            'date' => $booking->date,
-            'time' => '19:00',
+            'date' => Carbon::now()->addDays(10), // Future event
+            'start_time' => '19:00',
             'title' => $booking->name,
         ]);
 

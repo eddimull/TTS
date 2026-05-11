@@ -155,7 +155,7 @@ class Bands extends Model
 
     public function bookings()
     {
-        return $this->hasMany(Bookings::class, 'band_id')->orderBy('date', 'desc');
+        return $this->hasMany(Bookings::class, 'band_id')->orderBy('created_at', 'desc');
     }
 
     public function questionnaires()
