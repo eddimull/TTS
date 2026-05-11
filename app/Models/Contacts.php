@@ -71,7 +71,7 @@ class Contacts extends Authenticatable
                     {
                         return [
                             'booking_name' => $bookingContact->booking->name,
-                            'date' => $bookingContact->booking->date->format('Y-m-d'),
+                            'date' => $bookingContact->booking->start_date?->format('Y-m-d'),
                             'booking_id' => $bookingContact->booking,
                         ];
                     });
@@ -88,7 +88,7 @@ class Contacts extends Authenticatable
             return [
                 'id' => $booking->id,
                 'name' => $booking->name,
-                'date' => $booking->date?->format('Y-m-d'),
+                'date' => $booking->start_date?->format('Y-m-d'),
                 'role' => $booking->pivot->role,
                 'is_primary' => $booking->pivot->is_primary,
                 'notes' => $booking->pivot->notes,

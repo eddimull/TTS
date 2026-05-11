@@ -15,6 +15,7 @@ use App\Models\Bands;
 use App\Models\BookingContacts;
 use App\Models\Bookings;
 use App\Models\Contacts;
+use App\Models\Events;
 use App\Models\Payments;
 use App\Services\BookingActivityService;
 use App\Services\Mobile\BookingFormatter;
@@ -24,6 +25,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class BookingsController extends Controller
@@ -179,12 +181,6 @@ class BookingsController extends Controller
         $validated = $request->validated();
         $oldPrice  = (float) $booking->price;
 
-        // venue_name is NOT NULL in the schema; drop the key when blank so
-        // we don't overwrite the existing value with null.
-        if (array_key_exists('venue_name', $validated) && empty($validated['venue_name'])) {
-            unset($validated['venue_name']);
-        }
-
         $booking->update($validated);
 
         if (isset($validated['price']) && (float) $validated['price'] !== $oldPrice) {
@@ -215,6 +211,62 @@ class BookingsController extends Controller
                 $booking->fresh()->load(['contacts', 'events', 'contract', 'payments', 'band'])
             ),
         ]);
+    }
+
+    public function storeEvent(
+        \App\Http\Requests\Mobile\StoreBookingEventRequest $request,
+        Bands $band,
+        Bookings $booking,
+    ): JsonResponse {
+        $event = $booking->events()->create(array_merge(
+            $request->validated(),
+            ['key' => Str::uuid()],
+        ));
+
+        // Redistribute event values when a new event is added.
+        $this->bookingService->redistributeEventValues($booking->fresh());
+
+        return response()->json([
+            'event' => $this->formatter->formatEvent($event->fresh()),
+        ], 201);
+    }
+
+    public function updateEvent(
+        \App\Http\Requests\Mobile\UpdateBookingEventRequest $request,
+        Bands $band,
+        Bookings $booking,
+        Events $event,
+    ): JsonResponse {
+        if ($event->eventable_type !== Bookings::class || $event->eventable_id !== $booking->id) {
+            return response()->json(['error' => 'Event does not belong to this booking.'], 404);
+        }
+
+        $event->update($request->validated());
+
+        return response()->json([
+            'event' => $this->formatter->formatEvent($event->fresh()),
+        ]);
+    }
+
+    public function destroyEvent(
+        Bands $band,
+        Bookings $booking,
+        Events $event,
+    ): JsonResponse {
+        if ($event->eventable_type !== Bookings::class || $event->eventable_id !== $booking->id) {
+            return response()->json(['error' => 'Event does not belong to this booking.'], 404);
+        }
+
+        if ($booking->events()->count() <= 1) {
+            return response()->json([
+                'error' => 'Cannot delete the last event of a booking. A booking must have at least one event.',
+            ], 422);
+        }
+
+        $event->delete();
+        $this->bookingService->redistributeEventValues($booking->fresh());
+
+        return response()->json(['message' => 'Event deleted.']);
     }
 
     public function contactLibrary(Request $request, Bands $band): JsonResponse
