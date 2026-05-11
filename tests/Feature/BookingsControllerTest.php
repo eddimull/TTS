@@ -184,7 +184,10 @@ class BookingsControllerTest extends TestCase
     public function test_owner_can_update_booking()
     {
         $booking = Bookings::factory()->create(['band_id' => $this->band->id]);
-        $updatedData = Bookings::factory()->withGigDetails()->make(['band_id' => $this->band->id])->toArray();
+        // Booking PATCH no longer accepts the legacy gig-detail fields — they're
+        // prohibited and live on the events subresource now. Use a plain factory
+        // payload (no withGigDetails) for booking updates.
+        $updatedData = Bookings::factory()->make(['band_id' => $this->band->id])->toArray();
         $updatedName = $updatedData['name'];
 
         $response = $this->actingAs($this->owner)->put(route('bands.booking.update', [$this->band, $booking]), $updatedData);
@@ -192,9 +195,6 @@ class BookingsControllerTest extends TestCase
         //this is two fold. The request excludes the author_id, so this checks that the author_id is not updated and the result exists
         unset($updatedData['author_id']);
         unset($updatedData['amount_paid'], $updatedData['is_paid'], $updatedData['amount_due']);
-        // Strip gig-detail fields that moved to the events table (no longer on bookings)
-        unset($updatedData['date'], $updatedData['start_time'], $updatedData['end_time'],
-              $updatedData['venue_name'], $updatedData['venue_address']);
         // Strip virtual appended accessors (not real DB columns)
         unset($updatedData['start_date'], $updatedData['end_date'], $updatedData['event_count'],
               $updatedData['venue_summary'], $updatedData['is_multi_event'], $updatedData['total_duration'],
@@ -258,12 +258,14 @@ class BookingsControllerTest extends TestCase
     {
         $this->booking->name = 'Updated Booking Name';
 
-        // date/start_time/end_time are now required by UpdateBookingsRequest but live on events
-        $payload = array_merge($this->booking->toArray(), [
-            'date'       => now()->addDays(30)->format('Y-m-d'),
-            'start_time' => '19:00',
-            'end_time'   => '22:00',
-        ]);
+        // Booking PATCH no longer accepts date/start_time/end_time/venue_*. They
+        // moved to the events subresource and are prohibited on the booking
+        // request. Strip them and any virtual accessors before sending.
+        $payload = collect($this->booking->toArray())->except([
+            'date', 'start_time', 'end_time', 'venue_name', 'venue_address',
+            'start_date', 'end_date', 'event_count', 'venue_summary',
+            'is_multi_event', 'total_duration', 'events',
+        ])->toArray();
 
         $response = $this->actingAs($this->owner)->put(route('bands.booking.update', [$this->band, $this->booking]), $payload);
 
