@@ -20,10 +20,6 @@ class BookingsDerivedAccessorsTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        DB::statement('SET FOREIGN_KEY_CHECKS=0');
-        DB::table('events')->truncate();
-        DB::table('bookings')->truncate();
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
         $this->user = User::factory()->create();
         $this->band = Bands::factory()->create();
     }
