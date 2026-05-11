@@ -39,7 +39,10 @@ class BookingSubresourceEventsTest extends TestCase
         $this->owner   = User::factory()->create();
         $this->band->owners()->create(['user_id' => $this->owner->id]);
 
-        $this->booking = Bookings::factory()->create(['band_id' => $this->band->id]);
+        $this->booking = Bookings::factory()->create([
+            'band_id' => $this->band->id,
+            'status'  => 'pending',
+        ]);
         Events::factory()->create([
             'eventable_type' => Bookings::class,
             'eventable_id'   => $this->booking->id,
