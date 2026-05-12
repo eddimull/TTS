@@ -9,6 +9,7 @@ use App\Http\Requests\Mobile\StoreBookingContactRequest;
 use App\Http\Requests\Mobile\StoreBookingPaymentRequest;
 use App\Http\Requests\Mobile\StoreBookingRequest;
 use App\Http\Requests\Mobile\UpdateBookingContactRequest;
+use App\Http\Requests\Mobile\UpdateBookingContractTermsRequest;
 use App\Http\Requests\Mobile\UpdateBookingRequest;
 use App\Http\Requests\Mobile\UploadBookingContractRequest;
 use App\Models\Bands;
@@ -445,6 +446,27 @@ class BookingsController extends Controller
         } catch (\Exception $e) {
             return response()->json(['message' => 'Failed to send contract: ' . $e->getMessage()], 500);
         }
+    }
+
+    public function saveContractTerms(
+        UpdateBookingContractTermsRequest $request,
+        Bands $band,
+        Bookings $booking
+    ): JsonResponse {
+        $validated = $request->validated();
+
+        $contract = $booking->contract()->firstOrCreate(
+            [],
+            ['author_id' => $request->user()->id]
+        );
+
+        $contract->update(['custom_terms' => $validated['custom_terms']]);
+
+        return response()->json([
+            'booking' => $this->formatter->format(
+                $booking->fresh()->load(['contacts', 'events', 'contract', 'payments', 'band'])
+            ),
+        ]);
     }
 
     public function showHistory(Request $request, Bands $band, Bookings $booking): JsonResponse

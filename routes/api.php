@@ -157,6 +157,7 @@ Route::prefix('mobile')->group(function () {
             // Booking contract (write)
             Route::post('/bands/{band}/bookings/{booking}/contract/upload', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'uploadContract'])->name('mobile.bookings.contract.upload');
             Route::post('/bands/{band}/bookings/{booking}/contract/send', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'sendContract'])->name('mobile.bookings.contract.send');
+            Route::post('/bands/{band}/bookings/{booking}/contract/terms', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'saveContractTerms'])->name('mobile.bookings.contract.terms');
         });
 
         // ── Finances (uses read:bookings permission) ───────────────────
