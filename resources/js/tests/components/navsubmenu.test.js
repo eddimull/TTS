@@ -16,7 +16,6 @@ vi.mock('vuex', () => ({
 
 const stubs = {
   ResponsiveSubNav: { template: '<div><slot name="header" /></div>' },
-  EngagementSummary: { template: '<div data-test="engagement-summary"></div>' },
 };
 
 const baseBooking = {
@@ -59,9 +58,11 @@ describe('NavSubmenu header', () => {
     expect(pill.text().toLowerCase()).toContain('confirmed');
   });
 
-  it('renders the engagement summary', () => {
+  it('renders the engagement summary with weekday-prefixed date', () => {
     const wrapper = mountNav();
-    expect(wrapper.find('[data-test="engagement-summary"]').exists()).toBe(true);
+    // EngagementSummary renders "<count> event · <weekday> <date>"
+    expect(wrapper.text()).toContain('1 event');
+    expect(wrapper.text()).toContain('Thu 10/15/2026');
   });
 
   it('does not render the old "Status:" label line', () => {
