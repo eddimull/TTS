@@ -64,12 +64,10 @@ const generatePDF = async () => {
     if (unsavedChanges.value) {
         await saveContract();
     }
-    router.get(
-        route("Download Booking Contract", {
-            band: props.band.id,
-            booking: props.booking.id,
-        })
-    );
+    window.location.href = route("Download Booking Contract", {
+        band: props.band.id,
+        booking: props.booking.id,
+    });
 };
 
 // Navigation guard
