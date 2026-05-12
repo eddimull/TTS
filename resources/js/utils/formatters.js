@@ -7,14 +7,30 @@
  * @param {string|Date} value - Date to format
  * @returns {string} Formatted date string
  */
+// `new Date('YYYY-MM-DD')` parses the string as UTC midnight, which renders
+// as the previous day in any timezone west of UTC. Promote date-only strings
+// to local time so the calendar day never shifts.
+function parseLocalDate(value) {
+    if (value instanceof Date) return value;
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        const [y, m, d] = value.split('-').map(Number);
+        return new Date(y, m - 1, d);
+    }
+    return new Date(value);
+}
+
 export function formatDate(value) {
     if (!value) return '';
-    const date = new Date(value);
-    return date.toLocaleDateString('en-US', {
+    return parseLocalDate(value).toLocaleDateString('en-US', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric'
     });
+}
+
+export function formatWeekday(value) {
+    if (!value) return '';
+    return parseLocalDate(value).toLocaleDateString('en-US', { weekday: 'short' });
 }
 
 /**
@@ -73,9 +89,9 @@ export function formatTime(timeString) {
  */
 export function formatDateRange(start, end) {
     if (!start) return '';
-    const startDate = new Date(start);
+    const startDate = parseLocalDate(start);
     if (!end) return formatDate(start);
-    const endDate = new Date(end);
+    const endDate = parseLocalDate(end);
     const sameDay = startDate.toDateString() === endDate.toDateString();
     if (sameDay) return formatDate(start);
     const sameMonth =

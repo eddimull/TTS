@@ -1,32 +1,6 @@
 <template>
   <Container class="p-4">
     <div class="space-y-4">
-      <!-- Header Section with Title and Status -->
-      <div class="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4">
-        <div class="flex justify-between items-start mb-3">
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-50">
-              {{ booking.name }}
-            </h1>
-            <div
-              v-if="eventType"
-              class="inline-block bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded text-xs font-medium mt-2"
-            >
-              <i class="pi pi-tag mr-1" />
-              {{ eventType.name }}
-            </div>
-          </div>
-          <span
-            :class="statusClass"
-            class="px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide"
-          >
-            {{ booking.status }}
-          </span>
-        </div>
-        <!-- Engagement summary: dates, venue, event-type at a glance -->
-        <EngagementSummary :booking="booking" />
-      </div>
-
       <!-- Quick Info Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <!-- Date & Time + Venue -->
@@ -559,12 +533,10 @@ import { router, Link } from '@inertiajs/vue3'
 import Container from '@/Components/Container.vue'
 import Button from 'primevue/button'
 import BookingPayout from './BookingPayout.vue'
-import EngagementSummary from './EngagementSummary.vue'
 import EventList from './EventList.vue'
 import Dialog from 'primevue/dialog'
 import Select from 'primevue/select'
 import SubmissionPreview from '@/Components/Questionnaires/SubmissionPreview.vue'
-import { useStore } from 'vuex'
 import { DateTime } from 'luxon'
 
 const props = defineProps({
@@ -596,23 +568,6 @@ const props = defineProps({
     type: Array,
     default: () => []
   }
-})
-
-const store = useStore()
-
-const eventType = computed(() => {
-  const types = store.getters['eventTypes/getAllEventTypes']
-  return types.find(type => type.id === props.booking.event_type_id)
-})
-
-const statusClass = computed(() => {
-  const statusClasses = {
-    draft: 'bg-gray-200 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
-    pending: 'bg-yellow-200 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-    confirmed: 'bg-green-200 text-green-800 dark:bg-green-900 dark:text-green-200',
-    cancelled: 'bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-200'
-  }
-  return statusClasses[props.booking.status] || statusClasses.draft
 })
 
 const duration = computed(() => {
