@@ -12,7 +12,7 @@
 
 <script setup>
 import { computed } from 'vue';
-import { formatDate, formatDateRange } from '@/utils/formatters';
+import { formatDate, formatDateRange, formatWeekday } from '@/utils/formatters';
 
 const props = defineProps({
     booking: {
@@ -30,7 +30,7 @@ const dateRangeLabel = computed(() => {
     const start = props.booking.start_date;
     const end = props.booking.end_date;
     if (!start) return 'No date';
-    if (!end || start === end) return formatDate(start);
+    if (!end || start === end) return `${formatWeekday(start)} ${formatDate(start)}`;
     return formatDateRange(start, end);
 });
 
