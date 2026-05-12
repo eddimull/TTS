@@ -169,4 +169,39 @@ class BookingContractViewTest extends TestCase
         $response = $this->get("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/contract/view-signed");
         $response->assertForbidden();
     }
+
+    public function test_signed_url_rejects_expired_signature(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        $booking = Bookings::factory()->create([
+            'band_id' => $band->id,
+            'status'  => 'draft',
+        ]);
+
+        $booking->contract()->create([
+            'author_id' => $user->id,
+            'asset_url' => 'contracts/bookings/'.$booking->id.'/c.pdf',
+            'status'    => 'pending',
+        ]);
+
+        $signedUrl = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'mobile.bookings.contract.view.signed',
+            now()->addMinutes(15),
+            ['band' => $band->id, 'booking' => $booking->id],
+        );
+
+        // Strip host so the test client hits the local app.
+        $path = parse_url($signedUrl, PHP_URL_PATH).'?'.parse_url($signedUrl, PHP_URL_QUERY);
+
+        // Jump past the 15-min expiry.
+        \Illuminate\Support\Carbon::setTestNow(now()->addMinutes(16));
+
+        $response = $this->get($path);
+        $response->assertForbidden();
+
+        \Illuminate\Support\Carbon::setTestNow(); // reset
+    }
 }
