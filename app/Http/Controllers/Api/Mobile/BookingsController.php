@@ -9,12 +9,14 @@ use App\Http\Requests\Mobile\StoreBookingContactRequest;
 use App\Http\Requests\Mobile\StoreBookingPaymentRequest;
 use App\Http\Requests\Mobile\StoreBookingRequest;
 use App\Http\Requests\Mobile\UpdateBookingContactRequest;
+use App\Http\Requests\Mobile\UpdateBookingContractTermsRequest;
 use App\Http\Requests\Mobile\UpdateBookingRequest;
 use App\Http\Requests\Mobile\UploadBookingContractRequest;
 use App\Models\Bands;
 use App\Models\BookingContacts;
 use App\Models\Bookings;
 use App\Models\Contacts;
+use App\Models\Contracts;
 use App\Models\Events;
 use App\Models\Payments;
 use App\Services\BookingActivityService;
@@ -25,6 +27,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -373,13 +376,90 @@ class BookingsController extends Controller
         return response()->json([
             'contract_option' => $booking->contract_option,
             'contract'        => $c ? [
-                'id'          => $c->id,
-                'status'      => $c->status,
-                'asset_url'   => $c->asset_url,
-                'envelope_id' => $c->envelope_id,
-                'updated_at'  => $c->updated_at?->format('Y-m-d'),
+                'id'           => $c->id,
+                'status'       => $c->status,
+                'asset_url'    => $c->asset_url,
+                'envelope_id'  => $c->envelope_id,
+                'custom_terms' => $c->custom_terms,
+                'updated_at'   => $c->updated_at?->toIso8601String(),
             ] : null,
         ]);
+    }
+
+    public function viewContract(Bands $band, Bookings $booking)
+    {
+        $contract = $booking->contract;
+        if (!$contract || !$contract->asset_url) {
+            abort(404, 'Contract not found');
+        }
+
+        $filePath = $contract->getFilePath();
+        if (!Storage::disk('s3')->exists($filePath)) {
+            abort(404, 'Contract file not found');
+        }
+
+        $stream = Storage::disk('s3')->readStream($filePath);
+
+        return response()->stream(
+            function () use ($stream) { fpassthru($stream); },
+            200,
+            [
+                'Content-Type'        => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . basename($filePath) . '"',
+            ]
+        );
+    }
+
+    public function downloadContract(Bands $band, Bookings $booking)
+    {
+        $contract = $booking->contract;
+        if (!$contract || !$contract->asset_url) {
+            abort(404, 'Contract not found');
+        }
+
+        $filePath = $contract->getFilePath();
+        if (!Storage::disk('s3')->exists($filePath)) {
+            abort(404, 'Contract file not found');
+        }
+
+        $stream = Storage::disk('s3')->readStream($filePath);
+
+        return response()->stream(
+            function () use ($stream) { fpassthru($stream); },
+            200,
+            [
+                'Content-Type'        => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="' . basename($filePath) . '"',
+            ]
+        );
+    }
+
+    public function viewContractUrl(Bands $band, Bookings $booking): JsonResponse
+    {
+        if (!$booking->contract || !$booking->contract->asset_url) {
+            abort(404, 'Contract not found');
+        }
+
+        $expiresAt = now()->addMinutes(15);
+        $url = URL::temporarySignedRoute(
+            'mobile.bookings.contract.view.signed',
+            $expiresAt,
+            ['band' => $band->id, 'booking' => $booking->id],
+        );
+
+        return response()->json([
+            'url'        => $url,
+            'expires_at' => $expiresAt->toIso8601String(),
+        ]);
+    }
+
+    public function viewContractSigned(Bands $band, Bookings $booking)
+    {
+        if (!request()->hasValidSignature()) {
+            abort(403);
+        }
+
+        return $this->viewContract($band, $booking);
     }
 
     public function uploadContract(UploadBookingContractRequest $request, Bands $band, Bookings $booking): JsonResponse
@@ -446,6 +526,27 @@ class BookingsController extends Controller
         }
     }
 
+    public function saveContractTerms(
+        UpdateBookingContractTermsRequest $request,
+        Bands $band,
+        Bookings $booking
+    ): JsonResponse {
+        $validated = $request->validated();
+
+        $contract = $booking->contract()->firstOrCreate(
+            [],
+            ['author_id' => $request->user()->id]
+        );
+
+        $contract->update(['custom_terms' => $validated['custom_terms']]);
+
+        return response()->json([
+            'booking' => $this->formatter->format(
+                $booking->fresh()->load(['contacts', 'events', 'contract', 'payments', 'band'])
+            ),
+        ]);
+    }
+
     public function showHistory(Request $request, Bands $band, Bookings $booking): JsonResponse
     {
         try {
@@ -454,5 +555,29 @@ class BookingsController extends Controller
         } catch (\Exception) {
             return response()->json(['history' => []]);
         }
+    }
+
+    public function contractHistory(Request $request, Contracts $contract): JsonResponse
+    {
+        // Resolve the owning band via the polymorphic contractable (Bookings).
+        $contractable = $contract->contractable;
+        if (!($contractable instanceof Bookings)) {
+            abort(404);
+        }
+
+        $band = $contractable->band;
+        if (!$band) {
+            abort(404);
+        }
+
+        // Authorize: user must belong to the band (owner or member). Subs are
+        // intentionally excluded — contracts carry signer PII and money info
+        // they shouldn't see (matches indexForUser's bands() vs allBands() rule).
+        $user = $request->user();
+        if (!$user->bands()->contains('id', $band->id)) {
+            abort(403);
+        }
+
+        return response()->json(['history' => $contract->auditTrail()]);
     }
 }

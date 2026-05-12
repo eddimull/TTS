@@ -64,6 +64,9 @@ Route::prefix('mobile')->group(function () {
     // Registration
     Route::post('/auth/register', [App\Http\Controllers\Api\Mobile\OnboardingController::class, 'register'])->name('mobile.auth.register');
 
+    // Public: signed-URL contract view (auth is the signature itself)
+    Route::get('/bands/{band}/bookings/{booking}/contract/view-signed', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'viewContractSigned'])->name('mobile.bookings.contract.view.signed');
+
     // Authenticated
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/auth/me', [MobileAuthController::class, 'me'])->name('mobile.auth.me');
@@ -85,6 +88,9 @@ Route::prefix('mobile')->group(function () {
 
         // Aggregating bookings across all of the user's bands (band-agnostic).
         Route::get('/me/bookings', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'indexForUser'])->name('mobile.me.bookings');
+
+        // Contract audit trail (band-agnostic — keyed by PandaDoc envelope id).
+        Route::get('/contracts/{contract:envelope_id}/history', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'contractHistory'])->name('mobile.contracts.history');
 
         // Events
         Route::get('/events/{event}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'show'])->name('mobile.events.show');
@@ -124,6 +130,9 @@ Route::prefix('mobile')->group(function () {
             Route::get('/bands/{band}/bookings/{booking}', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'show'])->name('mobile.bookings.show');
             Route::get('/bands/{band}/contacts', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'contactLibrary'])->name('mobile.contacts.index');
             Route::get('/bands/{band}/bookings/{booking}/contract', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'showContract'])->name('mobile.bookings.contract.show');
+            Route::get('/bands/{band}/bookings/{booking}/contract/view', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'viewContract'])->name('mobile.bookings.contract.view');
+            Route::get('/bands/{band}/bookings/{booking}/contract/view-url', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'viewContractUrl'])->name('mobile.bookings.contract.view.url');
+            Route::get('/bands/{band}/bookings/{booking}/contract/download', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'downloadContract'])->name('mobile.bookings.contract.download');
             Route::get('/bands/{band}/bookings/{booking}/history', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'showHistory'])->name('mobile.bookings.history');
         });
 
@@ -157,6 +166,7 @@ Route::prefix('mobile')->group(function () {
             // Booking contract (write)
             Route::post('/bands/{band}/bookings/{booking}/contract/upload', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'uploadContract'])->name('mobile.bookings.contract.upload');
             Route::post('/bands/{band}/bookings/{booking}/contract/send', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'sendContract'])->name('mobile.bookings.contract.send');
+            Route::post('/bands/{band}/bookings/{booking}/contract/terms', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'saveContractTerms'])->name('mobile.bookings.contract.terms');
         });
 
         // ── Finances (uses read:bookings permission) ───────────────────
