@@ -50,10 +50,12 @@ class BookingFormatter
         if ($booking->relationLoaded('contract') && $booking->contract) {
             $c = $booking->contract;
             $base['contract'] = [
-                'id'          => $c->id,
-                'status'      => $c->status,
-                'asset_url'   => $c->asset_url,
-                'envelope_id' => $c->envelope_id,
+                'id'           => $c->id,
+                'status'       => $c->status,
+                'asset_url'    => $c->asset_url,
+                'envelope_id'  => $c->envelope_id,
+                'custom_terms' => $c->custom_terms,
+                'updated_at'   => $c->updated_at?->toIso8601String(),
             ];
         }
 
