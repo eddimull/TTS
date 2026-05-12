@@ -373,11 +373,12 @@ class BookingsController extends Controller
         return response()->json([
             'contract_option' => $booking->contract_option,
             'contract'        => $c ? [
-                'id'          => $c->id,
-                'status'      => $c->status,
-                'asset_url'   => $c->asset_url,
-                'envelope_id' => $c->envelope_id,
-                'updated_at'  => $c->updated_at?->format('Y-m-d'),
+                'id'           => $c->id,
+                'status'       => $c->status,
+                'asset_url'    => $c->asset_url,
+                'envelope_id'  => $c->envelope_id,
+                'custom_terms' => $c->custom_terms,
+                'updated_at'   => $c->updated_at?->toIso8601String(),
             ] : null,
         ]);
     }
