@@ -409,6 +409,30 @@ class BookingsController extends Controller
         );
     }
 
+    public function downloadContract(Bands $band, Bookings $booking)
+    {
+        $contract = $booking->contract;
+        if (!$contract || !$contract->asset_url) {
+            abort(404, 'Contract not found');
+        }
+
+        $filePath = $contract->getFilePath();
+        if (!Storage::disk('s3')->exists($filePath)) {
+            abort(404, 'Contract file not found');
+        }
+
+        $stream = Storage::disk('s3')->readStream($filePath);
+
+        return response()->stream(
+            function () use ($stream) { fpassthru($stream); },
+            200,
+            [
+                'Content-Type'        => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="' . basename($filePath) . '"',
+            ]
+        );
+    }
+
     public function viewContractUrl(Bands $band, Bookings $booking): JsonResponse
     {
         if (!$booking->contract || !$booking->contract->asset_url) {
