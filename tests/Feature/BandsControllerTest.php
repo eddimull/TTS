@@ -58,14 +58,25 @@ class BandsControllerTest extends TestCase
             'logo' => $logo,
         ]);
 
-        $imageName = Str::slug($this->band->name) . '-logo-' . time() . '.' . $logo->extension();
         $response->assertSessionHas('successMessage');
         $response->assertStatus(302);
-        Storage::disk('s3')->assertExists($this->band->site_name . '/' . $imageName);
-        $this->assertDatabaseHas('bands', [
-            'id' => $this->band->id,
-            'logo' => '/images/' . $this->band->site_name . '/' . $imageName,
-        ]);
+
+        // The controller bakes `time()` into the filename. Reconstructing it
+        // here from time() in the test races against the second boundary on
+        // slow CI runners, so instead read the actual filename from the DB
+        // and assert against that.
+        $this->band->refresh();
+        $expectedSlug = Str::slug($this->band->name);
+        $this->assertMatchesRegularExpression(
+            '#^/images/' . preg_quote($this->band->site_name, '#')
+                . '/' . preg_quote($expectedSlug, '#')
+                . '-logo-\d+\.' . preg_quote($logo->extension(), '#') . '$#',
+            $this->band->logo,
+            'logo column should reference the uploaded image'
+        );
+
+        $storedPath = ltrim(str_replace('/images/', '', $this->band->logo), '/');
+        Storage::disk('s3')->assertExists($storedPath);
     }
 
     public function test_random_user_cannot_upload_logo(): void
