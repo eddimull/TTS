@@ -124,6 +124,7 @@ Route::prefix('mobile')->group(function () {
             Route::get('/bands/{band}/bookings/{booking}', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'show'])->name('mobile.bookings.show');
             Route::get('/bands/{band}/contacts', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'contactLibrary'])->name('mobile.contacts.index');
             Route::get('/bands/{band}/bookings/{booking}/contract', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'showContract'])->name('mobile.bookings.contract.show');
+            Route::get('/bands/{band}/bookings/{booking}/contract/view', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'viewContract'])->name('mobile.bookings.contract.view');
             Route::get('/bands/{band}/bookings/{booking}/history', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'showHistory'])->name('mobile.bookings.history');
         });
 
