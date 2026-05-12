@@ -26,6 +26,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -406,6 +407,34 @@ class BookingsController extends Controller
                 'Content-Disposition' => 'inline; filename="' . basename($filePath) . '"',
             ]
         );
+    }
+
+    public function viewContractUrl(Bands $band, Bookings $booking): JsonResponse
+    {
+        if (!$booking->contract || !$booking->contract->asset_url) {
+            abort(404, 'Contract not found');
+        }
+
+        $expiresAt = now()->addMinutes(15);
+        $url = URL::temporarySignedRoute(
+            'mobile.bookings.contract.view.signed',
+            $expiresAt,
+            ['band' => $band->id, 'booking' => $booking->id],
+        );
+
+        return response()->json([
+            'url'        => $url,
+            'expires_at' => $expiresAt->toIso8601String(),
+        ]);
+    }
+
+    public function viewContractSigned(Bands $band, Bookings $booking)
+    {
+        if (!request()->hasValidSignature()) {
+            abort(403);
+        }
+
+        return $this->viewContract($band, $booking);
     }
 
     public function uploadContract(UploadBookingContractRequest $request, Bands $band, Bookings $booking): JsonResponse

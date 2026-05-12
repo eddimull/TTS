@@ -64,6 +64,9 @@ Route::prefix('mobile')->group(function () {
     // Registration
     Route::post('/auth/register', [App\Http\Controllers\Api\Mobile\OnboardingController::class, 'register'])->name('mobile.auth.register');
 
+    // Public: signed-URL contract view (auth is the signature itself)
+    Route::get('/bands/{band}/bookings/{booking}/contract/view-signed', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'viewContractSigned'])->name('mobile.bookings.contract.view.signed');
+
     // Authenticated
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/auth/me', [MobileAuthController::class, 'me'])->name('mobile.auth.me');
@@ -125,6 +128,7 @@ Route::prefix('mobile')->group(function () {
             Route::get('/bands/{band}/contacts', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'contactLibrary'])->name('mobile.contacts.index');
             Route::get('/bands/{band}/bookings/{booking}/contract', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'showContract'])->name('mobile.bookings.contract.show');
             Route::get('/bands/{band}/bookings/{booking}/contract/view', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'viewContract'])->name('mobile.bookings.contract.view');
+            Route::get('/bands/{band}/bookings/{booking}/contract/view-url', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'viewContractUrl'])->name('mobile.bookings.contract.view.url');
             Route::get('/bands/{band}/bookings/{booking}/history', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'showHistory'])->name('mobile.bookings.history');
         });
 
