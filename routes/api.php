@@ -90,7 +90,7 @@ Route::prefix('mobile')->group(function () {
         Route::get('/me/bookings', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'indexForUser'])->name('mobile.me.bookings');
 
         // Contract audit trail (band-agnostic — keyed by PandaDoc envelope id).
-        Route::get('/contracts/{envelope_id}/history', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'contractHistory'])->name('mobile.contracts.history');
+        Route::get('/contracts/{contract:envelope_id}/history', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'contractHistory'])->name('mobile.contracts.history');
 
         // Events
         Route::get('/events/{event}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'show'])->name('mobile.events.show');
