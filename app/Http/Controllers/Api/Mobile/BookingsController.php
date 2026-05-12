@@ -557,9 +557,26 @@ class BookingsController extends Controller
         }
     }
 
-    public function contractHistory(string $envelopeId): JsonResponse
+    public function contractHistory(Request $request, Contracts $contract): JsonResponse
     {
-        $contract = Contracts::where('envelope_id', $envelopeId)->firstOrFail();
+        // Resolve the owning band via the polymorphic contractable (Bookings).
+        $contractable = $contract->contractable;
+        if (!($contractable instanceof Bookings)) {
+            abort(404);
+        }
+
+        $band = $contractable->band;
+        if (!$band) {
+            abort(404);
+        }
+
+        // Authorize: user must belong to the band (owner or member). Subs are
+        // intentionally excluded — contracts carry signer PII and money info
+        // they shouldn't see (matches indexForUser's bands() vs allBands() rule).
+        $user = $request->user();
+        if (!$user->bands()->contains('id', $band->id)) {
+            abort(403);
+        }
 
         return response()->json(['history' => $contract->auditTrail()]);
     }
