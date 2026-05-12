@@ -89,6 +89,9 @@ Route::prefix('mobile')->group(function () {
         // Aggregating bookings across all of the user's bands (band-agnostic).
         Route::get('/me/bookings', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'indexForUser'])->name('mobile.me.bookings');
 
+        // Contract audit trail (band-agnostic — keyed by PandaDoc envelope id).
+        Route::get('/contracts/{envelope_id}/history', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'contractHistory'])->name('mobile.contracts.history');
+
         // Events
         Route::get('/events/{event}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'show'])->name('mobile.events.show');
         Route::patch('/events/{event}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'update'])->name('mobile.events.update');

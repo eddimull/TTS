@@ -16,6 +16,7 @@ use App\Models\Bands;
 use App\Models\BookingContacts;
 use App\Models\Bookings;
 use App\Models\Contacts;
+use App\Models\Contracts;
 use App\Models\Events;
 use App\Models\Payments;
 use App\Services\BookingActivityService;
@@ -554,5 +555,12 @@ class BookingsController extends Controller
         } catch (\Exception) {
             return response()->json(['history' => []]);
         }
+    }
+
+    public function contractHistory(string $envelopeId): JsonResponse
+    {
+        $contract = Contracts::where('envelope_id', $envelopeId)->firstOrFail();
+
+        return response()->json(['history' => $contract->auditTrail()]);
     }
 }
