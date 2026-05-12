@@ -155,28 +155,40 @@ describe('ContractEditor', () => {
     expect(mockRouter.post).toHaveBeenCalled();
   });
 
-  it('should call router.get when generate-pdf event is emitted', async () => {
-    const wrapper = mount(ContractEditor, {
-      props: {
-        booking: mockBooking,
-        band: mockBand
-      },
-      global: {
-        stubs: {
-          EditableContractWYSIWYG: {
-            name: 'EditableContractWYSIWYG',
-            template: '<div class="wysiwyg"></div>',
-            emits: ['generate-pdf']
-          },
-          SendContractPopup: true
+  it('should navigate to download URL when generate-pdf event is emitted', async () => {
+    // PDF download must be a plain browser navigation (no X-Inertia header),
+    // otherwise Inertia's server middleware sees the StreamedResponse as
+    // empty and 302s back to the editor instead of streaming the PDF.
+    const originalLocation = window.location;
+    delete window.location;
+    window.location = { href: '' };
+
+    try {
+      const wrapper = mount(ContractEditor, {
+        props: {
+          booking: mockBooking,
+          band: mockBand
+        },
+        global: {
+          stubs: {
+            EditableContractWYSIWYG: {
+              name: 'EditableContractWYSIWYG',
+              template: '<div class="wysiwyg"></div>',
+              emits: ['generate-pdf']
+            },
+            SendContractPopup: true
+          }
         }
-      }
-    });
+      });
 
-    const wysiwyg = wrapper.findComponent({ name: 'EditableContractWYSIWYG' });
-    await wysiwyg.vm.$emit('generate-pdf');
+      const wysiwyg = wrapper.findComponent({ name: 'EditableContractWYSIWYG' });
+      await wysiwyg.vm.$emit('generate-pdf');
 
-    expect(mockRouter.get).toHaveBeenCalled();
+      expect(window.location.href).toContain('Download Booking Contract');
+      expect(mockRouter.get).not.toHaveBeenCalled();
+    } finally {
+      window.location = originalLocation;
+    }
   });
 
   it('should handle update:terms event', async () => {
