@@ -104,7 +104,7 @@
           Buyer will pay a total of <span class="font-bold">${{ booking.price }}</span> to Artist as compensation for Artist's performance.
         </p>
         <p class="mb-2">
-          Buyer will pay a deposit of <span class="font-bold">${{ (booking.price / 2).toFixed(2) }}</span>, within three weeks of the execution of this Agreement. The deposit
+          Buyer will pay a deposit of <span class="font-bold">${{ depositAmount }}</span>, within three weeks of the execution of this Agreement. The deposit
           is non-refundable after execution of this contract. The deposit shall be made payable to <strong>{{ band.name }}</strong> and
           shall be in form of <strong>check, money order, Venmo, cashier's check, invoice, or credit card
             (additional fees may apply)</strong>. If the Buyer pays the Deposit by check, which should be mailed to:
@@ -117,7 +117,7 @@
           </ul>
         </div>
         <p class="mb-2">
-          Buyer shall pay the remaining gross compensation of <span class="font-bold">${{ (booking.price / 2).toFixed(2) }}</span> at least ten (10) days before Performance. <strong>If Buyer elects to pay via check, money order, or cashier's check,
+          Buyer shall pay the remaining gross compensation of <span class="font-bold">${{ remainingAmount }}</span> at least ten (10) days before Performance. <strong>If Buyer elects to pay via check, money order, or cashier's check,
             payment shall be made to {{ band.name }} and must be received at least ten (10) days prior to Performance. If Buyer elects to pay via Invoice, Venmo, or credit card,
             payment shall be made to {{ band.name }} ten (10) days prior to the Performance. (Additional fees may apply to credit card payments.)</strong> In the event that Buyer requests
           that Artist perform past the end time set forth in this Agreement, and Artist chooses to continue performing, Buyer shall pay Artist <span
@@ -236,13 +236,14 @@
 </template>
 
   <script setup>
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, watch, computed, toRef } from 'vue';
 import draggable from 'vuedraggable';
 import Button from 'primevue/button';
 import Toolbar from 'primevue/toolbar';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
 import { DateTime } from 'luxon';
+import { useDeposit } from '@/composables/useDeposit';
 
 
   const props = defineProps({
@@ -261,6 +262,9 @@ import { DateTime } from 'luxon';
   });
 
   const emit = defineEmits(['update:terms', 'save', 'generate-pdf', 'send-contract']);
+
+  const bookingRef = toRef(props, 'booking');
+  const { depositAmount, remainingAmount } = useDeposit(bookingRef);
 
   const termsLocal = ref([]);
   const editMode = ref(false);
