@@ -58,7 +58,7 @@ class BookingContractDownloadTest extends TestCase
             ->assertUnauthorized();
     }
 
-    public function test_missing_contract_returns_404(): void
+    public function test_external_contract_without_asset_returns_404(): void
     {
         Storage::fake('s3');
 
@@ -67,11 +67,11 @@ class BookingContractDownloadTest extends TestCase
         $band->owners()->create(['user_id' => $user->id]);
 
         $booking = Bookings::factory()->create([
-            'band_id' => $band->id,
-            'status'  => 'draft',
+            'band_id'         => $band->id,
+            'status'          => 'draft',
+            'contract_option' => 'external',
         ]);
 
-        // Contract exists but has no asset_url
         $booking->contract()->create([
             'author_id' => $user->id,
             'status'    => 'pending',
