@@ -61,7 +61,7 @@
     <div class="my-3">
         <p class="text-lg font-bold my-2 uppercase">Compensation and deposit</p>
         <p class="mb-3">Buyer will pay a total of <span class="font-bold">${{ number_format($booking->price,2) }}</span> to Artist as compensation for Artist’s performance.</p>
-        <p class="mb-3">Buyer will pay a deposit of <span class="font-bold">${{ number_format($booking->price/2,2) }}</span>, within three weeks of the execution of this Agreement. The deposit
+        <p class="mb-3">Buyer will pay a deposit of <span class="font-bold">${{ number_format((float) $booking->expected_deposit_amount, 2) }}</span>, within three weeks of the execution of this Agreement. The deposit
             is non-refundable after execution of this contract. The deposit shall be made payable to <strong>{{ $booking->band->name }}</strong> and
             shall be in form of <strong>check, money order, Venmo, cashier’s check, invoice, or credit card
                 (additional fees may apply)</strong>. If the Buyer pays the Deposit by check, which should be mailed to:</p>
@@ -73,7 +73,7 @@
             </ul>
         </div>
         <p class="mb-3">
-            Buyer shall pay the remaining gross compensation of <span class="font-bold">${{ number_format($booking->price/2,2) }}</span> at least ten (10) days before
+            Buyer shall pay the remaining gross compensation of <span class="font-bold">${{ number_format((float) $booking->price - (float) $booking->expected_deposit_amount, 2) }}</span> at least ten (10) days before
             Performance. <strong>If Buyer elects to pay via check, money order, or cashier's check, payment shall be made to
                 {{ $booking->band->name }} and must be received at least ten (10) days prior to Performance. If Buyer
                 elects to pay via Invoice, Venmo, or credit card, payment shall be made to {{ $booking->band->name }}
