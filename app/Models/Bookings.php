@@ -351,15 +351,10 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         if ($price <= 0) {
             return '0.00';
         }
-        // Mirror the DB-level column defaults so freshly-created models that
-        // haven't been refreshed (and therefore have null in-memory values for
-        // these columns) still get sane behavior.
-        $type  = $this->deposit_type ?? 'percent';
-        $value = $this->deposit_value ?? 50.00;
-        if ($type === 'amount') {
-            return number_format((float) $value, 2, '.', '');
+        if ($this->deposit_type === 'amount') {
+            return number_format((float) $this->deposit_value, 2, '.', '');
         }
-        $percent = (float) $value / 100;
+        $percent = (float) $this->deposit_value / 100;
         return number_format($price * $percent, 2, '.', '');
     }
 
