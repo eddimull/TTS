@@ -96,6 +96,21 @@
                     ${{ Number(booking.amount_due).toFixed(2) }}
                   </dd>
                 </div>
+                <div
+                  v-if="booking.deposit_due_date"
+                  class="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6"
+                >
+                  <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    Deposit
+                  </dt>
+                  <dd class="mt-1 text-sm text-gray-900 dark:text-gray-100 sm:mt-0 sm:col-span-2">
+                    <DepositLine
+                      :amount="booking.expected_deposit_amount"
+                      :is-deposit-paid="booking.is_deposit_paid"
+                      :deposit-due-date="booking.deposit_due_date"
+                    />
+                  </dd>
+                </div>
                 <div class="py-4 sm:py-5 sm:px-6 bg-blue-50 dark:bg-blue-900/20 border-t border-gray-200 dark:border-gray-700">
                   <p class="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
                     <span class="font-semibold">What's Included:</span> Payment for performance services as detailed in your signed contract with {{ booking.band_name }}. See your contract for complete service details, equipment, and terms.
@@ -500,6 +515,7 @@ import { ref, computed, watch } from 'vue';
 import { Link, useForm } from '@inertiajs/vue3';
 import axios from 'axios';
 import ContactLayout from '@/Layouts/ContactLayout.vue';
+import DepositLine from './Components/DepositLine.vue';
 
 const props = defineProps({
   booking: Object,
