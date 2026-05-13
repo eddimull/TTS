@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\Contacts;
+use App\Models\Contracts;
 use App\Models\Events;
 use App\Models\EventTypes;
 use App\Models\MediaFile;
@@ -1028,6 +1029,114 @@ class ContactPortalControllerTest extends TestCase
             'eventable_id' => $booking->id,
             'date' => $date ?? now()->addDays(7)->format('Y-m-d'),
         ]);
+    }
+
+    /**
+     * Test dashboard payload includes deposit fields when contract is signed
+     */
+    public function test_portal_dashboard_includes_deposit_fields_for_signed_booking()
+    {
+        $band = Bands::factory()->withOwners()->create();
+        $contact = Contacts::factory()->create([
+            'band_id' => $band->id,
+            'can_login' => true,
+        ]);
+
+        $booking = Bookings::factory()->create([
+            'band_id'       => $band->id,
+            'price'         => 1000.00,
+            'deposit_type'  => 'amount',
+            'deposit_value' => 400.00,
+        ]);
+        $booking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
+
+        Contracts::factory()->create([
+            'contractable_id'   => $booking->id,
+            'contractable_type' => Bookings::class,
+            'status'            => 'completed',
+        ]);
+
+        $response = $this->actingAs($contact, 'contact')
+            ->get(route('portal.dashboard'));
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) =>
+            $page->component('Contact/Dashboard')
+                ->where('bookings.0.expected_deposit_amount', '400.00')
+                ->where('bookings.0.is_deposit_paid', false)
+                ->where('bookings.0.deposit_due_date', fn ($value) => $value !== null)
+        );
+    }
+
+    /**
+     * Test dashboard's deposit_due_date is null when there is no signed contract
+     */
+    public function test_portal_dashboard_deposit_due_date_is_null_when_contract_unsigned()
+    {
+        $band = Bands::factory()->withOwners()->create();
+        $contact = Contacts::factory()->create([
+            'band_id' => $band->id,
+            'can_login' => true,
+        ]);
+
+        $booking = Bookings::factory()->create([
+            'band_id'       => $band->id,
+            'price'         => 1000.00,
+            'deposit_type'  => 'amount',
+            'deposit_value' => 400.00,
+        ]);
+        $booking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
+
+        // No contract created
+
+        $response = $this->actingAs($contact, 'contact')
+            ->get(route('portal.dashboard'));
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) =>
+            $page->component('Contact/Dashboard')
+                ->where('bookings.0.deposit_due_date', null)
+        );
+    }
+
+    /**
+     * Test payment page payload includes deposit fields
+     */
+    public function test_portal_payment_page_includes_deposit_fields()
+    {
+        $band = Bands::factory()->withOwners()->create();
+        $contact = Contacts::factory()->create([
+            'band_id' => $band->id,
+            'can_login' => true,
+        ]);
+
+        $booking = Bookings::factory()->create([
+            'band_id'       => $band->id,
+            'price'         => 1000.00,
+            'deposit_type'  => 'percent',
+            'deposit_value' => 25.00,
+        ]);
+        $booking->contacts()->attach($contact->id, ['is_primary' => true]);
+        $this->createEventForBooking($booking);
+
+        Contracts::factory()->create([
+            'contractable_id'   => $booking->id,
+            'contractable_type' => Bookings::class,
+            'status'            => 'completed',
+        ]);
+
+        $response = $this->actingAs($contact, 'contact')
+            ->get(route('portal.booking.payment', $booking));
+
+        $response->assertStatus(200);
+        $response->assertInertia(fn ($page) =>
+            $page->component('Contact/Payment')
+                ->where('booking.expected_deposit_amount', '250.00')
+                ->where('booking.is_deposit_paid', false)
+                ->where('booking.deposit_due_date', fn ($value) => $value !== null)
+        );
     }
 
     protected function tearDown(): void
