@@ -26,6 +26,9 @@ class BookingFormatter
             'notes'           => $booking->notes,
             'amount_paid'     => (string) $booking->amount_paid,
             'amount_due'      => (string) $booking->amount_due,
+            'deposit_type'             => $booking->deposit_type,
+            'deposit_value'            => (string) $booking->deposit_value,
+            'expected_deposit_amount'  => (string) $booking->expected_deposit_amount,
             'is_paid'         => (bool) $booking->is_paid,
             'contract_option' => $booking->contract_option,
             'band'            => $booking->band ? [

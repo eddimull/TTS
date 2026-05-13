@@ -54,6 +54,8 @@ class BookingsFactory extends Factory
             'name' => $this->faker->sentence,
             'event_type_id' => $this->faker->numberBetween(1, 6),
             'price' => $this->faker->numberBetween(500, 10000),
+            'deposit_type' => 'percent',
+            'deposit_value' => '50.00',
             'status' => $this->faker->randomElement(['pending', 'confirmed']),
             'contract_option' => $this->faker->randomElement(['default', 'none', 'external']),
             'notes' => $this->faker->optional()->text,
