@@ -631,4 +631,73 @@ class BookingsControllerTest extends TestCase
         // Should go to dashboard now, not password change page
         $secondLoginResponse->assertRedirect(route('portal.dashboard'));
     }
+
+    /** @test */
+    public function update_accepts_valid_deposit_percent(): void
+    {
+        $this->actingAs($this->owner)
+            ->put(route('bands.booking.update', ['band' => $this->band->id, 'booking' => $this->booking->id]), [
+                'name'            => $this->booking->name,
+                'event_type_id'   => $this->booking->event_type_id,
+                'price'           => '1000.00',
+                'contract_option' => 'default',
+                'deposit_type'    => 'percent',
+                'deposit_value'   => '25',
+            ])
+            ->assertRedirect();
+
+        $this->assertSame('percent', $this->booking->fresh()->deposit_type);
+        $this->assertSame('25.00', (string) $this->booking->fresh()->deposit_value);
+    }
+
+    /** @test */
+    public function update_rejects_deposit_percent_above_100(): void
+    {
+        $this->actingAs($this->owner)
+            ->put(route('bands.booking.update', ['band' => $this->band->id, 'booking' => $this->booking->id]), [
+                'name'            => $this->booking->name,
+                'event_type_id'   => $this->booking->event_type_id,
+                'price'           => '1000.00',
+                'contract_option' => 'default',
+                'deposit_type'    => 'percent',
+                'deposit_value'   => '125',
+            ])
+            ->assertSessionHasErrors('deposit_value');
+    }
+
+    /** @test */
+    public function update_rejects_deposit_amount_exceeding_price(): void
+    {
+        $this->actingAs($this->owner)
+            ->put(route('bands.booking.update', ['band' => $this->band->id, 'booking' => $this->booking->id]), [
+                'name'            => $this->booking->name,
+                'event_type_id'   => $this->booking->event_type_id,
+                'price'           => '1000.00',
+                'contract_option' => 'default',
+                'deposit_type'    => 'amount',
+                'deposit_value'   => '1500',
+            ])
+            ->assertSessionHasErrors('deposit_value');
+    }
+
+    /** @test */
+    public function update_rejects_deposit_change_when_contract_is_signed(): void
+    {
+        \App\Models\Contracts::factory()->create([
+            'contractable_id'   => $this->booking->id,
+            'contractable_type' => \App\Models\Bookings::class,
+            'status'            => 'completed',
+        ]);
+
+        $this->actingAs($this->owner)
+            ->put(route('bands.booking.update', ['band' => $this->band->id, 'booking' => $this->booking->id]), [
+                'name'            => $this->booking->name,
+                'event_type_id'   => $this->booking->event_type_id,
+                'price'           => '1000.00',
+                'contract_option' => 'default',
+                'deposit_type'    => 'amount',
+                'deposit_value'   => '600',
+            ])
+            ->assertSessionHasErrors('deposit_type');
+    }
 }
