@@ -99,4 +99,23 @@ class BookingDepositTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors('deposit_type');
     }
+
+    /** @test */
+    public function mobile_booking_show_response_includes_deposit_fields(): void
+    {
+        ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->makeOwnedBooking([
+            'price'          => '1000.00',
+            'deposit_type'   => 'percent',
+            'deposit_value'  => '30.00',
+        ]);
+
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}");
+
+        $response->assertOk()
+            ->assertJsonPath('booking.deposit_type', 'percent')
+            ->assertJsonPath('booking.deposit_value', '30.00')
+            ->assertJsonPath('booking.expected_deposit_amount', '300.00');
+    }
 }
