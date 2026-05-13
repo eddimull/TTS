@@ -7,7 +7,8 @@ describe('DepositLine', () => {
     const wrapper = mount(DepositLine, {
       props: { amount: '500.00', isDepositPaid: false, depositDueDate: null },
     });
-    expect(wrapper.html().trim()).toBe('<!--v-if-->');
+    expect(wrapper.text()).toBe('');
+    expect(wrapper.find('div').exists()).toBe(false);
   });
 
   it('renders amount and due date when unpaid', () => {
