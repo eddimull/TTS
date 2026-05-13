@@ -64,6 +64,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         'venue_summary',
         'is_multi_event',
         'total_duration',
+        'expected_deposit_amount',
     ];
 
     protected $hidden = [
