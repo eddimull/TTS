@@ -24,6 +24,24 @@ class UpdateBookingRequest extends FormRequest
             'venue_address' => 'prohibited',
             'notes'         => 'sometimes|nullable|string',
             'status'        => 'sometimes|in:draft,pending,confirmed,cancelled',
+            'deposit_type' => [
+                'sometimes', 'required', 'in:percent,amount',
+                new \App\Http\Requests\Rules\DepositNotLocked($this->route('booking')),
+            ],
+            'deposit_value' => [
+                'sometimes', 'required', 'numeric', 'min:0',
+                new \App\Http\Requests\Rules\DepositNotLocked($this->route('booking')),
+                function ($attribute, $value, $fail) {
+                    $type  = $this->input('deposit_type');
+                    $price = $this->input('price') ?? optional($this->route('booking'))->price;
+                    if ($type === 'percent' && (float) $value > 100) {
+                        $fail('Deposit percent must be between 0 and 100.');
+                    }
+                    if ($type === 'amount' && (float) $value > (float) $price) {
+                        $fail('Deposit amount cannot exceed the booking price.');
+                    }
+                },
+            ],
         ];
     }
 
