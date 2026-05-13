@@ -144,7 +144,7 @@ class BookingsControllerTest extends TestCase
         // Virtual appended accessors (not DB columns)
         unset($bookingData['start_date'], $bookingData['end_date'], $bookingData['event_count'],
               $bookingData['venue_summary'], $bookingData['is_multi_event'], $bookingData['total_duration'],
-              $bookingData['events']);
+              $bookingData['expected_deposit_amount'], $bookingData['events']);
 
         $bookingData['author_id'] = $this->member->id;
         $bookingData['price'] = $bookingData['price'] * 100;
@@ -176,7 +176,7 @@ class BookingsControllerTest extends TestCase
         $dbCheck = collect($bookingData)->except([
             'date', 'start_time', 'end_time', 'venue_name', 'venue_address',
             'start_date', 'end_date', 'event_count', 'venue_summary',
-            'is_multi_event', 'total_duration', 'events',
+            'is_multi_event', 'total_duration', 'expected_deposit_amount', 'events',
         ])->toArray();
         $this->assertDatabaseMissing('bookings', $dbCheck);
     }
@@ -198,7 +198,7 @@ class BookingsControllerTest extends TestCase
         // Strip virtual appended accessors (not real DB columns)
         unset($updatedData['start_date'], $updatedData['end_date'], $updatedData['event_count'],
               $updatedData['venue_summary'], $updatedData['is_multi_event'], $updatedData['total_duration'],
-              $updatedData['events']);
+              $updatedData['expected_deposit_amount'], $updatedData['events']);
         $updatedData['price'] = $updatedData['price'] * 100;
 
         $response->assertSessionHas('successMessage', "$updatedName has been updated.");
@@ -699,5 +699,21 @@ class BookingsControllerTest extends TestCase
                 'deposit_value'   => '600',
             ])
             ->assertSessionHasErrors('deposit_type');
+    }
+
+    /** @test */
+    public function inertia_booking_response_includes_expected_deposit_amount(): void
+    {
+        $booking = \App\Models\Bookings::factory()->create([
+            'band_id'       => $this->band->id,
+            'price'         => '1000.00',
+            'deposit_type'  => 'percent',
+            'deposit_value' => '40.00',
+        ]);
+
+        $array = $booking->fresh()->toArray();
+        $this->assertSame('400.00', $array['expected_deposit_amount']);
+        $this->assertSame('percent', $array['deposit_type']);
+        $this->assertSame('40.00', (string) $array['deposit_value']);
     }
 }
