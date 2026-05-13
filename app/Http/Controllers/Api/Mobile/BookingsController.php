@@ -413,24 +413,49 @@ class BookingsController extends Controller
     public function downloadContract(Bands $band, Bookings $booking)
     {
         $contract = $booking->contract;
-        if (!$contract || !$contract->asset_url) {
+
+        if ($contract && $contract->asset_url) {
+            $filePath = $contract->getFilePath();
+            if (!Storage::disk('s3')->exists($filePath)) {
+                abort(404, 'Contract file not found');
+            }
+
+            $stream = Storage::disk('s3')->readStream($filePath);
+
+            return response()->stream(
+                function () use ($stream) { fpassthru($stream); },
+                200,
+                [
+                    'Content-Type'        => 'application/pdf',
+                    'Content-Disposition' => 'attachment; filename="' . basename($filePath) . '"',
+                ]
+            );
+        }
+
+        if (($booking->contract_option ?? 'default') !== 'default') {
             abort(404, 'Contract not found');
         }
 
-        $filePath = $contract->getFilePath();
-        if (!Storage::disk('s3')->exists($filePath)) {
-            abort(404, 'Contract file not found');
+        try {
+            $pdf = $booking->getContractPdf();
+        } catch (\InvalidArgumentException $e) {
+            return response()->json([
+                'error'   => 'Band address incomplete',
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'error'   => 'Contract generation failed',
+                'message' => $e->getMessage(),
+            ], 500);
         }
 
-        $stream = Storage::disk('s3')->readStream($filePath);
+        $filename = Str::slug($booking->name . '_Contract', '_') . '.pdf';
 
-        return response()->stream(
-            function () use ($stream) { fpassthru($stream); },
-            200,
-            [
-                'Content-Type'        => 'application/pdf',
-                'Content-Disposition' => 'attachment; filename="' . basename($filePath) . '"',
-            ]
+        return response()->streamDownload(
+            function () use ($pdf) { echo $pdf; },
+            $filename,
+            ['Content-Type' => 'application/pdf'],
         );
     }
 
