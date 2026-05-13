@@ -34,6 +34,8 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         'name',
         'event_type_id',
         'price',
+        'deposit_type',
+        'deposit_value',
         'status',
         'contract_option',
         'author_id',
@@ -44,6 +46,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
     protected $casts = [
         'created_at' => 'datetime:Y-m-d',
         'price' => Price::class,
+        'deposit_value' => 'decimal:2',
         'enable_portal_media_access' => 'boolean',
     ];
 
@@ -61,6 +64,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         'venue_summary',
         'is_multi_event',
         'total_duration',
+        'expected_deposit_amount',
     ];
 
     protected $hidden = [
@@ -337,14 +341,22 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
     }
 
     /**
-     * Get the expected deposit amount (50% of booking price)
-     * Returns amount in dollars as a formatted string
+     * Get the expected deposit amount based on the booking's deposit_type
+     * and deposit_value. Supports 'percent' (deposit_value is a percentage of
+     * price) and 'amount' (deposit_value is a flat dollar amount).
+     * Returns amount in dollars as a formatted string.
      */
     public function getExpectedDepositAmountAttribute(): string
     {
-        $depositPercent = 0.50; // 50% deposit requirement
-        $price = is_string($this->price) ? floatval($this->price) : $this->price;
-        return number_format($price * $depositPercent, 2, '.', '');
+        $price = is_string($this->price) ? floatval($this->price) : (float) $this->price;
+        if ($price <= 0) {
+            return '0.00';
+        }
+        if ($this->deposit_type === 'amount') {
+            return number_format((float) $this->deposit_value, 2, '.', '');
+        }
+        $percent = (float) $this->deposit_value / 100;
+        return number_format($price * $percent, 2, '.', '');
     }
 
     /**

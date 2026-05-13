@@ -267,4 +267,34 @@ class PaymentReminderNotificationsTest extends TestCase
         $this->assertEquals('Pay Online Now', $mailMessage->actionText);
         $this->assertStringContainsString('/portal/login', $mailMessage->actionUrl);
     }
+
+    public function test_deposit_reminder_renders_resolved_amount_for_percent_mode(): void
+    {
+        $booking = Bookings::factory()->create([
+            'band_id'       => $this->band->id,
+            'price'         => '1200.00',
+            'deposit_type'  => 'percent',
+            'deposit_value' => '20.00',
+        ]);
+
+        $notification = new DepositPaymentReminder($booking);
+        $array = $notification->toArray($notification);
+
+        $this->assertSame('240.00', $array['deposit_due']);
+    }
+
+    public function test_deposit_reminder_renders_resolved_amount_for_amount_mode(): void
+    {
+        $booking = Bookings::factory()->create([
+            'band_id'       => $this->band->id,
+            'price'         => '1200.00',
+            'deposit_type'  => 'amount',
+            'deposit_value' => '350.00',
+        ]);
+
+        $notification = new DepositPaymentReminder($booking);
+        $array = $notification->toArray($notification);
+
+        $this->assertSame('350.00', $array['deposit_due']);
+    }
 }
