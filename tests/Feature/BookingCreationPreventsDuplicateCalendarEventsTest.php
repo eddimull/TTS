@@ -177,9 +177,12 @@ class BookingCreationPreventsDuplicateCalendarEventsTest extends TestCase
         $this->app->instance(GoogleCalendarService::class, $mockService);
 
         
+        // Booking must be confirmed for an existing public-calendar entry to be
+        // *updated* rather than *deleted* by the public-calendar sync rules.
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'event_type_id' => $this->eventType->id,
+            'status' => 'confirmed',
         ]);
 
         $event = Events::withoutEvents(function () use ($booking) {
