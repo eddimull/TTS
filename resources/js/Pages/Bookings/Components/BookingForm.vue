@@ -49,6 +49,74 @@
           </div>
           <div>
             <label
+              for="deposit_value"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-50"
+            >Deposit</label>
+            <div class="mt-1 flex">
+              <input
+                id="deposit_value"
+                data-test="deposit-value-input"
+                v-model="form.deposit_value"
+                type="number"
+                step="0.01"
+                :disabled="isContractSigned || (form.deposit_type === 'percent' && (!form.price || form.price === '0'))"
+                class="block w-full rounded-l-md border-gray-300 dark:bg-slate-700 dark:text-gray-50 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 disabled:opacity-50"
+              >
+              <div
+                class="inline-flex"
+                role="group"
+              >
+                <button
+                  type="button"
+                  data-test="deposit-mode-amount"
+                  :disabled="isContractSigned"
+                  :aria-pressed="form.deposit_type === 'amount'"
+                  :class="form.deposit_type === 'amount' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 dark:bg-slate-700 dark:text-gray-50'"
+                  class="border border-gray-300 px-3 disabled:opacity-50"
+                  @click="setDepositMode('amount')"
+                >
+                  $
+                </button>
+                <button
+                  type="button"
+                  data-test="deposit-mode-percent"
+                  :disabled="isContractSigned || !form.price || form.price === '0'"
+                  :aria-pressed="form.deposit_type === 'percent'"
+                  :class="form.deposit_type === 'percent' ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 dark:bg-slate-700 dark:text-gray-50'"
+                  class="border border-l-0 border-gray-300 rounded-r-md px-3 disabled:opacity-50"
+                  @click="setDepositMode('percent')"
+                >
+                  %
+                </button>
+              </div>
+            </div>
+            <p
+              v-if="isContractSigned"
+              class="mt-1 text-sm text-gray-500 dark:text-gray-400"
+            >
+              Locked — contract is signed.
+            </p>
+            <p
+              v-else-if="form.deposit_type === 'percent' && (!form.price || form.price === '0')"
+              class="mt-1 text-sm text-gray-500 dark:text-gray-400"
+            >
+              Enter a price above to use percent.
+            </p>
+            <p
+              v-else-if="computedDepositCounterpart"
+              class="mt-1 text-sm text-gray-500 dark:text-gray-400"
+            >
+              {{ computedDepositCounterpart }}
+            </p>
+            <p
+              v-if="depositError"
+              class="mt-1 text-sm text-red-600 dark:text-red-400"
+            >
+              {{ depositError }}
+            </p>
+          </div>
+          <div>
+            <label
               for="status"
               class="block text-sm font-medium text-gray-700 dark:text-gray-50"
             >Status</label>
@@ -196,6 +264,38 @@ const form = useForm({
   status:          props.booking.status,
   contract_option: props.booking.contract_option,
   notes:           props.booking.notes,
+  deposit_type:    props.booking.deposit_type  || 'percent',
+  deposit_value:   props.booking.deposit_value || '50.00',
+});
+
+// ── Deposit helpers ───────────────────────────────────────────────────────────
+const isContractSigned = computed(() => props.booking.contract?.status === 'completed');
+
+const setDepositMode = (mode) => {
+  if (form.deposit_type === mode) return;
+  form.deposit_type = mode;
+  form.deposit_value = '';
+};
+
+const computedDepositCounterpart = computed(() => {
+  const price = parseFloat(form.price) || 0;
+  const value = parseFloat(form.deposit_value) || 0;
+  if (price <= 0) return null;
+  if (form.deposit_type === 'percent') {
+    return `= $${(price * value / 100).toFixed(2)}`;
+  }
+  if (value > 0) {
+    return `= ${(value / price * 100).toFixed(1)}%`;
+  }
+  return null;
+});
+
+const depositError = computed(() => {
+  const value = parseFloat(form.deposit_value);
+  if (isNaN(value)) return null;
+  if (form.deposit_type === 'percent' && value > 100) return 'Percent must be between 0 and 100.';
+  if (form.deposit_type === 'amount' && value > parseFloat(form.price)) return 'Deposit cannot exceed the booking price.';
+  return null;
 });
 
 // ── Event rows ────────────────────────────────────────────────────────────────
@@ -321,6 +421,8 @@ async function saveBooking() {
           status:          data.status,
           contract_option: data.contract_option,
           notes:           data.notes,
+          deposit_type:    data.deposit_type,
+          deposit_value:   data.deposit_value,
         }))
         .put(route('bands.booking.update', [props.band, props.booking]), {
           preserveScroll: true,

@@ -119,6 +119,40 @@ class EventsToGoogleCalendarTest extends TestCase
         $this->assertInstanceOf(EventDateTime::class, $this->event->getGoogleCalendarEndTime());
     }
 
+    public function test_end_datetime_rolls_to_next_day_when_event_crosses_midnight(): void
+    {
+        // Late-night gig: 22:00 -> 02:00. end_time is a TIME column so it
+        // sits on the same calendar date by default. The accessor must roll
+        // the end forward a day so Google Calendar does not reject the event
+        // with `timeRangeEmpty`.
+        $this->event->date = '2026-06-01';
+        $this->event->start_time = '22:00';
+        $this->event->end_time = '02:00';
+
+        $start = \Carbon\Carbon::parse($this->event->startDateTime);
+        $end = \Carbon\Carbon::parse($this->event->endDateTime);
+
+        $this->assertTrue(
+            $end->greaterThan($start),
+            'End datetime must be strictly after start datetime for midnight-crossing events.'
+        );
+        $this->assertSame('2026-06-02', $end->toDateString());
+    }
+
+    public function test_end_datetime_rolls_forward_when_end_time_equals_start_time(): void
+    {
+        // Defensive case: if start_time == end_time the range is empty;
+        // accessor must produce a non-empty range.
+        $this->event->date = '2026-06-01';
+        $this->event->start_time = '20:00';
+        $this->event->end_time = '20:00';
+
+        $start = \Carbon\Carbon::parse($this->event->startDateTime);
+        $end = \Carbon\Carbon::parse($this->event->endDateTime);
+
+        $this->assertTrue($end->greaterThan($start));
+    }
+
     public function test_does_not_write_to_google_when_calendar_is_missing(): void
     {
         $this->assertFalse($this->event->writeToGoogleCalendar());

@@ -452,6 +452,11 @@
                       >
                         Due: ${{ Number(booking.amount_due).toFixed(2) }}
                       </div>
+                      <DepositLine
+                        :amount="booking.expected_deposit_amount"
+                        :is-deposit-paid="booking.is_deposit_paid"
+                        :deposit-due-date="booking.deposit_due_date"
+                      />
                     </div>
                     <Link
                       v-if="booking.has_balance && booking.status === 'confirmed'"
@@ -510,6 +515,7 @@ import { computed } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import ContactLayout from '@/Layouts/ContactLayout.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
+import DepositLine from './Components/DepositLine.vue';
 
 const props = defineProps({
   portal: Object,
