@@ -78,11 +78,24 @@ class BookingsToGoogleCalendarTest extends TestCase
     }
 
     public function test_returns_google_calendar_summary(): void
-    {   
+    {
         $detailsThatShouldBeThere = [$this->booking->name, $this->booking->status];
         foreach ($detailsThatShouldBeThere as $detail) {
             $this->assertStringContainsString(Str::lower($detail), Str::lower($this->booking->getGoogleCalendarSummary()));
         }
+    }
+
+    public function test_summary_omits_status_when_writing_to_public_calendar(): void
+    {
+        $publicCalendar = BandCalendars::factory()->create([
+            'band_id' => $this->booking->band->id,
+            'type'    => 'public',
+        ]);
+
+        $summary = $this->booking->getGoogleCalendarSummary($publicCalendar);
+
+        $this->assertEquals($this->booking->name, $summary);
+        $this->assertStringNotContainsString('(', $summary);
     }
 
     public function test_returns_google_calendar_description(): void

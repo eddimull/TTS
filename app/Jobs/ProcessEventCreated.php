@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\Bookings;
 use App\Models\Events;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Queue\SerializesModels;
@@ -45,9 +46,9 @@ class ProcessEventCreated implements ShouldQueue, ShouldBeUniqueUntilProcessing
                 $this->event->storeGoogleEventId($this->event->getGoogleCalendar(), $event->id);
             }
 
-            if($this->event->additional_data && $this->event->additional_data->public)
+            if ($this->event->additional_data && $this->event->additional_data->public && $this->shouldSyncToPublicCalendar())
             {
-                Log::info('Event is public, writing to public calendar for event ID: ' . $this->event->id);
+                Log::info('Event is public and eligible, writing to public calendar for event ID: ' . $this->event->id);
                 $publicEvent = $this->event->writeToGoogleCalendar($this->event->getPublicGoogleCalendar());
                 if ($publicEvent) {
                     $this->event->storeGoogleEventId($this->event->getPublicGoogleCalendar(), $publicEvent->id);
@@ -59,5 +60,16 @@ class ProcessEventCreated implements ShouldQueue, ShouldBeUniqueUntilProcessing
         } catch (\Exception $e) {
             Log::error('Failed to create event in calendar: ' . $e->getMessage());
         }
+    }
+
+    private function shouldSyncToPublicCalendar(): bool
+    {
+        $eventable = $this->event->eventable;
+
+        if ($eventable instanceof Bookings) {
+            return $eventable->status === 'confirmed';
+        }
+
+        return true;
     }
 }

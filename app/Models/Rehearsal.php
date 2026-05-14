@@ -107,7 +107,7 @@ class Rehearsal extends Model implements GoogleCalenderable
         return $this->band->eventCalendar;
     }
 
-    public function getGoogleCalendarSummary(): string|null
+    public function getGoogleCalendarSummary(BandCalendars $bandCalendar = null): string|null
     {
         // Get the first event or use schedule name
         $event = $this->events()->first();

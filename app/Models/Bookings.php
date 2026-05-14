@@ -577,8 +577,12 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         return $this->band->bookingCalendar;
     }
 
-    public function getGoogleCalendarSummary(): ?string
+    public function getGoogleCalendarSummary(BandCalendars $bandCalendar = null): ?string
     {
+        if ($bandCalendar?->type === 'public') {
+            return $this->name;
+        }
+
         return $this->name . ' (' . ucfirst($this->status) . ')';
     }
 
