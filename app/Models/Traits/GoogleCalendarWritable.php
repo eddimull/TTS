@@ -38,7 +38,7 @@ trait GoogleCalendarWritable
                         $result = $googleCalendarService->updateEvent(
                             $bandCalendar->calendar_id,
                             $existingGoogleEvent->google_event_id,
-                            $this->getEventData()
+                            $this->getEventData($bandCalendar)
                         );
                         $lock->release();
                         return $result;
@@ -50,7 +50,7 @@ trait GoogleCalendarWritable
                 }
 
                 \Log::info("Creating new Google Calendar event for " . get_class($this) . " ID: {$this->id} in calendar {$bandCalendar->id}");
-                $result = $googleCalendarService->insertEvent($bandCalendar->calendar_id, $this->getEventData());
+                $result = $googleCalendarService->insertEvent($bandCalendar->calendar_id, $this->getEventData($bandCalendar));
                 $lock->release();
                 return $result;
 
@@ -66,12 +66,12 @@ trait GoogleCalendarWritable
                     return $googleCalendarService->updateEvent(
                         $bandCalendar->calendar_id,
                         $existingGoogleEvent->google_event_id,
-                        $this->getEventData()
+                        $this->getEventData($bandCalendar)
                     );
                 }
 
                 \Log::warning("Proceeding with insert after lock timeout for " . get_class($this) . " ID: {$this->id}");
-                return $googleCalendarService->insertEvent($bandCalendar->calendar_id, $this->getEventData());
+                return $googleCalendarService->insertEvent($bandCalendar->calendar_id, $this->getEventData($bandCalendar));
             }
         } catch (\Exception $e) {
             $lock->release();
@@ -105,16 +105,16 @@ trait GoogleCalendarWritable
         return !is_null($this->getGoogleEvent($bandCalendar));
     }
 
-    protected function getEventData(): GoogleEvent
+    protected function getEventData(BandCalendars $bandCalendar = null): GoogleEvent
     {
         $event = new GoogleEvent([]);
         $event->setLocation($this->getGoogleCalendarLocation());
         $event->setColorId($this->getGoogleCalendarColor());
-        $event->setSummary($this->getGoogleCalendarSummary());
+        $event->setSummary($this->getGoogleCalendarSummary($bandCalendar));
         $event->setDescription($this->getGoogleCalendarDescription());
         $event->setStart($this->getGoogleCalendarStartTime());
         $event->setEnd($this->getGoogleCalendarEndTime());
-        
+
         return $event;
     }
 
