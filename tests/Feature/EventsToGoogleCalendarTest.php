@@ -99,6 +99,20 @@ class EventsToGoogleCalendarTest extends TestCase
         $this->assertEquals('Test Event', $summary);
     }
 
+    public function test_summary_omits_booking_status_when_writing_to_public_calendar(): void
+    {
+        $this->event->title = 'Test Event';
+        $this->event->eventable->status = 'confirmed';
+        $this->event->eventable->save();
+
+        $publicCalendar = BandCalendars::factory()->create([
+            'band_id' => $this->event->eventable->band->id,
+            'type'    => 'public',
+        ]);
+
+        $this->assertEquals('Test Event', $this->event->getGoogleCalendarSummary($publicCalendar));
+    }
+
     public function test_returns_google_calendar_description(): void
     {
         $this->event->notes = 'Test Description';

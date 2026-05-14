@@ -275,8 +275,12 @@ class Events extends Model implements GoogleCalenderable
         return $this->eventable->band->publicCalendar ?? null;
     }
 
-    public function getGoogleCalendarSummary(): string|null
+    public function getGoogleCalendarSummary(BandCalendars $bandCalendar = null): string|null
     {
+        if ($bandCalendar?->type === 'public') {
+            return $this->title;
+        }
+
         if ($this->eventable_type === 'App\\Models\\Bookings' && $this->eventable) {
             return $this->title . ' (' . ucfirst($this->eventable->status) . ')';
         }

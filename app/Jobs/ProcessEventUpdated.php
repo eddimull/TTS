@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\BandCalendars;
 use App\Models\Bookings;
 use App\Models\BandEvents;
 use App\Models\Events;
@@ -42,14 +43,48 @@ class ProcessEventUpdated implements ShouldQueue, ShouldBeUniqueUntilProcessing
 
         $this->writeToGoogleCalendar($this->event->getGoogleCalendar());
 
-        if ($this->event->additional_data && is_object($this->event->additional_data) && isset($this->event->additional_data->public) && $this->event->additional_data->public) {
-            Log::info('Event is public, writing to public calendar for event ID: ' . $this->event->id);
-            $this->writeToGoogleCalendar($this->event->getPublicGoogleCalendar());
-        }
+        $this->syncPublicCalendar();
 
         CalculateEventDistances::dispatch($this->event);
 
         $this->SendNotification();
+    }
+
+    private function syncPublicCalendar(): void
+    {
+        $isPublic = $this->event->additional_data
+            && is_object($this->event->additional_data)
+            && !empty($this->event->additional_data->public);
+
+        $publicCalendar = $this->event->getPublicGoogleCalendar();
+
+        if (!$publicCalendar) {
+            return;
+        }
+
+        if ($isPublic && $this->isEligibleForPublicCalendar()) {
+            Log::info('Event is public and eligible, writing to public calendar for event ID: ' . $this->event->id);
+            $this->writeToGoogleCalendar($publicCalendar);
+            return;
+        }
+
+        // Booking is no longer eligible (downgraded from confirmed, or public flag cleared);
+        // clean up any existing public calendar entry.
+        if ($this->event->getGoogleEvent($publicCalendar)) {
+            Log::info('Event no longer eligible for public calendar, deleting existing entry for event ID: ' . $this->event->id);
+            $this->event->deleteFromGoogleCalendar($publicCalendar);
+        }
+    }
+
+    private function isEligibleForPublicCalendar(): bool
+    {
+        $eventable = $this->event->eventable;
+
+        if ($eventable instanceof Bookings) {
+            return $eventable->status === 'confirmed';
+        }
+
+        return true;
     }
 
     public function writeToGoogleCalendar($calendar)
