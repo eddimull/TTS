@@ -129,24 +129,39 @@ class Events extends Model implements GoogleCalenderable
 
     public function getEndDateTimeAttribute()
     {
+        $start = Carbon::parse($this->startDateTime);
+
         // Prefer the dedicated end_time column when populated.
         if ($this->end_time) {
             $date = $this->date->toDateString();
             $time = $this->end_time->format('H:i');
-            return Carbon::parse("{$date} {$time}")->isoFormat('YYYY-MM-DDTHH:mm:ss.sss');
+            $end = Carbon::parse("{$date} {$time}");
+
+            // end_time is stored as a TIME (no date). When it falls on or before
+            // the start, assume the event crosses midnight (e.g., 22:00 -> 02:00)
+            // and roll the end forward by a day. Google Calendar rejects events
+            // whose end is not strictly after the start (timeRangeEmpty).
+            if ($end->lessThanOrEqualTo($start)) {
+                $end->addDay();
+            }
+
+            return $end->isoFormat('YYYY-MM-DDTHH:mm:ss.sss');
         }
 
         // Fall back to additional_data->times (legacy data path).
-        $endDateTime = Carbon::parse($this->startDateTime)->addHour()->isoFormat('YYYY-MM-DDTHH:mm:ss.sss');
+        $endDateTime = $start->copy()->addHour();
         try {
             if ($this->additional_data && isset($this->additional_data->times) && $this->additional_data->times) {
                 $endTime = collect($this->additional_data->times)->max('time');
-                $endDateTime = Carbon::parse($endTime)->isoFormat('YYYY-MM-DDTHH:mm:ss.sss');
+                $parsed = Carbon::parse($endTime);
+                if ($parsed->greaterThan($start)) {
+                    $endDateTime = $parsed;
+                }
             }
         } catch (\Exception $e) {
             \Log::error('Error parsing end time for event ID ' . $this->id . ': ' . $e->getMessage());
         }
-        return $endDateTime;
+        return $endDateTime->isoFormat('YYYY-MM-DDTHH:mm:ss.sss');
     }
 
     public function scopePublic($query)
