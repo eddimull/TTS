@@ -9,7 +9,7 @@ interface GoogleCalenderable
 {
     public function getGoogleEvent(BandCalendars $bandCalendar): GoogleEvents|null;
     public function getGoogleCalendar(): BandCalendars|null;
-    public function getGoogleCalendarSummary(): string|null;
+    public function getGoogleCalendarSummary(BandCalendars $bandCalendar = null): string|null;
     public function getGoogleCalendarDescription(): string|null;
     public function getGoogleCalendarStartTime(): \Google\Service\Calendar\EventDateTime;
     public function getGoogleCalendarLocation(): string|null;
