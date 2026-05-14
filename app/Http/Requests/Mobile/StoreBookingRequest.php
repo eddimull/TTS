@@ -24,6 +24,19 @@ class StoreBookingRequest extends FormRequest
             'venue_address'   => 'nullable|string',
             'contract_option' => 'nullable|in:default,none,external',
             'notes'           => 'nullable|string',
+            'deposit_type'  => 'sometimes|required|in:percent,amount',
+            'deposit_value' => [
+                'sometimes', 'required', 'numeric', 'min:0',
+                function ($attribute, $value, $fail) {
+                    $type = $this->input('deposit_type');
+                    if ($type === 'percent' && (float) $value > 100) {
+                        $fail('Deposit percent must be between 0 and 100.');
+                    }
+                    if ($type === 'amount' && (float) $value > (float) $this->input('price')) {
+                        $fail('Deposit amount cannot exceed the booking price.');
+                    }
+                },
+            ],
         ];
     }
 }
