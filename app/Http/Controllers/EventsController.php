@@ -367,8 +367,8 @@ class EventsController extends Controller
 
     public function getGoogleMapsImage(Events $event)
     {
-        $venue_name = $event->eventable->venue_name;
-        $venue_address = $event->eventable->venue_address;
+        $venue_name = $event->resolved_venue_name;
+        $venue_address = $event->resolved_venue_address;
         $location = urlencode($venue_name . ' ' . $venue_address);
         
         // Create a cache key based on the venue address
