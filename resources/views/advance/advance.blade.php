@@ -3,7 +3,7 @@
 @section('content')
 
 @php
-$address = $event->eventable->venue_address;
+$address = $event->resolved_venue_address ?? '';
 
 // Extract zip code
 preg_match('/\b\d{5}\b/', $address, $zip_matches);
@@ -33,7 +33,7 @@ $additionalData = $event->additional_data;
 
 // Start with show_time as the only fixed time
 $times = [
-['title' => 'Show Time', 'time' => $event->time ?? null],
+['title' => 'Show Time', 'time' => $event->start_time ?? null],
 ];
 
 // Extract times from additional_data
@@ -85,7 +85,7 @@ if (isset($additionalData->lodging))
         <div class="px-6 mb-2">
             <div class="-ml-2 font-bold">Venue:</div>
             <div>
-                {{ $event->eventable->venue_name }}<br>
+                {{ $event->resolved_venue_name }}<br>
                 {{ $street }}<br>
                 {{ $city }}, {{ $state }} {{ $zip }}
             </div>
@@ -97,13 +97,13 @@ if (isset($additionalData->lodging))
             </div>
             <div class="flex flex-row sm:flex-col justify-around content-center">
                 <div style="max-width:60px">
-                    <a href="https://www.google.com/maps/search/?api=1&query={{urlencode($event->eventable->venue_name . ' ' . $event->eventable->venue_address)}}">
+                    <a href="https://www.google.com/maps/search/?api=1&query={{urlencode($event->resolved_venue_name . ' ' . $event->resolved_venue_address)}}">
                         <img src="/images/googlemaps.png" alt="googleMapsLink" />
                         <div class="text-xs whitespace-nowrap">Google Maps</div>
                     </a>
                 </div>
                 <div style="max-width:60px">
-                    <a href="https://maps.apple.com/?q={{urlencode($event->eventable->venue_name . ' ' . $event->eventable->venue_address)}}">
+                    <a href="https://maps.apple.com/?q={{urlencode($event->resolved_venue_name . ' ' . $event->resolved_venue_address)}}">
                         <img src="/images/applemaps.png" alt="appleMapsLink" />
                         <div class="text-xs whitespace-nowrap">Apple Maps</div>
                     </a>

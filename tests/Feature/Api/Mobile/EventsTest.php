@@ -246,6 +246,51 @@ class EventsTest extends TestCase
         $this->assertNull($response->json('event.live_session_id'));
     }
 
+    public function test_event_show_returns_venue_from_event_row(): void
+    {
+        // The 2026_05_03 migration moved venue_name/venue_address from the
+        // bookings table onto the events row. EventDataService still read
+        // them from $event->eventable (a Bookings), yielding null.
+        ['event' => $event, 'token' => $token] = $this->createUserWithBandAndEvent();
+
+        $event->update([
+            'venue_name'    => 'Chateau Country Club',
+            'venue_address' => '3600 Chateau Blvd, Kenner LA 70065',
+        ]);
+
+        $response = $this->withToken($token)
+            ->getJson("/api/mobile/events/{$event->key}");
+
+        $response->assertOk();
+        $this->assertSame('Chateau Country Club', $response->json('event.venue_name'));
+        $this->assertSame('3600 Chateau Blvd, Kenner LA 70065', $response->json('event.venue_address'));
+    }
+
+    public function test_events_index_returns_venue_from_event_row(): void
+    {
+        [
+            'band'  => $band,
+            'event' => $event,
+            'token' => $token,
+        ] = $this->createUserWithBandAndEvent();
+
+        $event->update([
+            'venue_name'    => 'Chateau Country Club',
+            'venue_address' => '3600 Chateau Blvd, Kenner LA 70065',
+        ]);
+
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson("/api/mobile/bands/{$band->id}/events");
+
+        $response->assertOk();
+
+        $eventData = collect($response->json('events'))->firstWhere('id', $event->id);
+        $this->assertNotNull($eventData);
+        $this->assertSame('Chateau Country Club', $eventData['venue_name']);
+        $this->assertSame('3600 Chateau Blvd, Kenner LA 70065', $eventData['venue_address']);
+    }
+
     public function test_events_index_event_source_is_booking_for_booking_events(): void
     {
         [

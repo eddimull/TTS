@@ -164,6 +164,24 @@ class Events extends Model implements GoogleCalenderable
         return $endDateTime->isoFormat('YYYY-MM-DDTHH:mm:ss.sss');
     }
 
+    /**
+     * Venue name for the event. Lives on the events row since the
+     * 2026_05_03 migration moved it off bookings; falls back to the
+     * eventable for non-booking types (e.g. rehearsals) not backfilled there.
+     */
+    public function getResolvedVenueNameAttribute(): ?string
+    {
+        return $this->venue_name ?? $this->eventable?->venue_name ?? null;
+    }
+
+    /**
+     * Venue address for the event. See getResolvedVenueNameAttribute().
+     */
+    public function getResolvedVenueAddressAttribute(): ?string
+    {
+        return $this->venue_address ?? $this->eventable?->venue_address ?? null;
+    }
+
     public function scopePublic($query)
     {
         return $query->whereRaw("JSON_EXTRACT(additional_data, '$.public') IN (1, true, '1', 'true')");
