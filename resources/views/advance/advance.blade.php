@@ -33,7 +33,7 @@ $additionalData = $event->additional_data;
 
 // Start with show_time as the only fixed time
 $times = [
-['title' => 'Show Time', 'time' => $event->time ?? null],
+['title' => 'Show Time', 'time' => $event->start_time ?? null],
 ];
 
 // Extract times from additional_data

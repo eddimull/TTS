@@ -119,6 +119,27 @@ class AdvancePageMapsTest extends TestCase
         );
     }
 
+    public function test_advance_page_renders_show_time_from_event_start_time(): void
+    {
+        $this->withoutVite();
+
+        // The 2026_05_03 migration dropped events.time in favour of
+        // start_time. The advance schedule still read $event->time, so the
+        // Show Time row rendered as N/A.
+        $event = Events::factory()->create([
+            'start_time'    => '19:30',
+            'venue_name'    => 'Chateau Country Club',
+            'venue_address' => '3600 Chateau Blvd, Kenner LA 70065',
+        ]);
+
+        $response = $this->actingAs(User::factory()->create())
+            ->get('/events/' . $event->key . '/advance');
+
+        $response->assertOk();
+        $response->assertSee('Show Time');
+        $response->assertSee('7:30 PM');
+    }
+
     public function test_location_image_requests_static_map_with_event_row_venue(): void
     {
         Http::fake();
