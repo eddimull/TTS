@@ -240,9 +240,13 @@ class BookingsTest extends TestCase
         $payload = [
             'name'          => 'Personal gig',
             'event_type_id' => $eventType->id,
-            'date'          => '2030-01-15',
-            'start_time'    => '20:00',
-            'duration'      => 2,
+            'events'        => [
+                [
+                    'title'      => 'Personal gig',
+                    'date'       => '2030-01-15',
+                    'start_time' => '20:00',
+                ],
+            ],
         ];
 
         $this->withToken($token)
@@ -303,5 +307,94 @@ class BookingsTest extends TestCase
             $this->getProtectedProperty($job, 'event')->id === $event2->id
         );
         Bus::assertDispatched(ProcessBookingDeleted::class, 1);
+    }
+
+    // -------------------------------------------------------------------------
+    // bookings.store — multi-event create
+    // -------------------------------------------------------------------------
+
+    public function test_bookings_store_creates_one_event_per_events_entry(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+        $eventType = EventTypes::factory()->create();
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        $payload = [
+            'name'          => 'Two-night run',
+            'event_type_id' => $eventType->id,
+            'events'        => [
+                [
+                    'title'      => 'Night One',
+                    'date'       => '2030-03-01',
+                    'start_time' => '20:00',
+                    'end_time'   => '23:00',
+                    'venue_name' => 'The Blue Note',
+                ],
+                [
+                    'title'      => 'Night Two',
+                    'date'       => '2030-03-02',
+                    'start_time' => '21:00',
+                ],
+            ],
+        ];
+
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->postJson("/api/mobile/bands/{$band->id}/bookings", $payload)
+            ->assertCreated();
+
+        $bookingId = $response->json('booking.id');
+        $events = Events::where('eventable_type', Bookings::class)
+            ->where('eventable_id', $bookingId)
+            ->orderBy('date')
+            ->get();
+
+        $this->assertCount(2, $events, 'One event per events[] entry');
+        $this->assertSame('Night One', $events[0]->title);
+        $this->assertSame('23:00', $events[0]->end_time->format('H:i'));
+        // end_time omitted on Night Two — service defaults it to start + 2h.
+        $this->assertSame('23:00', $events[1]->end_time->format('H:i'));
+    }
+
+    public function test_bookings_store_rejects_event_without_start_time(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+        $eventType = EventTypes::factory()->create();
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->postJson("/api/mobile/bands/{$band->id}/bookings", [
+                'name'          => 'No start time',
+                'event_type_id' => $eventType->id,
+                'events'        => [
+                    ['title' => 'Mystery gig', 'date' => '2030-03-01'],
+                ],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('events.0.start_time');
+    }
+
+    public function test_bookings_store_rejects_empty_events_array(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+        $eventType = EventTypes::factory()->create();
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->postJson("/api/mobile/bands/{$band->id}/bookings", [
+                'name'          => 'Eventless',
+                'event_type_id' => $eventType->id,
+                'events'        => [],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('events');
     }
 }
