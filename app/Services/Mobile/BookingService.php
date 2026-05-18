@@ -8,7 +8,11 @@ use Illuminate\Support\Str;
 
 class BookingService
 {
-    public function buildAdditionalData(array $validated, Carbon $startDt, Carbon $endDt): array
+    /**
+     * Build the per-event `additional_data` blob (load-in / soundcheck / etc.)
+     * anchored to a single event's start and end.
+     */
+    public function buildAdditionalData(int $eventTypeId, Carbon $startDt, Carbon $endDt): array
     {
         $additionalData = [
             'times' => [
@@ -30,7 +34,7 @@ class BookingService
             ],
         ];
 
-        if ((int) $validated['event_type_id'] === 1) {
+        if ($eventTypeId === 1) {
             $additionalData['wedding'] = [
                 'onsite' => true,
                 'dances' => [
@@ -71,31 +75,41 @@ class BookingService
         return [];
     }
 
-    public function createInitialEvent(Bookings $booking, array $validated, array $additionalData): void
+    /**
+     * Create a single Event under a booking from one entry of the create
+     * payload's `events` array.
+     *
+     * @param  array  $eventData  Validated event fields: title, date,
+     *                            start_time (required), end_time?, venue_name?,
+     *                            venue_address?, price?.
+     */
+    public function createBookingEvent(Bookings $booking, array $eventData, int $eventTypeId): void
     {
         $defaultRoster = $booking->band->defaultRoster ?? null;
 
-        $startDt = \Carbon\Carbon::parse($validated['date'] . ' ' . $validated['start_time']);
-        $endDt   = $startDt->copy()->addHours((float) ($validated['duration'] ?? 2));
-        $endTime = $endDt->format('H:i');
+        $startDt = Carbon::parse($eventData['date'] . ' ' . $eventData['start_time']);
+        // end_time is optional; when absent, default the event to two hours.
+        $endTime = $eventData['end_time']
+            ?? $startDt->copy()->addHours(2)->format('H:i');
+        $endDt = Carbon::parse($eventData['date'] . ' ' . $endTime);
 
         $eventAttrs = [
-            'title'           => $booking->name,
-            'date'            => $validated['date'],
-            'start_time'      => $validated['start_time'],
+            'title'           => $eventData['title'],
+            'date'            => $eventData['date'],
+            'start_time'      => $eventData['start_time'],
             'end_time'        => $endTime,
-            'venue_address'   => $validated['venue_address'] ?? null,
-            'event_type_id'   => $validated['event_type_id'],
-            'value'           => $validated['price'] ?? 0,
-            'additional_data' => $additionalData,
+            'venue_address'   => $eventData['venue_address'] ?? null,
+            'event_type_id'   => $eventTypeId,
+            'value'           => $eventData['price'] ?? 0,
+            'additional_data' => $this->buildAdditionalData($eventTypeId, $startDt, $endDt),
             'key'             => Str::uuid()->toString(),
             'roster_id'       => $defaultRoster?->id,
         ];
 
         // venue_name defaults to 'TBD' at schema level; omit when blank so the
         // default fires rather than inserting null into a NOT NULL column.
-        if (!empty($validated['venue_name'])) {
-            $eventAttrs['venue_name'] = $validated['venue_name'];
+        if (!empty($eventData['venue_name'])) {
+            $eventAttrs['venue_name'] = $eventData['venue_name'];
         }
 
         $booking->events()->create($eventAttrs);
