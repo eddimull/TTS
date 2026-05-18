@@ -16,14 +16,22 @@ class StoreBookingRequest extends FormRequest
         return [
             'name'            => 'required|string|max:255',
             'event_type_id'   => 'required|integer|exists:event_types,id',
-            'date'            => 'required|date',
-            'start_time'      => 'required|date_format:H:i',
-            'duration'        => 'required|numeric|min:0.5|max:24',
             'price'           => 'nullable|numeric|min:0',
-            'venue_name'      => 'nullable|string|max:255',
-            'venue_address'   => 'nullable|string',
             'contract_option' => 'nullable|in:default,none,external',
             'notes'           => 'nullable|string',
+
+            // Date / time / venue now live on events, not the booking. A
+            // booking is created with one or more events; start_time is
+            // required so the additional_data schedule can be anchored.
+            'events'                 => 'required|array|min:1',
+            'events.*.title'         => 'required|string|max:255',
+            'events.*.date'          => 'required|date',
+            'events.*.start_time'    => 'required|date_format:H:i',
+            'events.*.end_time'      => 'nullable|date_format:H:i',
+            'events.*.venue_name'    => 'nullable|string|max:255',
+            'events.*.venue_address' => 'nullable|string',
+            'events.*.price'         => 'nullable|numeric|min:0',
+
             'deposit_type'  => 'sometimes|required|in:percent,amount',
             'deposit_value' => [
                 'sometimes', 'required', 'numeric', 'min:0',
@@ -37,6 +45,15 @@ class StoreBookingRequest extends FormRequest
                     }
                 },
             ],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'events.required'              => 'A booking must include at least one event.',
+            'events.min'                   => 'A booking must include at least one event.',
+            'events.*.start_time.required' => 'Each event needs a start time.',
         ];
     }
 }
