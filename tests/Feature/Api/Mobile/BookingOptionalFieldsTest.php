@@ -25,6 +25,19 @@ class BookingOptionalFieldsTest extends TestCase
         return compact('user', 'band', 'token');
     }
 
+    /**
+     * Build a single-event `events` array entry for the booking-create
+     * payload. Extra keys (e.g. venue_name) merge over the defaults.
+     */
+    private function eventEntry(array $overrides = []): array
+    {
+        return array_merge([
+            'title'      => 'Main Event',
+            'date'       => '2026-06-01',
+            'start_time' => '19:00',
+        ], $overrides);
+    }
+
     public function test_create_booking_without_price_succeeds_and_defaults_to_zero(): void
     {
         ['band' => $band, 'token' => $token] = $this->makeUserAndBand();
@@ -37,9 +50,7 @@ class BookingOptionalFieldsTest extends TestCase
                 [
                     'name'          => 'Cheap Gig',
                     'event_type_id' => $eventType->id,
-                    'date'          => '2026-06-01',
-                    'start_time'    => '19:00',
-                    'duration'      => 3,
+                    'events'        => [$this->eventEntry()],
                     // No 'price' key — testing that the validator no longer rejects this.
                 ],
             );
@@ -66,9 +77,7 @@ class BookingOptionalFieldsTest extends TestCase
                 [
                     'name'          => 'Free Gig',
                     'event_type_id' => $eventType->id,
-                    'date'          => '2026-06-02',
-                    'start_time'    => '19:00',
-                    'duration'      => 3,
+                    'events'        => [$this->eventEntry(['date' => '2026-06-02'])],
                     'price'         => null,
                 ],
             );
@@ -109,9 +118,7 @@ class BookingOptionalFieldsTest extends TestCase
                 [
                     'name'          => 'Bad',
                     'event_type_id' => $eventType->id,
-                    'date'          => '2026-06-01',
-                    'start_time'    => '19:00',
-                    'duration'      => 3,
+                    'events'        => [$this->eventEntry()],
                     'price'         => -10,
                 ],
             );
@@ -131,10 +138,8 @@ class BookingOptionalFieldsTest extends TestCase
                 [
                     'name'          => 'No Venue',
                     'event_type_id' => $eventType->id,
-                    'date'          => '2026-06-01',
-                    'start_time'    => '19:00',
-                    'duration'      => 3,
-                    // No venue_name — schema default of 'TBD' should kick in.
+                    // No venue_name on the event — schema default of 'TBD' kicks in.
+                    'events'        => [$this->eventEntry()],
                 ],
             );
 
@@ -160,10 +165,9 @@ class BookingOptionalFieldsTest extends TestCase
                 [
                     'name'          => 'Null Venue',
                     'event_type_id' => $eventType->id,
-                    'date'          => '2026-06-02',
-                    'start_time'    => '19:00',
-                    'duration'      => 3,
-                    'venue_name'    => null,
+                    'events'        => [
+                        $this->eventEntry(['date' => '2026-06-02', 'venue_name' => null]),
+                    ],
                 ],
             );
 
@@ -187,10 +191,9 @@ class BookingOptionalFieldsTest extends TestCase
                 [
                     'name'          => 'Empty Venue',
                     'event_type_id' => $eventType->id,
-                    'date'          => '2026-06-03',
-                    'start_time'    => '19:00',
-                    'duration'      => 3,
-                    'venue_name'    => '',
+                    'events'        => [
+                        $this->eventEntry(['date' => '2026-06-03', 'venue_name' => '']),
+                    ],
                 ],
             );
 

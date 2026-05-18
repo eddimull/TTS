@@ -22,10 +22,10 @@ use App\Models\Payments;
 use App\Services\BookingActivityService;
 use App\Services\Mobile\BookingFormatter;
 use App\Services\Mobile\BookingService;
-use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -142,35 +142,42 @@ class BookingsController extends Controller
     {
         $validated = $request->validated();
 
-        $startDt = Carbon::parse($validated['date'] . ' ' . $validated['start_time']);
-        $endDt   = $startDt->copy()->addHours((float) $validated['duration']);
-        $endTime = $endDt->format('H:i');
-
         $status = ($validated['contract_option'] ?? 'default') === 'none' ? 'confirmed' : 'draft';
 
-        // date/start_time/end_time/venue_name/venue_address now live on events,
-        // not bookings. Store only booking-level fields here.
-        $attrs = [
-            'band_id'         => $band->id,
-            'author_id'       => Auth::id(),
-            'name'            => $validated['name'],
-            'event_type_id'   => $validated['event_type_id'],
-            'price'           => $validated['price'] ?? null,
-            'contract_option' => $validated['contract_option'] ?? 'default',
-            'notes'           => $validated['notes'] ?? null,
-            'status'          => $status,
-        ];
-        $booking = Bookings::create($attrs);
+        // date/start_time/end_time/venue_name/venue_address live on events,
+        // not bookings. Store only booking-level fields here; each entry in
+        // the `events` array becomes its own Event row.
+        $booking = DB::transaction(function () use ($validated, $band, $status) {
+            $booking = Bookings::create([
+                'band_id'         => $band->id,
+                'author_id'       => Auth::id(),
+                'name'            => $validated['name'],
+                'event_type_id'   => $validated['event_type_id'],
+                'price'           => $validated['price'] ?? null,
+                'contract_option' => $validated['contract_option'] ?? 'default',
+                'notes'           => $validated['notes'] ?? null,
+                'status'          => $status,
+            ]);
 
-        $booking->contract()->create([
-            'author_id'    => Auth::id(),
-            'status'       => 'pending',
-            'custom_terms' => $this->bookingService->getInitialTerms(),
-        ]);
+            $booking->contract()->create([
+                'author_id'    => Auth::id(),
+                'status'       => 'pending',
+                'custom_terms' => $this->bookingService->getInitialTerms(),
+            ]);
 
-        $additionalData = $this->bookingService->buildAdditionalData($validated, $startDt, $endDt);
-        $this->bookingService->createInitialEvent($booking, $validated, $additionalData);
-        $this->bookingService->redistributeEventValues($booking->fresh());
+            foreach ($validated['events'] as $eventData) {
+                $this->bookingService->createBookingEvent(
+                    $booking,
+                    $eventData,
+                    $validated['event_type_id'],
+                );
+            }
+
+            // Split the booking price evenly across the events created above.
+            $this->bookingService->redistributeEventValues($booking->fresh());
+
+            return $booking;
+        });
 
         return response()->json([
             'booking' => $this->formatter->format(
