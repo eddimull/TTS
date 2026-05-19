@@ -178,7 +178,7 @@ class EventsController extends Controller
         );
 
         $event->update([
-            ...$request->only(['title', 'date', 'time', 'notes']),
+            ...$request->only(['title', 'date', 'start_time', 'end_time', 'notes']),
             'additional_data' => $ad,
         ]);
 
