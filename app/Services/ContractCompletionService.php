@@ -12,6 +12,11 @@ class ContractCompletionService
 {
     public function markCompleted(Contracts $contract): void
     {
+        if ($contract->status === 'completed')
+        {
+            return;
+        }
+
         $this->storeSignedContractPdf($contract);
 
         $contract->status = 'completed';
