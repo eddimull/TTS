@@ -9,6 +9,7 @@ use App\Models\Events;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Mockery;
 use Tests\TestCase;
 
 class ProcessEventCreatedTest extends TestCase
@@ -31,27 +32,17 @@ class ProcessEventCreatedTest extends TestCase
         DB::table('events')->where('id', $event->id)
             ->update(['additional_data' => json_encode(json_encode(['public' => true]))]);
 
-        // Capture log calls so we can assert the production crash signature
-        // ("Attempt to read property public on string") never appears, even
-        // though ProcessEventCreated::handle() swallows exceptions via try/catch.
-        $loggedErrors = [];
-        Log::shouldReceive('info')->andReturnUsing(function () {});
-        Log::shouldReceive('debug')->andReturnUsing(function () {});
-        Log::shouldReceive('warning')->andReturnUsing(function () {});
-        Log::shouldReceive('error')->andReturnUsing(function ($message) use (&$loggedErrors) {
-            $loggedErrors[] = $message;
-        });
+        Log::spy();
 
-        // Must not throw "Attempt to read property public on string".
         (new ProcessEventCreated($event))->handle();
 
-        foreach ($loggedErrors as $message) {
-            $this->assertStringNotContainsString(
-                'Attempt to read property "public" on string',
-                $message,
-                'ProcessEventCreated swallowed the TTS-BAND-11E crash via try/catch — accessor regression.',
-            );
-        }
+        // The job swallows throws into Log::error, so a "no throw" assertion
+        // alone would pass even when the bug is present. Assert the exact
+        // production crash signature was never logged.
+        Log::shouldNotHaveReceived('error', [Mockery::on(
+            fn ($message) => is_string($message)
+                && str_contains($message, 'Attempt to read property "public" on string')
+        )]);
 
         // Job ran to completion; no Google event row created (no calendar).
         $this->assertDatabaseMissing('google_events', [
