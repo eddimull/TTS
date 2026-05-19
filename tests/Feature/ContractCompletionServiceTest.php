@@ -72,4 +72,27 @@ class ContractCompletionServiceTest extends TestCase
             $this->assertSame('sent', $contract->fresh()->status);
         }
     }
+
+    public function test_mark_completed_is_idempotent_and_skips_already_completed_contracts(): void
+    {
+        Storage::fake('s3');
+        Http::fake([
+            'api.pandadoc.com/public/v1/documents/*/download' => Http::response('PDFBYTES', 200),
+        ]);
+
+        $contract = $this->makeSentContract();
+        $service = new ContractCompletionService();
+
+        $service->markCompleted($contract);
+        $firstAssetUrl = $contract->fresh()->asset_url;
+
+        // A second call (e.g. a second recipient's webhook) must be a no-op:
+        // no further PandaDoc download, asset_url unchanged.
+        Http::fake();
+        $service->markCompleted($contract->fresh());
+
+        Http::assertNothingSent();
+        $this->assertSame($firstAssetUrl, $contract->fresh()->asset_url);
+        $this->assertSame('completed', $contract->fresh()->status);
+    }
 }
