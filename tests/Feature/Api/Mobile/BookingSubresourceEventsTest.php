@@ -140,6 +140,29 @@ class BookingSubresourceEventsTest extends TestCase
         ]);
     }
 
+    /**
+     * Regression: the booking event editor previously wrote the showtime to a
+     * non-existent `time` attribute, so it was stripped by validation and the
+     * update silently kept the old start_time. The editor now sends the value
+     * as `start_time` — this asserts the field actually persists end to end.
+     */
+    public function test_update_event_persists_start_time(): void
+    {
+        ['band' => $band, 'booking' => $booking, 'event' => $event, 'token' => $token] = $this->makeBookingWithEvent();
+
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->patchJson(
+                "/api/mobile/bands/{$band->id}/bookings/{$booking->id}/events/{$event->key}",
+                ['start_time' => '21:30'],
+            );
+
+        $response->assertOk()
+            ->assertJsonPath('event.start_time', '21:30');
+
+        $this->assertSame('21:30', $event->fresh()->start_time->format('H:i'));
+    }
+
     // -------------------------------------------------------------------------
     // DELETE events.destroy
     // -------------------------------------------------------------------------
