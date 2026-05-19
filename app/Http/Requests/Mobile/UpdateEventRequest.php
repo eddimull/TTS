@@ -16,7 +16,11 @@ class UpdateEventRequest extends FormRequest
         return [
             'title'                  => 'sometimes|string|max:255',
             'date'                   => 'sometimes|date_format:Y-m-d',
-            'time'                   => 'sometimes|nullable|date_format:H:i',
+            // start_time / end_time replaced the legacy single `time` column
+            // in the 2026-05-03 events-table migration. The mobile app sends
+            // these as "HH:mm" strings.
+            'start_time'             => 'sometimes|nullable|date_format:H:i',
+            'end_time'               => 'sometimes|nullable|date_format:H:i',
             'notes'                  => 'sometimes|nullable|string',
             'venue_name'             => 'sometimes|nullable|string|max:255',
             'venue_address'          => 'sometimes|nullable|string|max:255',
@@ -28,6 +32,13 @@ class UpdateEventRequest extends FormRequest
             'timeline'               => 'sometimes|array',
             'timeline.*.title'       => 'required_with:timeline|string|max:255',
             'timeline.*.time'        => 'nullable|string|max:20',
+            // Lodging is stored as a list of {title, type, data} rows in
+            // additional_data.lodging. `data` is mixed — bool for the
+            // "Provided" checkbox row, string for the text rows.
+            'lodging'                => 'sometimes|array',
+            'lodging.*.title'        => 'required_with:lodging|string|max:50',
+            'lodging.*.type'         => 'required_with:lodging|in:checkbox,text',
+            'lodging.*.data'         => 'nullable',
             'wedding'                => 'sometimes|array',
             'wedding.onsite'         => 'sometimes|nullable|boolean',
             'wedding.dances'         => 'sometimes|array',
