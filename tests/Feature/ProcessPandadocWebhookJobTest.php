@@ -56,4 +56,31 @@ class ProcessPandadocWebhookJobTest extends TestCase
         $this->assertSame('completed', $contract->status);
         $this->assertSame('confirmed', $contract->contractable->status);
     }
+
+    public function test_recipient_completed_webhook_with_unknown_envelope_does_not_throw(): void
+    {
+        Storage::fake('s3');
+        Http::fake();
+
+        $webhookCall = WebhookCall::create([
+            'name'    => 'pandadoc',
+            'url'     => 'https://tts.band/webhooks/pandadoc',
+            'payload' => [
+                [
+                    'event' => 'recipient_completed',
+                    'data'  => [
+                        'id'        => 'envelope-that-does-not-exist',
+                        'recipient' => ['email' => 'nobody@example.com'],
+                    ],
+                ],
+            ],
+        ]);
+
+        (new ProcessPandadocWebhookJob($webhookCall))->handle();
+
+        // No contract matches the envelope id, so nothing should be created or
+        // changed and no PandaDoc call should be made.
+        $this->assertSame(0, \App\Models\Contracts::count());
+        Http::assertNothingSent();
+    }
 }
