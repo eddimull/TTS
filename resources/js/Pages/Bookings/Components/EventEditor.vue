@@ -506,7 +506,7 @@ const updateTimes = (newTimes, eventTimeEntry) => {
         const [datePart, timePart] = eventTimeEntry.time.split('T');
         if (datePart && timePart) {
             event.value.date = datePart;
-            event.value.time = timePart;
+            event.value.start_time = timePart;
         }
     }
 };
