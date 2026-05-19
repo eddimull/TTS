@@ -20,6 +20,7 @@ class CheckSignedContracts extends Command
         $this->info('Checking for signed contracts...');
 
         $contracts = Contracts::query()
+            ->with('contractable.band')
             ->where('status', '!=', 'completed')
             ->where('created_at', '>', Carbon::now()->subMonths(2))
             ->whereNotNull('envelope_id')
@@ -49,10 +50,10 @@ class CheckSignedContracts extends Command
                     continue;
                 }
 
-                if ($response['status'] === 'document.completed')
+                if ($response->json('status') === 'document.completed')
                 {
                     $completionService->markCompleted($contract);
-                    $this->line("Completed contract for: {$contract->contractable->name}");
+                    $this->line("Completed contract for: " . ($contract->contractable?->name ?? 'unknown'));
                     $processedCount++;
                 }
             }
@@ -73,6 +74,6 @@ class CheckSignedContracts extends Command
             $this->warn("Encountered {$errorCount} errors. Check logs for details.");
         }
 
-        return 0;
+        return self::SUCCESS;
     }
 }
