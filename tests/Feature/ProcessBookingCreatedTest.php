@@ -13,7 +13,7 @@ class ProcessBookingCreatedTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_handle_does_not_throw_when_band_has_no_booking_calendar(): void
+    public function test_handle_skips_calendar_sync_when_band_has_no_booking_calendar(): void
     {
         $band = Bands::factory()->create();
         $booking = Bookings::factory()->create(['band_id' => $band->id]);
