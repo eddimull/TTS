@@ -21,9 +21,10 @@
     <div>
       <Input
         id="time"
-        v-model="modelValue.time"
+        v-model="modelValue.start_time"
         label="Show Time"
         type="time"
+        dusk="event-show-time"
         class="w-full p-2 border dark:bg-slate-700 dark:text-gray-50 rounded"
       />
     </div>

@@ -129,6 +129,36 @@ class EventTest extends DuskTestCase
         });
     }
 
+    public function test_booking_event_editor_populates_show_time(): void
+    {
+        $booking = Bookings::factory()->create([
+            'band_id' => $this->band->id,
+            'name' => 'Jones Wedding',
+        ]);
+
+        $contact = Contacts::factory()->create([
+            'band_id' => $this->band->id,
+            'name' => 'Jane Jones',
+            'email' => 'show-time-contact@test.local',
+        ]);
+        $booking->contacts()->attach($contact, ['is_primary' => true]);
+
+        $event = Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking->id,
+            'title' => 'Jones Wedding',
+            'start_time' => '19:30',
+        ]);
+
+        $this->browse(function (Browser $browser) use ($event) {
+            $browser->loginAs($this->owner)
+                ->visit("/events/{$event->key}/edit")
+                ->waitForText('Jones Wedding', 10)
+                ->waitFor('@event-show-time', 10)
+                ->assertInputValue('@event-show-time', '19:30');
+        });
+    }
+
     public function test_user_can_delete_a_legacy_band_event(): void
     {
         $event = BandEvents::factory()->create([
