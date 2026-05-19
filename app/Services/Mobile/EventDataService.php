@@ -386,6 +386,21 @@ class EventDataService
             );
         }
 
+        if ($request->has('lodging')) {
+            $ad->lodging = array_map(
+                fn ($row) => [
+                    'title' => $row['title'],
+                    'type'  => $row['type'],
+                    // For the "Provided" checkbox row, coerce data to bool
+                    // so the read side's `data == true` comparison works.
+                    'data'  => ($row['type'] ?? null) === 'checkbox'
+                        ? (bool) ($row['data'] ?? false)
+                        : ($row['data'] ?? null),
+                ],
+                $request->input('lodging', [])
+            );
+        }
+
         if ($request->has('wedding')) {
             if (!isset($ad->wedding) || !is_object($ad->wedding)) {
                 $ad->wedding = new \stdClass();
