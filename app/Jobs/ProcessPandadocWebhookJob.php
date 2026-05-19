@@ -9,7 +9,7 @@ use Spatie\WebhookClient\Jobs\ProcessWebhookJob as SpatieProcessWebhookJob;
 
 class ProcessPandadocWebhookJob extends SpatieProcessWebhookJob
 {
-    public function handle()
+    public function handle(): void
     {
         $payload = $this->webhookCall->payload;
 
@@ -71,7 +71,7 @@ class ProcessPandadocWebhookJob extends SpatieProcessWebhookJob
         // For example, fetch the latest document details from PandaDoc API and update your local records
     }
 
-    private function handleRecipientCompleted(array $payload)
+    private function handleRecipientCompleted(array $payload): void
     {
         $documentId = $payload['data']['id'] ?? null;
         $recipientEmail = $payload['data']['recipient']['email'] ?? null;
@@ -83,7 +83,8 @@ class ProcessPandadocWebhookJob extends SpatieProcessWebhookJob
 
         $contract = Contracts::where('envelope_id', $documentId)->first();
 
-        if (!$contract) {
+        if (!$contract)
+        {
             Log::warning('PandaDoc webhook: no contract for envelope', ['documentId' => $documentId]);
             return;
         }
