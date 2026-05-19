@@ -17,11 +17,11 @@ class EventsFactory extends Factory
     public function definition()
     {
         return [
-            'additional_data' => json_encode([
+            'additional_data' => [
                 'key1' => $this->faker->word,
                 'key2' => $this->faker->numberBetween(1, 100),
                 'key3' => $this->faker->sentence,
-            ]),
+            ],
             'date' => $this->faker->date(),
             'event_type_id' => function ()
             {
