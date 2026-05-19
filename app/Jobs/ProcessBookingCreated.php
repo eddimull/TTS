@@ -35,9 +35,27 @@ class ProcessBookingCreated implements ShouldQueue, ShouldBeUniqueUntilProcessin
         Log::debug('Refreshed booking from database');
 
         try {
-            $event = $this->booking->writeToGoogleCalendar($this->booking->band->bookingCalendar);
+            $bookingCalendar = $this->booking->band->bookingCalendar;
+
+            if (!$bookingCalendar) {
+                Log::warning('Skipping calendar sync: band has no booking calendar', [
+                    'booking_id' => $this->booking->id,
+                    'band_id'    => $this->booking->band_id,
+                ]);
+                return;
+            }
+
+            $event = $this->booking->writeToGoogleCalendar($bookingCalendar);
+
+            if (!$event) {
+                Log::warning('Skipping calendar sync: writeToGoogleCalendar returned no event', [
+                    'booking_id' => $this->booking->id,
+                ]);
+                return;
+            }
+
             Log::info('Created Google Calendar event with ID: ' . $event->id);
-            $this->booking->storeGoogleEventId($this->booking->band->bookingCalendar, $event->id);
+            $this->booking->storeGoogleEventId($bookingCalendar, $event->id);
             Log::info('Created Google Events record for booking ID: ' . $this->booking->id);
         } catch (\Exception $e) {
             Log::error('Failed to update booking in calendar: ' . $e->getMessage());
