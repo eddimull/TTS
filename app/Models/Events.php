@@ -198,9 +198,8 @@ class Events extends Model implements GoogleCalenderable
                     return null;
                 }
 
-                $decoded = is_string($value) ? json_decode($value) : $value;
-
-                if (is_string($decoded)) {
+                $decoded = $value;
+                for ($i = 0; $i < 4 && is_string($decoded); $i++) {
                     $decoded = json_decode($decoded);
                 }
 
