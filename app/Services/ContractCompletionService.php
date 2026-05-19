@@ -12,10 +12,10 @@ class ContractCompletionService
 {
     public function markCompleted(Contracts $contract): void
     {
+        $this->storeSignedContractPdf($contract);
+
         $contract->status = 'completed';
         $contract->save();
-
-        $this->updateContractAssetURL($contract);
 
         if ($contract->contractable_type === Bookings::class) {
             $contract->contractable->status = 'confirmed';
@@ -33,9 +33,9 @@ class ContractCompletionService
         }
     }
 
-    private function updateContractAssetURL(Contracts $contract): void
+    private function storeSignedContractPdf(Contracts $contract): void
     {
-        $asset_url = $contract->contractable->band->site_name . '/'
+        $assetUrl = $contract->contractable->band->site_name . '/'
             . $contract->contractable->name . '_signed_contract_' . time() . '.pdf';
 
         $response = Http::withHeaders([
@@ -45,12 +45,12 @@ class ContractCompletionService
         $response->throw();
 
         Storage::disk('s3')->put(
-            $asset_url,
+            $assetUrl,
             $response->body(),
             ['visibility' => 'public']
         );
 
-        $contract->asset_url = '/' . ltrim($asset_url, '/');
+        $contract->asset_url = '/' . ltrim($assetUrl, '/');
         $contract->save();
     }
 }
