@@ -27,7 +27,7 @@ class ProcessBookingCreated implements ShouldQueue, ShouldBeUniqueUntilProcessin
         return 'booking-created-' . $this->booking->id;
     }
 
-    public function handle()
+    public function handle(): void
     {
         Log::info('ProcessBookingCreated job started for booking ID: ' . $this->booking->id);
 
@@ -50,6 +50,7 @@ class ProcessBookingCreated implements ShouldQueue, ShouldBeUniqueUntilProcessin
             if (!$event) {
                 Log::warning('Skipping calendar sync: writeToGoogleCalendar returned no event', [
                     'booking_id' => $this->booking->id,
+                    'band_id'    => $this->booking->band_id,
                 ]);
                 return;
             }
