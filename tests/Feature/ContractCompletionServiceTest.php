@@ -53,4 +53,23 @@ class ContractCompletionServiceTest extends TestCase
 
         $this->assertTrue($contract->contractable->contacts->first()->can_login);
     }
+
+    public function test_mark_completed_leaves_contract_unchanged_when_pdf_download_fails(): void
+    {
+        Storage::fake('s3');
+        Http::fake([
+            'api.pandadoc.com/public/v1/documents/*/download' => Http::response('', 500),
+        ]);
+
+        $contract = $this->makeSentContract();
+
+        $this->expectException(\Illuminate\Http\Client\RequestException::class);
+
+        try {
+            (new ContractCompletionService())->markCompleted($contract);
+        } finally {
+            // Status must NOT have flipped — the download failed before any save.
+            $this->assertSame('sent', $contract->fresh()->status);
+        }
+    }
 }
