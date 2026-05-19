@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\Carbon;
 use App\Casts\Price;
 use App\Formatters\CalendarEventFormatter;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Interfaces\GoogleCalenderable;
 use App\Models\Traits\GoogleCalendarWritable;
@@ -70,7 +71,6 @@ class Events extends Model implements GoogleCalenderable
     ];
 
     protected $casts = [
-        'additional_data' => 'object',
         'date' => 'date:Y-m-d',
         'start_time' => 'datetime:H:i',
         'end_time' => 'datetime:H:i',
@@ -180,6 +180,44 @@ class Events extends Model implements GoogleCalenderable
     public function getResolvedVenueAddressAttribute(): ?string
     {
         return $this->venue_address ?? $this->eventable?->venue_address ?? null;
+    }
+
+    /**
+     * Normalize additional_data to an object on read.
+     *
+     * The column is JSON, but some rows are double-encoded (a JSON string
+     * whose content is itself JSON). Decode until we have an object so every
+     * reader (->public, ->times, ...) is safe regardless of how the row was
+     * stored.
+     */
+    protected function additionalData(): Attribute
+    {
+        return Attribute::make(
+            get: function ($value) {
+                if ($value === null) {
+                    return null;
+                }
+
+                $decoded = is_string($value) ? json_decode($value) : $value;
+
+                if (is_string($decoded)) {
+                    $decoded = json_decode($decoded);
+                }
+
+                return is_object($decoded) ? $decoded : null;
+            },
+            set: function ($value) {
+                // Preserve the prior `object` cast's write behavior: serialize
+                // arrays / objects to JSON. Strings are passed through as-is
+                // (write-side normalization of malformed strings is out of
+                // scope for this change).
+                if ($value === null || is_string($value)) {
+                    return $value;
+                }
+
+                return json_encode($value);
+            },
+        );
     }
 
     public function scopePublic($query)
