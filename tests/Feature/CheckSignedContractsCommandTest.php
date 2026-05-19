@@ -96,6 +96,24 @@ class CheckSignedContractsCommandTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_continues_run_when_pdf_download_fails_during_completion(): void
+    {
+        Storage::fake('s3');
+        Http::fake([
+            'api.pandadoc.com/public/v1/documents/env-dl' => Http::response(['status' => 'document.completed'], 200),
+            'api.pandadoc.com/public/v1/documents/*/download' => Http::response('', 500),
+        ]);
+
+        $contract = $this->makeSentContract('env-dl');
+
+        // The status poll says completed, but the PDF download fails inside
+        // markCompleted(). The per-contract try/catch must absorb it: the run
+        // still exits 0 and the contract is left in 'sent' for the next poll.
+        $this->artisan('contracts:check-signed')->assertExitCode(0);
+
+        $this->assertSame('sent', $contract->fresh()->status);
+    }
+
     public function test_does_not_poll_already_completed_contracts(): void
     {
         Storage::fake('s3');
