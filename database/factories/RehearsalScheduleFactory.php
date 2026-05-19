@@ -12,14 +12,14 @@ class RehearsalScheduleFactory extends Factory
 
     public function definition()
     {
-        $frequency = $this->faker->randomElement(['weekly', 'biweekly', 'monthly', 'custom']);
+        $frequency = $this->faker->randomElement(['weekly', 'weekday', 'monthly', 'custom']);
 
         return [
             'band_id' => Bands::factory(),
             'name' => 'Weekly Rehearsal',
             'description' => $this->faker->optional()->sentence,
             'frequency' => $frequency,
-            'day_of_week' => in_array($frequency, ['weekly', 'biweekly'])
+            'day_of_week' => $frequency === 'weekly'
                 ? $this->faker->randomElement(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'])
                 : null,
             'selected_days' => null,
