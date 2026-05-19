@@ -1,0 +1,98 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Bands;
+use App\Models\Bookings;
+use App\Models\Contacts;
+use App\Models\Contracts;
+use App\Models\User;
+use App\Services\ContractCompletionService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
+use Tests\TestCase;
+
+class ContractCompletionServiceTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function makeSentContract(): Contracts
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $booking = Bookings::factory()->create([
+            'band_id'         => $band->id,
+            'contract_option' => 'default',
+        ]);
+        $contact = Contacts::factory()->create(['band_id' => $band->id]);
+        $booking->contacts()->attach($contact->id, ['role' => 'primary']);
+
+        return $booking->contract()->create([
+            'envelope_id' => 'env-test-123',
+            'author_id'   => $user->id,
+            'status'      => 'sent',
+        ]);
+    }
+
+    public function test_mark_completed_sets_status_confirms_booking_and_grants_portal_access(): void
+    {
+        Storage::fake('s3');
+        Http::fake([
+            'api.pandadoc.com/public/v1/documents/*/download' => Http::response('PDFBYTES', 200),
+        ]);
+
+        $contract = $this->makeSentContract();
+
+        (new ContractCompletionService())->markCompleted($contract);
+
+        $contract->refresh();
+        $this->assertSame('completed', $contract->status);
+        $this->assertSame('confirmed', $contract->contractable->status);
+        $this->assertStringContainsString('_signed_contract_', $contract->asset_url);
+
+        $this->assertTrue($contract->contractable->contacts->first()->can_login);
+    }
+
+    public function test_mark_completed_leaves_contract_unchanged_when_pdf_download_fails(): void
+    {
+        Storage::fake('s3');
+        Http::fake([
+            'api.pandadoc.com/public/v1/documents/*/download' => Http::response('', 500),
+        ]);
+
+        $contract = $this->makeSentContract();
+
+        $this->expectException(\Illuminate\Http\Client\RequestException::class);
+
+        try {
+            (new ContractCompletionService())->markCompleted($contract);
+        } finally {
+            // Status must NOT have flipped — the download failed before any save.
+            $this->assertSame('sent', $contract->fresh()->status);
+        }
+    }
+
+    public function test_mark_completed_is_idempotent_and_skips_already_completed_contracts(): void
+    {
+        Storage::fake('s3');
+        Http::fake([
+            'api.pandadoc.com/public/v1/documents/*/download' => Http::response('PDFBYTES', 200),
+        ]);
+
+        $contract = $this->makeSentContract();
+        $service = new ContractCompletionService();
+
+        $service->markCompleted($contract);
+        $firstAssetUrl = $contract->fresh()->asset_url;
+
+        // A second call (e.g. a second recipient's webhook) must be a no-op:
+        // no further PandaDoc download, asset_url unchanged.
+        Http::fake();
+        $service->markCompleted($contract->fresh());
+
+        Http::assertNothingSent();
+        $this->assertSame($firstAssetUrl, $contract->fresh()->asset_url);
+        $this->assertSame('completed', $contract->fresh()->status);
+    }
+}
