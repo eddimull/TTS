@@ -317,8 +317,9 @@ class BandsController extends Controller
             },
             'contacts.bookingContacts.booking' => function ($query)
             {
-                $query->select('id', 'name', 'date');
-            }
+                $query->select('id', 'name');
+            },
+            'contacts.bookingContacts.booking.events',
         ]);
 
         // Transform to only include what we need

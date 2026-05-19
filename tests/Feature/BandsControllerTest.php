@@ -301,4 +301,29 @@ class BandsControllerTest extends TestCase
             'band_id' => $this->band->id,
         ]);
     }
+
+    public function test_contacts_endpoint_returns_booking_history_with_event_date(): void
+    {
+        $booking = \App\Models\Bookings::factory()->create([
+            'band_id' => $this->band->id,
+            'name' => 'History Booking',
+        ]);
+        Events::factory()->create([
+            'eventable_type' => \App\Models\Bookings::class,
+            'eventable_id' => $booking->id,
+            'date' => '2026-08-15',
+        ]);
+
+        $contact = \App\Models\Contacts::factory()->create(['band_id' => $this->band->id]);
+        $booking->contacts()->attach($contact->id, ['role' => 'primary']);
+
+        $response = $this->actingAs($this->owner)
+            ->getJson("/api/bands/{$this->band->id}/contacts");
+
+        $response->assertOk();
+        $response->assertJsonFragment([
+            'booking_name' => 'History Booking',
+            'date' => '2026-08-15',
+        ]);
+    }
 }
