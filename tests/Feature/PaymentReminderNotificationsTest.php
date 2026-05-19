@@ -297,4 +297,83 @@ class PaymentReminderNotificationsTest extends TestCase
 
         $this->assertSame('350.00', $array['deposit_due']);
     }
+
+    public function test_send_final_reminders_command_runs_and_notifies_for_upcoming_event(): void
+    {
+        Notification::fake();
+
+        $booking = Bookings::factory()->create([
+            'band_id' => $this->band->id,
+            'name' => 'Upcoming Gala',
+            'price' => 2000.00,
+        ]);
+        \App\Models\Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking->id,
+            'date' => now()->addDays(7)->format('Y-m-d'),
+        ]);
+        $booking->payments()->create([
+            'name' => 'Partial',
+            'band_id' => $this->band->id,
+            'amount' => 500,
+            'date' => now(),
+            'status' => 'paid',
+        ]);
+
+        $contact = Contacts::factory()->create(['band_id' => $this->band->id]);
+        $booking->contacts()->attach($contact->id, ['role' => 'primary']);
+
+        $this->artisan('payments:send-final-reminders')->assertExitCode(0);
+
+        Notification::assertSentTo($contact, FinalPaymentReminder::class);
+    }
+
+    public function test_send_final_reminders_command_ignores_bookings_with_distant_events(): void
+    {
+        Notification::fake();
+
+        $booking = Bookings::factory()->create([
+            'band_id' => $this->band->id,
+            'price' => 2000.00,
+        ]);
+        \App\Models\Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking->id,
+            'date' => now()->addMonths(2)->format('Y-m-d'),
+        ]);
+
+        $contact = Contacts::factory()->create(['band_id' => $this->band->id]);
+        $booking->contacts()->attach($contact->id, ['role' => 'primary']);
+
+        $this->artisan('payments:send-final-reminders')->assertExitCode(0);
+
+        Notification::assertNothingSent();
+    }
+
+    public function test_send_deposit_reminders_command_runs_and_notifies(): void
+    {
+        Notification::fake();
+
+        $booking = Bookings::factory()->create([
+            'band_id' => $this->band->id,
+            'price' => 1000.00,
+        ]);
+        \App\Models\Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking->id,
+            'date' => now()->addMonths(2)->format('Y-m-d'),
+        ]);
+        $contract = $booking->contract()->create([
+            'status' => 'completed',
+            'author_id' => $this->user->id,
+        ]);
+        $contract->forceFill(['updated_at' => now()->subWeeks(3)])->saveQuietly();
+
+        $contact = Contacts::factory()->create(['band_id' => $this->band->id]);
+        $booking->contacts()->attach($contact->id, ['role' => 'primary']);
+
+        $this->artisan('payments:send-deposit-reminders')->assertExitCode(0);
+
+        Notification::assertSentTo($contact, DepositPaymentReminder::class);
+    }
 }

@@ -31,11 +31,13 @@ class SendDepositReminders extends Command
     {
         $this->info('Sending deposit payment reminders...');
 
-        $bookings = Bookings::with(['contract', 'contacts', 'band'])
+        $bookings = Bookings::with(['contract', 'contacts', 'band', 'events'])
             ->whereHas('contract', function ($query) {
                 $query->where('status', 'completed');
             })
-            ->where('date', '>', Carbon::now()) // Only future events
+            ->whereHas('events', function ($query) {
+                $query->where('date', '>', Carbon::now()); // Only future events
+            })
             ->get();
 
         $sentCount = 0;
