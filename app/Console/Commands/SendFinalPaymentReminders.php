@@ -31,9 +31,11 @@ class SendFinalPaymentReminders extends Command
     {
         $this->info('Sending final payment reminders...');
 
-        $bookings = Bookings::with(['contacts', 'band'])
-            ->where('date', '>', Carbon::now())
-            ->where('date', '<=', Carbon::now()->addDays(8)) // Within next 8 days
+        $bookings = Bookings::with(['contacts', 'band', 'events'])
+            ->whereHas('events', function ($query) {
+                $query->where('date', '>', Carbon::now())
+                    ->where('date', '<=', Carbon::now()->addDays(8)); // Within next 8 days
+            })
             ->get();
 
         $sentCount = 0;
