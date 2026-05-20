@@ -29,13 +29,15 @@ const stubs = {
   ContractOptions: { template: '<div />', props: ['modelValue'] },
   InputNumber: { template: '<input />', props: ['modelValue'] },
   LocationAutocomplete: { template: '<div />', props: ['modelValue', 'name', 'label', 'placeholder'] },
-  DatePicker: {
-    props: ['modelValue'],
-    setup(_, { slots }) {
-      return () => h('div', { class: 'stub-datepicker' }, [
-        slots.date?.({ date: { day: 15, month: 4, year: 2026 } }),
-      ]);
-    },
+};
+
+const DatePickerStub = {
+  name: 'DatePicker',
+  props: ['modelValue'],
+  setup(_, { slots }) {
+    return () => h('div', { class: 'stub-datepicker' }, [
+      slots.date?.({ date: { day: 15, month: 4, year: 2026 } }),
+    ]);
   },
 };
 
@@ -48,7 +50,10 @@ const baseProps = (overrides = {}) => ({
 });
 
 const mountForm = (props) =>
-  mount(BookingCreation, { props: baseProps(props), global: { stubs } });
+  mount(BookingCreation, {
+    props: baseProps(props),
+    global: { stubs, components: { DatePicker: DatePickerStub } },
+  });
 
 describe('BookingCreation calendar status marks', () => {
   it('marks confirmed dates with strike-through styling', () => {
