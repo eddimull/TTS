@@ -122,6 +122,13 @@ Route::prefix('mobile')->group(function () {
         // ── Events (read) ──────────────────────────────────────────────
         Route::middleware('mobile.band:read:events')->group(function () {
             Route::get('/bands/{band}/events', [App\Http\Controllers\Api\Mobile\EventsController::class, 'index'])->name('mobile.events.index');
+            Route::get('/bands/{band}/attire-chips', [App\Http\Controllers\Api\Mobile\AttireChipsController::class, 'index'])->name('mobile.attire-chips.index');
+        });
+
+        // ── Attire chips (write) — ride on the events:write permission ─
+        Route::middleware('mobile.band:write:events')->group(function () {
+            Route::post('/bands/{band}/attire-chips', [App\Http\Controllers\Api\Mobile\AttireChipsController::class, 'store'])->name('mobile.attire-chips.store');
+            Route::delete('/bands/{band}/attire-chips/{chip}', [App\Http\Controllers\Api\Mobile\AttireChipsController::class, 'destroy'])->name('mobile.attire-chips.destroy');
         });
 
         // ── Bookings (read) ────────────────────────────────────────────
