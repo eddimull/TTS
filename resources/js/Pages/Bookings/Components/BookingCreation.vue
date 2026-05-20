@@ -230,9 +230,9 @@ export default {
             let bookingStatus = null;
             if(_bookedDates.value.includes(dateString))
             {
-                const booking = props.bookingDetails[`${dateString} 00:00:00`];
+                const booking = props.bookingDetails[dateString];
                 if (booking) {
-                    bookingStatus = booking.status || 'confirmed'; // Default to confirmed if no status
+                    bookingStatus = booking.status || 'confirmed';
                 }
             }
             return bookingStatus;
@@ -258,13 +258,13 @@ export default {
             const dateString = DateTime.fromJSDate(date).toFormat('yyyy-MM-dd');
 
             if (_bookedDates.value.includes(dateString)) {
-                const booking = props.bookingDetails[`${dateString} 00:00:00`];
+                const booking = props.bookingDetails[dateString];
                 if (booking) {
-                    selectedDateInfo.value = `This date is already has a ${booking.status} booking: ${booking.name} (${booking.event_type})`;
-                    selectedDateStatus.value = booking.status || 'confirmed'; // Default to confirmed if no status
+                    selectedDateInfo.value = `This date already has a ${booking.status} booking: ${booking.name} (${booking.event_type})`;
+                    selectedDateStatus.value = booking.status || 'confirmed';
                 } else {
                     selectedDateInfo.value = "This date is already booked";
-                    selectedDateStatus.value = 'confirmed'; // Default status
+                    selectedDateStatus.value = 'confirmed';
                 }
             } else {
                 selectedDateInfo.value = "";
@@ -289,7 +289,7 @@ export default {
             // Only block submission if status is confirmed
             const dateString = DateTime.fromJSDate(bookingDate.value).toFormat('yyyy-MM-dd');
             if (_bookedDates.value.includes(dateString)) {
-                const booking = props.bookingDetails[`${dateString} 00:00:00`];
+                const booking = props.bookingDetails[dateString];
                 return booking && booking.status === 'confirmed';
             }
             return false;
