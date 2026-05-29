@@ -1,0 +1,15 @@
+[
+    {
+        "relation": [
+            "delegate_permission/common.handle_all_urls",
+            "delegate_permission/common.get_login_creds"
+        ],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "tts.band",
+            "sha256_cert_fingerprints": [
+                "C6:4E:D4:99:F5:A6:BA:EE:43:DA:7F:EE:DE:A8:37:F9:41:60:9F:35:D7:06:43:0C:BC:4B:80:5D:A7:CD:4B:19"
+            ]
+        }
+    }
+]
