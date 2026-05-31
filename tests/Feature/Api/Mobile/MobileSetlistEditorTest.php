@@ -339,4 +339,20 @@ class MobileSetlistEditorTest extends TestCase
             'message' => 'Change something',
         ])->assertStatus(422);
     }
+
+    public function test_refine_rejects_non_writer(): void
+    {
+        ['band' => $band, 'event' => $event] = $this->makeEventForOwner();
+
+        $nonMember = User::factory()->create();
+        $token = $nonMember->createToken('test-device')->plainTextToken;
+
+        $this->withHeaders([
+            'Authorization' => "Bearer {$token}",
+            'X-Band-ID'     => $band->id,
+            'Accept'        => 'application/json',
+        ])->postJson("/api/mobile/events/{$event->key}/setlist/refine", [
+            'message' => 'Change something',
+        ])->assertForbidden();
+    }
 }
