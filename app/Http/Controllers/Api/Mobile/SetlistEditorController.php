@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Bands;
 use App\Models\Events;
 use App\Models\EventSetlist;
+use App\Models\SetlistSong;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class SetlistEditorController extends Controller
 {
@@ -99,7 +101,51 @@ class SetlistEditorController extends Controller
 
     public function update(Request $request, Events $event): JsonResponse
     {
-        return response()->json([]);
+        $band = $this->resolveBand($event);
+
+        if (!Auth::user()->canWrite('events', $band->id)) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'songs'                 => 'present|array',
+            'songs.*.type'          => 'nullable|in:song,break',
+            'songs.*.song_id'       => 'nullable|integer|exists:songs,id',
+            'songs.*.custom_title'  => 'nullable|string|max:255',
+            'songs.*.custom_artist' => 'nullable|string|max:255',
+            'songs.*.notes'         => 'nullable|string|max:1000',
+            'status'                => 'sometimes|nullable|in:draft,ready',
+        ]);
+
+        DB::transaction(function () use ($validated, $event, $band) {
+            $setlist = EventSetlist::firstOrCreate(
+                ['event_id' => $event->id],
+                ['band_id' => $band->id, 'status' => 'draft'],
+            );
+
+            if (isset($validated['status'])) {
+                $setlist->update(['status' => $validated['status']]);
+            }
+
+            $setlist->songs()->delete();
+
+            foreach ($validated['songs'] as $index => $entry) {
+                $type = $entry['type'] ?? 'song';
+                SetlistSong::create([
+                    'setlist_id'    => $setlist->id,
+                    'type'          => $type,
+                    'song_id'       => $type === 'song' ? ($entry['song_id'] ?? null) : null,
+                    'custom_title'  => $type === 'song' ? ($entry['custom_title'] ?? null) : null,
+                    'custom_artist' => $type === 'song' ? ($entry['custom_artist'] ?? null) : null,
+                    'position'      => $index + 1,
+                    'notes'         => $entry['notes'] ?? null,
+                ]);
+            }
+        });
+
+        $setlist = $event->setlist()->with('songs.song.leadSinger')->first();
+
+        return response()->json($this->formatSetlist($setlist));
     }
 
     public function generate(Request $request, Events $event): JsonResponse
