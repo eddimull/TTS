@@ -31,7 +31,7 @@ class MobileSetlistEditorTest extends TestCase
         $booking = Bookings::factory()->create(['band_id' => $band->id]);
         $event = Events::factory()->create([
             'eventable_id'   => $booking->id,
-            'eventable_type' => 'App\\Models\\Bookings',
+            'eventable_type' => Bookings::class,
             'event_type_id'  => $eventType->id,
             'date'           => now()->addDays(7)->format('Y-m-d'),
         ]);
@@ -59,7 +59,8 @@ class MobileSetlistEditorTest extends TestCase
 
         $resp->assertOk()
             ->assertJson(['setlist' => null, 'can_write' => true])
-            ->assertJsonStructure(['event', 'setlist', 'songs', 'can_write']);
+            ->assertJsonStructure(['event', 'setlist', 'songs', 'can_write'])
+            ->assertJsonCount(0, 'songs');
     }
 
     public function test_show_returns_setlist_with_songs(): void
@@ -87,7 +88,9 @@ class MobileSetlistEditorTest extends TestCase
         $resp->assertOk()
             ->assertJsonPath('setlist.status', 'draft')
             ->assertJsonCount(1, 'setlist.songs')
-            ->assertJsonPath('setlist.songs.0.song_id', $song->id);
+            ->assertJsonPath('setlist.songs.0.song_id', $song->id)
+            ->assertJsonCount(1, 'songs')
+            ->assertJsonPath('songs.0.id', $song->id);
     }
 
     public function test_show_forbidden_for_non_member(): void

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Models\Bands;
 use App\Models\Events;
 use App\Models\EventSetlist;
 use Illuminate\Http\JsonResponse;
@@ -13,8 +14,7 @@ class SetlistEditorController extends Controller
 {
     public function show(Events $event): JsonResponse
     {
-        $event->loadMissing('eventable.band');
-        $band = $event->eventable->band;
+        $band = $this->resolveBand($event);
 
         if (!Auth::user()->canRead('events', $band->id)) {
             abort(403);
@@ -47,6 +47,25 @@ class SetlistEditorController extends Controller
             'songs'     => $songs,
             'can_write' => Auth::user()->canWrite('events', $band->id),
         ]);
+    }
+
+    /**
+     * Resolve the band that owns this event, or 404 if the event has no
+     * eventable/band (e.g. an orphaned row). These routes are gated in the
+     * controller (not by the mobile.band middleware) because the route key is
+     * {event}, not {band} — so every action must call this + a canRead/canWrite
+     * check before doing work.
+     */
+    private function resolveBand(Events $event): Bands
+    {
+        $event->loadMissing('eventable.band');
+        $band = $event->eventable?->band;
+
+        if (!$band) {
+            abort(404);
+        }
+
+        return $band;
     }
 
     private function formatSetlist(EventSetlist $setlist): array
