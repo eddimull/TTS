@@ -211,4 +211,67 @@ class MobileSetlistEditorTest extends TestCase
         ])->putJson("/api/mobile/events/{$event->key}/setlist", ['songs' => []])
             ->assertForbidden();
     }
+
+    // -------------------------------------------------------------------------
+    // setlist editor generate (AI)
+    // -------------------------------------------------------------------------
+
+    public function test_generate_creates_setlist_via_ai_service(): void
+    {
+        ['band' => $band, 'event' => $event, 'headers' => $headers] = $this->makeEventForOwner();
+
+        $song1 = Song::factory()->forBand($band)->active()->create(['lead_singer_id' => null]);
+        $song2 = Song::factory()->forBand($band)->active()->create(['lead_singer_id' => null]);
+
+        config(['services.anthropic.key' => 'test-key']);
+
+        // Fake SetlistAiService returning a deterministic ordering (the two song ids).
+        $this->app->bind(\App\Services\SetlistAiService::class, function () {
+            return new class extends \App\Services\SetlistAiService {
+                public function __construct() {}
+                public function buildImageBlocks($attachments): array { return []; }
+                public function generateSetlist(\App\Models\Events $event, array $songs, ?string $extraContext = null, array $attachmentImages = [], ?callable $progress = null): array
+                {
+                    return [
+                        'items'         => array_map(fn ($s) => $s['id'], $songs),
+                        'event_context' => 'Test event context',
+                        'image_context' => [],
+                    ];
+                }
+            };
+        });
+
+        $resp = $this->withHeaders($headers)->postJson("/api/mobile/events/{$event->key}/setlist/generate", [
+            'context' => 'Keep it upbeat',
+        ]);
+
+        $resp->assertOk()
+            ->assertJsonCount(2, 'songs')
+            ->assertJsonPath('event_context', 'Test event context');
+
+        $this->assertDatabaseHas('event_setlists', ['event_id' => $event->id]);
+        $this->assertDatabaseCount('setlist_songs', 2);
+    }
+
+    public function test_generate_fails_without_api_key(): void
+    {
+        ['band' => $band, 'event' => $event, 'headers' => $headers] = $this->makeEventForOwner();
+
+        Song::factory()->forBand($band)->active()->create(['lead_singer_id' => null]);
+
+        config(['services.anthropic.key' => null]);
+
+        $this->withHeaders($headers)->postJson("/api/mobile/events/{$event->key}/setlist/generate")
+            ->assertStatus(503);
+    }
+
+    public function test_generate_fails_with_empty_library(): void
+    {
+        ['event' => $event, 'headers' => $headers] = $this->makeEventForOwner();
+
+        config(['services.anthropic.key' => 'test-key']);
+
+        $this->withHeaders($headers)->postJson("/api/mobile/events/{$event->key}/setlist/generate")
+            ->assertStatus(422);
+    }
 }
