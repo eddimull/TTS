@@ -295,4 +295,48 @@ class MobileSetlistEditorTest extends TestCase
         $this->withHeaders($headers)->postJson("/api/mobile/events/{$event->key}/setlist/generate")
             ->assertStatus(422);
     }
+
+    public function test_refine_replaces_setlist_using_ai_service(): void
+    {
+        ['band' => $band, 'event' => $event, 'headers' => $headers] = $this->makeEventForOwner();
+
+        $song1 = Song::factory()->forBand($band)->active()->create(['lead_singer_id' => null]);
+        $song2 = Song::factory()->forBand($band)->active()->create(['lead_singer_id' => null]);
+
+        // Existing setlist with song1
+        $setlist = EventSetlist::create(['event_id' => $event->id, 'band_id' => $band->id, 'status' => 'draft']);
+        SetlistSong::create(['setlist_id' => $setlist->id, 'type' => 'song', 'song_id' => $song1->id, 'position' => 1]);
+
+        // Fake AI returns song2 only + a summary
+        $this->app->bind(\App\Services\SetlistAiService::class, function () use ($song2) {
+            return new class($song2->id) extends \App\Services\SetlistAiService {
+                public function __construct(private int $s2Id) {}
+                public function refineSetlist(\App\Models\Events $event, array $songs, array $currentSetlist, array $chatHistory, string $newMessage): array
+                {
+                    return [
+                        'setlist' => [$this->s2Id],
+                        'summary' => 'Swapped first song.',
+                    ];
+                }
+            };
+        });
+
+        $resp = $this->withHeaders($headers)->postJson("/api/mobile/events/{$event->key}/setlist/refine", [
+            'message' => 'Swap the first one',
+        ]);
+
+        $resp->assertOk()
+            ->assertJsonPath('summary', 'Swapped first song.')
+            ->assertJsonPath('setlist.songs.0.song_id', $song2->id)
+            ->assertJsonCount(1, 'setlist.songs');
+    }
+
+    public function test_refine_requires_existing_setlist(): void
+    {
+        ['event' => $event, 'headers' => $headers] = $this->makeEventForOwner();
+
+        $this->withHeaders($headers)->postJson("/api/mobile/events/{$event->key}/setlist/refine", [
+            'message' => 'Change something',
+        ])->assertStatus(422);
+    }
 }

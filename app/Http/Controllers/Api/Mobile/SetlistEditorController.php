@@ -314,6 +314,80 @@ class SetlistEditorController extends Controller
 
     public function refine(Request $request, Events $event): JsonResponse
     {
-        return response()->json([]);
+        $band = $this->resolveBand($event);
+
+        if (!Auth::user()->canWrite('events', $band->id)) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'message'           => 'required|string|max:2000',
+            'history'           => 'sometimes|array',
+            'history.*.role'    => 'required|in:user,assistant',
+            'history.*.content' => 'required|string',
+        ]);
+
+        $event->load(['type', 'eventMembers.rosterMember']);
+
+        $setlist = $event->setlist()->with('songs.song.leadSinger')->first();
+        if (!$setlist) {
+            return response()->json(['error' => 'No setlist exists yet. Generate one first.'], 422);
+        }
+
+        $songs = $band->songs()
+            ->where('active', true)
+            ->with(['leadSinger.user', 'transitionSong'])
+            ->get();
+
+        $songsArray = $songs->map(fn ($s) => [
+            'id'              => $s->id,
+            'title'           => $s->title,
+            'artist'          => $s->artist,
+            'song_key'        => $s->song_key,
+            'genre'           => $s->genre,
+            'bpm'             => $s->bpm,
+            'energy'          => $s->energy,
+            'lead_singer'     => $s->leadSinger?->display_name,
+            'transition_song' => $s->transitionSong
+                ? $s->transitionSong->title . ($s->transitionSong->artist ? ' – ' . $s->transitionSong->artist : '')
+                : null,
+        ])->all();
+
+        $event->roster_members = $event->eventMembers->map(fn ($m) => [
+            'name' => $m->display_name,
+            'role' => $m->role_name,
+        ]);
+
+        $currentSetlist = $this->formatSetlist($setlist)['songs'];
+
+        $aiService = app(\App\Services\SetlistAiService::class);
+        $result    = $aiService->refineSetlist(
+            $event,
+            $songsArray,
+            $currentSetlist,
+            $validated['history'] ?? [],
+            $validated['message'],
+        );
+
+        if (empty($result['setlist'])) {
+            return response()->json(['error' => 'AI could not refine the setlist. Please try again.'], 500);
+        }
+
+        $songMap    = $songs->keyBy('id');
+        $finalItems = $this->filterValidItems($result['setlist'], $songMap);
+
+        DB::transaction(function () use ($event, $finalItems) {
+            $setlist = $event->setlist()->firstOrFail();
+            $setlist->songs()->delete();
+            $this->saveSetlistItems($setlist, $finalItems);
+        });
+
+        $updatedSetlist = $event->setlist()->with('songs.song.leadSinger')->first();
+        abort_unless($updatedSetlist, 500, 'Setlist not found after refine');
+
+        return response()->json([
+            'setlist' => $this->formatSetlist($updatedSetlist),
+            'summary' => $result['summary'] ?? '',
+        ]);
     }
 }
