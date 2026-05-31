@@ -164,24 +164,7 @@ class SetlistEditorController extends Controller
 
         $event->load(['type', 'eventMembers.rosterMember']);
 
-        $songs = $band->songs()
-            ->where('active', true)
-            ->with(['leadSinger.user', 'transitionSong'])
-            ->get();
-
-        $songsArray = $songs->map(fn ($s) => [
-            'id'              => $s->id,
-            'title'           => $s->title,
-            'artist'          => $s->artist,
-            'song_key'        => $s->song_key,
-            'genre'           => $s->genre,
-            'bpm'             => $s->bpm,
-            'energy'          => $s->energy,
-            'lead_singer'     => $s->leadSinger?->display_name,
-            'transition_song' => $s->transitionSong
-                ? $s->transitionSong->title . ($s->transitionSong->artist ? ' – ' . $s->transitionSong->artist : '')
-                : null,
-        ])->all();
+        [$songs, $songsArray] = $this->buildSongsArray($band);
 
         if (empty($songsArray)) {
             return response()->json(['error' => 'No active songs in the band library.'], 422);
@@ -191,10 +174,7 @@ class SetlistEditorController extends Controller
             return response()->json(['error' => 'Anthropic API key not configured.'], 503);
         }
 
-        $event->roster_members = $event->eventMembers->map(fn ($m) => [
-            'name' => $m->display_name,
-            'role' => $m->role_name,
-        ]);
+        $this->attachRosterMembers($event);
 
         $aiService = app(\App\Services\SetlistAiService::class);
 
@@ -242,6 +222,49 @@ class SetlistEditorController extends Controller
         abort_unless($setlist, 500, 'Setlist not found after generate');
 
         return response()->json($this->formatSetlist($setlist));
+    }
+
+    /**
+     * Load the band's active songs (eager-loaded for the AI service) and return
+     * both the Eloquent collection and the array form the AI service consumes.
+     *
+     * @return array{0: \Illuminate\Support\Collection, 1: array}
+     */
+    private function buildSongsArray(Bands $band): array
+    {
+        $songs = $band->songs()
+            ->where('active', true)
+            ->with(['leadSinger.user', 'transitionSong'])
+            ->get();
+
+        $songsArray = $songs->map(fn ($s) => [
+            'id'              => $s->id,
+            'title'           => $s->title,
+            'artist'          => $s->artist,
+            'song_key'        => $s->song_key,
+            'genre'           => $s->genre,
+            'bpm'             => $s->bpm,
+            'energy'          => $s->energy,
+            'lead_singer'     => $s->leadSinger?->display_name,
+            'transition_song' => $s->transitionSong
+                ? $s->transitionSong->title . ($s->transitionSong->artist ? ' – ' . $s->transitionSong->artist : '')
+                : null,
+        ])->all();
+
+        return [$songs, $songsArray];
+    }
+
+    /**
+     * Attach the event's roster members (name + role) to the model so the AI
+     * service can reference who is playing. Expects eventMembers.rosterMember
+     * to be loaded.
+     */
+    private function attachRosterMembers(Events $event): void
+    {
+        $event->roster_members = $event->eventMembers->map(fn ($m) => [
+            'name' => $m->display_name,
+            'role' => $m->role_name,
+        ]);
     }
 
     // TODO: filterValidItems/saveSetlistItems duplicate App\Http\Controllers\SetlistController —
@@ -324,39 +347,25 @@ class SetlistEditorController extends Controller
             'message'           => 'required|string|max:2000',
             'history'           => 'sometimes|array',
             'history.*.role'    => 'required|in:user,assistant',
-            'history.*.content' => 'required|string',
+            'history.*.content' => 'required|string|max:10000',
         ]);
 
-        $event->load(['type', 'eventMembers.rosterMember']);
-
+        // Refine only operates on an existing setlist — bail before doing any
+        // eager loading or AI work if there's nothing to refine.
         $setlist = $event->setlist()->with('songs.song.leadSinger')->first();
         if (!$setlist) {
             return response()->json(['error' => 'No setlist exists yet. Generate one first.'], 422);
         }
 
-        $songs = $band->songs()
-            ->where('active', true)
-            ->with(['leadSinger.user', 'transitionSong'])
-            ->get();
+        $event->load(['type', 'eventMembers.rosterMember']);
 
-        $songsArray = $songs->map(fn ($s) => [
-            'id'              => $s->id,
-            'title'           => $s->title,
-            'artist'          => $s->artist,
-            'song_key'        => $s->song_key,
-            'genre'           => $s->genre,
-            'bpm'             => $s->bpm,
-            'energy'          => $s->energy,
-            'lead_singer'     => $s->leadSinger?->display_name,
-            'transition_song' => $s->transitionSong
-                ? $s->transitionSong->title . ($s->transitionSong->artist ? ' – ' . $s->transitionSong->artist : '')
-                : null,
-        ])->all();
+        [$songs, $songsArray] = $this->buildSongsArray($band);
 
-        $event->roster_members = $event->eventMembers->map(fn ($m) => [
-            'name' => $m->display_name,
-            'role' => $m->role_name,
-        ]);
+        if (empty($songsArray)) {
+            return response()->json(['error' => 'No active songs in the band library.'], 422);
+        }
+
+        $this->attachRosterMembers($event);
 
         $currentSetlist = $this->formatSetlist($setlist)['songs'];
 
@@ -376,8 +385,7 @@ class SetlistEditorController extends Controller
         $songMap    = $songs->keyBy('id');
         $finalItems = $this->filterValidItems($result['setlist'], $songMap);
 
-        DB::transaction(function () use ($event, $finalItems) {
-            $setlist = $event->setlist()->firstOrFail();
+        DB::transaction(function () use ($setlist, $finalItems) {
             $setlist->songs()->delete();
             $this->saveSetlistItems($setlist, $finalItems);
         });
