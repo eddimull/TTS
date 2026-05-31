@@ -152,7 +152,160 @@ class SetlistEditorController extends Controller
 
     public function generate(Request $request, Events $event): JsonResponse
     {
-        return response()->json([]);
+        $band = $this->resolveBand($event);
+
+        if (!Auth::user()->canWrite('events', $band->id)) {
+            abort(403);
+        }
+
+        $event->load(['type', 'eventMembers.rosterMember']);
+
+        $songs = $band->songs()
+            ->where('active', true)
+            ->with(['leadSinger.user', 'transitionSong'])
+            ->get();
+
+        $songsArray = $songs->map(fn ($s) => [
+            'id'              => $s->id,
+            'title'           => $s->title,
+            'artist'          => $s->artist,
+            'song_key'        => $s->song_key,
+            'genre'           => $s->genre,
+            'bpm'             => $s->bpm,
+            'energy'          => $s->energy,
+            'lead_singer'     => $s->leadSinger?->display_name,
+            'transition_song' => $s->transitionSong
+                ? $s->transitionSong->title . ($s->transitionSong->artist ? ' – ' . $s->transitionSong->artist : '')
+                : null,
+        ])->all();
+
+        if (empty($songsArray)) {
+            return response()->json(['error' => 'No active songs in the band library.'], 422);
+        }
+
+        if (!config('services.anthropic.key')) {
+            return response()->json(['error' => 'Anthropic API key not configured.'], 503);
+        }
+
+        $event->roster_members = $event->eventMembers->map(fn ($m) => [
+            'name' => $m->display_name,
+            'role' => $m->role_name,
+        ]);
+
+        $aiService = app(\App\Services\SetlistAiService::class);
+
+        $attachmentImages = [];
+        $attachments = $event->attachments()->get();
+        if ($attachments->isNotEmpty()) {
+            $attachmentImages = $aiService->buildImageBlocks($attachments);
+        }
+
+        $userId   = Auth::id();
+        $eventKey = $event->key;
+        $progress = fn (string $step, string $status, ?string $detail) =>
+            \App\Events\SetlistGenerationProgress::dispatch($userId, $eventKey, $step, $status, $detail);
+
+        $result = $aiService->generateSetlist($event, $songsArray, $request->input('context'), $attachmentImages, $progress);
+
+        if (empty($result['items'])) {
+            return response()->json(['error' => 'AI could not generate a setlist. Please try again.'], 500);
+        }
+
+        $songMap    = $songs->keyBy('id');
+        $finalItems = $this->filterValidItems($result['items'], $songMap);
+
+        DB::transaction(function () use ($event, $band, $finalItems, $songsArray, $result) {
+            $setlist = EventSetlist::updateOrCreate(
+                ['event_id' => $event->id],
+                [
+                    'band_id'      => $band->id,
+                    'generated_at' => now(),
+                    'status'       => 'draft',
+                    'ai_context'   => [
+                        'song_count'    => count($songsArray),
+                        'generated_at'  => now()->toISOString(),
+                        'event_context' => $result['event_context'] ?? null,
+                        'image_context' => $result['image_context'] ?? [],
+                    ],
+                ],
+            );
+
+            $setlist->songs()->delete();
+            $this->saveSetlistItems($setlist, $finalItems);
+        });
+
+        $setlist = $event->setlist()->with('songs.song.leadSinger')->first();
+        abort_unless($setlist, 500, 'Setlist not found after generate');
+
+        return response()->json($this->formatSetlist($setlist));
+    }
+
+    // TODO: filterValidItems/saveSetlistItems duplicate App\Http\Controllers\SetlistController —
+    // extract to a shared SetlistPersistence service in a follow-up (kept separate for now to keep this PR focused).
+    private function filterValidItems(array $orderedItems, \Illuminate\Support\Collection $songMap): \Illuminate\Support\Collection
+    {
+        $seenIds = [];
+
+        return collect($orderedItems)
+            ->filter(function ($item) use ($songMap, &$seenIds) {
+                if ($item === 'break') return true;
+
+                if (is_int($item) && $songMap->has($item)) {
+                    if (in_array($item, $seenIds)) return false;
+                    $seenIds[] = $item;
+                    return true;
+                }
+
+                if (is_array($item) && isset($item['id']) && $songMap->has((int) $item['id'])) {
+                    $id = (int) $item['id'];
+                    if (in_array($id, $seenIds)) return false;
+                    $seenIds[] = $id;
+                    return true;
+                }
+
+                if (is_array($item) && !empty($item['title'])) return true;
+
+                return false;
+            })
+            ->values();
+    }
+
+    private function saveSetlistItems(EventSetlist $setlist, \Illuminate\Support\Collection $items): void
+    {
+        $items->each(function ($item, $index) use ($setlist) {
+            if ($item === 'break') {
+                SetlistSong::create([
+                    'setlist_id' => $setlist->id,
+                    'type'       => 'break',
+                    'position'   => $index + 1,
+                ]);
+            } elseif (is_array($item) && isset($item['id'])) {
+                SetlistSong::create([
+                    'setlist_id' => $setlist->id,
+                    'type'       => 'song',
+                    'song_id'    => (int) $item['id'],
+                    'notes'      => $item['note'] ?? 'Client request',
+                    'position'   => $index + 1,
+                ]);
+            } elseif (is_array($item)) {
+                SetlistSong::create([
+                    'setlist_id'    => $setlist->id,
+                    'type'          => 'song',
+                    'song_id'       => null,
+                    'custom_title'  => $item['title'],
+                    'custom_artist' => $item['artist'] ?? null,
+                    'notes'         => $item['note'] ?? 'Client request — not in library',
+                    'position'      => $index + 1,
+                ]);
+            } else {
+                SetlistSong::create([
+                    'setlist_id' => $setlist->id,
+                    'type'       => 'song',
+                    'song_id'    => $item,
+                    'position'   => $index + 1,
+                ]);
+            }
+        });
     }
 
     public function refine(Request $request, Events $event): JsonResponse
