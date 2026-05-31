@@ -54,8 +54,8 @@ class MobileSetlistPromptTemplateTest extends TestCase
             ->getJson("/api/mobile/bands/{$band->id}/setlist-prompt-templates");
 
         $response->assertOk()
-            ->assertJsonCount(1)
-            ->assertJsonStructure([['id', 'name', 'prompt']]);
+            ->assertJsonCount(1, 'data')
+            ->assertJsonStructure(['data' => [['id', 'name', 'prompt']]]);
     }
 
     public function test_store_creates_template_for_writer(): void
@@ -69,7 +69,7 @@ class MobileSetlistPromptTemplateTest extends TestCase
             ]);
 
         $response->assertCreated()
-            ->assertJsonFragment(['name' => 'Corporate']);
+            ->assertJsonPath('data.name', 'Corporate');
 
         $this->assertDatabaseHas('setlist_prompt_templates', [
             'band_id' => $band->id,
@@ -79,6 +79,10 @@ class MobileSetlistPromptTemplateTest extends TestCase
 
     public function test_store_rejects_non_writer(): void
     {
+        // Rejection now happens at the `mobile.band` middleware layer. The
+        // X-Band-ID header is present (so the band context resolves), but the
+        // authenticated user is not a member of the band — EnsureUserInBand
+        // returns 403 ("not a member of this band").
         $user = User::factory()->create();
         $band = Bands::factory()->create();
         $token = $user->createToken('test-device')->plainTextToken;
@@ -90,6 +94,33 @@ class MobileSetlistPromptTemplateTest extends TestCase
             ]);
 
         $response->assertStatus(403);
+
+        $this->assertDatabaseCount('setlist_prompt_templates', 0);
+    }
+
+    public function test_update_modifies_template(): void
+    {
+        ['band' => $band, 'token' => $token] = $this->makeOwnedBand();
+
+        $template = SetlistPromptTemplate::create([
+            'band_id' => $band->id,
+            'name'    => 'Original',
+            'prompt'  => 'Original prompt',
+        ]);
+
+        $response = $this->withHeaders($this->headers($token, $band))
+            ->patchJson("/api/mobile/bands/{$band->id}/setlist-prompt-templates/{$template->id}", [
+                'name'   => 'Updated',
+                'prompt' => 'Updated prompt',
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.name', 'Updated');
+
+        $this->assertDatabaseHas('setlist_prompt_templates', [
+            'id'   => $template->id,
+            'name' => 'Updated',
+        ]);
     }
 
     public function test_update_scoped_to_band(): void

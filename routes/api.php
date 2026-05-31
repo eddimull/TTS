@@ -233,11 +233,18 @@ Route::prefix('mobile')->group(function () {
         Route::post('/events/{event}/setlist/generate', [App\Http\Controllers\Api\Mobile\SetlistEditorController::class, 'generate'])->name('mobile.setlist.editor.generate');
         Route::post('/events/{event}/setlist/refine', [App\Http\Controllers\Api\Mobile\SetlistEditorController::class, 'refine'])->name('mobile.setlist.editor.refine');
 
-        // Setlist prompt templates (band-scoped)
-        Route::get('/bands/{band}/setlist-prompt-templates', [App\Http\Controllers\Api\Mobile\SetlistPromptTemplateController::class, 'index'])->name('mobile.setlist.prompt-templates.index');
-        Route::post('/bands/{band}/setlist-prompt-templates', [App\Http\Controllers\Api\Mobile\SetlistPromptTemplateController::class, 'store'])->name('mobile.setlist.prompt-templates.store');
-        Route::patch('/bands/{band}/setlist-prompt-templates/{template}', [App\Http\Controllers\Api\Mobile\SetlistPromptTemplateController::class, 'update'])->name('mobile.setlist.prompt-templates.update');
-        Route::delete('/bands/{band}/setlist-prompt-templates/{template}', [App\Http\Controllers\Api\Mobile\SetlistPromptTemplateController::class, 'destroy'])->name('mobile.setlist.prompt-templates.destroy');
+        // Setlist prompt templates (band-scoped) — auth at route layer, matching attire chips
+        Route::middleware('mobile.band:read:events')->group(function () {
+            Route::get('/bands/{band}/setlist-prompt-templates', [App\Http\Controllers\Api\Mobile\SetlistPromptTemplateController::class, 'index'])->name('mobile.setlist.prompt-templates.index');
+        });
+        // No scopeBindings(): the {template} param name doesn't match the
+        // band relation (setlistPromptTemplates), so cross-band scoping is
+        // enforced in-controller via abort_if — matching the attire-chips group.
+        Route::middleware('mobile.band:write:events')->group(function () {
+            Route::post('/bands/{band}/setlist-prompt-templates', [App\Http\Controllers\Api\Mobile\SetlistPromptTemplateController::class, 'store'])->name('mobile.setlist.prompt-templates.store');
+            Route::patch('/bands/{band}/setlist-prompt-templates/{template}', [App\Http\Controllers\Api\Mobile\SetlistPromptTemplateController::class, 'update'])->name('mobile.setlist.prompt-templates.update');
+            Route::delete('/bands/{band}/setlist-prompt-templates/{template}', [App\Http\Controllers\Api\Mobile\SetlistPromptTemplateController::class, 'destroy'])->name('mobile.setlist.prompt-templates.destroy');
+        });
 
         // Setlist / live session
         Route::prefix('setlist')->name('mobile.setlist.')->group(function () {
