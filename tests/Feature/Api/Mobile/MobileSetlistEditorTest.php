@@ -121,7 +121,7 @@ class MobileSetlistEditorTest extends TestCase
 
         $resp = $this->withHeaders($headers)->putJson("/api/mobile/events/{$event->key}/setlist", [
             'songs' => [
-                ['type' => 'song', 'song_id' => $song->id],
+                ['type' => 'song', 'song_id' => $song->id, 'notes' => 'Open with this'],
                 ['type' => 'break'],
                 ['type' => 'song', 'custom_title' => 'Custom Tune', 'custom_artist' => 'Indie Band'],
             ],
@@ -131,11 +131,42 @@ class MobileSetlistEditorTest extends TestCase
         $resp->assertOk()
             ->assertJsonCount(3, 'songs')
             ->assertJsonPath('songs.0.song_id', $song->id)
+            ->assertJsonPath('songs.0.position', 1)
+            ->assertJsonPath('songs.0.notes', 'Open with this')
             ->assertJsonPath('songs.1.type', 'break')
-            ->assertJsonPath('songs.2.custom_title', 'Custom Tune');
+            ->assertJsonPath('songs.1.position', 2)
+            ->assertJsonPath('songs.2.custom_title', 'Custom Tune')
+            ->assertJsonPath('songs.2.position', 3);
 
         $this->assertDatabaseHas('event_setlists', ['event_id' => $event->id, 'status' => 'draft']);
         $this->assertDatabaseCount('setlist_songs', 3);
+    }
+
+    public function test_update_rejects_song_from_another_band(): void
+    {
+        ['event' => $event, 'headers' => $headers] = $this->makeEventForOwner();
+
+        $otherBand = Bands::factory()->create();
+        $foreignSong = Song::factory()->forBand($otherBand)->active()->create(['lead_singer_id' => null]);
+
+        $this->withHeaders($headers)->putJson("/api/mobile/events/{$event->key}/setlist", [
+            'songs' => [['type' => 'song', 'song_id' => $foreignSong->id]],
+        ])->assertStatus(422);
+
+        $this->assertDatabaseCount('setlist_songs', 0);
+    }
+
+    public function test_update_without_status_preserves_existing(): void
+    {
+        ['band' => $band, 'event' => $event, 'headers' => $headers] = $this->makeEventForOwner();
+
+        EventSetlist::create(['event_id' => $event->id, 'band_id' => $band->id, 'status' => 'ready']);
+
+        $this->withHeaders($headers)->putJson("/api/mobile/events/{$event->key}/setlist", [
+            'songs' => [['type' => 'song', 'custom_title' => 'Tune']],
+        ])->assertOk();
+
+        $this->assertDatabaseHas('event_setlists', ['event_id' => $event->id, 'status' => 'ready']);
     }
 
     public function test_update_replaces_existing_songs(): void

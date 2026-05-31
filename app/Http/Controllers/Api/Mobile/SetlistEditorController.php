@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class SetlistEditorController extends Controller
 {
@@ -110,7 +111,7 @@ class SetlistEditorController extends Controller
         $validated = $request->validate([
             'songs'                 => 'present|array',
             'songs.*.type'          => 'nullable|in:song,break',
-            'songs.*.song_id'       => 'nullable|integer|exists:songs,id',
+            'songs.*.song_id'       => ['nullable', 'integer', Rule::exists('songs', 'id')->where('band_id', $band->id)],
             'songs.*.custom_title'  => 'nullable|string|max:255',
             'songs.*.custom_artist' => 'nullable|string|max:255',
             'songs.*.notes'         => 'nullable|string|max:1000',
@@ -144,6 +145,7 @@ class SetlistEditorController extends Controller
         });
 
         $setlist = $event->setlist()->with('songs.song.leadSinger')->first();
+        abort_unless($setlist, 500, 'Setlist not found after write');
 
         return response()->json($this->formatSetlist($setlist));
     }
