@@ -247,10 +247,31 @@ class MobileSetlistEditorTest extends TestCase
 
         $resp->assertOk()
             ->assertJsonCount(2, 'songs')
-            ->assertJsonPath('event_context', 'Test event context');
+            ->assertJsonPath('event_context', 'Test event context')
+            ->assertJsonPath('songs.0.song_id', $song1->id)
+            ->assertJsonPath('songs.0.position', 1)
+            ->assertJsonPath('songs.1.song_id', $song2->id)
+            ->assertJsonPath('songs.1.position', 2);
 
         $this->assertDatabaseHas('event_setlists', ['event_id' => $event->id]);
         $this->assertDatabaseCount('setlist_songs', 2);
+    }
+
+    public function test_generate_rejects_non_writer(): void
+    {
+        ['band' => $band, 'event' => $event] = $this->makeEventForOwner();
+
+        Song::factory()->forBand($band)->active()->create(['lead_singer_id' => null]);
+
+        $nonMember = User::factory()->create();
+        $token = $nonMember->createToken('test-device')->plainTextToken;
+
+        $this->withHeaders([
+            'Authorization' => "Bearer {$token}",
+            'X-Band-ID'     => $band->id,
+            'Accept'        => 'application/json',
+        ])->postJson("/api/mobile/events/{$event->key}/setlist/generate")
+            ->assertForbidden();
     }
 
     public function test_generate_fails_without_api_key(): void

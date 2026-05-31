@@ -158,6 +158,10 @@ class SetlistEditorController extends Controller
             abort(403);
         }
 
+        $validated = $request->validate([
+            'context' => 'nullable|string|max:2000',
+        ]);
+
         $event->load(['type', 'eventMembers.rosterMember']);
 
         $songs = $band->songs()
@@ -205,7 +209,7 @@ class SetlistEditorController extends Controller
         $progress = fn (string $step, string $status, ?string $detail) =>
             \App\Events\SetlistGenerationProgress::dispatch($userId, $eventKey, $step, $status, $detail);
 
-        $result = $aiService->generateSetlist($event, $songsArray, $request->input('context'), $attachmentImages, $progress);
+        $result = $aiService->generateSetlist($event, $songsArray, $validated['context'] ?? null, $attachmentImages, $progress);
 
         if (empty($result['items'])) {
             return response()->json(['error' => 'AI could not generate a setlist. Please try again.'], 500);
