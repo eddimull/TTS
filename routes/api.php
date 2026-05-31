@@ -227,6 +227,18 @@ Route::prefix('mobile')->group(function () {
             Route::post('/media/folders', [App\Http\Controllers\Api\Mobile\MediaController::class, 'createFolder'])->name('mobile.media.folders.create');
         });
 
+        // Setlist editor (pre-gig) — auth checks done in controller per event
+        Route::get('/events/{event}/setlist', [App\Http\Controllers\Api\Mobile\SetlistEditorController::class, 'show'])->name('mobile.setlist.editor.show');
+        Route::put('/events/{event}/setlist', [App\Http\Controllers\Api\Mobile\SetlistEditorController::class, 'update'])->name('mobile.setlist.editor.update');
+        Route::post('/events/{event}/setlist/generate', [App\Http\Controllers\Api\Mobile\SetlistEditorController::class, 'generate'])->name('mobile.setlist.editor.generate');
+        Route::post('/events/{event}/setlist/refine', [App\Http\Controllers\Api\Mobile\SetlistEditorController::class, 'refine'])->name('mobile.setlist.editor.refine');
+
+        // Setlist prompt templates (band-scoped)
+        Route::get('/bands/{band}/setlist-prompt-templates', [App\Http\Controllers\Api\Mobile\SetlistPromptTemplateController::class, 'index'])->name('mobile.setlist.prompt-templates.index');
+        Route::post('/bands/{band}/setlist-prompt-templates', [App\Http\Controllers\Api\Mobile\SetlistPromptTemplateController::class, 'store'])->name('mobile.setlist.prompt-templates.store');
+        Route::patch('/bands/{band}/setlist-prompt-templates/{template}', [App\Http\Controllers\Api\Mobile\SetlistPromptTemplateController::class, 'update'])->name('mobile.setlist.prompt-templates.update');
+        Route::delete('/bands/{band}/setlist-prompt-templates/{template}', [App\Http\Controllers\Api\Mobile\SetlistPromptTemplateController::class, 'destroy'])->name('mobile.setlist.prompt-templates.destroy');
+
         // Setlist / live session
         Route::prefix('setlist')->name('mobile.setlist.')->group(function () {
             Route::get('/events/{event}/session', [App\Http\Controllers\Api\Mobile\SetlistController::class, 'show'])->name('show');
