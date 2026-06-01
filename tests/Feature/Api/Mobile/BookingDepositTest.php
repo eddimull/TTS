@@ -41,8 +41,7 @@ class BookingDepositTest extends TestCase
             ->patchJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}", $payload);
     }
 
-    /** @test */
-    public function mobile_update_accepts_valid_deposit_amount(): void
+    public function test_mobile_update_accepts_valid_deposit_amount(): void
     {
         ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->makeOwnedBooking();
 
@@ -55,8 +54,7 @@ class BookingDepositTest extends TestCase
         $this->assertSame('450.00', (string) $booking->fresh()->deposit_value);
     }
 
-    /** @test */
-    public function mobile_update_rejects_percent_above_100(): void
+    public function test_mobile_update_rejects_percent_above_100(): void
     {
         ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->makeOwnedBooking();
 
@@ -68,8 +66,7 @@ class BookingDepositTest extends TestCase
             ->assertJsonValidationErrors('deposit_value');
     }
 
-    /** @test */
-    public function mobile_update_rejects_amount_above_price(): void
+    public function test_mobile_update_rejects_amount_above_price(): void
     {
         ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->makeOwnedBooking();
 
@@ -81,8 +78,7 @@ class BookingDepositTest extends TestCase
             ->assertJsonValidationErrors('deposit_value');
     }
 
-    /** @test */
-    public function mobile_update_rejects_deposit_when_contract_signed(): void
+    public function test_mobile_update_rejects_deposit_when_contract_signed(): void
     {
         ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->makeOwnedBooking();
 
@@ -100,8 +96,7 @@ class BookingDepositTest extends TestCase
             ->assertJsonValidationErrors('deposit_type');
     }
 
-    /** @test */
-    public function mobile_booking_show_response_includes_deposit_fields(): void
+    public function test_mobile_booking_show_response_includes_deposit_fields(): void
     {
         ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->makeOwnedBooking([
             'price'          => '1000.00',

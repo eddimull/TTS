@@ -632,8 +632,7 @@ class BookingsControllerTest extends TestCase
         $secondLoginResponse->assertRedirect(route('portal.dashboard'));
     }
 
-    /** @test */
-    public function update_accepts_valid_deposit_percent(): void
+    public function test_update_accepts_valid_deposit_percent(): void
     {
         $this->actingAs($this->owner)
             ->put(route('bands.booking.update', ['band' => $this->band->id, 'booking' => $this->booking->id]), [
@@ -650,8 +649,7 @@ class BookingsControllerTest extends TestCase
         $this->assertSame('25.00', (string) $this->booking->fresh()->deposit_value);
     }
 
-    /** @test */
-    public function update_rejects_deposit_percent_above_100(): void
+    public function test_update_rejects_deposit_percent_above_100(): void
     {
         $this->actingAs($this->owner)
             ->put(route('bands.booking.update', ['band' => $this->band->id, 'booking' => $this->booking->id]), [
@@ -665,8 +663,7 @@ class BookingsControllerTest extends TestCase
             ->assertSessionHasErrors('deposit_value');
     }
 
-    /** @test */
-    public function update_rejects_deposit_amount_exceeding_price(): void
+    public function test_update_rejects_deposit_amount_exceeding_price(): void
     {
         $this->actingAs($this->owner)
             ->put(route('bands.booking.update', ['band' => $this->band->id, 'booking' => $this->booking->id]), [
@@ -680,8 +677,7 @@ class BookingsControllerTest extends TestCase
             ->assertSessionHasErrors('deposit_value');
     }
 
-    /** @test */
-    public function update_rejects_deposit_change_when_contract_is_signed(): void
+    public function test_update_rejects_deposit_change_when_contract_is_signed(): void
     {
         \App\Models\Contracts::factory()->create([
             'contractable_id'   => $this->booking->id,
@@ -701,8 +697,7 @@ class BookingsControllerTest extends TestCase
             ->assertSessionHasErrors('deposit_type');
     }
 
-    /** @test */
-    public function inertia_booking_response_includes_expected_deposit_amount(): void
+    public function test_inertia_booking_response_includes_expected_deposit_amount(): void
     {
         $booking = \App\Models\Bookings::factory()->create([
             'band_id'       => $this->band->id,
