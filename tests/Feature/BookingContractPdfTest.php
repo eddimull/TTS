@@ -13,8 +13,7 @@ class BookingContractPdfTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
-    public function rendered_contract_view_uses_configurable_deposit(): void
+    public function test_rendered_contract_view_uses_configurable_deposit(): void
     {
         $owner = User::factory()->create();
         $band  = Bands::factory()->create([
@@ -48,8 +47,7 @@ class BookingContractPdfTest extends TestCase
         $this->assertStringNotContainsString('$500.00', $rendered);
     }
 
-    /** @test */
-    public function rendered_contract_view_uses_percent_mode_correctly(): void
+    public function test_rendered_contract_view_uses_percent_mode_correctly(): void
     {
         $owner = User::factory()->create();
         $band  = Bands::factory()->create([
