@@ -220,8 +220,11 @@ class MobileSetlistEditorTest extends TestCase
     {
         ['band' => $band, 'event' => $event, 'headers' => $headers] = $this->makeEventForOwner();
 
-        $song1 = Song::factory()->forBand($band)->active()->create(['lead_singer_id' => null]);
-        $song2 = Song::factory()->forBand($band)->active()->create(['lead_singer_id' => null]);
+        // Explicit titles so the band's songs() query (orderBy title) is
+        // deterministic — the fake AI returns them in query order, so the
+        // ordering assertions below depend on a stable sort.
+        $song1 = Song::factory()->forBand($band)->active()->create(['lead_singer_id' => null, 'title' => 'AAA First']);
+        $song2 = Song::factory()->forBand($band)->active()->create(['lead_singer_id' => null, 'title' => 'BBB Second']);
 
         config(['services.anthropic.key' => 'test-key']);
 
