@@ -12,8 +12,7 @@ class DepositNotLockedTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
-    public function rule_passes_when_booking_has_no_contract(): void
+    public function test_rule_passes_when_booking_has_no_contract(): void
     {
         $booking = Bookings::factory()->create();
         $rule = new DepositNotLocked($booking);
@@ -24,8 +23,7 @@ class DepositNotLockedTest extends TestCase
         $this->assertFalse($failed);
     }
 
-    /** @test */
-    public function rule_passes_when_contract_is_unsigned(): void
+    public function test_rule_passes_when_contract_is_unsigned(): void
     {
         $booking = Bookings::factory()->create();
         Contracts::factory()->create([
@@ -42,8 +40,7 @@ class DepositNotLockedTest extends TestCase
         $this->assertFalse($failed);
     }
 
-    /** @test */
-    public function rule_fails_when_contract_is_signed(): void
+    public function test_rule_fails_when_contract_is_signed(): void
     {
         $booking = Bookings::factory()->create();
         Contracts::factory()->create([

@@ -10,8 +10,7 @@ class BookingsTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
-    public function existing_bookings_default_to_50_percent_deposit_after_migration(): void
+    public function test_existing_bookings_default_to_50_percent_deposit_after_migration(): void
     {
         // BookingsFactory::definition() creates a Bands::factory()->withOwners()
         // for us — no manual band/owner setup needed for this assertion.
@@ -21,8 +20,7 @@ class BookingsTest extends TestCase
         $this->assertSame('50.00', (string) $booking->fresh()->deposit_value);
     }
 
-    /** @test */
-    public function expected_deposit_amount_uses_percent_mode(): void
+    public function test_expected_deposit_amount_uses_percent_mode(): void
     {
         $booking = Bookings::factory()->create([
             'price'         => '1000.00',
@@ -32,8 +30,7 @@ class BookingsTest extends TestCase
         $this->assertSame('250.00', $booking->expected_deposit_amount);
     }
 
-    /** @test */
-    public function expected_deposit_amount_uses_amount_mode(): void
+    public function test_expected_deposit_amount_uses_amount_mode(): void
     {
         $booking = Bookings::factory()->create([
             'price'         => '1000.00',
@@ -43,8 +40,7 @@ class BookingsTest extends TestCase
         $this->assertSame('300.00', $booking->expected_deposit_amount);
     }
 
-    /** @test */
-    public function expected_deposit_amount_returns_zero_when_price_is_null(): void
+    public function test_expected_deposit_amount_returns_zero_when_price_is_null(): void
     {
         $booking = Bookings::factory()->create([
             'price'         => null,
@@ -54,8 +50,7 @@ class BookingsTest extends TestCase
         $this->assertSame('0.00', $booking->expected_deposit_amount);
     }
 
-    /** @test */
-    public function legacy_50_percent_default_produces_same_number_as_before(): void
+    public function test_legacy_50_percent_default_produces_same_number_as_before(): void
     {
         $booking = Bookings::factory()->create([
             'price'         => '800.00',
