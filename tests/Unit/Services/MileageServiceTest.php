@@ -309,8 +309,8 @@ class MileageServiceTest extends TestCase
         DB::table('band_members')->insert([
             'user_id'    => $this->user->id,
             'band_id'    => $this->band->id,
-            'created_at' => Carbon::now()->subYears(3),
-            'updated_at' => Carbon::now()->subYears(3),
+            'created_at' => Carbon::now()->year(2022),
+            'updated_at' => Carbon::now()->year(2022),
         ]);
 
         $booking2023  = Bookings::factory()->create(['band_id' => $this->band->id]);
