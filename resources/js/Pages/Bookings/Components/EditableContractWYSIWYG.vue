@@ -56,10 +56,11 @@
         v-if="editMode"
         class="mb-4 p-3 border border-dashed border-gray-300 rounded"
       >
-        <label class="block text-sm font-medium mb-1">
+        <label for="buyer-name-override" class="block text-sm font-medium mb-1">
           Buyer name override (optional)
         </label>
         <InputText
+          id="buyer-name-override"
           v-model="buyerNameLocal"
           class="w-full"
           placeholder="Leave blank to use the signer's name"
@@ -244,7 +245,7 @@
         <div>
           <strong class="underline">{{ displayBuyerName }}</strong> - <strong>{{ new Date().toLocaleDateString() }}</strong>
         </div>
-        <div v-if="buyerNameLocal && buyerNameLocal.trim().length">
+        <div v-if="hasBuyerNameOverride">
           By: <strong>{{ booking.contacts[0].name }}</strong>, on behalf of {{ displayBuyerName }}
         </div>
         <div class="mt-4">
@@ -293,16 +294,23 @@ import { useDeposit } from '@/composables/useDeposit';
   const termsLocal = ref([]);
   const editMode = ref(false);
 
+  // Seeded once from the parent (which sources it from booking.contract).
+  // Unlike termsLocal, no watch: the parent only ever receives updates from
+  // this child after mount, so there's nothing to re-sync downward.
   const buyerNameLocal = ref(props.buyerNameOverride ?? '');
 
   const emitBuyerNameUpdate = () => {
     emit('update:buyerNameOverride', buyerNameLocal.value);
   };
 
+  const hasBuyerNameOverride = computed(
+    () => !!(buyerNameLocal.value && buyerNameLocal.value.trim().length),
+  );
+
   const displayBuyerName = computed(() =>
-    buyerNameLocal.value && buyerNameLocal.value.trim().length
+    hasBuyerNameOverride.value
       ? buyerNameLocal.value
-      : props.booking.contacts[0]?.name
+      : props.booking.contacts[0]?.name,
   );
 
   const formattedDate = computed(() => {
