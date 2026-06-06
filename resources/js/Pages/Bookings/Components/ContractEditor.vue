@@ -4,7 +4,9 @@
             :initial-terms="terms"
             :booking="booking"
             :band="band"
+            :buyer-name-override="buyerNameOverride"
             @update:terms="updateTerms"
+            @update:buyer-name-override="updateBuyerNameOverride"
             @generate-pdf="generatePDF"
             @save="saveContract"
             @send-contract="showSendContractPopup"
@@ -37,9 +39,15 @@ const terms = props.booking?.contract?.custom_terms
     : ref(InitialTerms);
 const unsavedChanges = ref(false);
 const showDialog = ref(false);
+const buyerNameOverride = ref(props.booking?.contract?.buyer_name_override ?? '');
 
 const updateTerms = (newTerms) => {
     terms.value = newTerms;
+    unsavedChanges.value = true;
+};
+
+const updateBuyerNameOverride = (value) => {
+    buyerNameOverride.value = value;
     unsavedChanges.value = true;
 };
 
@@ -49,7 +57,7 @@ const saveContract = async () => {
             band: props.band.id,
             booking: props.booking.id,
         }),
-        { custom_terms: terms.value },
+        { custom_terms: terms.value, buyer_name_override: buyerNameOverride.value },
         {
             preserveState: true,
             preserveScroll: true,
