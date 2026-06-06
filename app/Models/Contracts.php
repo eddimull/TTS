@@ -22,6 +22,7 @@ class Contracts extends Model
         'status',
         'asset_url',
         'custom_terms',
+        'buyer_name_override',
     ];
 
     protected $casts = [
