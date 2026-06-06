@@ -27,6 +27,7 @@ class UpdateContractsRequest extends FormRequest
             'custom_terms' => ['required', 'array', 'max:20'],
             'custom_terms.*.title' => ['required', 'string', 'min:3', 'max:255'],
             'custom_terms.*.content' => ['required', 'string', 'min:3'],
+            'buyer_name_override' => ['nullable', 'string', 'max:255'],
         ];
     }
 
