@@ -58,6 +58,7 @@ class BookingFormatter
                 'asset_url'    => $c->asset_url,
                 'envelope_id'  => $c->envelope_id,
                 'custom_terms' => $c->custom_terms,
+                'buyer_name_override' => $c->buyer_name_override,
                 'updated_at'   => $c->updated_at?->toIso8601String(),
             ];
         }
