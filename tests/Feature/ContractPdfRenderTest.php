@@ -98,4 +98,12 @@ class ContractPdfRenderTest extends TestCase
         $this->assertStringContainsString('on behalf of The City of Scott', $html);
         $this->assertStringContainsString('Mayor Jane Doe', $html);
     }
+
+    public function test_whitespace_only_override_falls_back_to_signer(): void
+    {
+        $html = $this->renderContract('   ', 'Mayor Jane Doe');
+
+        $this->assertStringContainsString('with <strong>Mayor Jane Doe</strong>', $html);
+        $this->assertStringNotContainsString('on behalf of', $html);
+    }
 }

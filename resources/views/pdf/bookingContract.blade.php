@@ -1,10 +1,8 @@
 @extends('layouts.PDF', ['bodyStyle' => 'size: legal; width: 1200px;', 'contentClasses' => ''])
 @section('content')
 @php
-    $buyerName = ($booking->contract && $booking->contract->buyer_name_override)
-        ? $booking->contract->buyer_name_override
-        : $signer->name;
     $hasBuyerOverride = $booking->contract && filled($booking->contract->buyer_name_override);
+    $buyerName = $hasBuyerOverride ? $booking->contract->buyer_name_override : $signer->name;
 @endphp
 <x-pdf.contractHeader>
     <img
@@ -127,16 +125,12 @@
             Buyer
         </p>
         <p>I Agree to the terms and conditions of this contract</p>
+        <div>
+            <strong class="underline">{{ $buyerName }}</strong> - <strong>{{ date('m/d/Y') }}</strong>
+        </div>
         @if ($hasBuyerOverride)
             <div>
-                <strong class="underline">{{ $buyerName }}</strong> - <strong>{{ date('m/d/Y') }}</strong>
-            </div>
-            <div>
                 By: <strong>{{ $signer->name }}</strong>, on behalf of {{ $buyerName }}
-            </div>
-        @else
-            <div>
-                <strong class="underline">{{ $signer->name }}</strong> - <strong>{{ date('m/d/Y') }}</strong>
             </div>
         @endif
         <br />
