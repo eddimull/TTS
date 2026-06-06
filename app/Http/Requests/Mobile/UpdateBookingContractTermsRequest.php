@@ -17,6 +17,7 @@ class UpdateBookingContractTermsRequest extends FormRequest
             'custom_terms'           => ['required', 'array'],
             'custom_terms.*.title'   => ['nullable', 'string', 'max:255'],
             'custom_terms.*.content' => ['nullable', 'string'],
+            'buyer_name_override'    => ['nullable', 'string', 'max:255'],
         ];
     }
 }

@@ -49,6 +49,99 @@ class BookingContractTermsTest extends TestCase
             ->assertJsonPath('booking.contract.custom_terms.1.content', '50% deposit required.');
     }
 
+    public function test_buyer_name_override_is_persisted_and_returned(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        $booking = Bookings::factory()->create([
+            'band_id' => $band->id,
+            'status'  => 'draft',
+        ]);
+
+        $booking->contract()->create([
+            'author_id'    => $user->id,
+            'custom_terms' => [['title' => 'Old', 'content' => 'Old content']],
+            'status'       => 'pending',
+        ]);
+
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        $payload = [
+            'custom_terms' => [
+                ['title' => 'Cancellation', 'content' => 'No refunds within 7 days.'],
+            ],
+            'buyer_name_override' => 'The City of Scott',
+        ];
+
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->postJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/contract/terms", $payload);
+
+        $response->assertOk();
+
+        $this->assertSame('The City of Scott', $response->json('booking.contract.buyer_name_override'));
+
+        $this->assertDatabaseHas('contracts', [
+            'contractable_id'     => $booking->id,
+            'contractable_type'   => Bookings::class,
+            'buyer_name_override' => 'The City of Scott',
+        ]);
+    }
+
+    public function test_buyer_name_override_can_be_cleared(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        $booking = Bookings::factory()->create([
+            'band_id' => $band->id,
+            'status'  => 'draft',
+        ]);
+
+        $booking->contract()->create([
+            'author_id'    => $user->id,
+            'custom_terms' => [['title' => 'Old', 'content' => 'Old content']],
+            'status'       => 'pending',
+        ]);
+
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        $url = "/api/mobile/bands/{$band->id}/bookings/{$booking->id}/contract/terms";
+
+        // First, set the override.
+        $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->postJson($url, [
+                'custom_terms' => [
+                    ['title' => 'Cancellation', 'content' => 'No refunds within 7 days.'],
+                ],
+                'buyer_name_override' => 'The City of Scott',
+            ])
+            ->assertOk();
+
+        // Then, post again without buyer_name_override to clear it.
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->postJson($url, [
+                'custom_terms' => [
+                    ['title' => 'Cancellation', 'content' => 'No refunds within 7 days.'],
+                ],
+            ]);
+
+        $response->assertOk();
+
+        $this->assertNull($response->json('booking.contract.buyer_name_override'));
+
+        $this->assertDatabaseHas('contracts', [
+            'contractable_id'     => $booking->id,
+            'contractable_type'   => Bookings::class,
+            'buyer_name_override' => null,
+        ]);
+    }
+
     public function test_missing_custom_terms_returns_422(): void
     {
         $user = User::factory()->create();

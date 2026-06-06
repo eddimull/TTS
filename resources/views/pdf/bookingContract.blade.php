@@ -1,5 +1,9 @@
 @extends('layouts.PDF', ['bodyStyle' => 'size: legal; width: 1200px;', 'contentClasses' => ''])
 @section('content')
+@php
+    $hasBuyerOverride = $booking->contract && filled($booking->contract->buyer_name_override);
+    $buyerName = $hasBuyerOverride ? $booking->contract->buyer_name_override : $signer->name;
+@endphp
 <x-pdf.contractHeader>
     <img
         src="{{ $logoDataUri }}"
@@ -8,7 +12,7 @@
 </x-pdf.contractHeader>
 <x-pdf.section>
     <strong>{{ $booking->band->name }}</strong> (hereinafter referred to as "Artist"), enter into this Agreement
-    with <strong>{{ $signer->name }}</strong> (hereinafter referred to as "Buyer"), for the engagement of a live musical performance
+    with <strong>{{ $buyerName }}</strong> (hereinafter referred to as "Buyer"), for the engagement of a live musical performance
     (hereinafter referred to as the "Venue"), subject to the following conditions:
 </x-pdf.section>
 <x-pdf.section>
@@ -122,8 +126,13 @@
         </p>
         <p>I Agree to the terms and conditions of this contract</p>
         <div>
-            <strong class="underline">{{ $signer->name }}</strong> - <strong>{{ date('m/d/Y') }}</strong>
+            <strong class="underline">{{ $buyerName }}</strong> - <strong>{{ date('m/d/Y') }}</strong>
         </div>
+        @if ($hasBuyerOverride)
+            <div>
+                By: <strong>{{ $signer->name }}</strong>, on behalf of {{ $buyerName }}
+            </div>
+        @endif
         <br />
         <br />
         <div>
