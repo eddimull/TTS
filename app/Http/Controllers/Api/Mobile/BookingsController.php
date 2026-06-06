@@ -570,7 +570,10 @@ class BookingsController extends Controller
             ['author_id' => $request->user()->id]
         );
 
-        $contract->update(['custom_terms' => $validated['custom_terms']]);
+        $contract->update([
+            'custom_terms'        => $validated['custom_terms'],
+            'buyer_name_override' => $validated['buyer_name_override'] ?? null,
+        ]);
 
         return response()->json([
             'booking' => $this->formatter->format(
