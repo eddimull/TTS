@@ -48,8 +48,25 @@
       <div class="mb-4">
         <p>
           <strong>{{ band.name }}</strong> (hereinafter referred to as "Artist"), enter into this Agreement
-          with <strong>{{ booking.contacts[0].name }}</strong> (hereinafter referred to as "Buyer"), for the engagement of a live musical performance
+          with <strong>{{ displayBuyerName }}</strong> (hereinafter referred to as "Buyer"), for the engagement of a live musical performance
           (hereinafter referred to as the "Venue"), subject to the following conditions:
+        </p>
+      </div>
+      <div
+        v-if="editMode"
+        class="mb-4 p-3 border border-dashed border-gray-300 rounded"
+      >
+        <label class="block text-sm font-medium mb-1">
+          Buyer name override (optional)
+        </label>
+        <InputText
+          v-model="buyerNameLocal"
+          class="w-full"
+          placeholder="Leave blank to use the signer's name"
+          @input="emitBuyerNameUpdate"
+        />
+        <p class="text-xs text-gray-400 mt-1">
+          Use when the Buyer is an organization and the signer signs on its behalf.
         </p>
       </div>
       <div class="mb-4">
@@ -225,7 +242,10 @@
         </p>
         <p>I Agree to the terms and conditions of this contract</p>
         <div>
-          <strong class="underline">{{ booking.contacts[0].name }}</strong> - <strong>{{ new Date().toLocaleDateString() }}</strong>
+          <strong class="underline">{{ displayBuyerName }}</strong> - <strong>{{ new Date().toLocaleDateString() }}</strong>
+        </div>
+        <div v-if="buyerNameLocal && buyerNameLocal.trim().length">
+          By: <strong>{{ booking.contacts[0].name }}</strong>, on behalf of {{ displayBuyerName }}
         </div>
         <div class="mt-4">
           Signature: ___________________________
@@ -258,16 +278,32 @@ import { useDeposit } from '@/composables/useDeposit';
     band: {
       type: Object,
       required: true
+    },
+    buyerNameOverride: {
+      type: String,
+      default: ''
     }
   });
 
-  const emit = defineEmits(['update:terms', 'save', 'generate-pdf', 'send-contract']);
+  const emit = defineEmits(['update:terms', 'update:buyerNameOverride', 'save', 'generate-pdf', 'send-contract']);
 
   const bookingRef = toRef(props, 'booking');
   const { depositAmount, remainingAmount } = useDeposit(bookingRef);
 
   const termsLocal = ref([]);
   const editMode = ref(false);
+
+  const buyerNameLocal = ref(props.buyerNameOverride ?? '');
+
+  const emitBuyerNameUpdate = () => {
+    emit('update:buyerNameOverride', buyerNameLocal.value);
+  };
+
+  const displayBuyerName = computed(() =>
+    buyerNameLocal.value && buyerNameLocal.value.trim().length
+      ? buyerNameLocal.value
+      : props.booking.contacts[0]?.name
+  );
 
   const formattedDate = computed(() => {
     if (!props.booking.start_date) return null;
