@@ -12,23 +12,21 @@ class TokenService
     {
         $abilities = ['mobile'];
 
+        // Delegate to User::canRead()/canWrite() rather than re-checking Spatie
+        // permissions directly. Those methods already encode the owner shortcut
+        // AND the sub exception (a sub-of-band can read events even without the
+        // `read:events` permission). Re-implementing the check here is what let
+        // the token abilities drift from the controller's canRead() gate, so a
+        // sub passed canRead() inside the controller but their token lacked
+        // `read:events` and the mobile.band:read:events middleware 403'd them.
         foreach ($user->allBands() as $band) {
-            if ($user->ownsBand($band->id)) {
-                foreach (self::RESOURCES as $resource) {
+            foreach (self::RESOURCES as $resource) {
+                if ($user->canRead($resource, $band->id)) {
                     $abilities[] = "read:{$resource}";
+                }
+                if ($user->canWrite($resource, $band->id)) {
                     $abilities[] = "write:{$resource}";
                 }
-            } else {
-                setPermissionsTeamId($band->id);
-                foreach (self::RESOURCES as $resource) {
-                    if ($user->hasPermissionTo("read:{$resource}")) {
-                        $abilities[] = "read:{$resource}";
-                    }
-                    if ($user->hasPermissionTo("write:{$resource}")) {
-                        $abilities[] = "write:{$resource}";
-                    }
-                }
-                setPermissionsTeamId(0);
             }
         }
 
