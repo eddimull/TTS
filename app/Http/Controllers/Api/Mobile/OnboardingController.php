@@ -239,6 +239,10 @@ class OnboardingController extends Controller
 
         if ($existing) {
             return response()->json([
+                'token' => $this->tokenService->reissueForCurrentDevice(
+                    $user,
+                    $user->currentAccessToken(),
+                ),
                 'bands' => $this->tokenService->formatBands($user),
             ]);
         }
@@ -261,7 +265,20 @@ class OnboardingController extends Controller
         $user->assignRole('band-owner');
         setPermissionsTeamId(null);
 
+        // buildAbilities() (via allBands()) reads the bandOwner, bandMember, and
+        // bandSub relations. Clear all three cached relations so the freshly
+        // reissued token reflects the newly created BandOwners row — not a stale
+        // pre-creation cache. (Only bandOwner changed here, but clearing all
+        // three keeps this correct if the flow ever assigns the others too.)
+        $user->unsetRelation('bandOwner')
+            ->unsetRelation('bandMember')
+            ->unsetRelation('bandSub');
+
         return response()->json([
+            'token' => $this->tokenService->reissueForCurrentDevice(
+                $user,
+                $user->currentAccessToken(),
+            ),
             'bands' => $this->tokenService->formatBands($user),
         ], 201);
     }

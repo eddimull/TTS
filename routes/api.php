@@ -71,6 +71,7 @@ Route::prefix('mobile')->group(function () {
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/auth/me', [MobileAuthController::class, 'me'])->name('mobile.auth.me');
         Route::delete('/auth/token', [MobileAuthController::class, 'logout'])->name('mobile.auth.logout');
+        Route::post('/token/refresh', [MobileAuthController::class, 'refresh'])->name('mobile.auth.refresh');
 
         // Event types
         Route::get('/event-types', fn () => response()->json([
