@@ -58,9 +58,21 @@ class DeviceRegistrationTest extends TestCase
         DeviceToken::factory()->create(['user_id' => $me->id, 'token' => 'mine', 'platform' => 'ios']);
 
         Sanctum::actingAs($me);
-        $this->deleteJson('/api/mobile/devices/mine')->assertOk();
+        $this->deleteJson('/api/mobile/devices', ['token' => 'mine'])->assertOk();
 
         $this->assertDatabaseMissing('device_tokens', ['token' => 'mine']);
         $this->assertDatabaseHas('device_tokens', ['token' => 'theirs']);
+    }
+
+    public function test_destroy_handles_tokens_with_slashes_and_colons(): void
+    {
+        $me = User::factory()->create();
+        $weird = 'fcm:abc/def-ghi:jkl';
+        DeviceToken::factory()->create(['user_id' => $me->id, 'token' => $weird, 'platform' => 'android']);
+
+        Sanctum::actingAs($me);
+        $this->deleteJson('/api/mobile/devices', ['token' => $weird])->assertOk();
+
+        $this->assertDatabaseMissing('device_tokens', ['token' => $weird]);
     }
 }
