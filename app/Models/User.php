@@ -260,29 +260,57 @@ class User extends Authenticatable
         $subBandIds = $this->bandSub->pluck('id')->toArray();
         $bandIds = $this->bands()->pluck('id')->toArray();
 
-        // Subs only see their specifically assigned events
-        if (!empty($subBandIds) && empty($bandIds)) {
-            $assignedEventIds = \DB::table('event_subs')
+        // The user's individually-assigned sub events, across ANY band: accepted
+        // event_subs invitations plus event_members rows where they fill a sub
+        // slot (roster_member_id NULL). These must be shown IN ADDITION to the
+        // events of bands they own/are a member of — being a member of one band
+        // must not hide sub assignments in another. Mirrors getSubEvents().
+        $subAssignedEventIds = array_values(array_unique(array_merge(
+            \DB::table('event_subs')
                 ->where('user_id', $this->id)
+                ->where('pending', false)
                 ->pluck('event_id')
-                ->toArray();
+                ->toArray(),
+            \DB::table('event_members')
+                ->where('user_id', $this->id)
+                ->whereNull('roster_member_id')
+                ->whereNull('deleted_at')
+                ->pluck('event_id')
+                ->toArray(),
+        )));
 
-            if (empty($assignedEventIds)) {
+        // Pure-sub users (no owned/member bands) are routed to getSubEvents()
+        // by UserEventsService before reaching here, but keep the standalone
+        // behaviour correct: restrict the query to their assigned events only.
+        if (!empty($subBandIds) && empty($bandIds)) {
+            if (empty($subAssignedEventIds)) {
                 return collect();
             }
 
+            $assignedEventIds = $subAssignedEventIds;
             $bandIds = $subBandIds;
         } else {
             $assignedEventIds = null;
         }
 
-        if (empty($bandIds)) {
+        if (empty($bandIds) && empty($subAssignedEventIds)) {
             return collect();
         }
         
+        // Member/owner bands contribute all their events; cross-band sub
+        // assignments contribute their specific events. For a member+sub user
+        // ($assignedEventIds === null but $subAssignedEventIds non-empty) these
+        // are OR'd together so neither hides the other.
+        $bookingBandFilter = function ($q) use ($bandIds, $assignedEventIds, $subAssignedEventIds) {
+            $q->whereIn('bookings.band_id', $bandIds);
+            if ($assignedEventIds === null && !empty($subAssignedEventIds)) {
+                $q->orWhereIn('events.id', $subAssignedEventIds);
+            }
+        };
+
         // Build the main booking events query
         $bookingQuery = Events::join('bookings', 'events.eventable_id', '=', 'bookings.id')
-            ->whereIn('bookings.band_id', $bandIds)
+            ->where($bookingBandFilter)
             ->where('events.eventable_type', 'App\\Models\\Bookings')
             ->select([
                 'events.date',
