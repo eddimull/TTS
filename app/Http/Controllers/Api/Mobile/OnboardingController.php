@@ -239,6 +239,10 @@ class OnboardingController extends Controller
 
         if ($existing) {
             return response()->json([
+                'token' => $this->tokenService->reissueForCurrentDevice(
+                    $user,
+                    $user->currentAccessToken(),
+                ),
                 'bands' => $this->tokenService->formatBands($user),
             ]);
         }
@@ -261,7 +265,15 @@ class OnboardingController extends Controller
         $user->assignRole('band-owner');
         setPermissionsTeamId(null);
 
+        // Unset the cached bandOwner relation so buildAbilities/formatBands
+        // re-query and see the newly created BandOwners row.
+        $user->unsetRelation('bandOwner');
+
         return response()->json([
+            'token' => $this->tokenService->reissueForCurrentDevice(
+                $user,
+                $user->currentAccessToken(),
+            ),
             'bands' => $this->tokenService->formatBands($user),
         ], 201);
     }
