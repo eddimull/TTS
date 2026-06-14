@@ -23,7 +23,7 @@ class FcmSender
     public function sendData(string $token, array $data): string
     {
         try {
-            $message = CloudMessage::new()->toToken($token)->withData($data);
+            $message = CloudMessage::new()->withToken($token)->withData($data);
             $this->messaging->send($message);
             return self::DELIVERED;
         } catch (NotFound $e) {
