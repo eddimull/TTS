@@ -48,11 +48,17 @@ class TokenService
         $deviceName = $current?->name ?: 'mobile';
         $abilities  = $this->buildAbilities($user);
 
-        $new = $user->createToken($deviceName, $abilities)->plainTextToken;
+        $newAccessToken = $user->createToken($deviceName, $abilities);
 
         $current?->delete();
 
-        return $new;
+        // Update the user's in-memory access token so that tokenCan() reflects
+        // the new abilities immediately. This matters when the same guard
+        // instance is reused (e.g. in tests) or when downstream code calls
+        // $request->user()->tokenCan() on the same request cycle.
+        $user->withAccessToken($newAccessToken->accessToken);
+
+        return $newAccessToken->plainTextToken;
     }
 
     public function formatUser(User $user): array
