@@ -65,6 +65,7 @@ class Events extends Model implements GoogleCalenderable
         'roster_id',
         'value',
         'venue_address',
+        'venue_timezone',
         'venue_name',
         'media_folder_path',
         'enable_portal_media_access',

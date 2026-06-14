@@ -92,6 +92,10 @@ Route::prefix('mobile')->group(function () {
         // Contract audit trail (band-agnostic — keyed by PandaDoc envelope id).
         Route::get('/contracts/{contract:envelope_id}/history', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'contractHistory'])->name('mobile.contracts.history');
 
+        // Device registration (push notifications)
+        Route::post('/devices', [App\Http\Controllers\Api\Mobile\DevicesController::class, 'store'])->name('mobile.devices.store');
+        Route::delete('/devices', [App\Http\Controllers\Api\Mobile\DevicesController::class, 'destroy'])->name('mobile.devices.destroy');
+
         // Events
         Route::get('/events/{event}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'show'])->name('mobile.events.show');
         Route::patch('/events/{event}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'update'])->name('mobile.events.update');
