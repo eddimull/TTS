@@ -66,6 +66,25 @@ class LeaveByPushServiceTest extends TestCase
         });
     }
 
+    public function test_dispatches_departure_trigger_in_its_window(): void
+    {
+        Queue::fake();
+        // First item 14:00 Chicago (CDT, UTC-5) - 90min = 12:30 CT = 17:30 UTC.
+        [$event, $user] = $this->makeRosteredEvent('2026-06-14', '19:00', '2026-06-14 14:00:00');
+        Carbon::setTestNow(Carbon::parse('2026-06-14 17:30:00', 'UTC'));
+
+        $this->app->make(LeaveByPushService::class)->run(Carbon::now());
+
+        Queue::assertPushed(SendEventPush::class, function ($job) use ($event, $user) {
+            return $job->type === 'event_departure'
+                && $job->eventId === $event->id
+                && $job->userId === $user->id
+                && $job->payload['type'] === 'event_departure';
+        });
+        // The 8h window (06:00 CT) is long past, so it must NOT also fire.
+        Queue::assertNotPushed(SendEventPush::class, fn ($j) => $j->type === 'event_reminder_8h');
+    }
+
     public function test_does_not_dispatch_when_already_logged(): void
     {
         Queue::fake();
