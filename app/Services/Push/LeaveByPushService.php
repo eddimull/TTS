@@ -81,6 +81,12 @@ class LeaveByPushService
             ->get();
 
         foreach ($members as $member) {
+            // Idempotency pre-check. NOTE: the log row is written by SendEventPush
+            // only after delivery, so two ticks within the grace window could both
+            // pass this check and dispatch before either logs — a user could get a
+            // duplicate push. The (event_id,user_id,type) unique index guarantees a
+            // single log row regardless. Acceptable for a reminder; if at-most-once
+            // delivery is ever required, claim the log row here before dispatching.
             $already = PushNotificationLog::where('event_id', $event->id)
                 ->where('user_id', $member->user_id)
                 ->where('type', $type)
@@ -155,7 +161,7 @@ class LeaveByPushService
             $timeStr = preg_match('/(\d{1,2}:\d{2})/', (string) $time, $m) ? $m[1] : (string) $time;
 
             return Carbon::parse("{$dateStr} {$timeStr}", $tz);
-        } catch (\Throwable $e) {
+        } catch (\Throwable) {
             return null;
         }
     }
