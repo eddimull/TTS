@@ -27,6 +27,10 @@ class Kernel extends ConsoleKernel
         // Horizon metrics snapshot (every 5 minutes)
         $schedule->command('horizon:snapshot')->everyFiveMinutes();
 
+        $schedule->command('notifications:tick')
+            ->everyFiveMinutes()
+            ->onOneServer();
+
         // Check for signed PandaDoc contracts every day in case the webhook failed
         $schedule->command('contracts:check-signed')
             ->dailyAt('11:00');
