@@ -17,8 +17,10 @@ use App\Models\EventMember;
 use App\Models\LiveSetlistSession;
 use App\Models\SubstituteCallList;
 use App\Services\Mobile\EventDataService;
+use App\Services\UserEventsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 class EventsController extends Controller
@@ -34,21 +36,35 @@ class EventsController extends Controller
             abort(403);
         }
 
-        $events = Events::where(function ($q) use ($band) {
-            $q->where(function ($inner) use ($band) {
-                $inner->where('eventable_type', Bookings::class)
-                    ->whereHas('eventable', fn ($bq) => $bq->where('band_id', $band->id));
-            })->orWhere(function ($inner) use ($band) {
-                $inner->where('eventable_type', BandEvents::class)
-                    ->whereHas('eventable', fn ($bq) => $bq->where('band_id', $band->id));
-            })->orWhere(function ($inner) use ($band) {
-                $inner->where('eventable_type', 'App\\Models\\Rehearsal')
-                    ->whereHas('eventable', fn ($rq) => $rq->where('band_id', $band->id));
-            });
-        })
+        // Resolve the exact set of events this user is entitled to see using the
+        // same logic the web dashboard uses (UserEventsService). For a sub-only
+        // user this is just their assigned events, not every band event — which
+        // is what keeps the mobile list identical to the web list. The service
+        // owns the date window (default: now()->subHours(72)); the {band} route
+        // then narrows that user-scoped set to this band.
+        $afterDate  = $request->filled('from') ? Carbon::parse($request->input('from')) : null;
+        $beforeDate = $request->filled('to') ? Carbon::parse($request->input('to'))->addDay() : null;
+
+        $entitledIds = (new UserEventsService())->getEventIds($afterDate, $beforeDate);
+
+        if (empty($entitledIds)) {
+            return response()->json(['events' => []]);
+        }
+
+        $events = Events::whereIn('id', $entitledIds)
+            ->where(function ($q) use ($band) {
+                $q->where(function ($inner) use ($band) {
+                    $inner->where('eventable_type', Bookings::class)
+                        ->whereHas('eventable', fn ($bq) => $bq->where('band_id', $band->id));
+                })->orWhere(function ($inner) use ($band) {
+                    $inner->where('eventable_type', BandEvents::class)
+                        ->whereHas('eventable', fn ($bq) => $bq->where('band_id', $band->id));
+                })->orWhere(function ($inner) use ($band) {
+                    $inner->where('eventable_type', 'App\\Models\\Rehearsal')
+                        ->whereHas('eventable', fn ($rq) => $rq->where('band_id', $band->id));
+                });
+            })
             ->with(['eventable', 'type'])
-            ->when($request->filled('from'), fn ($q) => $q->whereDate('date', '>=', $request->input('from')))
-            ->when($request->filled('to'),   fn ($q) => $q->whereDate('date', '<=', $request->input('to')))
             ->orderBy('date')->orderBy('start_time')
             ->get();
 
