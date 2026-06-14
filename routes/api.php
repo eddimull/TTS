@@ -94,7 +94,7 @@ Route::prefix('mobile')->group(function () {
 
         // Device registration (push notifications)
         Route::post('/devices', [App\Http\Controllers\Api\Mobile\DevicesController::class, 'store'])->name('mobile.devices.store');
-        Route::delete('/devices/{token}', [App\Http\Controllers\Api\Mobile\DevicesController::class, 'destroy'])->name('mobile.devices.destroy');
+        Route::delete('/devices', [App\Http\Controllers\Api\Mobile\DevicesController::class, 'destroy'])->name('mobile.devices.destroy');
 
         // Events
         Route::get('/events/{event}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'show'])->name('mobile.events.show');

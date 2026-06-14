@@ -23,10 +23,14 @@ class DevicesController extends Controller
         return response()->json(['status' => 'ok']);
     }
 
-    public function destroy(Request $request, string $token): JsonResponse
+    public function destroy(Request $request): JsonResponse
     {
+        // Token comes in the request body, not the URL path: FCM/APNs tokens can
+        // contain '/' and ':' which would break a path-segment route binding.
+        $request->validate(['token' => ['required', 'string', 'max:512']]);
+
         DeviceToken::where('user_id', $request->user()->id)
-            ->where('token', $token)
+            ->where('token', $request->string('token')->toString())
             ->delete();
 
         return response()->json(['status' => 'ok']);
