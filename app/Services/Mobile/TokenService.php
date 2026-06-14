@@ -3,6 +3,7 @@
 namespace App\Services\Mobile;
 
 use App\Models\User;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class TokenService
 {
@@ -31,6 +32,27 @@ class TokenService
         }
 
         return array_values(array_unique($abilities));
+    }
+
+    /**
+     * Re-mint the calling device's token from the user's CURRENT abilities and
+     * delete the old one. Returns the new plain-text token.
+     *
+     * Used by the refresh endpoint and goSolo so a token can't stay stale after
+     * the user's bands/roles change. $current is the token being replaced (the
+     * caller's currentAccessToken), or null when none is resolvable — in which
+     * case we fall back to a generic device name.
+     */
+    public function reissueForCurrentDevice(User $user, ?PersonalAccessToken $current): string
+    {
+        $deviceName = $current?->name ?: 'mobile';
+        $abilities  = $this->buildAbilities($user);
+
+        $new = $user->createToken($deviceName, $abilities)->plainTextToken;
+
+        $current?->delete();
+
+        return $new;
     }
 
     public function formatUser(User $user): array
