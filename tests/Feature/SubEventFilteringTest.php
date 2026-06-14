@@ -193,6 +193,102 @@ class SubEventFilteringTest extends TestCase
         $this->assertCount(2, $events);
     }
 
+    public function test_member_of_one_band_also_sees_sub_events_from_another_band()
+    {
+        // User is a MEMBER of band A (this->band) and a SUB for a different band B.
+        // They must see band A's events AND their assigned band B event — being a
+        // member of one band must not hide sub assignments in another.
+        $memberSub = User::factory()->create();
+        $memberSub->assignRole('sub');
+
+        BandMembers::create([
+            'user_id' => $memberSub->id,
+            'band_id' => $this->band->id,
+        ]);
+
+        // Band A event (visible because they're a member of band A)
+        $bookingA = Bookings::factory()->create(['band_id' => $this->band->id]);
+        $eventA = Events::factory()->create([
+            'eventable_id' => $bookingA->id,
+            'eventable_type' => 'App\Models\Bookings',
+            'date' => now()->addDays(5),
+        ]);
+
+        // Band B (different band) — they are NOT a member, only a sub on one event
+        $bandB = Bands::factory()->create(['name' => 'Other Band']);
+        $bookingB = Bookings::factory()->create(['band_id' => $bandB->id]);
+        $eventBAssigned = Events::factory()->create([
+            'eventable_id' => $bookingB->id,
+            'eventable_type' => 'App\Models\Bookings',
+            'date' => now()->addDays(8),
+        ]);
+        // A band B event they are NOT on — must remain hidden
+        $bookingBOther = Bookings::factory()->create(['band_id' => $bandB->id]);
+        $eventBUnassigned = Events::factory()->create([
+            'eventable_id' => $bookingBOther->id,
+            'eventable_type' => 'App\Models\Bookings',
+            'date' => now()->addDays(9),
+        ]);
+
+        EventSubs::create([
+            'event_id' => $eventBAssigned->id,
+            'band_id' => $bandB->id,
+            'user_id' => $memberSub->id,
+            'email' => $memberSub->email,
+            'pending' => false,
+        ]);
+
+        Auth::login($memberSub);
+        $events = $this->userEventsService->getEvents();
+        $ids = $events->pluck('id')->toArray();
+
+        $this->assertContains($eventA->id, $ids, 'must see their own band events');
+        $this->assertContains($eventBAssigned->id, $ids, 'must see sub-assigned events in another band');
+        $this->assertNotContains($eventBUnassigned->id, $ids, 'must NOT see unassigned events in a band they only sub for');
+    }
+
+    public function test_member_also_sees_event_member_sub_assignments_from_another_band()
+    {
+        // Same as above but the cross-band assignment is via event_members
+        // (roster_member_id NULL), the path Wesley actually came in through.
+        $memberSub = User::factory()->create();
+        $memberSub->assignRole('sub');
+
+        BandMembers::create([
+            'user_id' => $memberSub->id,
+            'band_id' => $this->band->id,
+        ]);
+
+        $bookingA = Bookings::factory()->create(['band_id' => $this->band->id]);
+        $eventA = Events::factory()->create([
+            'eventable_id' => $bookingA->id,
+            'eventable_type' => 'App\Models\Bookings',
+            'date' => now()->addDays(5),
+        ]);
+
+        $bandB = Bands::factory()->create(['name' => 'Other Band']);
+        $bookingB = Bookings::factory()->create(['band_id' => $bandB->id]);
+        $eventBAssigned = Events::factory()->create([
+            'eventable_id' => $bookingB->id,
+            'eventable_type' => 'App\Models\Bookings',
+            'date' => now()->addDays(8),
+        ]);
+
+        \App\Models\EventMember::create([
+            'event_id' => $eventBAssigned->id,
+            'band_id' => $bandB->id,
+            'user_id' => $memberSub->id,
+            'roster_member_id' => null,
+            'name' => $memberSub->name,
+        ]);
+
+        Auth::login($memberSub);
+        $ids = $this->userEventsService->getEvents()->pluck('id')->toArray();
+
+        $this->assertContains($eventA->id, $ids);
+        $this->assertContains($eventBAssigned->id, $ids, 'must see event_members sub assignments from another band');
+    }
+
     public function test_band_owner_sees_all_events()
     {
         // Owners should see all events regardless of sub invitations
