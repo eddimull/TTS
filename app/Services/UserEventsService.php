@@ -11,6 +11,26 @@ use Illuminate\Support\Carbon;
 
 class UserEventsService
 {
+    /**
+     * Return the set of event IDs the authenticated user is entitled to see,
+     * using the exact same scoping rules as getEvents() (owner/member → all
+     * band events; sub-only → assigned events), including the default
+     * now()->subHours(72) window.
+     *
+     * This is the single source of truth for "which events does this user
+     * see" so the mobile API and the web dashboard cannot diverge. Virtual
+     * rehearsals (which have no real event id) are naturally excluded.
+     */
+    public function getEventIds($afterDate = null, $beforeDate = null)
+    {
+        return $this->getEvents($afterDate, $beforeDate)
+            ->pluck('id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     public function getEvents($afterDate = null, $beforeDate = null, $limit = null)
     {
         if ($afterDate === null) {
