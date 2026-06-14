@@ -82,6 +82,15 @@ class TokenRefreshTest extends TestCase
             ->assertOk()
             ->json('token');
 
+        // The refreshed token must not carry write:bookings for ANY band — the
+        // user belongs to none, so buildAbilities() emits no band abilities.
+        // This proves refresh re-syncs abilities to reality, not just that the
+        // membership gate blocks.
+        $this->assertNotContains(
+            'write:bookings',
+            $user->tokens()->latest('id')->first()->abilities,
+        );
+
         // Even refreshed, the user cannot create a booking on a band they're not in.
         $this->withToken($newToken)
             ->withHeaders(['X-Band-ID' => $otherBand->id])

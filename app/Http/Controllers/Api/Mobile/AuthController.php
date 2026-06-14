@@ -55,6 +55,9 @@ class AuthController extends Controller
     public function refresh(Request $request): JsonResponse
     {
         $user  = $request->user();
+        // Under auth:sanctum on this non-stateful mobile route, currentAccessToken()
+        // is always a PersonalAccessToken (bearer auth). A TransientToken only
+        // arises for session/cookie auth, which never reaches this endpoint.
         $token = $this->tokenService->reissueForCurrentDevice(
             $user,
             $user->currentAccessToken(),
