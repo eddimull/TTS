@@ -60,3 +60,6 @@ tasks/
 CLAUDE.md
 .claude/
 .superpowers/
+
+# Firebase credentials
+/storage/app/firebase/
