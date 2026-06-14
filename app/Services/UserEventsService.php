@@ -39,6 +39,16 @@ class UserEventsService
 
         $user = Auth::user();
 
+        // The `sub` role is assigned globally (team_id 0). Spatie evaluates
+        // hasRole() against the CURRENT permissions team, so without a team set
+        // hasRole('sub') returns false and a sub-only user falls through to the
+        // band path and gets ZERO events. The web app runs inside middleware
+        // that sets the team; mobile (DashboardController) only calls
+        // Auth::setUser() and never sets it. Pin the team to 0 here so the role
+        // check is correct for every caller, regardless of entry point.
+        setPermissionsTeamId(0);
+        $user->unsetRelation('roles');
+
         // Check if user is ONLY a sub (has sub role and no band ownership/membership)
         // Use cached relationship properties to avoid duplicate queries within the same request
         $isSub = $user->hasRole('sub');
