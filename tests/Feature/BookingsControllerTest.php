@@ -193,6 +193,38 @@ class BookingsControllerTest extends TestCase
         \Illuminate\Support\Facades\DB::rollBack();
     }
 
+    public function test_created_booking_event_does_not_seed_a_duplicate_end_time_marker()
+    {
+        // The event end is the canonical end_time column (shown as the End Time
+        // pin in the timeline). store() must not also seed a free-form
+        // 'End Time' marker into additional_data.times, which would duplicate it.
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        setPermissionsTeamId($this->band->id);
+        $this->member->givePermissionTo(['read:bookings', 'write:bookings']);
+        setPermissionsTeamId(0);
+
+        $bookingData = Bookings::factory()->withGigDetails()->duration(3)->make(['band_id' => $this->band->id])->toArray();
+        $bookingData['duration'] = 3;
+        $bookingData['start_time'] = '19:00';
+        unset($bookingData['end_time']);
+
+        $this->actingAs($this->member)->post(route('bands.booking.store', $this->band), $bookingData)
+            ->assertStatus(302);
+
+        $booking = $this->band->bookings()->where('name', $bookingData['name'])->firstOrFail();
+        $event = $booking->events()->firstOrFail();
+
+        $titles = collect($event->additional_data->times ?? [])->pluck('title');
+        $this->assertNotContains('End Time', $titles, 'store() should not seed a duplicate End Time marker');
+        // The other seeded markers should still be present.
+        $this->assertContains('Load In', $titles);
+        $this->assertContains('Soundcheck', $titles);
+        // The canonical end_time column is still set.
+        $this->assertSame('22:00', $event->end_time->format('H:i'));
+
+        \Illuminate\Support\Facades\DB::rollBack();
+    }
+
     public function test_non_member_cannot_create_booking()
     {
         $bookingData = Bookings::factory()->withGigDetails()->make(['band_id' => $this->band->id])->toArray();

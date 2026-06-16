@@ -165,6 +165,7 @@
           <Timeline
             :event-date="event.date"
             :event-time="event.start_time"
+            :end-time="event.end_time"
             :times="event.additional_data.times || []"
             @update:times="updateTimes"
           />
@@ -497,9 +498,9 @@ onMounted(() => {
     });
 });
 
-const updateTimes = (newTimes, eventTimeEntry) => {
+const updateTimes = (newTimes, eventTimeEntry, endTimeEntry) => {
     event.value.additional_data.times = newTimes;
-    
+
     // If the main event time was updated, sync it to the parent event
     if (eventTimeEntry && eventTimeEntry.time) {
         // Parse the datetime string (format: "YYYY-MM-DDTHH:MM")
@@ -507,6 +508,15 @@ const updateTimes = (newTimes, eventTimeEntry) => {
         if (datePart && timePart) {
             event.value.date = datePart;
             event.value.start_time = timePart;
+        }
+    }
+
+    // If the End Time pin was dragged, sync it back to the canonical
+    // end_time column (which also drives the Google Calendar event end).
+    if (endTimeEntry && endTimeEntry.time) {
+        const timePart = endTimeEntry.time.split('T')[1];
+        if (timePart) {
+            event.value.end_time = timePart;
         }
     }
 };
