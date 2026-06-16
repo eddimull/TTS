@@ -35,6 +35,30 @@ class AccountUpdateTest extends TestCase
         $this->assertFalse((bool) $user->emailNotifications);
     }
 
+    public function test_accepts_numeric_state_and_country_ids(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('test')->plainTextToken;
+
+        // Client sends numeric IDs (as the lookup lists expose them) — must not 422.
+        $response = $this->withToken($token)->patchJson('/api/mobile/account', [
+            'name'                => $user->name,
+            'email'               => $user->email,
+            'state_id'            => 12,
+            'country_id'          => 1,
+            'email_notifications' => true,
+        ]);
+
+        $response->assertOk();
+        // Returned as ints for type consistency with the lookup lists.
+        $this->assertSame(12, $response->json('account.state_id'));
+        $this->assertSame(1, $response->json('account.country_id'));
+
+        $user->refresh();
+        $this->assertSame('12', $user->StateID); // stored as varchar
+        $this->assertSame('1', $user->CountryID);
+    }
+
     public function test_password_only_changes_when_provided(): void
     {
         $user = User::factory()->create(['password' => Hash::make('original-pass')]);

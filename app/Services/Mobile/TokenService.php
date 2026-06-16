@@ -86,8 +86,11 @@ class TokenService
             'address1'            => $user->Address1,
             'address2'            => $user->Address2,
             'city'                => $user->City,
-            'state_id'            => $user->StateID,
-            'country_id'          => $user->CountryID,
+            // Stored as varchar on the users row, but the state/country lookup
+            // lists expose numeric IDs — normalize to int (or null) so the API
+            // types are consistent and clients don't have to cast.
+            'state_id'            => is_numeric($user->StateID) ? (int) $user->StateID : null,
+            'country_id'          => is_numeric($user->CountryID) ? (int) $user->CountryID : null,
             'zip'                 => $user->Zip,
             'email_notifications' => (bool) $user->emailNotifications,
         ];
