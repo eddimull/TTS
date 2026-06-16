@@ -8,9 +8,11 @@ use App\Models\BandOwners;
 use App\Models\Bands;
 use App\Models\DeviceToken;
 use App\Models\User;
+use App\Services\GoogleCalendarService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
+use Mockery;
 use Tests\TestCase;
 
 class AccountDeletionTest extends TestCase
@@ -42,6 +44,9 @@ class AccountDeletionTest extends TestCase
 
     public function test_valid_signed_link_deletes_account_and_personal_data(): void
     {
+        $mockCalendar = Mockery::mock(GoogleCalendarService::class);
+        $this->app->instance(GoogleCalendarService::class, $mockCalendar);
+
         $user = User::factory()->create();
         $user->createToken('device-a');
         DeviceToken::factory()->create(['user_id' => $user->id]);
@@ -61,6 +66,9 @@ class AccountDeletionTest extends TestCase
 
     public function test_deletion_detaches_from_band_but_preserves_other_members(): void
     {
+        $mockCalendar = Mockery::mock(GoogleCalendarService::class);
+        $this->app->instance(GoogleCalendarService::class, $mockCalendar);
+
         $leaving   = User::factory()->create();
         $remaining = User::factory()->create();
 
