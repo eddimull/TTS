@@ -42,7 +42,9 @@
                 'flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center',
                 entry.isEventTime
                   ? 'bg-blue-500 border-2 border-white dark:border-slate-700'
-                  : 'bg-blue-500'
+                  : entry.isEndTime
+                    ? 'bg-amber-500 border-2 border-white dark:border-slate-700'
+                    : 'bg-blue-500'
               ]"
             >
               <span class="text-white font-semibold text-lg">{{ index + 1 }}</span>
@@ -50,7 +52,7 @@
             <div class="ml-4 flex-grow">
               <p
                 :class="{
-                  'font-bold': entry.isEventTime
+                  'font-bold': entry.isEventTime || entry.isEndTime
                 }"
                 class="text-sm font-medium text-gray-900 dark:text-white"
               >
@@ -139,7 +141,8 @@
               'fixed rounded-lg shadow-lg cursor-move': expandedEntries.has(entry.id),
               'overflow-visible': expandedEntries.has(entry.id),
               'bg-blue-500 dark:bg-blue-600 border-2 border-blue-600 dark:border-blue-700 cursor-auto': entry.isEventTime,
-              'bg-green-500 dark:bg-green-600 border-2 border-green-600 dark:border-green-700 hover:shadow-lg': !entry.isEventTime,
+              'bg-amber-500 dark:bg-amber-600 border-2 border-amber-600 dark:border-amber-700 cursor-auto': entry.isEndTime,
+              'bg-green-500 dark:bg-green-600 border-2 border-green-600 dark:border-green-700 hover:shadow-lg': !entry.isEventTime && !entry.isEndTime,
               'ring-2 ring-blue-300 dark:ring-blue-400': draggedEntry?.id === entry.id,
               'transition-all duration-200': draggedEntry?.id !== entry.id
             }"
@@ -159,7 +162,7 @@
                   </div>
                 </div>
                 <button
-                  v-if="!entry.isEventTime"
+                  v-if="!entry.isEventTime && !entry.isEndTime"
                   class="ml-2 p-1 hover:bg-white/20 rounded transition-colors flex-shrink-0"
                   title="Remove"
                   @click.stop="removeTimeEntry(entry.id)"
@@ -198,7 +201,7 @@
                       type="text"
                       placeholder="Enter title"
                       class="w-full p-1.5 text-sm border rounded bg-white dark:bg-slate-700 dark:text-gray-50 dark:border-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      :disabled="entry.isEventTime"
+                      :disabled="entry.isEventTime || entry.isEndTime"
                       @input="emitUpdate"
                     >
                   </div>
@@ -207,6 +210,12 @@
                     class="text-xs text-white/80 italic"
                   >
                     Main event time - drag to reposition
+                  </div>
+                  <div
+                    v-else-if="entry.isEndTime"
+                    class="text-xs text-white/80 italic"
+                  >
+                    Event end time - drag to reposition
                   </div>
                 </div>
               </div>
@@ -252,6 +261,10 @@ const props = defineProps({
     eventTime: {
         type: String,
         required: true,
+    },
+    endTime: {
+        type: String,
+        default: null,
     },
     times: {
         type: Array,
@@ -328,6 +341,35 @@ watch(
     }
 );
 
+// Keep the End Time pin in sync with the parent's end_time / date. Handles
+// the End Time field in BasicInfo, and creates/removes the pin when end_time
+// is set or cleared.
+watch(
+    () => [props.eventDate, props.endTime],
+    ([newDate, newEnd]) => {
+        const endEntry = timeEntries.value.find(e => e.isEndTime);
+        if (newEnd) {
+            const newDateTime = `${newDate}T${newEnd}`;
+            if (endEntry) {
+                if (endEntry.time !== newDateTime) {
+                    endEntry.time = newDateTime;
+                }
+            } else {
+                timeEntries.value.push({
+                    id: 'end-time',
+                    title: 'End Time',
+                    time: newDateTime,
+                    isEndTime: true,
+                });
+            }
+        } else if (endEntry) {
+            // end_time cleared upstream — drop the pin.
+            const idx = timeEntries.value.findIndex(e => e.isEndTime);
+            if (idx !== -1) timeEntries.value.splice(idx, 1);
+        }
+    }
+);
+
 onMounted(() => {
     if (timelineContainer.value) {
         // Use setTimeout to ensure the DOM is fully rendered
@@ -359,7 +401,16 @@ onMounted(() => {
     }
 });
 
-// Initialize time entries with the main event time
+// Initialize time entries with the special Show Time + End Time pins.
+//
+// Show Time and End Time are both pinned, draggable entries bound to the
+// canonical start_time / end_time columns (which also drive the Google
+// Calendar event start/end). Everything else is a free-form marker stored
+// in additional_data.times.
+//
+// Legacy bookings seeded a free-form "End Time" marker into times; filter it
+// out so we never render two "End Time" rows — the pin below is the single
+// source of truth.
 const timeEntries = ref([
     {
         id: 'event-time',
@@ -367,10 +418,18 @@ const timeEntries = ref([
         time: `${props.eventDate}T${props.eventTime}`,
         isEventTime: true
     },
-    ...props.times.map((entry) => ({
-        ...entry,
-        id: entry.id || crypto.randomUUID(),
-    }))
+    ...(props.endTime ? [{
+        id: 'end-time',
+        title: 'End Time',
+        time: `${props.eventDate}T${props.endTime}`,
+        isEndTime: true
+    }] : []),
+    ...props.times
+        .filter((entry) => entry.title !== 'End Time')
+        .map((entry) => ({
+            ...entry,
+            id: entry.id || crypto.randomUUID(),
+        }))
 ]);
 
 // Generate time slots (24 hours + optional extended hours for next day)
@@ -494,7 +553,7 @@ const getEntryStyle = (entry) => {
         zIndex = 9999;
     } else if (isExpanded) {
         zIndex = 999;
-    } else if (entry.isEventTime) {
+    } else if (entry.isEventTime || entry.isEndTime) {
         zIndex = 50;
     }
 
@@ -819,7 +878,9 @@ const addTimeEntry = () => {
 
 // Remove time entry
 const removeTimeEntry = (id) => {
-    if (id === 'event-time') return;
+    // The Show Time / End Time pins are backed by the start_time / end_time
+    // columns and can't be deleted from the timeline.
+    if (id === 'event-time' || id === 'end-time') return;
     
     const index = timeEntries.value.findIndex((entry) => entry.id === id);
     if (index !== -1) {
@@ -836,13 +897,17 @@ const removeTimeEntry = (id) => {
 
 // Emit updates to parent
 const emitUpdate = () => {
+    // Pinned entries (Show Time / End Time) are backed by the start_time /
+    // end_time columns, not additional_data.times — exclude them from the
+    // saved markers.
     const filteredEntries = timeEntries.value
-        .filter((entry) => !entry.isEventTime && entry.title && entry.time);
-    
-    // Find the main event time entry
+        .filter((entry) => !entry.isEventTime && !entry.isEndTime && entry.title && entry.time);
+
+    // Find the pinned entries so the parent can sync the canonical columns.
     const eventTimeEntry = timeEntries.value.find((entry) => entry.isEventTime);
-    
-    emit("update:times", filteredEntries, eventTimeEntry);
+    const endTimeEntry = timeEntries.value.find((entry) => entry.isEndTime);
+
+    emit("update:times", filteredEntries, eventTimeEntry, endTimeEntry);
 };
 
 // Cleanup on unmount
