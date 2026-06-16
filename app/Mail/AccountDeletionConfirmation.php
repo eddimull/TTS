@@ -16,7 +16,7 @@ class AccountDeletionConfirmation extends Mailable
         public string $confirmationUrl,
     ) {}
 
-    public function build()
+    public function build(): static
     {
         return $this->markdown('email.account-deletion')
             ->with('name', $this->user->name)
