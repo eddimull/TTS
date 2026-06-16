@@ -71,6 +71,27 @@ class TokenService
         ];
     }
 
+    /**
+     * Full editable account profile for the mobile Account screen. Mirrors the
+     * fields the web Account/Index page exposes (name, email, address, locale,
+     * notifications). Password is intentionally never returned.
+     */
+    public function formatAccount(User $user): array
+    {
+        return [
+            'id'                  => $user->id,
+            'name'                => $user->name,
+            'email'               => $user->email,
+            'address1'            => $user->Address1,
+            'address2'            => $user->Address2,
+            'city'                => $user->City,
+            'state_id'            => $user->StateID,
+            'country_id'          => $user->CountryID,
+            'zip'                 => $user->Zip,
+            'email_notifications' => (bool) $user->emailNotifications,
+        ];
+    }
+
     public function formatBands(User $user): array
     {
         return $user->allBands()->map(fn ($b) => [
