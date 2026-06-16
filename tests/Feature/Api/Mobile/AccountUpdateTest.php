@@ -59,6 +59,20 @@ class AccountUpdateTest extends TestCase
         $this->assertSame('1', $user->CountryID);
     }
 
+    public function test_rejects_non_scalar_state_and_country_ids(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('test')->plainTextToken;
+
+        // An array would otherwise cast to the string "Array" and corrupt data.
+        $this->withToken($token)->patchJson('/api/mobile/account', [
+            'name'                => $user->name,
+            'email'               => $user->email,
+            'state_id'            => ['evil'],
+            'email_notifications' => true,
+        ])->assertUnprocessable()->assertJsonValidationErrors(['state_id']);
+    }
+
     public function test_password_only_changes_when_provided(): void
     {
         $user = User::factory()->create(['password' => Hash::make('original-pass')]);
