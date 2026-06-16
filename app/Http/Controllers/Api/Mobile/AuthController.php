@@ -21,7 +21,6 @@ class AuthController extends Controller
 {
     public function __construct(
         private readonly TokenService $tokenService,
-        private readonly AccountDeletionService $accountDeletionService,
     ) {}
 
     public function token(TokenRequest $request): JsonResponse
@@ -169,13 +168,13 @@ class AuthController extends Controller
      * forged links and prevents leaking account existence via a 403-vs-404
      * difference (an invalid signature always 403s, regardless of the id).
      */
-    public function confirmDeletion(Request $request, int $user)
+    public function confirmDeletion(Request $request, int $user): \Illuminate\Http\Response
     {
         abort_unless($request->hasValidSignature(), 403, 'This deletion link is invalid or has expired.');
 
         $account = User::findOrFail($user);
 
-        $this->accountDeletionService->deleteAccount($account);
+        app(AccountDeletionService::class)->deleteAccount($account);
 
         return response()->view('account.deletion-confirmed');
     }
