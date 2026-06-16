@@ -73,8 +73,9 @@ class TokenService
 
     /**
      * Full editable account profile for the mobile Account screen. Mirrors the
-     * fields the web Account/Index page exposes (name, email, address, locale,
-     * notifications). Password is intentionally never returned.
+     * fields the web Account/Index page exposes (name, email, address, city,
+     * state, country, zip, email notifications). Password is intentionally
+     * never returned.
      */
     public function formatAccount(User $user): array
     {

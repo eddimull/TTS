@@ -65,7 +65,8 @@ class AccountUpdateTest extends TestCase
 
     public function test_email_must_be_unique_to_other_users(): void
     {
-        $other = User::factory()->create(['email' => 'taken@example.com']);
+        // Reserve the email on another account so the uniqueness rule fires.
+        User::factory()->create(['email' => 'taken@example.com']);
         $user  = User::factory()->create();
         $token = $user->createToken('test')->plainTextToken;
 

@@ -95,4 +95,12 @@ class AccountDeletionTest extends TestCase
 
         $this->assertDatabaseHas('users', ['id' => $user->id]);
     }
+
+    public function test_invalid_signature_on_unknown_user_still_403_not_404(): void
+    {
+        // Signature is validated before any DB lookup, so a forged link can't be
+        // used to probe whether an account id exists (always 403, never 404).
+        $this->get('/api/mobile/account/confirm-deletion/999999?signature=deadbeef&expires=9999999999')
+            ->assertForbidden();
+    }
 }

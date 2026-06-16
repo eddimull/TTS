@@ -163,12 +163,19 @@ class AuthController extends Controller
      * Public (no token): the signature is the credential, since the user may
      * open this from their mail client. Runs the deletion and returns a simple
      * web confirmation page.
+     *
+     * The route param is taken as a raw int (not route-model-bound) so the
+     * signature is validated BEFORE any DB lookup — this avoids a DB hit on
+     * forged links and prevents leaking account existence via a 403-vs-404
+     * difference (an invalid signature always 403s, regardless of the id).
      */
-    public function confirmDeletion(Request $request, User $user)
+    public function confirmDeletion(Request $request, int $user)
     {
         abort_unless($request->hasValidSignature(), 403, 'This deletion link is invalid or has expired.');
 
-        $this->accountDeletionService->deleteAccount($user);
+        $account = User::findOrFail($user);
+
+        $this->accountDeletionService->deleteAccount($account);
 
         return response()->view('account.deletion-confirmed');
     }
