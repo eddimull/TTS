@@ -130,7 +130,6 @@ class BookingsController extends Controller
         $venueAddress = $validated['venue_address'] ?? null;
 
         $startDateTime = \Carbon\Carbon::parse($eventDate . ' ' . $eventStart);
-        $endDateTime   = \Carbon\Carbon::parse($eventDate . ' ' . $eventEnd);
 
         $event = [
             'event_type_id' => $booking->event_type_id,
@@ -143,11 +142,14 @@ class BookingsController extends Controller
             'venue_address' => $venueAddress,
             'roster_id' => $defaultRoster?->id,
             'additional_data' => [
+                // Note: no 'End Time' marker here. The event's end is the
+                // canonical end_time column (also shown as the End Time pin in
+                // the timeline and used for the Google Calendar event end); a
+                // free-form marker would just duplicate it.
                 'times' => [
                     ['title' => 'Load In', 'time' => $startDateTime->copy()->subHours(4)->format('Y-m-d H:i')],
                     ['title' => 'Soundcheck', 'time' => $startDateTime->copy()->subHours(3)->format('Y-m-d H:i')],
                     ['title' => 'Quiet', 'time' => $startDateTime->copy()->subHours(1)->format('Y-m-d H:i')],
-                    ['title' => 'End Time', 'time' => $endDateTime->format('Y-m-d H:i')],
                 ],
                 'backline_provided' => false,
                 'production_needed' => true,
