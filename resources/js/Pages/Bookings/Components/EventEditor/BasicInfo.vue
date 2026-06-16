@@ -28,6 +28,16 @@
         class="w-full p-2 border dark:bg-slate-700 dark:text-gray-50 rounded"
       />
     </div>
+    <div>
+      <Input
+        id="end_time"
+        v-model="modelValue.end_time"
+        label="End Time"
+        type="time"
+        dusk="event-end-time"
+        class="w-full p-2 border dark:bg-slate-700 dark:text-gray-50 rounded"
+      />
+    </div>
   </div>
 </template>
 

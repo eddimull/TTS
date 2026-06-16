@@ -119,6 +119,26 @@ class BookingSubresourceEventsTest extends TestCase
         ]);
     }
 
+    public function test_owner_can_update_event_end_time_via_subresource_endpoint(): void
+    {
+        // Backs the End Time field in the event editor's BasicInfo section.
+        // The editor PUTs the whole event (incl. end_time) to this endpoint,
+        // so end_time must round-trip and persist on the events table.
+        $event = $this->booking->events()->first();
+
+        $response = $this->actingAs($this->owner)->put(
+            route('Update Booking Event', [$this->band, $this->booking, $event]),
+            $this->eventPayload(['start_time' => '19:00', 'end_time' => '23:30']),
+        );
+
+        $response->assertRedirect();
+        $response->assertSessionHas('successMessage', 'Event Updated');
+
+        $event->refresh();
+        $this->assertSame('19:00', $event->start_time->format('H:i'));
+        $this->assertSame('23:30', $event->end_time->format('H:i'));
+    }
+
     public function test_deleting_the_last_event_returns_an_error_and_keeps_the_event(): void
     {
         $event = $this->booking->events()->first();
