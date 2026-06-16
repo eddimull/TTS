@@ -71,6 +71,31 @@ class TokenService
         ];
     }
 
+    /**
+     * Full editable account profile for the mobile Account screen. Mirrors the
+     * fields the web Account/Index page exposes (name, email, address, city,
+     * state, country, zip, email notifications). Password is intentionally
+     * never returned.
+     */
+    public function formatAccount(User $user): array
+    {
+        return [
+            'id'                  => $user->id,
+            'name'                => $user->name,
+            'email'               => $user->email,
+            'address1'            => $user->Address1,
+            'address2'            => $user->Address2,
+            'city'                => $user->City,
+            // Stored as varchar on the users row, but the state/country lookup
+            // lists expose numeric IDs — normalize to int (or null) so the API
+            // types are consistent and clients don't have to cast.
+            'state_id'            => is_numeric($user->StateID) ? (int) $user->StateID : null,
+            'country_id'          => is_numeric($user->CountryID) ? (int) $user->CountryID : null,
+            'zip'                 => $user->Zip,
+            'email_notifications' => (bool) $user->emailNotifications,
+        ];
+    }
+
     public function formatBands(User $user): array
     {
         return $user->allBands()->map(fn ($b) => [
