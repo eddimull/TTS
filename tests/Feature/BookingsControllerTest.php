@@ -161,6 +161,38 @@ class BookingsControllerTest extends TestCase
         \Illuminate\Support\Facades\DB::rollBack();
     }
 
+    public function test_created_booking_event_end_time_is_start_plus_duration()
+    {
+        // Regression: the booking form submits start_time + duration and no
+        // end_time. StoreBookingsRequest injects a placeholder end_time of
+        // '00:00' before deriving the real end_time (start + duration) in
+        // validated(). The controller must read the derived value, not the
+        // placeholder, or every generated event ends at midnight.
+        $duration = 3;
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        setPermissionsTeamId($this->band->id);
+        $this->member->givePermissionTo(['read:bookings', 'write:bookings']);
+        setPermissionsTeamId(0);
+
+        $bookingData = Bookings::factory()->withGigDetails()->duration($duration)->make(['band_id' => $this->band->id])->toArray();
+        $bookingData['duration'] = $duration;
+        $bookingData['start_time'] = '19:00';
+        unset($bookingData['end_time']);
+
+        $response = $this->actingAs($this->member)->post(route('bands.booking.store', $this->band), $bookingData);
+        $response->assertStatus(302);
+
+        $booking = $this->band->bookings()->where('name', $bookingData['name'])->firstOrFail();
+        $event = $booking->events()->firstOrFail();
+
+        // start 19:00 + 3h duration = 22:00, NOT midnight.
+        $this->assertSame('19:00', $event->start_time->format('H:i'));
+        $this->assertSame('22:00', $event->end_time->format('H:i'));
+        $this->assertNotSame('00:00', $event->end_time->format('H:i'));
+
+        \Illuminate\Support\Facades\DB::rollBack();
+    }
+
     public function test_non_member_cannot_create_booking()
     {
         $bookingData = Bookings::factory()->withGigDetails()->make(['band_id' => $this->band->id])->toArray();
