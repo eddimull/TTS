@@ -4,16 +4,25 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Mobile\TokenRequest;
+use App\Mail\AccountDeletionConfirmation;
+use App\Models\Country;
+use App\Models\State;
 use App\Models\User;
+use App\Services\AccountDeletionService;
 use App\Services\Mobile\TokenService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function __construct(private readonly TokenService $tokenService) {}
+    public function __construct(
+        private readonly TokenService $tokenService,
+        private readonly AccountDeletionService $accountDeletionService,
+    ) {}
 
     public function token(TokenRequest $request): JsonResponse
     {
@@ -68,5 +77,99 @@ class AuthController extends Controller
             'user'  => $this->tokenService->formatUser($user),
             'bands' => $this->tokenService->formatBands($user),
         ]);
+    }
+
+    // ── Account management ────────────────────────────────────────────────────
+
+    /**
+     * GET /api/mobile/account — full editable profile plus the state/country
+     * lookup lists the Flutter pickers need (mirrors the web Account page props).
+     */
+    public function showAccount(Request $request): JsonResponse
+    {
+        return response()->json([
+            'account'   => $this->tokenService->formatAccount($request->user()),
+            'states'    => State::orderBy('state_name')
+                ->get(['state_id', 'state_name', 'country_id']),
+            'countries' => Country::orderBy('country_name')
+                ->get(['id', 'country_name']),
+        ]);
+    }
+
+    /**
+     * PATCH /api/mobile/account — update the profile. Mirrors the web
+     * AccountController::update: password is only changed when provided.
+     */
+    public function updateAccount(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'name'                => 'required|string|max:255',
+            'email'               => 'required|email|max:255|unique:users,email,' . $user->id,
+            'password'            => 'nullable|string|min:8|confirmed',
+            'address1'            => 'nullable|string|max:255',
+            'address2'            => 'nullable|string|max:255',
+            'city'                => 'nullable|string|max:255',
+            'state_id'            => 'nullable|string|max:255',
+            'country_id'          => 'nullable|string|max:255',
+            'zip'                 => 'nullable|string|max:5',
+            'email_notifications' => 'required|boolean',
+        ]);
+
+        $user->name               = $data['name'];
+        $user->email              = $data['email'];
+        $user->Address1           = $data['address1'] ?? null;
+        $user->Address2           = $data['address2'] ?? null;
+        $user->City               = $data['city'] ?? null;
+        $user->StateID            = $data['state_id'] ?? null;
+        $user->CountryID          = $data['country_id'] ?? null;
+        $user->Zip                = $data['zip'] ?? null;
+        $user->emailNotifications = $data['email_notifications'];
+
+        if (!empty($data['password'])) {
+            $user->password = Hash::make($data['password']);
+        }
+
+        $user->save();
+
+        return response()->json(['account' => $this->tokenService->formatAccount($user)]);
+    }
+
+    /**
+     * DELETE /api/mobile/account — request deletion. Emails the user a signed,
+     * expiring confirmation link rather than deleting immediately. The account
+     * is only removed when that link is opened (confirmDeletion).
+     */
+    public function requestDeletion(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $url = URL::temporarySignedRoute(
+            'mobile.account.confirm-deletion',
+            now()->addMinutes(60),
+            ['user' => $user->id],
+        );
+
+        Mail::to($user->email)->send(new AccountDeletionConfirmation($user, $url));
+
+        return response()->json([
+            'message' => 'Check your email to confirm account deletion. The link expires in 60 minutes.',
+        ], 202);
+    }
+
+    /**
+     * GET /api/mobile/account/confirm-deletion/{user} — signed link target.
+     * Public (no token): the signature is the credential, since the user may
+     * open this from their mail client. Runs the deletion and returns a simple
+     * web confirmation page.
+     */
+    public function confirmDeletion(Request $request, User $user)
+    {
+        abort_unless($request->hasValidSignature(), 403, 'This deletion link is invalid or has expired.');
+
+        $this->accountDeletionService->deleteAccount($user);
+
+        return response()->view('account.deletion-confirmed');
     }
 }

@@ -67,11 +67,19 @@ Route::prefix('mobile')->group(function () {
     // Public: signed-URL contract view (auth is the signature itself)
     Route::get('/bands/{band}/bookings/{booking}/contract/view-signed', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'viewContractSigned'])->name('mobile.bookings.contract.view.signed');
 
+    // Public: signed account-deletion confirmation link (auth is the signature itself)
+    Route::get('/account/confirm-deletion/{user}', [MobileAuthController::class, 'confirmDeletion'])->name('mobile.account.confirm-deletion');
+
     // Authenticated
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/auth/me', [MobileAuthController::class, 'me'])->name('mobile.auth.me');
         Route::delete('/auth/token', [MobileAuthController::class, 'logout'])->name('mobile.auth.logout');
         Route::post('/token/refresh', [MobileAuthController::class, 'refresh'])->name('mobile.auth.refresh');
+
+        // Account management
+        Route::get('/account', [MobileAuthController::class, 'showAccount'])->name('mobile.account.show');
+        Route::patch('/account', [MobileAuthController::class, 'updateAccount'])->name('mobile.account.update');
+        Route::delete('/account', [MobileAuthController::class, 'requestDeletion'])->name('mobile.account.request-deletion');
 
         // Event types
         Route::get('/event-types', fn () => response()->json([
