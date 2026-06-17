@@ -30,6 +30,13 @@
                     >
                         Client Portal
                     </Link>
+                    <Link
+                        v-if="canRegister"
+                        :href="route('register')"
+                        class="text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
+                    >
+                        Get Started
+                    </Link>
                 </template>
             </div>
         </nav>
@@ -45,8 +52,15 @@
             </p>
             <div v-if="!$page.props.auth.user" class="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
                 <Link
-                    :href="route('login')"
+                    v-if="canRegister"
+                    :href="route('register')"
                     class="inline-block px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-colors"
+                >
+                    Create Your Account
+                </Link>
+                <Link
+                    :href="route('login')"
+                    class="inline-block px-8 py-3 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-900 dark:text-white font-semibold rounded-lg shadow border border-gray-200 dark:border-gray-600 transition-colors"
                 >
                     Band Member Sign In
                 </Link>
