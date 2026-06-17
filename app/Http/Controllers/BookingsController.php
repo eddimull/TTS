@@ -115,15 +115,21 @@ class BookingsController extends Controller
         // Get default roster for the band
         $defaultRoster = $band->defaultRoster;
 
-        // Build event payload from REQUEST values, not from $booking (those columns are gone).
-        $eventDate    = $request->input('date');
-        $eventStart   = $request->input('start_time');
-        $eventEnd     = $request->input('end_time');
-        $venueName    = $request->input('venue_name');
-        $venueAddress = $request->input('venue_address');
+        // Build event payload from VALIDATED values, not from $booking (those
+        // columns are gone) nor from raw request input. The booking form submits
+        // start_time + duration and no end_time; StoreBookingsRequest::validated()
+        // derives end_time from start_time + duration. Reading $request->input()
+        // here would instead return the placeholder '00:00' that
+        // prepareForValidation() injects, pinning every generated event to
+        // midnight.
+        $validated    = $request->validated();
+        $eventDate    = $validated['date'];
+        $eventStart   = $validated['start_time'];
+        $eventEnd     = $validated['end_time'];
+        $venueName    = $validated['venue_name'] ?? null;
+        $venueAddress = $validated['venue_address'] ?? null;
 
         $startDateTime = \Carbon\Carbon::parse($eventDate . ' ' . $eventStart);
-        $endDateTime   = \Carbon\Carbon::parse($eventDate . ' ' . $eventEnd);
 
         $event = [
             'event_type_id' => $booking->event_type_id,
@@ -136,11 +142,14 @@ class BookingsController extends Controller
             'venue_address' => $venueAddress,
             'roster_id' => $defaultRoster?->id,
             'additional_data' => [
+                // Note: no 'End Time' marker here. The event's end is the
+                // canonical end_time column (also shown as the End Time pin in
+                // the timeline and used for the Google Calendar event end); a
+                // free-form marker would just duplicate it.
                 'times' => [
                     ['title' => 'Load In', 'time' => $startDateTime->copy()->subHours(4)->format('Y-m-d H:i')],
                     ['title' => 'Soundcheck', 'time' => $startDateTime->copy()->subHours(3)->format('Y-m-d H:i')],
                     ['title' => 'Quiet', 'time' => $startDateTime->copy()->subHours(1)->format('Y-m-d H:i')],
-                    ['title' => 'End Time', 'time' => $endDateTime->format('Y-m-d H:i')],
                 ],
                 'backline_provided' => false,
                 'production_needed' => true,
