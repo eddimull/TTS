@@ -98,6 +98,12 @@ class AuthController extends Controller
     /**
      * PATCH /api/mobile/account — update the profile. Mirrors the web
      * AccountController::update: password is only changed when provided.
+     *
+     * Full-replace semantics (by design): the client always submits the entire
+     * form, so an omitted optional field (address/city/state/country/zip) is
+     * treated as "cleared" and set to null — it is NOT a partial patch. The one
+     * exception is `password`, which is left untouched unless a new value is
+     * sent. See test_omitting_optional_fields_clears_them for the contract.
      */
     public function updateAccount(Request $request): JsonResponse
     {
@@ -111,11 +117,13 @@ class AuthController extends Controller
             'address2'            => 'nullable|string|max:255',
             'city'                => 'nullable|string|max:255',
             // state_id/country_id come from the lookup lists as numeric IDs, so
-            // accept integers (or numeric strings). They are stored as varchar
-            // on the users table, so cast to string below.
-            'state_id'            => 'nullable',
-            'country_id'          => 'nullable',
-            'zip'                 => 'nullable|string|max:5',
+            // accept integers (or numeric strings) only — `integer` rejects
+            // arrays/objects that would otherwise cast to the string "Array"
+            // and corrupt the profile. Stored as varchar, so cast to string below.
+            'state_id'            => 'nullable|integer',
+            'country_id'          => 'nullable|integer',
+            // Match the band-settings address fields (ZIP+4 / international).
+            'zip'                 => 'nullable|string|max:20',
             'email_notifications' => 'required|boolean',
         ]);
 

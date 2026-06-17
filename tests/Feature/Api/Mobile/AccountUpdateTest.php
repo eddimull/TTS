@@ -59,6 +59,47 @@ class AccountUpdateTest extends TestCase
         $this->assertSame('1', $user->CountryID);
     }
 
+    public function test_omitting_optional_fields_clears_them(): void
+    {
+        // Full-replace semantics by design: the client submits the whole form,
+        // so omitting an optional field clears it (this is intentional, not a
+        // partial patch). This test pins that contract.
+        $user = User::factory()->create([
+            'City'     => 'Old City',
+            'Zip'      => '70112',
+            'Address1' => '1 Old St',
+            'StateID'  => '12',
+        ]);
+        $token = $user->createToken('test')->plainTextToken;
+
+        $this->withToken($token)->patchJson('/api/mobile/account', [
+            'name'                => $user->name,
+            'email'               => $user->email,
+            'email_notifications' => true,
+            // address/city/state/country/zip intentionally omitted
+        ])->assertOk();
+
+        $user->refresh();
+        $this->assertNull($user->City);
+        $this->assertNull($user->Zip);
+        $this->assertNull($user->Address1);
+        $this->assertNull($user->StateID);
+    }
+
+    public function test_rejects_non_scalar_state_and_country_ids(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('test')->plainTextToken;
+
+        // An array would otherwise cast to the string "Array" and corrupt data.
+        $this->withToken($token)->patchJson('/api/mobile/account', [
+            'name'                => $user->name,
+            'email'               => $user->email,
+            'state_id'            => ['evil'],
+            'email_notifications' => true,
+        ])->assertUnprocessable()->assertJsonValidationErrors(['state_id']);
+    }
+
     public function test_password_only_changes_when_provided(): void
     {
         $user = User::factory()->create(['password' => Hash::make('original-pass')]);
