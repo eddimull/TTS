@@ -11,7 +11,6 @@ use App\Models\Country;
 use App\Services\AccountDeletionService;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
 
 class AccountController extends Controller
@@ -121,35 +120,17 @@ class AccountController extends Controller
      *
      * @return \Illuminate\Http\RedirectResponse
      */
-    public function requestDeletion(Request $request)
+    public function requestDeletion(Request $request): \Illuminate\Http\RedirectResponse
     {
-        $user = Auth::user();
+        $user = $request->user();
 
         Mail::to($user->email)->send(
-            new AccountDeletionConfirmation($user, $this->deletionConfirmationUrl($user))
+            new AccountDeletionConfirmation($user, AccountDeletionService::confirmationUrl($user))
         );
 
         return redirect()->back()->with(
             'successMessage',
             'Check your email to confirm account deletion. The link expires in 60 minutes.'
-        );
-    }
-
-    /**
-     * Build the signed, expiring URL for the account-deletion confirmation page.
-     * Shared by the web (requestDeletion) and mobile (Api\Mobile\AuthController)
-     * request flows so both email the same neutral confirmation link.
-     */
-    public static function deletionConfirmationUrl(User $user): string
-    {
-        // Points at the GET confirmation PAGE (not the deleting action). The page
-        // POSTs back to the same signed URL to actually delete — so a link
-        // prefetch/scanner (which only issues GETs) can never trigger the
-        // irreversible delete.
-        return URL::temporarySignedRoute(
-            'account.confirm-deletion',
-            now()->addMinutes(60),
-            ['user' => $user->id],
         );
     }
 
