@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Api\Mobile;
 
-use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Mobile\TokenRequest;
 use App\Mail\AccountDeletionConfirmation;
 use App\Models\Country;
 use App\Models\State;
 use App\Models\User;
+use App\Services\AccountDeletionService;
 use App\Services\Mobile\TokenService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -158,7 +158,7 @@ class AuthController extends Controller
         // (account.confirm-deletion) — the same page the web flow uses. The page
         // POSTs back to actually delete, so a GET prefetch can never trigger it.
         Mail::to($user->email)->send(
-            new AccountDeletionConfirmation($user, AccountController::deletionConfirmationUrl($user))
+            new AccountDeletionConfirmation($user, AccountDeletionService::confirmationUrl($user))
         );
 
         return response()->json([
