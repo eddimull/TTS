@@ -7,10 +7,30 @@ use App\Models\EventSubs;
 use App\Models\Invitations;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 
 class AccountDeletionService
 {
     public function __construct(protected BandMemberRemovalService $removalService) {}
+
+    /**
+     * Build the signed, expiring URL for the account-deletion confirmation page.
+     * Shared by the web and mobile request flows so both email the same neutral
+     * confirmation link.
+     *
+     * Points at the GET confirmation PAGE (not the deleting action). The page
+     * POSTs back to the same signed URL to actually delete — so a link
+     * prefetch/scanner (which only issues GETs) can never trigger the
+     * irreversible delete.
+     */
+    public static function confirmationUrl(User $user): string
+    {
+        return URL::temporarySignedRoute(
+            'account.confirm-deletion',
+            now()->addMinutes(60),
+            ['user' => $user->id],
+        );
+    }
 
     /**
      * Permanently delete a user account and all of its personal associations.
