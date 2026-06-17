@@ -75,6 +75,22 @@
     </div>
   </form>
 
+  <div
+    v-if="canRegister"
+    class="mt-6 text-center"
+  >
+    <p class="text-sm text-gray-600 dark:text-gray-400">
+      Don't have an account?
+      <Link
+        :href="route('register')"
+        class="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300"
+        dusk="login-register-link"
+      >
+        Create one →
+      </Link>
+    </p>
+  </div>
+
   <div class="mt-6 text-center">
     <p class="text-sm text-gray-600 dark:text-gray-400">
       Are you a client?
@@ -110,6 +126,7 @@
         props: {
             auth: Object,
             canResetPassword: Boolean,
+            canRegister: Boolean,
             errors: Object,
             status: String,
         },
