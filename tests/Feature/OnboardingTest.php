@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\BandMembers;
 use App\Models\BandOwners;
 use App\Models\Bands;
+use App\Http\Controllers\Onboarding\OnboardingController;
 use App\Models\Invitations;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -99,6 +100,21 @@ class OnboardingTest extends TestCase
                 ->whereHas('owners', fn ($q) => $q->where('user_id', $user->id))
                 ->count()
         );
+    }
+
+    public function test_unique_site_name_uses_fallback_base_for_suffixed_candidates(): void
+    {
+        // When the slug base is empty, uniqueSiteName() falls back to 'band'.
+        // If 'band' is taken, the next candidate must build on the fallback
+        // ('band-1') rather than the empty base ('-1'). Exercised directly
+        // because the go-solo name "<name>'s Band" rarely slugs to empty.
+        Bands::factory()->create(['site_name' => 'band']);
+
+        $controller = new OnboardingController();
+        $method = new \ReflectionMethod($controller, 'uniqueSiteName');
+        $method->setAccessible(true);
+
+        $this->assertEquals('band-1', $method->invoke($controller, ''));
     }
 
     public function test_user_can_join_a_band_as_member_with_an_invite_code(): void
