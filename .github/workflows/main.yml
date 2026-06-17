@@ -59,18 +59,43 @@ jobs:
         run: |
           set -euo pipefail
 
+          # 0) Only ever auto-merge into branches we actually run this policy for.
+          #    The pull_request_review trigger has no branch filter, so a review
+          #    on a PR targeting some other base (e.g. release/*) would otherwise
+          #    reach this job; bail out explicitly rather than fall through to a
+          #    "no review gate -> merge on green" default.
+          case "$BASE" in
+            master|staging|dev) ;;
+            *)
+              echo "Base '$BASE' is not an auto-merge target — not merging."
+              exit 0
+              ;;
+          esac
+
           # 1) All required checks on the PR head commit must be passing. This
           #    covers both the pull_request path (jobs just finished) and the
           #    review path (jobs ran earlier on the same commit). The auto-merge
           #    job itself is excluded so it doesn't wait on its own "in_progress".
           echo "Checking combined check status for $HEAD_SHA..."
-          rollup=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" --paginate \
-            --jq '[.check_runs[] | select(.name != "auto-merge")] as $runs
-                  | { incomplete: ([ $runs[] | select(.status != "completed") ] | length),
-                      failed: ([ $runs[] | select(.conclusion != null and (.conclusion | IN("success","neutral","skipped") | not)) ] | length) }')
-          incomplete=$(echo "$rollup" | jq -s -r 'reduce .[] as $r ({incomplete:0,failed:0}; {incomplete:(.incomplete+$r.incomplete), failed:(.failed+$r.failed)}) | .incomplete')
-          failed=$(echo "$rollup" | jq -s -r 'reduce .[] as $r ({incomplete:0,failed:0}; {incomplete:(.incomplete+$r.incomplete), failed:(.failed+$r.failed)}) | .failed')
-          echo "  incomplete=$incomplete failed=$failed"
+          checks=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" --paginate \
+            --jq '.check_runs[] | select(.name != "auto-merge") | {name, status, conclusion}' \
+            | jq -s '.')
+          total=$(echo "$checks" | jq 'length')
+          incomplete=$(echo "$checks" | jq '[.[] | select(.status != "completed")] | length')
+          failed=$(echo "$checks" | jq '[.[] | select(.conclusion != null and (.conclusion | IN("success","neutral","skipped") | not))] | length')
+          echo "  total=$total incomplete=$incomplete failed=$failed"
+
+          # Guard against an empty/partial result reading as "all green": the
+          # required test contexts must actually be present and successful on this
+          # SHA before we trust the rollup. (A genuinely empty set here means the
+          # checks haven't been created yet, not that there's nothing to pass.)
+          required_ok=$(echo "$checks" | jq '
+            [.[] | select(
+              (.name | test("laravel-tests|backend|frontend"; "i"))
+              and .status == "completed"
+              and (.conclusion | IN("success","neutral","skipped"))
+            )] | length')
+          echo "  required test checks passing: $required_ok"
 
           if [ "$failed" -ne 0 ]; then
             echo "Checks failing — not merging."
@@ -80,9 +105,13 @@ jobs:
             echo "Checks still running — not merging yet (a later event will re-evaluate)."
             exit 0
           fi
+          if [ "$required_ok" -eq 0 ]; then
+            echo "Required test checks not yet present/successful on $HEAD_SHA — not merging (a later event will re-evaluate)."
+            exit 0
+          fi
 
           # 2) Staging PRs additionally require a completed Copilot review (any
-          #    state). Master PRs skip the review gate.
+          #    state). Master / dev skip the review gate.
           if [ "$BASE" = "staging" ]; then
             echo "Base is staging — checking for a Copilot review..."
             # Match any reviewer whose login contains "copilot" (case-insensitive)
