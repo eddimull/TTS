@@ -136,6 +136,13 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
+        // Users who joined a band through a pending invitation go straight to
+        // the dashboard. Everyone else needs to pick how to get started —
+        // create a band, join one, or go solo (mirrors the mobile flow).
+        if ($user->allBands()->isEmpty()) {
+            return redirect()->route('onboarding');
+        }
+
         return redirect(RouteServiceProvider::HOME);
     }
 }

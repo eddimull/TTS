@@ -8,6 +8,7 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\Onboarding\OnboardingController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/register/{key?}', [RegisteredUserController::class, 'create']) 
@@ -62,3 +63,16 @@ Route::post('/confirm-password', [ConfirmablePasswordController::class, 'store']
 Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])
                 ->middleware('auth')
                 ->name('logout');
+
+// Onboarding — brand-new users with no band yet pick how to get started
+// (create a band, join via invite code, or go solo). Mirrors the mobile flow.
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/onboarding', [OnboardingController::class, 'show'])
+                ->name('onboarding');
+
+    Route::post('/onboarding/join', [OnboardingController::class, 'join'])
+                ->name('onboarding.join');
+
+    Route::post('/onboarding/solo', [OnboardingController::class, 'solo'])
+                ->name('onboarding.solo');
+});

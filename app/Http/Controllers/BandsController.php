@@ -78,6 +78,13 @@ class BandsController extends Controller
         Auth::user()->assignRole('band-owner');
         setPermissionsTeamId(null);
 
+        // When this is the user's first band they're coming from the onboarding
+        // flow — drop them on the dashboard rather than the bands index, which
+        // is empty/confusing for someone who just made their only band.
+        if (Auth::user()->fresh()->allBands()->count() === 1) {
+            return redirect()->route('dashboard')->with('successMessage', 'Band was successfully added');
+        }
+
         return redirect()->route('bands')->with('successMessage', 'Band was successfully added');
     }
 
