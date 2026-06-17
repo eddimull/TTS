@@ -67,11 +67,9 @@ Route::prefix('mobile')->group(function () {
     // Public: signed-URL contract view (auth is the signature itself)
     Route::get('/bands/{band}/bookings/{booking}/contract/view-signed', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'viewContractSigned'])->name('mobile.bookings.contract.view.signed');
 
-    // Public: signed account-deletion link (auth is the signature itself).
-    // GET renders a confirmation page; POST (from that page, same signed URL)
-    // performs the irreversible delete — so a GET prefetch can never delete.
-    Route::get('/account/confirm-deletion/{user}', [MobileAuthController::class, 'confirmDeletion'])->name('mobile.account.confirm-deletion');
-    Route::post('/account/confirm-deletion/{user}', [MobileAuthController::class, 'performDeletion'])->name('mobile.account.perform-deletion');
+    // Account-deletion confirmation lives at a neutral, shared path defined in
+    // routes/account.php (account.confirm-deletion / account.perform-deletion).
+    // The mobile DELETE /account flow below emails a link to those routes.
 
     // Authenticated
     Route::middleware('auth:sanctum')->group(function () {

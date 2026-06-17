@@ -2,19 +2,18 @@
 
 namespace App\Http\Controllers\Api\Mobile;
 
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Mobile\TokenRequest;
 use App\Mail\AccountDeletionConfirmation;
 use App\Models\Country;
 use App\Models\State;
 use App\Models\User;
-use App\Services\AccountDeletionService;
 use App\Services\Mobile\TokenService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -155,59 +154,15 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
-        // Signed URL points at the GET confirmation PAGE (not the deleting
-        // action). The page posts back to the same signed URL to actually
-        // delete — so a link prefetch/scanner (which only issues GETs) can
-        // never trigger the irreversible delete.
-        $url = URL::temporarySignedRoute(
-            'mobile.account.confirm-deletion',
-            now()->addMinutes(60),
-            ['user' => $user->id],
+        // Emails a signed link to the neutral, shared confirmation page
+        // (account.confirm-deletion) — the same page the web flow uses. The page
+        // POSTs back to actually delete, so a GET prefetch can never trigger it.
+        Mail::to($user->email)->send(
+            new AccountDeletionConfirmation($user, AccountController::deletionConfirmationUrl($user))
         );
-
-        Mail::to($user->email)->send(new AccountDeletionConfirmation($user, $url));
 
         return response()->json([
             'message' => 'Check your email to confirm account deletion. The link expires in 60 minutes.',
         ], 202);
-    }
-
-    /**
-     * GET /api/mobile/account/confirm-deletion/{user} — signed link target.
-     *
-     * Renders a confirmation page with a button that POSTs back to the same
-     * signed URL. It does NOT delete: GET is safe to prefetch (email security
-     * scanners and "safe link" crawlers issue GETs), so the destructive action
-     * lives on POST only.
-     *
-     * The route param is a raw int (not route-model-bound) so the signature is
-     * validated BEFORE any DB lookup — no DB hit on forged links, and no
-     * account-existence leak via 403-vs-404 (invalid signature always 403s).
-     */
-    public function confirmDeletion(Request $request, int $user): \Illuminate\Http\Response
-    {
-        abort_unless($request->hasValidSignature(), 403, 'This deletion link is invalid or has expired.');
-
-        // Re-present the exact signed query string so the form can POST to the
-        // same URL and pass signature validation again.
-        return response()->view('account.confirm-deletion', [
-            'actionUrl' => $request->fullUrl(),
-        ]);
-    }
-
-    /**
-     * POST /api/mobile/account/confirm-deletion/{user} — performs the deletion.
-     * Same signed URL as the GET page; the signature is the credential. Only a
-     * deliberate form submit (POST) reaches here, never a passive GET prefetch.
-     */
-    public function performDeletion(Request $request, int $user): \Illuminate\Http\Response
-    {
-        abort_unless($request->hasValidSignature(), 403, 'This deletion link is invalid or has expired.');
-
-        $account = User::findOrFail($user);
-
-        app(AccountDeletionService::class)->deleteAccount($account);
-
-        return response()->view('account.deletion-confirmed');
     }
 }
