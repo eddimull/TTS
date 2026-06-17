@@ -98,6 +98,12 @@ class AuthController extends Controller
     /**
      * PATCH /api/mobile/account — update the profile. Mirrors the web
      * AccountController::update: password is only changed when provided.
+     *
+     * Full-replace semantics (by design): the client always submits the entire
+     * form, so an omitted optional field (address/city/state/country/zip) is
+     * treated as "cleared" and set to null — it is NOT a partial patch. The one
+     * exception is `password`, which is left untouched unless a new value is
+     * sent. See test_omitting_optional_fields_clears_them for the contract.
      */
     public function updateAccount(Request $request): JsonResponse
     {
