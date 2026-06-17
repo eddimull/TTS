@@ -115,22 +115,58 @@
                       <div class="flex justify-end p-2">
                         <button v-on:click="updateAccount" class="bg-blue-500 px-4 py-2 text-lg font-semibold tracking-wider flex-end text-white rounded hover:bg-blue-600">Save</button>
                       </div>
+
+                      <div class="border-t border-red-200 dark:border-red-900 mt-8 pt-6 px-2">
+                        <h3 class="text-lg font-bold text-red-600 dark:text-red-400">Danger Zone</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 mt-1 mb-3">
+                          Permanently delete your account. This removes you from your bands and cannot be undone.
+                        </p>
+                        <button v-on:click="showDeleteModal = true" class="bg-red-600 px-4 py-2 text-sm font-semibold tracking-wider text-white rounded hover:bg-red-700">
+                          Delete Account
+                        </button>
+                      </div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <!-- Delete account confirmation modal -->
+        <Dialog
+            v-model:visible="showDeleteModal"
+            modal
+            :closable="!deleting"
+            header="Delete your account?"
+            class="w-full max-w-md"
+        >
+            <p class="text-sm text-gray-600 dark:text-gray-200">
+                For your security, we'll email <span class="font-semibold">{{ user.email }}</span> a confirmation
+                link. Your account is only deleted after you open that link and confirm. The link expires in 60 minutes.
+            </p>
+            <template #footer>
+                <div class="flex justify-end gap-3">
+                    <button v-on:click="showDeleteModal = false" :disabled="deleting" class="px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 rounded hover:bg-gray-100 dark:hover:bg-slate-600 disabled:opacity-60">
+                        Cancel
+                    </button>
+                    <button v-on:click="requestDeletion" :disabled="deleting" class="bg-red-600 px-4 py-2 text-sm font-semibold text-white rounded hover:bg-red-700 disabled:opacity-60">
+                        {{ deleting ? 'Sending…' : 'Send confirmation email' }}
+                    </button>
+                </div>
+            </template>
+        </Dialog>
     </breeze-authenticated-layout>
 </template>
 
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
     import InputSwitch from 'primevue/inputswitch';
+    import Dialog from 'primevue/dialog';
 
     export default {
         props:['user','states','countries','successMessage'],
         components: {
             BreezeAuthenticatedLayout,
             InputSwitch,
+            Dialog,
         },
         data(){
             return{
@@ -145,9 +181,11 @@
                     address2:this.user.Address2,
                     emailNotifications:this.user.emailNotifications
                 },
-                filteredStateList:this.states
+                filteredStateList:this.states,
+                showDeleteModal:false,
+                deleting:false
             }
-        }, 
+        },
         computed:{
             },
         watch:{
@@ -165,12 +203,26 @@
                 }
             },
             updateAccount(){
-                
+
                 this.$inertia.patch('/account/update',this.form)
                     .then(()=>{
                         this.loading = false;
                     })
+            },
+            requestDeletion(){
+                this.deleting = true;
+                this.$inertia.post('/account/delete', {}, {
+                    // Close the modal only when the request actually succeeds, so
+                    // a 419/500/network error keeps it open with the button
+                    // re-enabled rather than implying the email was sent.
+                    onSuccess:()=>{
+                        this.showDeleteModal = false;
+                    },
+                    onFinish:()=>{
+                        this.deleting = false;
+                    }
+                })
             }
-        }       
+        }
     }
 </script>

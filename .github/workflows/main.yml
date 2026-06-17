@@ -2,10 +2,18 @@ name: CI Pipeline
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, reopened]
     branches: [master, staging, dev]
+  # Re-evaluate auto-merge when a review lands (e.g. Copilot finishes its review
+  # on a staging PR after the tests have already passed).
+  pull_request_review:
+    types: [submitted]
+
 jobs:
   frontend:
+    # Only the code-changing events need to (re)run tests; a review submission
+    # reuses the checks already on the PR head.
+    if: github.event_name == 'pull_request'
     uses: ./.github/workflows/frontend.yml
     with:
       node-version: ${{ vars.NODE_VERSION }}
@@ -13,21 +21,133 @@ jobs:
       php-version: ${{ vars.PHP_VERSION }}
 
   backend:
+    if: github.event_name == 'pull_request'
     uses: ./.github/workflows/backendTests.yml
     with:
       node-version: ${{ vars.NODE_VERSION }}
       npm-version: ${{ vars.NPM_VERSION }}
       php-version: ${{ vars.PHP_VERSION }}
 
+  # Copilot reviews every PR automatically via the repo's "automatic code
+  # review" rule, so there's no job here to request it. The auto-merge gate
+  # below waits for that review to land before merging staging PRs.
+
   auto-merge:
+    # Always run so it can gate on the real outcomes below; the guards inside
+    # decide whether to actually merge. needs the test jobs so that on a
+    # pull_request event we only proceed once they have finished.
     needs: [frontend, backend]
+    # On a pull_request event, the test jobs must have succeeded. On a review
+    # event the test jobs are skipped, so don't require them — we re-check their
+    # status via the API instead.
+    if: |
+      always()
+      && github.event.pull_request.draft == false
+      && (
+        github.event_name == 'pull_request_review'
+        || (needs.frontend.result == 'success' && needs.backend.result == 'success')
+      )
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
     steps:
-      - uses: actions/checkout@v4
-      - name: Merge pull request
-        run: |
-          gh pr merge --merge "${{ github.event.pull_request.number }}"
+      - name: Evaluate gates and merge
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
-  
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          BASE: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          # 0) Only ever auto-merge into branches we actually run this policy for.
+          #    The pull_request_review trigger has no branch filter, so a review
+          #    on a PR targeting some other base (e.g. release/*) would otherwise
+          #    reach this job; bail out explicitly rather than fall through to a
+          #    "no review gate -> merge on green" default.
+          case "$BASE" in
+            master|staging|dev) ;;
+            *)
+              echo "Base '$BASE' is not an auto-merge target — not merging."
+              exit 0
+              ;;
+          esac
+
+          # 1) All required checks on the PR head commit must be passing. This
+          #    covers both the pull_request path (jobs just finished) and the
+          #    review path (jobs ran earlier on the same commit). The auto-merge
+          #    job itself is excluded so it doesn't wait on its own "in_progress".
+          echo "Checking combined check status for $HEAD_SHA..."
+          checks=$(gh api "repos/$REPO/commits/$HEAD_SHA/check-runs" --paginate \
+            --jq '.check_runs[] | select(.name != "auto-merge") | {name, status, conclusion}' \
+            | jq -s '.')
+          total=$(echo "$checks" | jq 'length')
+          incomplete=$(echo "$checks" | jq '[.[] | select(.status != "completed")] | length')
+          failed=$(echo "$checks" | jq '[.[] | select(.conclusion != null and (.conclusion | IN("success","neutral","skipped") | not))] | length')
+          echo "  total=$total incomplete=$incomplete failed=$failed"
+
+          # Guard against an empty/partial result reading as "all green": the
+          # required test contexts must actually be present and successful on this
+          # SHA before we trust the rollup. (A genuinely empty set here means the
+          # checks haven't been created yet, not that there's nothing to pass.)
+          required_ok=$(echo "$checks" | jq '
+            [.[] | select(
+              (.name | test("laravel-tests|backend|frontend"; "i"))
+              and .status == "completed"
+              and (.conclusion | IN("success","neutral","skipped"))
+            )] | length')
+          echo "  required test checks passing: $required_ok"
+
+          if [ "$failed" -ne 0 ]; then
+            echo "Checks failing — not merging."
+            exit 0
+          fi
+          if [ "$incomplete" -ne 0 ]; then
+            echo "Checks still running — not merging yet (a later event will re-evaluate)."
+            exit 0
+          fi
+          if [ "$required_ok" -eq 0 ]; then
+            echo "Required test checks not yet present/successful on $HEAD_SHA — not merging (a later event will re-evaluate)."
+            exit 0
+          fi
+
+          # 2) Staging PRs additionally require at least one APPROVING human
+          #    review. Copilot reviews every PR automatically but only ever
+          #    comments, so its review must NOT satisfy this gate — the gate is
+          #    what makes a human sign-off mandatory. Master / dev skip review.
+          #
+          #    This is the primary enforcement: the GH_PAT is an owner token and
+          #    staging has enforce_admins=false, so `gh pr merge` would otherwise
+          #    bypass the branch-protection approval rule. Gating here means the
+          #    bot won't even attempt the merge until an approval exists.
+          if [ "$BASE" = "staging" ]; then
+            echo "Base is staging — requiring an approving human review on $HEAD_SHA..."
+            # Only reviews submitted against the CURRENT head commit count: a new
+            # push must get a fresh approval. We can't rely on branch protection's
+            # "dismiss stale approvals" because the owner GH_PAT bypasses it, so
+            # the staleness check has to live here.
+            #
+            # Among reviews on HEAD_SHA, reduce each reviewer to their latest
+            # meaningful state (bots dropped, COMMENTED ignored) and count
+            # APPROVED — so a CHANGES_REQUESTED on HEAD overrides an earlier
+            # APPROVED on the same commit.
+            approvals=$(gh api "repos/$REPO/pulls/$PR/reviews" --paginate \
+              --jq --arg head "$HEAD_SHA" \
+                '[.[] | select((.user.type // "User") != "Bot")
+                      | select(.commit_id == $head)
+                      | select(.state == "APPROVED" or .state == "CHANGES_REQUESTED" or .state == "DISMISSED")]' \
+              | jq -s '
+                  add // []
+                  | group_by(.user.login)
+                  | map(max_by(.submitted_at) | select(.state == "APPROVED"))
+                  | length')
+            echo "  approvals on current head: $approvals"
+            if [ "${approvals:-0}" -eq 0 ]; then
+              echo "Awaiting an approving review on the current commit — not merging yet (a review event will re-evaluate)."
+              exit 0
+            fi
+          else
+            echo "Base is $BASE — no review gate."
+          fi
+
+          echo "All gates satisfied — merging PR #$PR."
+          gh pr merge --merge "$PR" --repo "$REPO"
