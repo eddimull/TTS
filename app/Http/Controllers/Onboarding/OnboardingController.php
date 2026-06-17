@@ -8,6 +8,7 @@ use App\Models\BandOwners;
 use App\Models\Bands;
 use App\Models\Invitations;
 use App\Providers\RouteServiceProvider;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -112,11 +113,21 @@ class OnboardingController extends Controller
         $name     = "{$user->name}'s Band";
         $siteName = $this->uniqueSiteName(Str::slug($name));
 
-        $band = Bands::create([
-            'name'        => $name,
-            'site_name'   => $siteName,
-            'is_personal' => true,
-        ]);
+        try {
+            $band = Bands::create([
+                'name'        => $name,
+                'site_name'   => $siteName,
+                'is_personal' => true,
+            ]);
+        } catch (QueryException $e) {
+            // site_name has a unique index; a concurrent solo request for this
+            // same user could win the race between the check above and here.
+            // Treat that as the idempotent case and route to the dashboard.
+            if ($this->isUniqueViolation($e)) {
+                return redirect(RouteServiceProvider::HOME);
+            }
+            throw $e;
+        }
 
         BandOwners::create([
             'user_id' => $user->id,
@@ -148,5 +159,14 @@ class OnboardingController extends Controller
         }
 
         return $candidate;
+    }
+
+    /**
+     * Whether a QueryException is an integrity/unique-constraint violation
+     * (SQLSTATE 23xxx), independent of the database driver.
+     */
+    private function isUniqueViolation(QueryException $e): bool
+    {
+        return str_starts_with((string) $e->getCode(), '23');
     }
 }

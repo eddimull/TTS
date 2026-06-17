@@ -250,11 +250,31 @@ class OnboardingController extends Controller
         $name     = "{$user->name}'s Band";
         $siteName = $this->uniqueSiteName(Str::slug($name));
 
-        $band = Bands::create([
-            'name'        => $name,
-            'site_name'   => $siteName,
-            'is_personal' => true,
-        ]);
+        try {
+            $band = Bands::create([
+                'name'        => $name,
+                'site_name'   => $siteName,
+                'is_personal' => true,
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // site_name has a unique index; a concurrent solo request for this
+            // same user could win the race between the check above and here.
+            // Treat that as the idempotent case and return the existing band.
+            if (str_starts_with((string) $e->getCode(), '23')) {
+                $user->unsetRelation('bandOwner')
+                    ->unsetRelation('bandMember')
+                    ->unsetRelation('bandSub');
+
+                return response()->json([
+                    'token' => $this->tokenService->reissueForCurrentDevice(
+                        $user,
+                        $user->currentAccessToken(),
+                    ),
+                    'bands' => $this->tokenService->formatBands($user),
+                ]);
+            }
+            throw $e;
+        }
 
         BandOwners::create([
             'user_id' => $user->id,

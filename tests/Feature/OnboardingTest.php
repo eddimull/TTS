@@ -117,6 +117,30 @@ class OnboardingTest extends TestCase
         $this->assertEquals('band-1', $method->invoke($controller, ''));
     }
 
+    public function test_site_name_has_a_unique_constraint(): void
+    {
+        Bands::factory()->create(['site_name' => 'taken-name']);
+
+        $this->expectException(\Illuminate\Database\QueryException::class);
+        Bands::factory()->create(['site_name' => 'taken-name']);
+    }
+
+    public function test_solo_is_resilient_to_a_pre_existing_site_name_collision(): void
+    {
+        // A band already squats the exact slug go-solo would generate; the
+        // generator must route around it rather than blow up on the unique index.
+        $user = User::factory()->create(['name' => 'Collision Carl']);
+        Bands::factory()->create(['site_name' => 'collision-carls-band']);
+
+        $this->actingAs($user)->post(route('onboarding.solo'))->assertRedirect('/dashboard');
+
+        $this->assertDatabaseHas('bands', [
+            'name' => "Collision Carl's Band",
+            'site_name' => 'collision-carls-band-1',
+            'is_personal' => true,
+        ]);
+    }
+
     public function test_user_can_join_a_band_as_member_with_an_invite_code(): void
     {
         $user = User::factory()->create();
