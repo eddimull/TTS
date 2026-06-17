@@ -176,6 +176,17 @@ class OnboardingController extends Controller
 
         $user = $request->user();
 
+        // Email-addressed invitations are targeted at a specific person, so
+        // only that person may consume them — a leaked/forwarded code must not
+        // let someone else join in their place. Null-email invitations are the
+        // reusable QR case and remain open to any authenticated user.
+        if ($invitation->email !== null
+            && strcasecmp($invitation->email, $user->email) !== 0) {
+            throw ValidationException::withMessages([
+                'key' => ['This invite code was issued to a different email address.'],
+            ]);
+        }
+
         if ($invitation->invite_type_id === static::OWNER_INVITE_TYPE) {
             BandOwners::firstOrCreate([
                 'user_id' => $user->id,
@@ -247,14 +258,23 @@ class OnboardingController extends Controller
             ]);
         }
 
-        $name     = "{$user->name}'s Band";
-        $siteName = $this->uniqueSiteName(Str::slug($name));
+        $band = $this->createPersonalBand($user);
 
-        $band = Bands::create([
-            'name'        => $name,
-            'site_name'   => $siteName,
-            'is_personal' => true,
-        ]);
+        // A concurrent solo request for this same user won the race and already
+        // created the personal band; return that idempotent result.
+        if ($band === null) {
+            $user->unsetRelation('bandOwner')
+                ->unsetRelation('bandMember')
+                ->unsetRelation('bandSub');
+
+            return response()->json([
+                'token' => $this->tokenService->reissueForCurrentDevice(
+                    $user,
+                    $user->currentAccessToken(),
+                ),
+                'bands' => $this->tokenService->formatBands($user),
+            ]);
+        }
 
         BandOwners::create([
             'user_id' => $user->id,
@@ -285,9 +305,54 @@ class OnboardingController extends Controller
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    /**
+     * Create the user's personal band, tolerating the site_name unique index.
+     *
+     * site_name is generated and only checked (not locked) before insert, so a
+     * concurrent request can claim the same slug in between. On a unique
+     * violation we distinguish the cause:
+     *   - this user already got a personal band (same-user double-submit) →
+     *     return null so the caller returns the idempotent result;
+     *   - a *different* band claimed the slug → regenerate and retry.
+     *
+     * Returns the created band, or null if the user already has one.
+     */
+    private function createPersonalBand(User $user): ?Bands
+    {
+        $name = "{$user->name}'s Band";
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            try {
+                return Bands::create([
+                    'name'        => $name,
+                    'site_name'   => $this->uniqueSiteName(Str::slug($name)),
+                    'is_personal' => true,
+                ]);
+            } catch (\Illuminate\Database\QueryException $e) {
+                if (!str_starts_with((string) $e->getCode(), '23')) {
+                    throw $e;
+                }
+
+                $existing = Bands::whereHas('owners', fn ($q) => $q->where('user_id', $user->id))
+                    ->where('is_personal', true)
+                    ->first();
+
+                if ($existing) {
+                    return null;
+                }
+                // Otherwise a different band took the slug — loop and retry.
+            }
+        }
+
+        throw new \RuntimeException('Unable to allocate a unique site_name for the personal band.');
+    }
+
     private function uniqueSiteName(string $base): string
     {
-        $candidate = $base ?: 'band';
+        // Normalise to a non-empty base up front so the suffixed candidates
+        // below build on it too (e.g. 'band-1', not '-1', when $base is empty).
+        $base      = $base ?: 'band';
+        $candidate = $base;
         $suffix    = 1;
 
         while (Bands::where('site_name', $candidate)->exists()) {
