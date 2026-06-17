@@ -131,35 +131,42 @@
         </div>
 
         <!-- Delete account confirmation modal -->
-        <div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4" @click.self="showDeleteModal = false">
-            <div class="bg-white dark:bg-slate-700 rounded-lg shadow-xl max-w-md w-full p-6">
-                <h3 class="text-xl font-bold text-gray-900 dark:text-white">Delete your account?</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-200 mt-2">
-                    For your security, we'll email <span class="font-semibold">{{ user.email }}</span> a confirmation
-                    link. Your account is only deleted after you open that link and confirm. The link expires in 60 minutes.
-                </p>
-                <div class="flex justify-end gap-3 mt-6">
-                    <button v-on:click="showDeleteModal = false" :disabled="deleting" class="px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 rounded hover:bg-gray-100 dark:hover:bg-slate-600">
+        <Dialog
+            v-model:visible="showDeleteModal"
+            modal
+            :closable="!deleting"
+            header="Delete your account?"
+            class="w-full max-w-md"
+        >
+            <p class="text-sm text-gray-600 dark:text-gray-200">
+                For your security, we'll email <span class="font-semibold">{{ user.email }}</span> a confirmation
+                link. Your account is only deleted after you open that link and confirm. The link expires in 60 minutes.
+            </p>
+            <template #footer>
+                <div class="flex justify-end gap-3">
+                    <button v-on:click="showDeleteModal = false" :disabled="deleting" class="px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 rounded hover:bg-gray-100 dark:hover:bg-slate-600 disabled:opacity-60">
                         Cancel
                     </button>
                     <button v-on:click="requestDeletion" :disabled="deleting" class="bg-red-600 px-4 py-2 text-sm font-semibold text-white rounded hover:bg-red-700 disabled:opacity-60">
                         {{ deleting ? 'Sending…' : 'Send confirmation email' }}
                     </button>
                 </div>
-            </div>
-        </div>
+            </template>
+        </Dialog>
     </breeze-authenticated-layout>
 </template>
 
 <script>
     import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
     import InputSwitch from 'primevue/inputswitch';
+    import Dialog from 'primevue/dialog';
 
     export default {
         props:['user','states','countries','successMessage'],
         components: {
             BreezeAuthenticatedLayout,
             InputSwitch,
+            Dialog,
         },
         data(){
             return{
@@ -205,9 +212,14 @@
             requestDeletion(){
                 this.deleting = true;
                 this.$inertia.post('/account/delete', {}, {
+                    // Close the modal only when the request actually succeeds, so
+                    // a 419/500/network error keeps it open with the button
+                    // re-enabled rather than implying the email was sent.
+                    onSuccess:()=>{
+                        this.showDeleteModal = false;
+                    },
                     onFinish:()=>{
                         this.deleting = false;
-                        this.showDeleteModal = false;
                     }
                 })
             }
