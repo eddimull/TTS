@@ -287,7 +287,10 @@ class OnboardingController extends Controller
 
     private function uniqueSiteName(string $base): string
     {
-        $candidate = $base ?: 'band';
+        // Normalise to a non-empty base up front so the suffixed candidates
+        // below build on it too (e.g. 'band-1', not '-1', when $base is empty).
+        $base      = $base ?: 'band';
+        $candidate = $base;
         $suffix    = 1;
 
         while (Bands::where('site_name', $candidate)->exists()) {
