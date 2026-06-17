@@ -7,6 +7,7 @@ use App\Models\BandMembers;
 use App\Models\BandOwners;
 use App\Models\Bands;
 use App\Models\Invitations;
+use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
@@ -66,6 +67,17 @@ class OnboardingController extends Controller
 
         $user = $request->user();
 
+        // Email-addressed invitations are targeted at a specific person, so
+        // only that person may consume them — a leaked/forwarded code must not
+        // let someone else join in their place. Null-email invitations are the
+        // reusable QR case and remain open to any authenticated user.
+        if ($invitation->email !== null
+            && strcasecmp($invitation->email, $user->email) !== 0) {
+            throw ValidationException::withMessages([
+                'key' => ['This invite code was issued to a different email address.'],
+            ]);
+        }
+
         if ($invitation->invite_type_id === static::OWNER_INVITE_TYPE) {
             BandOwners::firstOrCreate([
                 'user_id' => $user->id,
@@ -110,23 +122,12 @@ class OnboardingController extends Controller
             return redirect(RouteServiceProvider::HOME);
         }
 
-        $name     = "{$user->name}'s Band";
-        $siteName = $this->uniqueSiteName(Str::slug($name));
+        $band = $this->createPersonalBand($user);
 
-        try {
-            $band = Bands::create([
-                'name'        => $name,
-                'site_name'   => $siteName,
-                'is_personal' => true,
-            ]);
-        } catch (QueryException $e) {
-            // site_name has a unique index; a concurrent solo request for this
-            // same user could win the race between the check above and here.
-            // Treat that as the idempotent case and route to the dashboard.
-            if ($this->isUniqueViolation($e)) {
-                return redirect(RouteServiceProvider::HOME);
-            }
-            throw $e;
+        // A concurrent solo request for this same user won the race and already
+        // created the personal band; that's the idempotent outcome.
+        if ($band === null) {
+            return redirect(RouteServiceProvider::HOME);
         }
 
         BandOwners::create([
@@ -140,6 +141,48 @@ class OnboardingController extends Controller
 
         return redirect(RouteServiceProvider::HOME)
             ->with('successMessage', 'Your personal band is ready!');
+    }
+
+    /**
+     * Create the user's personal band, tolerating the site_name unique index.
+     *
+     * Because site_name is generated and only checked (not locked) before the
+     * insert, a concurrent request can claim the same slug in between. On a
+     * unique violation we distinguish the two causes:
+     *   - this user already got a personal band (a same-user double-submit) →
+     *     return null so the caller treats it as the idempotent case;
+     *   - a *different* band claimed the slug → regenerate and retry.
+     *
+     * Returns the created band, or null if the user already has one.
+     */
+    private function createPersonalBand(User $user): ?Bands
+    {
+        $name = "{$user->name}'s Band";
+
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            try {
+                return Bands::create([
+                    'name'        => $name,
+                    'site_name'   => $this->uniqueSiteName(Str::slug($name)),
+                    'is_personal' => true,
+                ]);
+            } catch (QueryException $e) {
+                if (!$this->isUniqueViolation($e)) {
+                    throw $e;
+                }
+
+                $existing = Bands::whereHas('owners', fn ($q) => $q->where('user_id', $user->id))
+                    ->where('is_personal', true)
+                    ->first();
+
+                if ($existing) {
+                    return null;
+                }
+                // Otherwise a different band took the slug — loop and retry.
+            }
+        }
+
+        throw new \RuntimeException('Unable to allocate a unique site_name for the personal band.');
     }
 
     /**
