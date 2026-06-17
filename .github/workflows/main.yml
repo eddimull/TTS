@@ -120,22 +120,29 @@ jobs:
           #    bypass the branch-protection approval rule. Gating here means the
           #    bot won't even attempt the merge until an approval exists.
           if [ "$BASE" = "staging" ]; then
-            echo "Base is staging — requiring an approving human review..."
-            # Reviews come back in chronological order; reduce to each reviewer's
-            # LATEST review state, drop bots (Copilot et al.), then count APPROVED.
-            # A later CHANGES_REQUESTED from the same person overrides an earlier
-            # APPROVED, so a stale approval can't slip a change-requested PR through.
+            echo "Base is staging — requiring an approving human review on $HEAD_SHA..."
+            # Only reviews submitted against the CURRENT head commit count: a new
+            # push must get a fresh approval. We can't rely on branch protection's
+            # "dismiss stale approvals" because the owner GH_PAT bypasses it, so
+            # the staleness check has to live here.
+            #
+            # Among reviews on HEAD_SHA, reduce each reviewer to their latest
+            # meaningful state (bots dropped, COMMENTED ignored) and count
+            # APPROVED — so a CHANGES_REQUESTED on HEAD overrides an earlier
+            # APPROVED on the same commit.
             approvals=$(gh api "repos/$REPO/pulls/$PR/reviews" --paginate \
-              --jq '[.[] | select((.user.type // "User") != "Bot")
-                         | select(.state == "APPROVED" or .state == "CHANGES_REQUESTED" or .state == "DISMISSED")]' \
+              --jq --arg head "$HEAD_SHA" \
+                '[.[] | select((.user.type // "User") != "Bot")
+                      | select(.commit_id == $head)
+                      | select(.state == "APPROVED" or .state == "CHANGES_REQUESTED" or .state == "DISMISSED")]' \
               | jq -s '
                   add // []
                   | group_by(.user.login)
                   | map(max_by(.submitted_at) | select(.state == "APPROVED"))
                   | length')
-            echo "  current approvals: $approvals"
+            echo "  approvals on current head: $approvals"
             if [ "${approvals:-0}" -eq 0 ]; then
-              echo "Awaiting an approving review — not merging yet (a review event will re-evaluate)."
+              echo "Awaiting an approving review on the current commit — not merging yet (a review event will re-evaluate)."
               exit 0
             fi
           else
