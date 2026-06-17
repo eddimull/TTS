@@ -69,6 +69,7 @@
               v-model="joinForm.key"
               type="text"
               placeholder="Invite code"
+              aria-label="Invite code"
               autocomplete="off"
               autocapitalize="none"
               spellcheck="false"

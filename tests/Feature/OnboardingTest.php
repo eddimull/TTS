@@ -191,6 +191,56 @@ class OnboardingTest extends TestCase
         $this->assertTrue($user->fresh()->ownsBand($band->id));
     }
 
+    public function test_join_rejects_an_email_invitation_issued_to_someone_else(): void
+    {
+        $user = User::factory()->create(['email' => 'me@example.com']);
+        $band = Bands::factory()->create();
+
+        // Invitation addressed to a different person.
+        $invitation = Invitations::create([
+            'email' => 'someone-else@example.com',
+            'band_id' => $band->id,
+            'invite_type_id' => self::MEMBER_INVITE_TYPE,
+            'pending' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('onboarding.join'), ['key' => $invitation->key])
+            ->assertSessionHasErrors('key');
+
+        $this->assertDatabaseMissing('band_members', [
+            'user_id' => $user->id,
+            'band_id' => $band->id,
+        ]);
+        // The targeted invitation is untouched, still pending.
+        $this->assertDatabaseHas('invitations', [
+            'id' => $invitation->id,
+            'pending' => true,
+        ]);
+    }
+
+    public function test_join_matches_invitation_email_case_insensitively(): void
+    {
+        $user = User::factory()->create(['email' => 'Mixed.Case@Example.com']);
+        $band = Bands::factory()->create();
+
+        $invitation = Invitations::create([
+            'email' => 'mixed.case@example.com',
+            'band_id' => $band->id,
+            'invite_type_id' => self::MEMBER_INVITE_TYPE,
+            'pending' => true,
+        ]);
+
+        $this->actingAs($user)
+            ->post(route('onboarding.join'), ['key' => $invitation->key])
+            ->assertRedirect('/dashboard');
+
+        $this->assertDatabaseHas('band_members', [
+            'user_id' => $user->id,
+            'band_id' => $band->id,
+        ]);
+    }
+
     public function test_reusable_qr_invitation_stays_pending_after_join(): void
     {
         $user = User::factory()->create();
