@@ -52,7 +52,7 @@ class AccountDeletionTest extends TestCase
         DeviceToken::factory()->create(['user_id' => $user->id]);
 
         $url = URL::temporarySignedRoute(
-            'mobile.account.confirm-deletion',
+            'account.confirm-deletion',
             now()->addMinutes(60),
             ['user' => $user->id],
         );
@@ -74,7 +74,7 @@ class AccountDeletionTest extends TestCase
         $user = User::factory()->create();
 
         $url = URL::temporarySignedRoute(
-            'mobile.account.confirm-deletion',
+            'account.confirm-deletion',
             now()->addMinutes(60),
             ['user' => $user->id],
         );
@@ -98,7 +98,7 @@ class AccountDeletionTest extends TestCase
         BandMembers::factory()->create(['user_id' => $remaining->id, 'band_id' => $band->id]);
 
         $url = URL::temporarySignedRoute(
-            'mobile.account.confirm-deletion',
+            'account.confirm-deletion',
             now()->addMinutes(60),
             ['user' => $leaving->id],
         );
@@ -119,9 +119,9 @@ class AccountDeletionTest extends TestCase
         $user = User::factory()->create();
 
         // Tampered URL — valid route, bad signature. Both verbs must 403.
-        $this->post("/api/mobile/account/confirm-deletion/{$user->id}?signature=deadbeef&expires=9999999999")
+        $this->post("/account/confirm-deletion/{$user->id}?signature=deadbeef&expires=9999999999")
             ->assertForbidden();
-        $this->get("/api/mobile/account/confirm-deletion/{$user->id}?signature=deadbeef&expires=9999999999")
+        $this->get("/account/confirm-deletion/{$user->id}?signature=deadbeef&expires=9999999999")
             ->assertForbidden();
 
         $this->assertDatabaseHas('users', ['id' => $user->id]);
@@ -131,7 +131,7 @@ class AccountDeletionTest extends TestCase
     {
         // Signature is validated before any DB lookup, so a forged link can't be
         // used to probe whether an account id exists (always 403, never 404).
-        $this->post('/api/mobile/account/confirm-deletion/999999?signature=deadbeef&expires=9999999999')
+        $this->post('/account/confirm-deletion/999999?signature=deadbeef&expires=9999999999')
             ->assertForbidden();
     }
 }
