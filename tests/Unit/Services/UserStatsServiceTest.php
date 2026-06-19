@@ -26,8 +26,21 @@ class UserStatsServiceTest extends TestCase
     {
         parent::setUp();
 
+        // Pin the clock so earned-vs-upcoming classification (which compares gig
+        // dates against "today") is deterministic and never flips when the suite
+        // runs across midnight or in a different timezone. Mid-day, mid-month,
+        // mid-year keeps all relative date math clear of any boundary.
+        Carbon::setTestNow(Carbon::create(2025, 6, 15, 12, 0, 0));
+
         $this->user = User::factory()->create();
         $this->band = Bands::factory()->create();
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
     }
 
     public function test_it_calculates_user_join_date_from_band_owner_pivot()
