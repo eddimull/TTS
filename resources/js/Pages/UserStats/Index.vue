@@ -223,7 +223,9 @@
                     <span class="text-sm text-gray-500 dark:text-gray-400">
                       {{ yearData.booking_count + yearData.upcoming_booking_count }}
                       {{ (yearData.booking_count + yearData.upcoming_booking_count) === 1 ? 'booking' : 'bookings' }}
-                      · ${{ formatNumber(yearData.year_total) }} earned<template v-if="yearData.upcoming_booking_count > 0"> · ${{ formatNumber(yearData.upcoming_total) }} upcoming</template>
+                      · ${{ formatNumber(yearData.year_total) }} earned<template
+                        v-if="yearData.upcoming_booking_count > 0"
+                      > · ${{ formatNumber(yearData.upcoming_total) }} upcoming</template>
                     </span>
                   </div>
                 </button>
