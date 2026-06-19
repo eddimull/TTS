@@ -535,7 +535,7 @@
 
         <!-- Empty State -->
         <div
-          v-if="stats.payments.booking_count === 0 && stats.travel.event_count === 0"
+          v-if="stats.payments.booking_count === 0 && stats.payments.upcoming_booking_count === 0 && stats.travel.event_count === 0"
           class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-lg"
         >
           <div class="p-12 text-center">
