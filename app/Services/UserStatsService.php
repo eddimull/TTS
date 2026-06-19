@@ -152,7 +152,11 @@ class UserStatsService
                         $bookingsByYear[$year] = [];
                     }
 
-                    $primary = $booking->events()->orderBy('date')->orderBy('id')->first();
+                    // Use the eager-loaded events collection (sorted in memory)
+                    // rather than re-querying, which would be an N+1 per booking.
+                    $primary = $booking->events
+                        ->sortBy([['date', 'asc'], ['id', 'asc']])
+                        ->first();
                     $bookingsByYear[$year][] = [
                         'id' => $booking->id,
                         'booking_name' => $booking->name,
