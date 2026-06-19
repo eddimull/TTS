@@ -45,6 +45,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'calendar_token',
     ];
 
     /**
@@ -77,6 +78,34 @@ class User extends Authenticatable
     public function isSubOfBand($bandId): bool
     {
         return $this->bandSub->contains('id', $bandId);
+    }
+
+    /**
+     * Return this user's calendar feed token, minting one on first access.
+     *
+     * The token authenticates the unauthenticated ICS subscription URL
+     * (/calendar/{token}.ics), so it is long and random rather than guessable.
+     * Generated lazily so existing users get one only when they first open the
+     * "subscribe" screen.
+     */
+    public function getCalendarToken(): string
+    {
+        if (empty($this->calendar_token)) {
+            $this->forceFill(['calendar_token' => \Illuminate\Support\Str::random(48)])->save();
+        }
+
+        return $this->calendar_token;
+    }
+
+    /**
+     * Issue a fresh calendar token, invalidating any previously shared feed
+     * URL. Used by the "reset link" action.
+     */
+    public function regenerateCalendarToken(): string
+    {
+        $this->forceFill(['calendar_token' => \Illuminate\Support\Str::random(48)])->save();
+
+        return $this->calendar_token;
     }
 
     public function permissionsForBand($id)

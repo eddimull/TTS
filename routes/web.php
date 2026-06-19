@@ -41,6 +41,13 @@ Route::get('/stats', 'UserStatsController@index')
 Route::get('/contracts/{contractId}/public', [App\Http\Controllers\ContractsController::class, 'publicView'])
     ->name('contracts.public.view');
 
+// Public per-user ICS calendar feed (subscribed in Google/Apple Calendar).
+// Authenticated by the random calendar_token in the URL; no session/Sanctum.
+// The {token} may carry a trailing ".ics" so calendar clients treat it as a file.
+Route::get('/calendar/{token}', [App\Http\Controllers\CalendarFeedController::class, 'show'])
+    ->where('token', '[A-Za-z0-9]+(?:\.ics)?')
+    ->name('calendar.feed');
+
 // Include all route files
 require __DIR__ . '/account.php';
 require __DIR__ . '/auth.php';
