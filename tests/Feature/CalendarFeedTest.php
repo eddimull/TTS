@@ -51,6 +51,24 @@ class CalendarFeedTest extends TestCase
         $this->assertStringContainsString('Saturday Night Gig', $body);
     }
 
+    public function test_feed_uses_event_venue_timezone_when_set(): void
+    {
+        Events::factory()->forBand($this->band)->create([
+            'title'          => 'Out Of Town Gig',
+            'date'           => now()->addDays(10)->toDateString(),
+            'start_time'     => '20:00',
+            'end_time'       => '23:00',
+            'venue_timezone' => 'America/New_York',
+        ]);
+
+        $token = $this->owner->getCalendarToken();
+        $body  = $this->get('/calendar/' . $token . '.ics')->assertOk()->getContent();
+
+        // The VEVENT start must be expressed in the venue's timezone, not the
+        // app default, so out-of-timezone gigs show the correct local time.
+        $this->assertStringContainsString('DTSTART;TZID=America/New_York:', $body);
+    }
+
     public function test_feed_returns_404_for_unknown_token(): void
     {
         $this->get('/calendar/this-token-does-not-exist.ics')->assertNotFound();
@@ -109,7 +127,7 @@ class CalendarFeedTest extends TestCase
         $this->assertNotEmpty($token);
 
         $response->assertJsonFragment([
-            'webcal_url' => str_replace('https://', 'webcal://', route('calendar.feed', ['token' => $token . '.ics'])),
+            'webcal_url' => preg_replace('#^https?://#', 'webcal://', route('calendar.feed', ['token' => $token . '.ics'])),
         ]);
     }
 

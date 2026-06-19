@@ -111,8 +111,15 @@ class CalendarFeedController extends Controller
             return null;
         }
 
-        $start = Carbon::parse($event->startDateTime, config('app.timezone'));
-        $end   = Carbon::parse($event->endDateTime, config('app.timezone'));
+        // startDateTime/endDateTime are naive wall-clock strings; interpret them
+        // in the event's venue timezone when set (for out-of-timezone gigs),
+        // falling back to the app timezone.
+        $timezone = !empty($event->venue_timezone)
+            ? $event->venue_timezone
+            : config('app.timezone');
+
+        $start = Carbon::parse($event->startDateTime, $timezone);
+        $end   = Carbon::parse($event->endDateTime, $timezone);
 
         $calendarEvent = CalendarEvent::create()
             ->uniqueIdentifier('event-' . $event->id . '@thatstheticket')
@@ -132,10 +139,16 @@ class CalendarFeedController extends Controller
             $calendarEvent->description($description);
         }
 
-        if (!empty($event->venue_name)) {
+        // Venue fields live on the event row for booking-derived events, but
+        // fall back to the polymorphic eventable for rehearsals / legacy rows
+        // that weren't backfilled (mirrors CalendarEventFormatter).
+        $venueName    = $event->venue_name ?? ($event->eventable?->venue_name ?? null);
+        $venueAddress = $event->venue_address ?? ($event->eventable?->venue_address ?? null);
+
+        if (!empty($venueName)) {
             $calendarEvent->address(
-                $event->venue_address ? $event->venue_name . ', ' . $event->venue_address : $event->venue_name,
-                $event->venue_name,
+                $venueAddress ? $venueName . ', ' . $venueAddress : $venueName,
+                $venueName,
             );
         }
 
