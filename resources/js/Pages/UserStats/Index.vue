@@ -744,7 +744,11 @@ export default {
       if (!date) {
         return 'TBD'
       }
-      return new Date(date).toLocaleDateString('en-US', {
+      // Parse the Y-m-d string as a LOCAL date. `new Date('2025-06-15')` is
+      // interpreted as UTC midnight, which renders as the previous day for
+      // users west of UTC; building from explicit parts avoids that shift.
+      const [year, month, day] = date.split('-').map(Number)
+      return new Date(year, month - 1, day).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric'
