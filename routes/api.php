@@ -103,6 +103,9 @@ Route::prefix('mobile')->group(function () {
         Route::get('/me/calendar-feed', [App\Http\Controllers\Api\Mobile\CalendarFeedController::class, 'show'])->name('mobile.me.calendar-feed');
         Route::post('/me/calendar-feed/reset', [App\Http\Controllers\Api\Mobile\CalendarFeedController::class, 'reset'])->name('mobile.me.calendar-feed.reset');
 
+        // Personal stats (earnings, travel, performance locations) across all bands.
+        Route::get('/me/stats', [App\Http\Controllers\Api\Mobile\StatsController::class, 'index'])->name('mobile.me.stats');
+
         // Contract audit trail (band-agnostic — keyed by PandaDoc envelope id).
         Route::get('/contracts/{contract:envelope_id}/history', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'contractHistory'])->name('mobile.contracts.history');
 
