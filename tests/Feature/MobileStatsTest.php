@@ -23,6 +23,10 @@ class MobileStatsTest extends TestCase
     {
         parent::setUp();
 
+        // Pin the clock so the earned-vs-upcoming split (gig date vs "today") is
+        // deterministic regardless of when/where the suite runs.
+        Carbon::setTestNow(Carbon::create(2025, 6, 15, 12, 0, 0));
+
         $this->user = User::factory()->create();
         $this->band = Bands::factory()->create();
 
@@ -31,6 +35,13 @@ class MobileStatsTest extends TestCase
             ['user_id' => $this->user->id, 'band_id' => $this->band->id, 'created_at' => Carbon::now()->subYears(2), 'updated_at' => Carbon::now()->subYears(2)],
             ['user_id' => User::factory()->create()->id, 'band_id' => $this->band->id, 'created_at' => Carbon::now()->subYears(2), 'updated_at' => Carbon::now()->subYears(2)],
         ]);
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
     }
 
     private function seedConfirmedBookingWithVenue(string $venueName, string $venueAddress): Events
@@ -68,7 +79,7 @@ class MobileStatsTest extends TestCase
         $response->assertOk();
         $response->assertJsonStructure([
             'stats' => [
-                'payments' => ['total_earnings', 'booking_count', 'by_year', 'by_band', 'bookings_by_year'],
+                'payments' => ['total_earnings', 'booking_count', 'upcoming_earnings', 'upcoming_booking_count', 'by_year', 'by_band', 'bookings_by_year'],
                 'travel'   => ['total_miles', 'total_minutes', 'total_hours', 'event_count', 'by_year'],
                 'locations',
             ],
@@ -77,6 +88,35 @@ class MobileStatsTest extends TestCase
         // Equal split of a $2000 booking between two members → $1000 share.
         $response->assertJsonPath('stats.payments.booking_count', 1);
         $response->assertJsonPath('stats.payments.total_earnings', '1000.00');
+    }
+
+    public function test_future_gigs_are_reported_as_upcoming_not_earned(): void
+    {
+        // Past gig → earned.
+        $this->seedConfirmedBookingWithVenue('The Ruins', '123 Main St, Lafayette, LA 70508, USA');
+
+        // Future gig → upcoming, not counted toward earnings.
+        $futureBooking = Bookings::factory()->create([
+            'band_id' => $this->band->id,
+            'price'   => 4000,
+            'status'  => 'confirmed',
+        ]);
+        Events::factory()->create([
+            'eventable_type' => 'App\\Models\\Bookings',
+            'eventable_id'   => $futureBooking->id,
+            'date'           => Carbon::now()->addMonth(),
+        ]);
+
+        Sanctum::actingAs($this->user);
+
+        $response = $this->getJson('/api/mobile/me/stats')->assertOk();
+
+        // Earned: only the past $2000 gig, split two ways → $1000.
+        $response->assertJsonPath('stats.payments.total_earnings', '1000.00');
+        $response->assertJsonPath('stats.payments.booking_count', 1);
+        // Upcoming: the future $4000 gig, split two ways → $2000.
+        $response->assertJsonPath('stats.payments.upcoming_earnings', '2000.00');
+        $response->assertJsonPath('stats.payments.upcoming_booking_count', 1);
     }
 
     public function test_locations_are_enriched_with_cached_coordinates(): void
