@@ -218,7 +218,7 @@
                       />
                     </svg>
                     <span class="text-lg font-semibold text-gray-900 dark:text-white">
-                      {{ yearData.year }}
+                      {{ yearData.year || 'TBD' }}
                     </span>
                     <span class="text-sm text-gray-500 dark:text-gray-400">
                       {{ yearData.booking_count }} {{ yearData.booking_count === 1 ? 'gig' : 'gigs' }} played
@@ -370,7 +370,7 @@
                       />
                     </svg>
                     <span class="text-lg font-semibold text-gray-900 dark:text-white">
-                      {{ yearData.year }}
+                      {{ yearData.year || 'TBD' }}
                     </span>
                     <span class="text-sm text-gray-500 dark:text-gray-400">
                       {{ yearData.event_count }} {{ yearData.event_count === 1 ? 'event' : 'events' }}
@@ -739,6 +739,11 @@ export default {
     },
 
     formatDate(date) {
+      // Bookings with no events yet have a null date (treated as upcoming);
+      // show a placeholder rather than the epoch (Jan 1, 1970).
+      if (!date) {
+        return 'TBD'
+      }
       return new Date(date).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
