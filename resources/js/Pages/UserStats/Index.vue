@@ -61,7 +61,14 @@
                       ${{ formatNumber(stats.payments.total_earnings) }}
                     </dd>
                     <dd class="text-xs text-gray-500 dark:text-gray-400">
-                      {{ stats.payments.booking_count }} bookings
+                      {{ stats.payments.booking_count }} {{ stats.payments.booking_count === 1 ? 'gig' : 'gigs' }} played
+                    </dd>
+                    <dd
+                      v-if="stats.payments.upcoming_booking_count > 0"
+                      class="mt-1 text-xs text-gray-500 dark:text-gray-400"
+                    >
+                      <span class="font-medium text-gray-700 dark:text-gray-300">${{ formatNumber(stats.payments.upcoming_earnings) }}</span>
+                      upcoming ({{ stats.payments.upcoming_booking_count }} {{ stats.payments.upcoming_booking_count === 1 ? 'gig' : 'gigs' }})
                     </dd>
                   </dl>
                 </div>
@@ -214,12 +221,21 @@
                       {{ yearData.year }}
                     </span>
                     <span class="text-sm text-gray-500 dark:text-gray-400">
-                      {{ yearData.booking_count }} {{ yearData.booking_count === 1 ? 'booking' : 'bookings' }}
+                      {{ yearData.booking_count }} {{ yearData.booking_count === 1 ? 'gig' : 'gigs' }} played
+                      <template v-if="yearData.upcoming_booking_count > 0">
+                        · {{ yearData.upcoming_booking_count }} upcoming
+                      </template>
                     </span>
                   </div>
                   <div class="text-right">
                     <div class="text-lg font-semibold text-green-600 dark:text-green-400">
                       ${{ formatNumber(yearData.year_total) }}
+                    </div>
+                    <div
+                      v-if="yearData.upcoming_booking_count > 0"
+                      class="text-xs text-gray-500 dark:text-gray-400"
+                    >
+                      +${{ formatNumber(yearData.upcoming_total) }} upcoming
                     </div>
                   </div>
                 </button>
@@ -240,7 +256,13 @@
                       :sortable="true"
                     >
                       <template #body="slotProps">
-                        {{ formatDate(slotProps.data.date) }}
+                        <div>{{ formatDate(slotProps.data.date) }}</div>
+                        <span
+                          v-if="slotProps.data.is_upcoming"
+                          class="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200"
+                        >
+                          Upcoming
+                        </span>
                       </template>
                     </Column>
                     <Column

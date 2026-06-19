@@ -242,12 +242,18 @@ class UserStatsServiceTest extends TestCase
             'status' => 'confirmed',
         ]);
 
-        // Create booking AFTER join date (should count)
-        Bookings::factory()->create([
+        // Create booking AFTER join date (should count). Give it a past event date
+        // so it lands in earned earnings rather than upcoming.
+        $afterBooking = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 2000,
             'created_at' => $joinDate->copy()->addDays(10),
             'status' => 'confirmed',
+        ]);
+        Events::factory()->create([
+            'eventable_type' => 'App\\Models\\Bookings',
+            'eventable_id' => $afterBooking->id,
+            'date' => Carbon::now()->subDays(5),
         ]);
 
         $service = new UserStatsService($this->user);
@@ -269,17 +275,28 @@ class UserStatsServiceTest extends TestCase
             'updated_at' => $joinDate,
         ]);
 
-        // Create bookings with different statuses
-        Bookings::factory()->create([
+        // Create bookings with different statuses. Give the countable ones a past
+        // event date so they land in earned earnings rather than upcoming.
+        $confirmed = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000,
             'status' => 'confirmed',
         ]);
+        Events::factory()->create([
+            'eventable_type' => 'App\\Models\\Bookings',
+            'eventable_id' => $confirmed->id,
+            'date' => Carbon::now()->subDays(5),
+        ]);
 
-        Bookings::factory()->create([
+        $pending = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 1000,
             'status' => 'pending',
+        ]);
+        Events::factory()->create([
+            'eventable_type' => 'App\\Models\\Bookings',
+            'eventable_id' => $pending->id,
+            'date' => Carbon::now()->subDays(5),
         ]);
 
         Bookings::factory()->create([
@@ -375,17 +392,28 @@ class UserStatsServiceTest extends TestCase
             'updated_at' => Carbon::now()->subYear(),
         ]);
 
-        // Create bookings for both bands
-        Bookings::factory()->create([
+        // Create bookings for both bands, each with a past event date so they
+        // count as earned rather than upcoming.
+        $booking1 = Bookings::factory()->create([
             'band_id' => $this->band->id,
             'price' => 4000, // $2000 per member (2 members)
             'status' => 'confirmed',
         ]);
+        Events::factory()->create([
+            'eventable_type' => 'App\\Models\\Bookings',
+            'eventable_id' => $booking1->id,
+            'date' => Carbon::now()->subDays(5),
+        ]);
 
-        Bookings::factory()->create([
+        $booking2 = Bookings::factory()->create([
             'band_id' => $band2->id,
             'price' => 3000, // $3000 (only member)
             'status' => 'confirmed',
+        ]);
+        Events::factory()->create([
+            'eventable_type' => 'App\\Models\\Bookings',
+            'eventable_id' => $booking2->id,
+            'date' => Carbon::now()->subDays(5),
         ]);
 
         $service = new UserStatsService($this->user);
@@ -559,5 +587,105 @@ class UserStatsServiceTest extends TestCase
         // Future events should not be counted in travel stats
         $this->assertEquals(0, $stats['travel']['total_miles']);
         $this->assertEquals(0, $stats['travel']['total_minutes']);
+    }
+
+
+    public function test_it_separates_earned_from_upcoming_earnings()
+    {
+        DB::table('band_members')->insert([
+            'user_id' => $this->user->id,
+            'band_id' => $this->band->id,
+            'created_at' => Carbon::now()->subYears(2),
+            'updated_at' => Carbon::now()->subYears(2),
+        ]);
+
+        // Past gig -> earned
+        $pastBooking = Bookings::factory()->create([
+            'band_id' => $this->band->id,
+            'price' => 1000,
+            'status' => 'confirmed',
+        ]);
+        Events::factory()->create([
+            'eventable_type' => 'App\\Models\\Bookings',
+            'eventable_id' => $pastBooking->id,
+            'date' => Carbon::now()->subDays(10),
+        ]);
+
+        // Future gig -> upcoming
+        $futureBooking = Bookings::factory()->create([
+            'band_id' => $this->band->id,
+            'price' => 3000,
+            'status' => 'confirmed',
+        ]);
+        Events::factory()->create([
+            'eventable_type' => 'App\\Models\\Bookings',
+            'eventable_id' => $futureBooking->id,
+            'date' => Carbon::now()->addDays(10),
+        ]);
+
+        $service = new UserStatsService($this->user);
+        $stats = $service->getUserStats();
+
+        // Only the sole member, so the user keeps the full price of each gig.
+        $this->assertEquals('1000.00', $stats['payments']['total_earnings']);
+        $this->assertEquals(1, $stats['payments']['booking_count']);
+        $this->assertEquals('3000.00', $stats['payments']['upcoming_earnings']);
+        $this->assertEquals(1, $stats['payments']['upcoming_booking_count']);
+    }
+
+
+    public function test_a_gig_dated_today_counts_as_upcoming()
+    {
+        DB::table('band_members')->insert([
+            'user_id' => $this->user->id,
+            'band_id' => $this->band->id,
+            'created_at' => Carbon::now()->subYear(),
+            'updated_at' => Carbon::now()->subYear(),
+        ]);
+
+        $booking = Bookings::factory()->create([
+            'band_id' => $this->band->id,
+            'price' => 2000,
+            'status' => 'confirmed',
+        ]);
+        Events::factory()->create([
+            'eventable_type' => 'App\\Models\\Bookings',
+            'eventable_id' => $booking->id,
+            'date' => Carbon::now(), // today
+        ]);
+
+        $service = new UserStatsService($this->user);
+        $stats = $service->getUserStats();
+
+        $this->assertEquals('0.00', $stats['payments']['total_earnings']);
+        $this->assertEquals(0, $stats['payments']['booking_count']);
+        $this->assertEquals('2000.00', $stats['payments']['upcoming_earnings']);
+        $this->assertEquals(1, $stats['payments']['upcoming_booking_count']);
+    }
+
+
+    public function test_a_booking_with_no_events_counts_as_upcoming()
+    {
+        DB::table('band_members')->insert([
+            'user_id' => $this->user->id,
+            'band_id' => $this->band->id,
+            'created_at' => Carbon::now()->subYear(),
+            'updated_at' => Carbon::now()->subYear(),
+        ]);
+
+        // No events attached -> null gig date -> treated as upcoming.
+        Bookings::factory()->create([
+            'band_id' => $this->band->id,
+            'price' => 1500,
+            'status' => 'confirmed',
+        ]);
+
+        $service = new UserStatsService($this->user);
+        $stats = $service->getUserStats();
+
+        $this->assertEquals('0.00', $stats['payments']['total_earnings']);
+        $this->assertEquals(0, $stats['payments']['booking_count']);
+        $this->assertEquals('1500.00', $stats['payments']['upcoming_earnings']);
+        $this->assertEquals(1, $stats['payments']['upcoming_booking_count']);
     }
 }
