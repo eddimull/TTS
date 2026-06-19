@@ -153,7 +153,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <!-- Earnings by Year Chart -->
           <div
-            v-if="stats.payments.by_year.length > 0"
+            v-if="byYearWithUpcoming.length > 0"
             class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-lg"
           >
             <div class="p-6">
@@ -168,7 +168,7 @@
 
           <!-- Earnings by Band Chart -->
           <div
-            v-if="stats.payments.by_band.length > 0"
+            v-if="byBandWithUpcoming.length > 0"
             class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-lg"
           >
             <div class="p-6">
@@ -221,22 +221,10 @@
                       {{ yearData.year || 'TBD' }}
                     </span>
                     <span class="text-sm text-gray-500 dark:text-gray-400">
-                      {{ yearData.booking_count }} {{ yearData.booking_count === 1 ? 'gig' : 'gigs' }} played
-                      <template v-if="yearData.upcoming_booking_count > 0">
-                        · {{ yearData.upcoming_booking_count }} upcoming
-                      </template>
+                      {{ yearData.booking_count + yearData.upcoming_booking_count }}
+                      {{ (yearData.booking_count + yearData.upcoming_booking_count) === 1 ? 'booking' : 'bookings' }}
+                      · ${{ formatNumber(yearData.year_total) }} earned<template v-if="yearData.upcoming_booking_count > 0"> · ${{ formatNumber(yearData.upcoming_total) }} upcoming</template>
                     </span>
-                  </div>
-                  <div class="text-right">
-                    <div class="text-lg font-semibold text-green-600 dark:text-green-400">
-                      ${{ formatNumber(yearData.year_total) }}
-                    </div>
-                    <div
-                      v-if="yearData.upcoming_booking_count > 0"
-                      class="text-xs text-gray-500 dark:text-gray-400"
-                    >
-                      +${{ formatNumber(yearData.upcoming_total) }} upcoming
-                    </div>
                   </div>
                 </button>
 
@@ -606,6 +594,40 @@ export default {
     }
   },
 
+  computed: {
+    byYearWithUpcoming() {
+      const earned = {}, upcoming = {}
+      for (const yg of this.stats.payments.bookings_by_year) {
+        if (yg.year == null) continue
+        for (const b of yg.bookings) {
+          const bucket = b.is_upcoming ? upcoming : earned
+          bucket[yg.year] = (bucket[yg.year] || 0) + parseFloat(b.user_share)
+        }
+      }
+      const years = [...new Set([...Object.keys(earned), ...Object.keys(upcoming)])]
+        .map(Number).sort((a, b) => a - b)
+      return years.map(y => ({ year: y, earned: earned[y] || 0, upcoming: upcoming[y] || 0 }))
+    },
+    byBandWithUpcoming() {
+      const earned = {}, upcoming = {}, names = {}
+      for (const yg of this.stats.payments.bookings_by_year) {
+        for (const b of yg.bookings) {
+          names[b.band_id] = b.band_name
+          const bucket = b.is_upcoming ? upcoming : earned
+          bucket[b.band_id] = (bucket[b.band_id] || 0) + parseFloat(b.user_share)
+        }
+      }
+      return Object.keys(names)
+        .map(id => ({
+          bandId: Number(id),
+          bandName: names[id],
+          earned: earned[id] || 0,
+          upcoming: upcoming[id] || 0,
+        }))
+        .sort((a, b) => (b.earned + b.upcoming) - (a.earned + a.upcoming))
+    },
+  },
+
   mounted() {
     this.$nextTick(() => {
       this.createCharts()
@@ -645,87 +667,86 @@ export default {
 
     createCharts() {
       // Earnings by Year Chart
-      if (this.$refs.earningsByYearChart && this.stats.payments.by_year.length > 0) {
+      if (this.$refs.earningsByYearChart && this.byYearWithUpcoming.length > 0) {
         const ctx = this.$refs.earningsByYearChart.getContext('2d')
+        const rows = this.byYearWithUpcoming
         this.yearChart = new Chart(ctx, {
           type: 'bar',
           data: {
-            labels: this.stats.payments.by_year.map(item => item.year),
-            datasets: [{
-              label: 'My Earnings ($)',
-              data: this.stats.payments.by_year.map(item => parseFloat(item.total)),
-              backgroundColor: 'rgba(34, 197, 94, 0.5)',
-              borderColor: 'rgba(34, 197, 94, 1)',
-              borderWidth: 1
-            }]
+            labels: rows.map(r => r.year),
+            datasets: [
+              {
+                label: 'Earned',
+                data: rows.map(r => r.earned),
+                backgroundColor: 'rgba(34, 197, 94, 0.6)',
+                borderColor: 'rgba(34, 197, 94, 1)',
+                borderWidth: 1,
+              },
+              {
+                label: 'Upcoming',
+                data: rows.map(r => r.upcoming),
+                backgroundColor: 'rgba(156, 163, 175, 0.5)',
+                borderColor: 'rgba(156, 163, 175, 1)',
+                borderWidth: 1,
+              },
+            ],
           },
           options: {
             responsive: true,
             maintainAspectRatio: true,
             aspectRatio: 2,
-            plugins: {
-              legend: {
-                display: false
-              }
-            },
+            plugins: { legend: { display: true, position: 'bottom' } },
             scales: {
+              x: { stacked: true },
               y: {
+                stacked: true,
                 beginAtZero: true,
-                ticks: {
-                  callback: function(value) {
-                    return '$' + value.toLocaleString()
-                  }
-                }
-              }
-            }
-          }
+                ticks: { callback: (v) => '$' + v.toLocaleString() },
+              },
+            },
+          },
         })
       }
 
       // Earnings by Band Chart
-      if (this.$refs.earningsByBandChart && this.stats.payments.by_band.length > 0) {
+      if (this.$refs.earningsByBandChart && this.byBandWithUpcoming.length > 0) {
         const ctx = this.$refs.earningsByBandChart.getContext('2d')
+        const base = [
+          [34, 197, 94], [59, 130, 246], [168, 85, 247],
+          [249, 115, 22], [236, 72, 153], [90, 200, 250],
+        ]
+        const labels = [], data = [], bg = [], border = []
+        this.byBandWithUpcoming.forEach((band, i) => {
+          const [r, g, b] = base[i % base.length]
+          if (band.earned > 0) {
+            labels.push(band.bandName)
+            data.push(band.earned)
+            bg.push(`rgba(${r}, ${g}, ${b}, 0.6)`)
+            border.push(`rgba(${r}, ${g}, ${b}, 1)`)
+          }
+          if (band.upcoming > 0) {
+            labels.push(`${band.bandName} (upcoming)`)
+            data.push(band.upcoming)
+            bg.push(`rgba(${r}, ${g}, ${b}, 0.25)`)
+            border.push(`rgba(${r}, ${g}, ${b}, 0.6)`)
+          }
+        })
         this.bandChart = new Chart(ctx, {
           type: 'doughnut',
-          data: {
-            labels: this.stats.payments.by_band.map(item => item.band_name),
-            datasets: [{
-              label: 'My Earnings ($)',
-              data: this.stats.payments.by_band.map(item => parseFloat(item.total)),
-              backgroundColor: [
-                'rgba(34, 197, 94, 0.5)',
-                'rgba(59, 130, 246, 0.5)',
-                'rgba(168, 85, 247, 0.5)',
-                'rgba(249, 115, 22, 0.5)',
-                'rgba(236, 72, 153, 0.5)',
-              ],
-              borderColor: [
-                'rgba(34, 197, 94, 1)',
-                'rgba(59, 130, 246, 1)',
-                'rgba(168, 85, 247, 1)',
-                'rgba(249, 115, 22, 1)',
-                'rgba(236, 72, 153, 1)',
-              ],
-              borderWidth: 1
-            }]
-          },
+          data: { labels, datasets: [{ data, backgroundColor: bg, borderColor: border, borderWidth: 1 }] },
           options: {
             responsive: true,
             maintainAspectRatio: true,
             aspectRatio: 1.5,
             plugins: {
-              legend: {
-                position: 'bottom'
-              },
+              legend: { position: 'bottom' },
               tooltip: {
                 callbacks: {
-                  label: function(context) {
-                    return context.label + ': $' + parseFloat(context.parsed).toLocaleString()
-                  }
-                }
-              }
-            }
-          }
+                  label: (c) => c.label + ': $' + parseFloat(c.parsed).toLocaleString(),
+                },
+              },
+            },
+          },
         })
       }
     },
