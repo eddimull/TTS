@@ -1,28 +1,40 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api\Mobile;
 
+use App\Http\Controllers\Controller;
 use App\Models\Bands;
 use App\Models\BandSubs;
 use App\Models\RosterMember;
 use App\Models\SubstituteCallList;
 use App\Services\SubInvitationService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class SubstituteCallListController extends Controller
+/**
+ * Mobile equivalent of {@see \App\Http\Controllers\SubstituteCallListController}.
+ *
+ * Band ownership is enforced by the `owner` middleware on the route group, so
+ * no in-controller authorize() call is needed — we only confirm that the bound
+ * {callList} entry actually belongs to the {band} (returning 404 if not). The
+ * belongs-to-band guard is done inline so it runs before any other check.
+ */
+class SubstituteCallListsController extends Controller
 {
     /**
-     * Get call list for a band, optionally filtered by instrument.
+     * GET /api/mobile/bands/{band}/call-lists
+     *
+     * Grouped-by-instrument call lists. Mirrors the web index shape.
      */
-    public function index(Bands $band, Request $request)
+    public function index(Bands $band, Request $request): JsonResponse
     {
-        $query = $band->substituteCallLists()->with('rosterMember.user');
+        $query = $band->substituteCallLists()->with(['rosterMember.user', 'bandRole']);
 
-        if ($request->has('instrument')) {
-            $query->where('instrument', $request->instrument);
+        if ($request->filled('instrument')) {
+            $query->where('instrument', $request->input('instrument'));
         }
 
-        $callLists = $query->get()->map(function ($entry) {
+        $callLists = $query->orderBy('priority')->get()->map(function ($entry) {
             $data = [
                 'id' => $entry->id,
                 'band_id' => $entry->band_id,
@@ -36,7 +48,6 @@ class SubstituteCallListController extends Controller
                 'notes' => $entry->notes,
             ];
 
-            // Include roster member data if exists
             if ($entry->rosterMember) {
                 $data['roster_member'] = [
                     'id' => $entry->rosterMember->id,
@@ -58,9 +69,9 @@ class SubstituteCallListController extends Controller
     }
 
     /**
-     * Store a new substitute in the call list.
+     * POST /api/mobile/bands/{band}/call-lists
      */
-    public function store(Request $request, Bands $band, SubInvitationService $subInvitationService)
+    public function store(Request $request, Bands $band, SubInvitationService $subInvitationService): JsonResponse
     {
         $validated = $request->validate([
             'instrument' => 'nullable|string|max:255',
@@ -79,7 +90,7 @@ class SubstituteCallListController extends Controller
         $sendInvite = $validated['send_invite'] ?? true;
         unset($validated['send_invite']);
 
-        // Auto-assign priority if not provided
+        // Auto-assign priority if not provided.
         if (!isset($validated['priority'])) {
             $query = $band->substituteCallLists();
 
@@ -98,7 +109,7 @@ class SubstituteCallListController extends Controller
         $callListEntry = SubstituteCallList::create($validated);
 
         // Adding someone to a call list should also invite them to sub for the
-        // band, unless the caller explicitly opts out (programmatic adds).
+        // band, unless the caller explicitly opts out.
         if ($sendInvite) {
             $this->maybeInviteToBand($band, $callListEntry, $subInvitationService);
         }
@@ -110,10 +121,73 @@ class SubstituteCallListController extends Controller
     }
 
     /**
+     * PATCH /api/mobile/bands/{band}/call-lists/{callList}
+     *
+     * Priority/notes only.
+     */
+    public function update(Request $request, Bands $band, SubstituteCallList $callList): JsonResponse
+    {
+        if ($callList->band_id !== $band->id) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'priority' => 'sometimes|integer|min:1',
+            'notes' => 'nullable|string',
+        ]);
+
+        $callList->update($validated);
+
+        return response()->json([
+            'message' => 'Call list entry updated',
+            'entry' => $callList->fresh()->load('rosterMember.user'),
+        ]);
+    }
+
+    /**
+     * DELETE /api/mobile/bands/{band}/call-lists/{callList}
+     */
+    public function destroy(Bands $band, SubstituteCallList $callList): JsonResponse
+    {
+        if ($callList->band_id !== $band->id) {
+            abort(404);
+        }
+
+        $callList->delete();
+
+        return response()->json([
+            'message' => 'Substitute removed from call list',
+        ]);
+    }
+
+    /**
+     * POST /api/mobile/bands/{band}/call-lists/reorder
+     */
+    public function reorder(Request $request, Bands $band): JsonResponse
+    {
+        $validated = $request->validate([
+            'instrument' => 'required|string',
+            'order' => 'required|array',
+            'order.*' => 'exists:substitute_call_lists,id',
+        ]);
+
+        foreach ($validated['order'] as $index => $id) {
+            SubstituteCallList::where('id', $id)
+                ->where('band_id', $band->id)
+                ->update(['priority' => $index + 1]);
+        }
+
+        return response()->json([
+            'message' => 'Call list reordered successfully',
+        ]);
+    }
+
+    /**
      * Send a band-level sub invitation for a newly added call-list entry.
      *
      * Invites a custom person (has custom_email) or a roster member whose
-     * linked user is not already a band sub.
+     * linked user is not already a band sub. Mirrors the web controller's
+     * maybeInviteToBand().
      */
     protected function maybeInviteToBand(
         Bands $band,
@@ -165,57 +239,5 @@ class SubstituteCallListController extends Controller
             bandRoleId: $entry->band_role_id,
             notes: $entry->notes
         );
-    }
-
-    /**
-     * Update a call list entry.
-     */
-    public function update(Request $request, SubstituteCallList $substituteCallList)
-    {
-        $validated = $request->validate([
-            'priority' => 'sometimes|integer|min:1',
-            'notes' => 'nullable|string',
-        ]);
-
-        $substituteCallList->update($validated);
-
-        return response()->json([
-            'message' => 'Call list entry updated',
-            'entry' => $substituteCallList->fresh()->load('rosterMember.user'),
-        ]);
-    }
-
-    /**
-     * Delete a call list entry.
-     */
-    public function destroy(SubstituteCallList $substituteCallList)
-    {
-        $substituteCallList->delete();
-
-        return response()->json([
-            'message' => 'Substitute removed from call list',
-        ]);
-    }
-
-    /**
-     * Reorder call list for an instrument.
-     */
-    public function reorder(Request $request, Bands $band)
-    {
-        $validated = $request->validate([
-            'instrument' => 'required|string',
-            'order' => 'required|array',
-            'order.*' => 'exists:substitute_call_lists,id',
-        ]);
-
-        foreach ($validated['order'] as $index => $id) {
-            SubstituteCallList::where('id', $id)
-                ->where('band_id', $band->id)
-                ->update(['priority' => $index + 1]);
-        }
-
-        return response()->json([
-            'message' => 'Call list reordered successfully',
-        ]);
     }
 }
