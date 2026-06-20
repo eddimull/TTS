@@ -92,7 +92,7 @@ class BandSubInvitation extends Model
      */
     public function getDisplayPhoneAttribute(): ?string
     {
-        if ($this->user_id && $this->user) {
+        if ($this->user_id !== null) {
             return null;
         }
         return $this->phone;
