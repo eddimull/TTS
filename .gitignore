@@ -63,3 +63,8 @@ CLAUDE.md
 
 # Firebase credentials
 /storage/app/firebase/
+
+# Never commit database dumps
+*.sql
+*.sql.gz
+*.dump

@@ -59,6 +59,12 @@ class UserStatsService
         $yearEarnings = [];
         $bookingsByYear = [];
         $totalBookingCount = 0;
+        $upcomingEarnings = 0;
+        $upcomingBookingCount = 0;
+
+        // A gig is "earned" once its date has passed. Gigs dated today or in the
+        // future (and bookings with no events yet, so no date) are still upcoming.
+        $today = Carbon::now()->startOfDay();
 
         // Get all bands the user owns or is a member of
         // Eager load counts and payout configs to avoid N+1 queries in payout calculations
@@ -112,28 +118,45 @@ class UserStatsService
                 ->get();
 
             $bandTotal = 0;
+            $bandBookingCount = 0;
 
             foreach ($bookings as $booking) {
                 // Calculate user's share of this booking
                 $userShare = $this->calculateUserShareFromBooking($band, $booking, $userBandStatus[$band->id] ?? []);
 
                 if ($userShare > 0) {
-                    $bandTotal += $userShare;
-                    $totalBookingCount++;
+                    // A gig counts as earned only once its date has passed. Future
+                    // gigs (and bookings with no date yet) are projected, not earned.
+                    $isUpcoming = $booking->start_date === null
+                        || $booking->start_date->gte($today);
 
-                    // Add to year earnings
                     $year = $booking->start_date?->year;
-                    if (!isset($yearEarnings[$year])) {
-                        $yearEarnings[$year] = 0;
+
+                    if ($isUpcoming) {
+                        $upcomingEarnings += $userShare;
+                        $upcomingBookingCount++;
+                    } else {
+                        $bandTotal += $userShare;
+                        $bandBookingCount++;
+                        $totalBookingCount++;
+
+                        // Add to year earnings (earned gigs only)
+                        if (!isset($yearEarnings[$year])) {
+                            $yearEarnings[$year] = 0;
+                        }
+                        $yearEarnings[$year] += $userShare;
                     }
-                    $yearEarnings[$year] += $userShare;
 
                     // Add detailed booking info to year grouping
                     if (!isset($bookingsByYear[$year])) {
                         $bookingsByYear[$year] = [];
                     }
 
-                    $primary = $booking->events()->orderBy('date')->orderBy('id')->first();
+                    // Use the eager-loaded events collection (sorted in memory)
+                    // rather than re-querying, which would be an N+1 per booking.
+                    $primary = $booking->events
+                        ->sortBy([['date', 'asc'], ['id', 'asc']])
+                        ->first();
                     $bookingsByYear[$year][] = [
                         'id' => $booking->id,
                         'booking_name' => $booking->name,
@@ -143,6 +166,7 @@ class UserStatsService
                         'venue_address' => $primary?->venue_address ?? '',
                         'date' => $booking->start_date?->format('Y-m-d'),
                         'status' => $booking->status,
+                        'is_upcoming' => $isUpcoming,
                         'total_price' => number_format(floatval($booking->price), 2, '.', ''),
                         'user_share' => number_format($userShare / 100, 2, '.', ''),
                     ];
@@ -154,7 +178,8 @@ class UserStatsService
                     'band_id' => $band->id,
                     'band_name' => $band->name,
                     'total' => number_format($bandTotal / 100, 2, '.', ''),
-                    'booking_count' => $bookings->count(),
+                    // Earned bookings only, to stay consistent with the earned total above.
+                    'booking_count' => $bandBookingCount,
                 ];
             }
         }
@@ -174,18 +199,28 @@ class UserStatsService
         // Format bookings by year - sort years descending and bookings by date descending
         $formattedBookingsByYear = collect($bookingsByYear)
             ->map(function ($bookings, $year) {
+                $earned = collect($bookings)->where('is_upcoming', false);
+                $upcoming = collect($bookings)->where('is_upcoming', true);
+
                 return [
                     'year' => $year,
                     'bookings' => collect($bookings)->sortByDesc('date')->values()->toArray(),
+                    // Earned share only, to match the headline total.
                     'year_total' => number_format(
-                        collect($bookings)->sum(function ($b) {
-                            return floatval($b['user_share']);
-                        }),
+                        $earned->sum(fn ($b) => floatval($b['user_share'])),
                         2,
                         '.',
                         ''
                     ),
-                    'booking_count' => count($bookings),
+                    // Projected share from gigs in this year that haven't happened yet.
+                    'upcoming_total' => number_format(
+                        $upcoming->sum(fn ($b) => floatval($b['user_share'])),
+                        2,
+                        '.',
+                        ''
+                    ),
+                    'booking_count' => $earned->count(),
+                    'upcoming_booking_count' => $upcoming->count(),
                 ];
             })
             ->sortByDesc('year')
@@ -196,9 +231,12 @@ class UserStatsService
 
         return [
             'total_earnings' => number_format($totalEarnings / 100, 2, '.', ''),
+            // Projected earnings from gigs that haven't happened yet.
+            'upcoming_earnings' => number_format($upcomingEarnings / 100, 2, '.', ''),
             'by_year' => $byYear,
             'by_band' => array_values($bandEarnings),
             'booking_count' => $totalBookingCount,
+            'upcoming_booking_count' => $upcomingBookingCount,
             'bookings_by_year' => $formattedBookingsByYear,
         ];
     }
