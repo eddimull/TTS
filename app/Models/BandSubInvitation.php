@@ -87,6 +87,18 @@ class BandSubInvitation extends Model
     }
 
     /**
+     * Get display phone. Registered users have no phone on file (the users
+     * table has no phone column), so only email-only invitations carry one.
+     */
+    public function getDisplayPhoneAttribute(): ?string
+    {
+        if ($this->user_id !== null) {
+            return null;
+        }
+        return $this->phone;
+    }
+
+    /**
      * Get role/instrument name
      */
     public function getRoleNameAttribute(): ?string

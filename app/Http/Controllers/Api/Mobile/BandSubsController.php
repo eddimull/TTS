@@ -40,6 +40,7 @@ class BandSubsController extends Controller
                 'user_id' => $sub->user_id,
                 'name' => $sub->user->name,
                 'email' => $sub->user->email,
+                'phone' => null,
                 'band_role_id' => null,
                 'role_name' => null,
             ])
@@ -57,6 +58,7 @@ class BandSubsController extends Controller
                 'user_id' => $inv->user_id,
                 'name' => $inv->display_name,
                 'email' => $inv->display_email,
+                'phone' => $inv->display_phone,
                 'band_role_id' => $inv->band_role_id,
                 'role_name' => $inv->role_name,
             ])
