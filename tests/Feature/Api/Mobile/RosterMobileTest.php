@@ -439,6 +439,34 @@ class RosterMobileTest extends TestCase
         ]);
     }
 
+    public function test_adding_multiple_non_user_members_creates_separate_rows(): void
+    {
+        $roster = Roster::factory()->create(['band_id' => $this->band->id]);
+
+        $this->withHeaders($this->asOwner())
+            ->postJson("/api/mobile/bands/{$this->band->id}/rosters/{$roster->id}/members", [
+                'name' => 'First Custom',
+                'email' => 'first@example.com',
+                'phone' => '555-0001',
+            ])->assertStatus(201);
+
+        $this->withHeaders($this->asOwner())
+            ->postJson("/api/mobile/bands/{$this->band->id}/rosters/{$roster->id}/members", [
+                'name' => 'Second Custom',
+                'email' => 'second@example.com',
+                'phone' => '555-0002',
+            ])->assertStatus(201);
+
+        // Both custom (NULL user_id) members must coexist — not collapse onto
+        // one row keyed by (roster_id, NULL).
+        $this->assertEquals(
+            2,
+            RosterMember::where('roster_id', $roster->id)->whereNull('user_id')->count(),
+        );
+        $this->assertDatabaseHas('roster_members', ['roster_id' => $roster->id, 'name' => 'First Custom']);
+        $this->assertDatabaseHas('roster_members', ['roster_id' => $roster->id, 'name' => 'Second Custom']);
+    }
+
     public function test_member_cannot_add_member(): void
     {
         $roster = Roster::factory()->create(['band_id' => $this->band->id]);

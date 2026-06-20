@@ -175,6 +175,68 @@ class BandSubInvitationTest extends TestCase
         $this->assertNotEquals($invitation1->invitation_key, $invitation2->invitation_key);
     }
 
+    public function test_reinviting_after_registration_reuses_row_and_does_not_violate_unique_index()
+    {
+        Mail::fake();
+
+        // 1. Invite a not-yet-registered person (user_id stays NULL).
+        $this->subInvitationService->inviteSubToBand(
+            bandId: $this->band->id,
+            email: 'later@example.com',
+            name: 'Later Sub',
+        );
+
+        $this->assertDatabaseHas('band_sub_invitations', [
+            'band_id' => $this->band->id,
+            'email' => 'later@example.com',
+            'user_id' => null,
+        ]);
+
+        // 2. That person registers (now a User with the same email exists).
+        $user = User::factory()->create(['email' => 'later@example.com']);
+
+        // 3. Re-inviting must NOT collide on the (band_id, email) unique index;
+        //    it should resolve to the same row and link the user.
+        $invitation = $this->subInvitationService->inviteSubToBand(
+            bandId: $this->band->id,
+            email: 'later@example.com',
+            name: 'Later Sub',
+        );
+
+        $this->assertEquals($user->id, $invitation->user_id);
+        $this->assertEquals(
+            1,
+            BandSubInvitation::where('band_id', $this->band->id)
+                ->where('email', 'later@example.com')
+                ->count(),
+            'Re-invite must reuse the existing row, not create a duplicate',
+        );
+    }
+
+    public function test_reinviting_accepted_sub_does_not_reset_to_pending()
+    {
+        Mail::fake();
+
+        $user = User::factory()->create(['email' => 'accepted@example.com']);
+
+        $invitation = BandSubInvitation::create([
+            'band_id' => $this->band->id,
+            'email' => 'accepted@example.com',
+            'user_id' => $user->id,
+            'pending' => false,
+            'accepted_at' => now(),
+        ]);
+
+        $this->subInvitationService->inviteSubToBand(
+            bandId: $this->band->id,
+            email: 'accepted@example.com',
+        );
+
+        $invitation->refresh();
+        $this->assertFalse($invitation->pending, 'An accepted invite must stay accepted on re-invite');
+        $this->assertNotNull($invitation->accepted_at);
+    }
+
     public function test_registering_with_band_invitation_key_accepts_invite()
     {
         Mail::fake();
