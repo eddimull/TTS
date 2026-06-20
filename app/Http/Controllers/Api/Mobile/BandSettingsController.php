@@ -71,6 +71,7 @@ class BandSettingsController extends Controller
             return [
                 'id'          => $user->id,
                 'name'        => $user->name,
+                'email'       => $user->email,
                 'is_owner'    => $isOwner,
                 'permissions' => $perms,
             ];
