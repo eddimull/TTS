@@ -84,6 +84,7 @@ class BandSubsMobileTest extends TestCase
             'band_id' => $this->band->id,
             'email' => 'pending@example.com',
             'name' => 'Pending Sub',
+            'phone' => '555-987-6543',
             'pending' => true,
         ]);
 
@@ -92,8 +93,10 @@ class BandSubsMobileTest extends TestCase
 
         $response->assertOk()
             ->assertJsonCount(2, 'subs')
-            ->assertJsonFragment(['status' => 'active', 'email' => 'active@example.com'])
-            ->assertJsonFragment(['status' => 'pending', 'email' => 'pending@example.com']);
+            // Registered users have no phone on file → null.
+            ->assertJsonFragment(['status' => 'active', 'email' => 'active@example.com', 'phone' => null])
+            // Email-only invitations carry the phone captured at invite time.
+            ->assertJsonFragment(['status' => 'pending', 'email' => 'pending@example.com', 'phone' => '555-987-6543']);
     }
 
     public function test_member_cannot_list_subs(): void
