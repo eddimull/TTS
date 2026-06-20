@@ -179,25 +179,28 @@ class SubInvitationService
         // Check if user exists
         $user = User::where('email', $email)->first();
 
-        // Upsert band_sub_invitations record — match on user_id when we have one,
-        // otherwise fall back to email (covers the band_id/email unique constraint).
-        $matchKey = $user
-            ? ['band_id' => $bandId, 'user_id' => $user->id]
-            : ['band_id' => $bandId, 'email'   => $email];
+        // Match on email — the table's unique key is (band_id, email), so a
+        // pre-registration invite (user_id NULL) and a later re-invite for the
+        // same person resolve to the same row instead of colliding on insert.
+        $invitation = BandSubInvitation::firstOrNew([
+            'band_id' => $bandId,
+            'email'   => $email,
+        ]);
 
-        $invitation = BandSubInvitation::updateOrCreate(
-            $matchKey,
-            [
-                'band_id'      => $bandId,
-                'band_role_id' => $bandRoleId,
-                'user_id'      => $user?->id,
-                'email'        => $email,
-                'name'         => $name,
-                'phone'        => $phone,
-                'notes'        => $notes,
-                'pending'      => true,
-            ]
-        );
+        $invitation->fill([
+            'band_role_id' => $bandRoleId,
+            'user_id'      => $user?->id ?? $invitation->user_id,
+            'name'         => $name,
+            'phone'        => $phone,
+            'notes'        => $notes,
+        ]);
+
+        // Don't force an already-accepted invitation back into a pending state.
+        if (!$invitation->exists) {
+            $invitation->pending = true;
+        }
+
+        $invitation->save();
 
         // If user exists, add them to band_subs if not already there
         if ($user) {

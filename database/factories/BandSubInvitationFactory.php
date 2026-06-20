@@ -6,21 +6,24 @@ use App\Models\BandSubInvitation;
 use App\Models\Bands;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
+/**
+ * @extends Factory<BandSubInvitation>
+ */
 class BandSubInvitationFactory extends Factory
 {
     /**
      * The name of the factory's corresponding model.
      *
-     * @var string
+     * @var class-string<BandSubInvitation>
      */
     protected $model = BandSubInvitation::class;
 
     /**
      * Define the model's default state.
      *
-     * @return array
+     * @return array<string, mixed>
      */
-    public function definition()
+    public function definition(): array
     {
         return [
             'band_id' => Bands::factory(),
@@ -38,7 +41,7 @@ class BandSubInvitationFactory extends Factory
     /**
      * Indicate that the invitation has been accepted.
      */
-    public function accepted()
+    public function accepted(): static
     {
         return $this->state(fn (array $attributes) => [
             'pending' => false,

@@ -40,23 +40,35 @@ class RosterMembersController extends Controller
             'is_active' => ['boolean'],
         ]);
 
-        $member = RosterMember::withTrashed()->updateOrCreate(
-            [
+        $attributes = [
+            'slot_id' => $request->slot_id,
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'role' => $request->role,
+            'band_role_id' => $request->band_role_id,
+            'notes' => $request->notes,
+            'is_active' => $request->boolean('is_active', true),
+            'deleted_at' => null, // Restore if soft-deleted
+        ];
+
+        if ($request->filled('user_id')) {
+            // A real user maps to one row per roster — upsert (and restore a
+            // soft-deleted row) on (roster_id, user_id).
+            $member = RosterMember::withTrashed()->updateOrCreate(
+                ['roster_id' => $roster->id, 'user_id' => $request->user_id],
+                $attributes,
+            );
+        } else {
+            // Custom (non-user) people have no natural key, so each add is a
+            // new row. updateOrCreate on a NULL user_id would collapse them all
+            // onto one record.
+            $member = RosterMember::create([
                 'roster_id' => $roster->id,
-                'user_id' => $request->user_id,
-            ],
-            [
-                'slot_id' => $request->slot_id,
-                'name' => $request->name,
-                'email' => $request->email,
-                'phone' => $request->phone,
-                'role' => $request->role,
-                'band_role_id' => $request->band_role_id,
-                'notes' => $request->notes,
-                'is_active' => $request->boolean('is_active', true),
-                'deleted_at' => null, // Restore if soft-deleted
-            ]
-        );
+                'user_id' => null,
+                ...$attributes,
+            ]);
+        }
 
         return response()->json([
             'message' => 'Member added to roster successfully',
@@ -74,7 +86,13 @@ class RosterMembersController extends Controller
             'phone' => ['nullable', 'string', 'max:50'],
             'role' => ['nullable', 'string', 'max:100'],
             'band_role_id' => ['nullable', 'exists:band_roles,id'],
-            'slot_id' => ['nullable', 'exists:roster_slots,id'],
+            // Scope the slot to this member's own roster so a member can't be
+            // attached to a slot from another roster/band.
+            'slot_id' => [
+                'nullable',
+                Rule::exists('roster_slots', 'id')
+                    ->where('roster_id', $rosterMember->roster_id),
+            ],
             'notes' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['boolean'],
         ]);
