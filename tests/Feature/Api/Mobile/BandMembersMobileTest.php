@@ -27,6 +27,7 @@ class BandMembersMobileTest extends TestCase
     {
         parent::setUp();
 
+        $this->artisan('db:seed', ['--class' => 'SubRolesPermissionsSeeder']);
         \setPermissionsTeamId(0);
 
         $this->owner = User::factory()->create([
