@@ -7,7 +7,9 @@ use App\Models\Events;
 use App\Models\User;
 use App\Models\BandSubs;
 use App\Models\Bands;
+use App\Models\BandSubInvitation;
 use App\Mail\SubInvitation;
+use App\Mail\BandSubInvitation as BandSubInvitationMail;
 use App\Notifications\TTSNotification;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -151,6 +153,138 @@ class SubInvitationService
         $eventSub->markAsAccepted();
 
         return $eventSub;
+    }
+
+    /**
+     * Invite a substitute to a band (band-level, not tied to a specific event)
+     *
+     * @param int $bandId
+     * @param string $email
+     * @param string|null $name
+     * @param string|null $phone
+     * @param int|null $bandRoleId (instrument/role)
+     * @param string|null $notes
+     * @return BandSubInvitation
+     */
+    public function inviteSubToBand(
+        int $bandId,
+        string $email,
+        ?string $name = null,
+        ?string $phone = null,
+        ?int $bandRoleId = null,
+        ?string $notes = null
+    ): BandSubInvitation {
+        $band = Bands::findOrFail($bandId);
+
+        // Check if user exists
+        $user = User::where('email', $email)->first();
+
+        // Upsert band_sub_invitations record — match on user_id when we have one,
+        // otherwise fall back to email (covers the band_id/email unique constraint).
+        $matchKey = $user
+            ? ['band_id' => $bandId, 'user_id' => $user->id]
+            : ['band_id' => $bandId, 'email'   => $email];
+
+        $invitation = BandSubInvitation::updateOrCreate(
+            $matchKey,
+            [
+                'band_id'      => $bandId,
+                'band_role_id' => $bandRoleId,
+                'user_id'      => $user?->id,
+                'email'        => $email,
+                'name'         => $name,
+                'phone'        => $phone,
+                'notes'        => $notes,
+                'pending'      => true,
+            ]
+        );
+
+        // If user exists, add them to band_subs if not already there
+        if ($user) {
+            BandSubs::firstOrCreate([
+                'user_id' => $user->id,
+                'band_id' => $bandId,
+            ]);
+
+            // Assign sub role if they don't have it
+            if (!$user->hasRole('sub')) {
+                $user->assignRole('sub');
+            }
+        }
+
+        // Send invitation email
+        $this->sendBandInvitationEmail($invitation, $band);
+
+        // Notify band owners
+        $this->notifyBandOwnersOfBandInvite($band, $invitation);
+
+        return $invitation;
+    }
+
+    /**
+     * Send band-scoped invitation email to the substitute
+     */
+    protected function sendBandInvitationEmail(BandSubInvitation $invitation, Bands $band): void
+    {
+        $invitationUrl = route('sub.band-invitation.show', ['key' => $invitation->invitation_key]);
+
+        Mail::to($invitation->display_email)->send(
+            new BandSubInvitationMail($invitation, $band, $invitationUrl)
+        );
+    }
+
+    /**
+     * Notify band owners about the new band-level sub invitation
+     */
+    protected function notifyBandOwnersOfBandInvite(Bands $band, BandSubInvitation $invitation): void
+    {
+        foreach ($band->owners as $owner) {
+            $ownerUser = $owner->user ?? $owner;
+
+            $message = $invitation->isRegisteredUser()
+                ? "{$invitation->display_name} has been invited as a sub for {$band->name}"
+                : "{$invitation->email} (not yet registered) has been invited as a sub for {$band->name}";
+
+            $ownerUser->notify(new TTSNotification([
+                'emailHeader' => 'Sub Invited',
+                'text' => $message,
+                'route' => 'dashboard',
+                'routeParams' => null,
+                'actionText' => 'View Dashboard',
+                'url' => '/dashboard',
+            ]));
+        }
+    }
+
+    /**
+     * Accept a band-level sub invitation
+     */
+    public function acceptBandInvitation(string $invitationKey, User $user): BandSubInvitation
+    {
+        $invitation = BandSubInvitation::where('invitation_key', $invitationKey)
+            ->where('pending', true)
+            ->firstOrFail();
+
+        // Link user to the invitation if not already linked
+        if (!$invitation->user_id) {
+            $invitation->update(['user_id' => $user->id]);
+        }
+
+        // Ensure user is in band_subs
+        BandSubs::firstOrCreate([
+            'user_id' => $user->id,
+            'band_id' => $invitation->band_id,
+        ]);
+
+        // Assign sub role if they don't have it
+        if (!$user->hasRole('sub')) {
+            $user->assignRole('sub');
+        }
+
+        // Mark as accepted
+        $invitation->markAsAccepted();
+
+        return $invitation;
     }
 
     /**
