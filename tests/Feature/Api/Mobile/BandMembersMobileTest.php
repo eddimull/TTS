@@ -6,7 +6,9 @@ use App\Models\BandMembers;
 use App\Models\BandOwners;
 use App\Models\Bands;
 use App\Models\User;
+use App\Services\GoogleCalendarService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery;
 use Tests\TestCase;
 
 /**
@@ -29,6 +31,11 @@ class BandMembersMobileTest extends TestCase
 
         $this->artisan('db:seed', ['--class' => 'SubRolesPermissionsSeeder']);
         \setPermissionsTeamId(0);
+
+        // BandSettingsController injects BandMemberRemovalService which requires
+        // GoogleCalendarService. Mock it so CI doesn't need the credentials file.
+        $mock = Mockery::mock(GoogleCalendarService::class);
+        $this->app->instance(GoogleCalendarService::class, $mock);
 
         $this->owner = User::factory()->create([
             'name' => 'Owner Person',
