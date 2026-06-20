@@ -140,6 +140,60 @@ Route::prefix('mobile')->group(function () {
             Route::delete('/bands/{band}/invitations/{invitation}', [BandSettingsController::class, 'revokeInvitation'])->name('mobile.bands.invitations.revoke');
         });
 
+        // ── Roster system (owner-only) ─────────────────────────────────
+        // Band ownership is gated by the `owner` middleware; controllers
+        // additionally verify each bound roster/slot/member/role belongs to
+        // the {band} (404 if not). Param names (roster/rosterSlot/rosterMember)
+        // match the reused Form Requests' route() lookups.
+        Route::middleware('owner')->group(function () {
+            // Band roles
+            Route::get('/bands/{band}/roles', [App\Http\Controllers\Api\Mobile\BandRolesController::class, 'index'])->name('mobile.bands.roles.index');
+            Route::post('/bands/{band}/roles', [App\Http\Controllers\Api\Mobile\BandRolesController::class, 'store'])->name('mobile.bands.roles.store');
+            Route::post('/bands/{band}/roles/reorder', [App\Http\Controllers\Api\Mobile\BandRolesController::class, 'reorder'])->name('mobile.bands.roles.reorder');
+            Route::patch('/bands/{band}/roles/{role}', [App\Http\Controllers\Api\Mobile\BandRolesController::class, 'update'])->name('mobile.bands.roles.update');
+            Route::delete('/bands/{band}/roles/{role}', [App\Http\Controllers\Api\Mobile\BandRolesController::class, 'destroy'])->name('mobile.bands.roles.destroy');
+
+            // Rosters
+            Route::get('/bands/{band}/rosters', [App\Http\Controllers\Api\Mobile\RostersController::class, 'index'])->name('mobile.bands.rosters.index');
+            Route::post('/bands/{band}/rosters', [App\Http\Controllers\Api\Mobile\RostersController::class, 'store'])->name('mobile.bands.rosters.store');
+            Route::post('/bands/{band}/rosters/initialize', [App\Http\Controllers\Api\Mobile\RostersController::class, 'initializeFromBand'])->name('mobile.bands.rosters.initialize');
+            Route::get('/bands/{band}/rosters/{roster}', [App\Http\Controllers\Api\Mobile\RostersController::class, 'show'])->name('mobile.bands.rosters.show');
+            Route::patch('/bands/{band}/rosters/{roster}', [App\Http\Controllers\Api\Mobile\RostersController::class, 'update'])->name('mobile.bands.rosters.update');
+            Route::delete('/bands/{band}/rosters/{roster}', [App\Http\Controllers\Api\Mobile\RostersController::class, 'destroy'])->name('mobile.bands.rosters.destroy');
+            Route::post('/bands/{band}/rosters/{roster}/set-default', [App\Http\Controllers\Api\Mobile\RostersController::class, 'setDefault'])->name('mobile.bands.rosters.set-default');
+
+            // Roster slots
+            Route::post('/bands/{band}/rosters/{roster}/slots', [App\Http\Controllers\Api\Mobile\RosterSlotsController::class, 'store'])->name('mobile.bands.roster-slots.store');
+            Route::patch('/bands/{band}/roster-slots/{rosterSlot}', [App\Http\Controllers\Api\Mobile\RosterSlotsController::class, 'update'])->name('mobile.bands.roster-slots.update');
+            Route::delete('/bands/{band}/roster-slots/{rosterSlot}', [App\Http\Controllers\Api\Mobile\RosterSlotsController::class, 'destroy'])->name('mobile.bands.roster-slots.destroy');
+
+            // Roster members
+            Route::post('/bands/{band}/rosters/{roster}/members', [App\Http\Controllers\Api\Mobile\RosterMembersController::class, 'store'])->name('mobile.bands.roster-members.store');
+            Route::patch('/bands/{band}/roster-members/{rosterMember}', [App\Http\Controllers\Api\Mobile\RosterMembersController::class, 'update'])->name('mobile.bands.roster-members.update');
+            Route::delete('/bands/{band}/roster-members/{rosterMember}', [App\Http\Controllers\Api\Mobile\RosterMembersController::class, 'destroy'])->name('mobile.bands.roster-members.destroy');
+            Route::post('/bands/{band}/roster-members/{rosterMember}/toggle-active', [App\Http\Controllers\Api\Mobile\RosterMembersController::class, 'toggleActive'])->name('mobile.bands.roster-members.toggle-active');
+        });
+
+        // ── Substitute call lists + band subs (owner-only) ─────────────
+        // Band ownership is gated by the `owner` middleware; controllers
+        // additionally verify each bound call-list entry / invitation /
+        // band-sub link belongs to the {band} (404 if not).
+        Route::middleware('owner')->group(function () {
+            // Substitute call lists
+            // Static `reorder` is registered before the {callList} wildcard.
+            Route::get('/bands/{band}/call-lists', [App\Http\Controllers\Api\Mobile\SubstituteCallListsController::class, 'index'])->name('mobile.bands.call-lists.index');
+            Route::post('/bands/{band}/call-lists', [App\Http\Controllers\Api\Mobile\SubstituteCallListsController::class, 'store'])->name('mobile.bands.call-lists.store');
+            Route::post('/bands/{band}/call-lists/reorder', [App\Http\Controllers\Api\Mobile\SubstituteCallListsController::class, 'reorder'])->name('mobile.bands.call-lists.reorder');
+            Route::patch('/bands/{band}/call-lists/{callList}', [App\Http\Controllers\Api\Mobile\SubstituteCallListsController::class, 'update'])->name('mobile.bands.call-lists.update');
+            Route::delete('/bands/{band}/call-lists/{callList}', [App\Http\Controllers\Api\Mobile\SubstituteCallListsController::class, 'destroy'])->name('mobile.bands.call-lists.destroy');
+
+            // Band subs
+            Route::get('/bands/{band}/subs', [App\Http\Controllers\Api\Mobile\BandSubsController::class, 'index'])->name('mobile.bands.subs.index');
+            Route::post('/bands/{band}/subs/invite', [App\Http\Controllers\Api\Mobile\BandSubsController::class, 'invite'])->name('mobile.bands.subs.invite');
+            Route::delete('/bands/{band}/subs/invitations/{invitation}', [App\Http\Controllers\Api\Mobile\BandSubsController::class, 'destroyInvitation'])->name('mobile.bands.subs.invitations.destroy');
+            Route::delete('/bands/{band}/subs/{user}', [App\Http\Controllers\Api\Mobile\BandSubsController::class, 'destroy'])->name('mobile.bands.subs.destroy');
+        });
+
         // ── Events (read) ──────────────────────────────────────────────
         Route::middleware('mobile.band:read:events')->group(function () {
             Route::get('/bands/{band}/events', [App\Http\Controllers\Api\Mobile\EventsController::class, 'index'])->name('mobile.events.index');

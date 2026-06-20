@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\SubInvitationController;
+use App\Http\Controllers\BandSubInvitationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,11 +17,19 @@ use App\Http\Controllers\SubInvitationController;
 Route::get('/sub/invitation/{key}', [SubInvitationController::class, 'show'])
     ->name('sub.invitation.show');
 
+// Public route for viewing band-level sub invitation (no auth required)
+Route::get('/sub/band-invitation/{key}', [BandSubInvitationController::class, 'show'])
+    ->name('sub.band-invitation.show');
+
 // Authenticated sub routes
 Route::middleware(['auth', 'verified'])->group(function () {
     // Accept invitation
     Route::post('/sub/invitation/{key}/accept', [SubInvitationController::class, 'accept'])
         ->name('sub.invitation.accept');
+
+    // Accept band-level invitation
+    Route::post('/sub/band-invitation/{key}/accept', [BandSubInvitationController::class, 'accept'])
+        ->name('sub.band-invitation.accept');
 
     // Get my pending invitations
     Route::get('/sub/invitations', [SubInvitationController::class, 'myInvitations'])

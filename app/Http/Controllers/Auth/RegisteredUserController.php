@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use App\Models\Invitations;
 use App\Models\EventSubs;
+use App\Models\BandSubInvitation;
 use App\Services\SubInvitationService;
 
 class RegisteredUserController extends Controller
@@ -41,6 +42,17 @@ class RegisteredUserController extends Controller
             if ($eventSub) {
                 $invitationEmail = $eventSub->email;
                 $invitationName = $eventSub->name;
+            }
+            // Fall back to a band-level sub invitation with the same key
+            else {
+                $bandInvitation = BandSubInvitation::where('invitation_key', $request->invitation)
+                    ->where('pending', true)
+                    ->first();
+
+                if ($bandInvitation) {
+                    $invitationEmail = $bandInvitation->email;
+                    $invitationName = $bandInvitation->name;
+                }
             }
         }
         // Check for legacy invitation (band owner/member)
@@ -102,6 +114,19 @@ class RegisteredUserController extends Controller
             foreach ($subInvitations as $eventSub) {
                 // Accept each sub invitation
                 $subInvitationService->acceptInvitation($eventSub->invitation_key, $user);
+            }
+        }
+
+        // Handle band-level sub invitations (band_sub_invitations)
+        $bandSubInvitations = BandSubInvitation::where('email', $user->email)
+            ->where('pending', true)
+            ->get();
+
+        if ($bandSubInvitations->isNotEmpty()) {
+            $subInvitationService = $subInvitationService ?? new SubInvitationService();
+
+            foreach ($bandSubInvitations as $bandInvitation) {
+                $subInvitationService->acceptBandInvitation($bandInvitation->invitation_key, $user);
             }
         }
 
