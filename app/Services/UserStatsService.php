@@ -62,27 +62,26 @@ class UserStatsService
 
         // Get all bands the user owns, is a member of, or subs for — subs can
         // have a payout share when the band's flow config includes them.
-        // Eager load counts and payout configs to avoid N+1 queries.
-        $allBands = $this->getUserBands()
-            ->each(fn ($b) => $b->loadMissing(['activePayoutConfig']))
-            ->each(fn ($b) => $b->loadCount(['owners', 'members']));
-
-        // Track owner/member status separately — needed by the old (non-flow)
-        // equal-split payout path in calculateUserShareFromBooking.
-        $ownerBandIds  = DB::table('band_owners')->where('user_id', $this->user->id)->pluck('band_id')->flip();
-        $memberBandIds = DB::table('band_members')->where('user_id', $this->user->id)->pluck('band_id')->flip();
+        // Use collection-level load methods so both calls batch across all bands
+        // rather than firing per-model queries (N+1).
+        $allBands = $this->getUserBands();
+        $allBands->loadMissing(['activePayoutConfig']);
+        $allBands->loadCount(['owners', 'members']);
 
         // Pre-calculate user's membership status and join dates for each band to avoid N+1 queries
         $userBandStatus = [];
         $bandJoinDates = [];
 
         $bandIds = $allBands->pluck('id')->toArray();
+        // getBandPivots queries band_owners, band_members, and band_subs and
+        // caches the result — derive owner/member presence from the same rows
+        // rather than issuing two more pluck queries.
         $pivots = $this->getBandPivots($bandIds);
 
         foreach ($allBands as $band) {
             $userBandStatus[$band->id] = [
-                'is_owner'  => $ownerBandIds->has($band->id),
-                'is_member' => $memberBandIds->has($band->id),
+                'is_owner'  => $pivots['owners']->has($band->id),
+                'is_member' => $pivots['members']->has($band->id),
             ];
             $bandJoinDates[$band->id] = $this->getUserJoinDateFromPivots(
                 $pivots['owners']->get($band->id),
