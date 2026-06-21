@@ -60,19 +60,18 @@ class UserStatsService
         $bookingsByYear = [];
         $totalBookingCount = 0;
 
-        // Get all bands the user owns or is a member of
-        // Eager load counts and payout configs to avoid N+1 queries in payout calculations
-        $ownedBands = $this->user->bandOwner()
-            ->withCount(['owners', 'members'])
-            ->with('activePayoutConfig')
-            ->get();
-        $memberBands = $this->user->bandMember()
-            ->withCount(['owners', 'members'])
-            ->with('activePayoutConfig')
-            ->get();
+        // Get all bands the user owns, is a member of, or subs for — subs can
+        // have a payout share when the band's flow config includes them.
+        // Eager load counts and payout configs to avoid N+1 queries.
+        $allBands = $this->getUserBands()
+            ->each(fn ($b) => $b->loadMissing(['activePayoutConfig']))
+            ->each(fn ($b) => $b->loadCount(['owners', 'members']));
 
-        $allBands = $ownedBands->merge($memberBands)->unique('id');
-        
+        // Track owner/member status separately — needed by the old (non-flow)
+        // equal-split payout path in calculateUserShareFromBooking.
+        $ownerBandIds  = DB::table('band_owners')->where('user_id', $this->user->id)->pluck('band_id')->flip();
+        $memberBandIds = DB::table('band_members')->where('user_id', $this->user->id)->pluck('band_id')->flip();
+
         // Pre-calculate user's membership status and join dates for each band to avoid N+1 queries
         $userBandStatus = [];
         $bandJoinDates = [];
@@ -82,8 +81,8 @@ class UserStatsService
 
         foreach ($allBands as $band) {
             $userBandStatus[$band->id] = [
-                'is_owner' => $ownedBands->contains('id', $band->id),
-                'is_member' => $memberBands->contains('id', $band->id),
+                'is_owner'  => $ownerBandIds->has($band->id),
+                'is_member' => $memberBandIds->has($band->id),
             ];
             $bandJoinDates[$band->id] = $this->getUserJoinDateFromPivots(
                 $pivots['owners']->get($band->id),
@@ -98,18 +97,27 @@ class UserStatsService
 
             // Get all bookings for this band after the user joined.
             // date column was removed from bookings (moved to events); use created_at as a proxy.
-            // Eager load payouts to avoid N+1 queries
-            $bookings = \App\Models\Bookings::where('band_id', $band->id)
+            // Eager load payouts to avoid N+1 queries.
+            // For sub-only users, scope to bookings that contain at least one
+            // event they were assigned to (mirrors getTravelStats scoping).
+            $allowedEventIds = $this->getAllowedEventIds($band->id);
+
+            $bookingsQuery = \App\Models\Bookings::where('band_id', $band->id)
                 ->where('created_at', '>=', $joinDate)
-                ->whereIn('status', ['confirmed', 'pending']) // Only count confirmed and pending bookings
+                ->whereIn('status', ['confirmed', 'pending'])
                 ->with([
                     'payout.adjustments',
                     'events.eventMembers.bandRole',
                     'events.eventMembers.rosterMember.bandRole',
                     'events.eventMembers.rosterMember.user',
                 ])
-                ->orderBy('created_at', 'desc')
-                ->get();
+                ->orderBy('created_at', 'desc');
+
+            if ($allowedEventIds !== null) {
+                $bookingsQuery->whereHas('events', fn ($q) => $q->whereIn('events.id', $allowedEventIds));
+            }
+
+            $bookings = $bookingsQuery->get();
 
             $bandTotal = 0;
 

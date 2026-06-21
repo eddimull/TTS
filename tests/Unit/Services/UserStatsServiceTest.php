@@ -458,7 +458,184 @@ class UserStatsServiceTest extends TestCase
         $this->assertEquals(0, $userShare);
     }
 
-    
+    public function test_sub_user_sees_payment_stats_for_assigned_bookings()
+    {
+        // Wes scenario: sub-only on a band, assigned to one event in a booking,
+        // flow config gives subs an equal split of the distributable amount.
+        $owner = User::factory()->create();
+        DB::table('band_owners')->insert([
+            'user_id' => $owner->id,
+            'band_id' => $this->band->id,
+            'created_at' => Carbon::now()->subYear(),
+            'updated_at' => Carbon::now()->subYear(),
+        ]);
+
+        // Register Wes as a band sub only (not owner or member)
+        DB::table('band_subs')->insert([
+            'user_id' => $this->user->id,
+            'band_id' => $this->band->id,
+            'created_at' => Carbon::now()->subMonths(6),
+            'updated_at' => Carbon::now()->subMonths(6),
+        ]);
+
+        // Create a confirmed booking with one past event
+        $booking = Bookings::factory()->create([
+            'band_id' => $this->band->id,
+            'price' => 1000,
+            'status' => 'confirmed',
+        ]);
+        $event = Events::factory()->create([
+            'eventable_type' => 'App\\Models\\Bookings',
+            'eventable_id'   => $booking->id,
+            'date'           => Carbon::now()->subDays(10),
+        ]);
+
+        // Owner also on the event
+        \App\Models\EventMember::factory()->create([
+            'event_id'          => $event->id,
+            'band_id'           => $this->band->id,
+            'user_id'           => $owner->id,
+            'roster_member_id'  => null,
+            'attendance_status' => 'attended',
+        ]);
+
+        // Record Wes as attending the event (sub with no roster member)
+        \App\Models\EventMember::factory()->create([
+            'event_id'         => $event->id,
+            'band_id'          => $this->band->id,
+            'user_id'          => $this->user->id,
+            'roster_member_id' => null,
+            'attendance_status' => 'attended',
+        ]);
+
+        // Record the event as assigned to Wes in event_subs
+        DB::table('event_subs')->insert([
+            'event_id'       => $event->id,
+            'band_id'        => $this->band->id,
+            'user_id'        => $this->user->id,
+            'invitation_key' => \Illuminate\Support\Str::uuid(),
+            'pending'        => false,
+            'accepted_at'    => Carbon::now()->subDays(15),
+            'created_at'     => Carbon::now()->subDays(15),
+            'updated_at'     => Carbon::now()->subDays(15),
+        ]);
+
+        // Flow config: no band cut, one payoutGroup node distributing to all
+        // attendees including subs (memberTypeFilter = 'all').
+        $flowDiagram = [
+            'nodes' => [
+                ['id' => 'income-1', 'type' => 'income', 'data' => []],
+                [
+                    'id'   => 'group-1',
+                    'type' => 'payoutGroup',
+                    'data' => [
+                        'sourceType'              => 'roster',
+                        'distributionMode'        => 'equal_split',
+                        'incomingAllocationType'  => 'remainder',
+                        'incomingAllocationValue' => 0,
+                        'rosterConfig'            => ['memberTypeFilter' => 'all'],
+                    ],
+                ],
+            ],
+            'edges' => [
+                ['id' => 'e1', 'source' => 'income-1', 'target' => 'group-1'],
+            ],
+        ];
+
+        BandPayoutConfig::create([
+            'band_id'      => $this->band->id,
+            'name'         => 'Sub-inclusive config',
+            'is_active'    => true,
+            'flow_diagram' => $flowDiagram,
+        ]);
+
+        $service = new UserStatsService($this->user);
+        $stats   = $service->getUserStats();
+
+        // Wes attended 1 event out of 1 in the booking; he and the owner
+        // both attended, so each gets $500.
+        $this->assertEquals(1, $stats['payments']['booking_count'],
+            'Sub user should have bookings counted in payment stats');
+        $this->assertEquals('500.00', $stats['payments']['total_earnings'],
+            'Sub user should receive their flow-configured payout share');
+    }
+
+    public function test_sub_user_sees_zero_payment_stats_when_excluded_from_flow()
+    {
+        // Same setup but flow config uses memberTypeFilter = 'members_only'.
+        DB::table('band_subs')->insert([
+            'user_id'    => $this->user->id,
+            'band_id'    => $this->band->id,
+            'created_at' => Carbon::now()->subMonths(6),
+            'updated_at' => Carbon::now()->subMonths(6),
+        ]);
+
+        $booking = Bookings::factory()->create([
+            'band_id' => $this->band->id,
+            'price'   => 1000,
+            'status'  => 'confirmed',
+        ]);
+        $event = Events::factory()->create([
+            'eventable_type' => 'App\\Models\\Bookings',
+            'eventable_id'   => $booking->id,
+            'date'           => Carbon::now()->subDays(10),
+        ]);
+
+        \App\Models\EventMember::factory()->create([
+            'event_id'          => $event->id,
+            'band_id'           => $this->band->id,
+            'user_id'           => $this->user->id,
+            'roster_member_id'  => null,
+            'attendance_status' => 'attended',
+        ]);
+
+        DB::table('event_subs')->insert([
+            'event_id'       => $event->id,
+            'band_id'        => $this->band->id,
+            'user_id'        => $this->user->id,
+            'invitation_key' => \Illuminate\Support\Str::uuid(),
+            'pending'        => false,
+            'accepted_at'    => Carbon::now()->subDays(15),
+            'created_at'     => Carbon::now()->subDays(15),
+            'updated_at'     => Carbon::now()->subDays(15),
+        ]);
+
+        $flowDiagram = [
+            'nodes' => [
+                ['id' => 'income-1', 'type' => 'income', 'data' => []],
+                [
+                    'id'   => 'group-1',
+                    'type' => 'payoutGroup',
+                    'data' => [
+                        'sourceType'              => 'roster',
+                        'distributionMode'        => 'equal_split',
+                        'incomingAllocationType'  => 'remainder',
+                        'incomingAllocationValue' => 0,
+                        'rosterConfig'            => ['memberTypeFilter' => 'members_only'],
+                    ],
+                ],
+            ],
+            'edges' => [
+                ['id' => 'e1', 'source' => 'income-1', 'target' => 'group-1'],
+            ],
+        ];
+
+        BandPayoutConfig::create([
+            'band_id'      => $this->band->id,
+            'name'         => 'Members-only config',
+            'is_active'    => true,
+            'flow_diagram' => $flowDiagram,
+        ]);
+
+        $service = new UserStatsService($this->user);
+        $stats   = $service->getUserStats();
+
+        $this->assertEquals('0.00', $stats['payments']['total_earnings'],
+            'Sub excluded from flow config should receive $0');
+        $this->assertEquals(0, $stats['payments']['booking_count']);
+    }
+
+
     public function test_it_returns_empty_stats_when_user_not_in_any_bands()
     {
         $service = new UserStatsService($this->user);
