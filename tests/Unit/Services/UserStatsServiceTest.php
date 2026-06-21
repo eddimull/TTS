@@ -560,6 +560,127 @@ class UserStatsServiceTest extends TestCase
             'Sub user should receive their flow-configured payout share');
     }
 
+    public function test_sub_user_assigned_via_event_members_sees_payment_stats()
+    {
+        // Sub added directly to event_members (no event_subs row) — the path
+        // UserEventsService treats as valid via roster_member_id NULL.
+        DB::table('band_subs')->insert([
+            'user_id'    => $this->user->id,
+            'band_id'    => $this->band->id,
+            'created_at' => Carbon::now()->subMonths(6),
+            'updated_at' => Carbon::now()->subMonths(6),
+        ]);
+
+        $booking = Bookings::factory()->create([
+            'band_id' => $this->band->id,
+            'price'   => 1000,
+            'status'  => 'confirmed',
+        ]);
+        $event = Events::factory()->create([
+            'eventable_type' => 'App\\Models\\Bookings',
+            'eventable_id'   => $booking->id,
+            'date'           => Carbon::now()->subDays(10),
+        ]);
+
+        // Direct event_members assignment — no event_subs row at all
+        \App\Models\EventMember::factory()->create([
+            'event_id'          => $event->id,
+            'band_id'           => $this->band->id,
+            'user_id'           => $this->user->id,
+            'roster_member_id'  => null,
+            'attendance_status' => 'attended',
+        ]);
+
+        $flowDiagram = [
+            'nodes' => [
+                ['id' => 'income-1', 'type' => 'income', 'data' => []],
+                [
+                    'id'   => 'group-1',
+                    'type' => 'payoutGroup',
+                    'data' => [
+                        'sourceType'              => 'roster',
+                        'distributionMode'        => 'equal_split',
+                        'incomingAllocationType'  => 'remainder',
+                        'incomingAllocationValue' => 0,
+                        'rosterConfig'            => ['memberTypeFilter' => 'all'],
+                    ],
+                ],
+            ],
+            'edges' => [['id' => 'e1', 'source' => 'income-1', 'target' => 'group-1']],
+        ];
+
+        BandPayoutConfig::create([
+            'band_id'      => $this->band->id,
+            'name'         => 'Sub-inclusive config',
+            'is_active'    => true,
+            'flow_diagram' => $flowDiagram,
+        ]);
+
+        $service = new UserStatsService($this->user);
+        $stats   = $service->getUserStats();
+
+        $this->assertEquals(1, $stats['payments']['booking_count'],
+            'Sub assigned via event_members (no event_subs) should have bookings counted');
+        $this->assertEquals('1000.00', $stats['payments']['total_earnings'],
+            'Sub assigned via event_members should receive their payout share');
+    }
+
+    public function test_sub_user_with_pending_invite_excluded_from_payment_stats()
+    {
+        // Pending event_subs invitation (pending=true) — should not count.
+        DB::table('band_subs')->insert([
+            'user_id'    => $this->user->id,
+            'band_id'    => $this->band->id,
+            'created_at' => Carbon::now()->subMonths(6),
+            'updated_at' => Carbon::now()->subMonths(6),
+        ]);
+
+        $booking = Bookings::factory()->create([
+            'band_id' => $this->band->id,
+            'price'   => 1000,
+            'status'  => 'confirmed',
+        ]);
+        $event = Events::factory()->create([
+            'eventable_type' => 'App\\Models\\Bookings',
+            'eventable_id'   => $booking->id,
+            'date'           => Carbon::now()->subDays(10),
+        ]);
+
+        DB::table('event_subs')->insert([
+            'event_id'       => $event->id,
+            'band_id'        => $this->band->id,
+            'user_id'        => $this->user->id,
+            'invitation_key' => \Illuminate\Support\Str::uuid(),
+            'pending'        => true,  // not accepted
+            'accepted_at'    => null,
+            'created_at'     => Carbon::now()->subDays(5),
+            'updated_at'     => Carbon::now()->subDays(5),
+        ]);
+
+        BandPayoutConfig::create([
+            'band_id'      => $this->band->id,
+            'name'         => 'Sub-inclusive config',
+            'is_active'    => true,
+            'flow_diagram' => [
+                'nodes' => [
+                    ['id' => 'income-1', 'type' => 'income', 'data' => []],
+                    ['id' => 'group-1', 'type' => 'payoutGroup', 'data' => [
+                        'sourceType' => 'roster', 'distributionMode' => 'equal_split',
+                        'incomingAllocationType' => 'remainder', 'incomingAllocationValue' => 0,
+                        'rosterConfig' => ['memberTypeFilter' => 'all'],
+                    ]],
+                ],
+                'edges' => [['id' => 'e1', 'source' => 'income-1', 'target' => 'group-1']],
+            ],
+        ]);
+
+        $service = new UserStatsService($this->user);
+        $stats   = $service->getUserStats();
+
+        $this->assertEquals(0, $stats['payments']['booking_count'],
+            'Pending (unaccepted) sub invite should not appear in payment stats');
+    }
+
     public function test_sub_user_sees_zero_payment_stats_when_excluded_from_flow()
     {
         // Same setup but flow config uses memberTypeFilter = 'members_only'.

@@ -233,11 +233,25 @@ class UserStatsService
             return null; // null = no restriction
         }
 
-        return DB::table('event_subs')
+        // Mirror UserEventsService::getSubEvents: union accepted event_subs
+        // invitations with event_members rows where roster_member_id is NULL
+        // (direct sub assignment without an invitation flow).
+        $fromInvitations = DB::table('event_subs')
             ->where('user_id', $this->user->id)
             ->where('band_id', $bandId)
+            ->where('pending', false)
             ->pluck('event_id')
-            ->toArray();
+            ->all();
+
+        $fromEventMembers = DB::table('event_members')
+            ->where('user_id', $this->user->id)
+            ->where('band_id', $bandId)
+            ->whereNull('roster_member_id')
+            ->whereNull('deleted_at')
+            ->pluck('event_id')
+            ->all();
+
+        return array_values(array_unique(array_merge($fromInvitations, $fromEventMembers)));
     }
 
     /**
