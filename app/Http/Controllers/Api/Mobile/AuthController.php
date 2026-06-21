@@ -128,7 +128,8 @@ class AuthController extends Controller
             'email_notifications' => 'required|boolean',
             // Optional: when the user moved. Drives mileage-cache invalidation —
             // only events on/after this date recompute against the new address.
-            // Omitted (or address unchanged) → defaults to today in the service.
+            // Only consulted when the address actually changed; if omitted in
+            // that case the service defaults the boundary to today.
             'moved_at'            => 'nullable|date',
         ]);
 
