@@ -601,6 +601,112 @@ class UserStatsServiceTest extends TestCase
             'Sub user should receive their flow-configured payout share');
     }
 
+    public function test_sub_user_sees_stats_for_gig_booked_before_their_sub_pivot()
+    {
+        // THE WES BUG, real timeline: a band books a future gig long before a
+        // sub is brought in for it.
+        //   - booking created 2 years ago  (bookings.created_at)
+        //   - sub invited/accepted 1 year ago  (band_subs / event_subs)
+        //   - performance is 1 year in the future  (events.date)
+        // Subs are invited per-event, so band_subs.created_at routinely
+        // post-dates the booking by years. The join-date gate keyed payment
+        // stats off bookings.created_at >= join_date, so a booking that
+        // predates the sub pivot (2yr-old booking vs 1yr-old pivot) was
+        // silently dropped even though the gig is future and the sub is on it.
+        $owner = User::factory()->create();
+        DB::table('band_owners')->insert([
+            'user_id'    => $owner->id,
+            'band_id'    => $this->band->id,
+            'created_at' => Carbon::now()->subYears(3),
+            'updated_at' => Carbon::now()->subYears(3),
+        ]);
+
+        // Booking created 2 years ago for a gig that performs 1 year from now.
+        $booking = Bookings::factory()->create([
+            'band_id'    => $this->band->id,
+            'price'      => 1000,
+            'status'     => 'confirmed',
+            'created_at' => Carbon::now()->subYears(2),
+        ]);
+        $event = Events::factory()->create([
+            'eventable_type' => 'App\\Models\\Bookings',
+            'eventable_id'   => $booking->id,
+            'date'           => Carbon::now()->addYear(), // future performance
+        ]);
+
+        // Wes's band_subs pivot is created 1 year ago — AFTER the booking
+        // (2yr) but BEFORE the gig (next year): the exact gap that broke him.
+        DB::table('band_subs')->insert([
+            'user_id'    => $this->user->id,
+            'band_id'    => $this->band->id,
+            'created_at' => Carbon::now()->subYear(),
+            'updated_at' => Carbon::now()->subYear(),
+        ]);
+
+        \App\Models\EventMember::factory()->create([
+            'event_id'          => $event->id,
+            'band_id'           => $this->band->id,
+            'user_id'           => $owner->id,
+            'roster_member_id'  => null,
+            'attendance_status' => 'confirmed',
+        ]);
+        \App\Models\EventMember::factory()->create([
+            'event_id'          => $event->id,
+            'band_id'           => $this->band->id,
+            'user_id'           => $this->user->id,
+            'roster_member_id'  => null,
+            'attendance_status' => 'confirmed',
+        ]);
+
+        // Accepted sub assignment, dated 1 year ago (with the pivot).
+        DB::table('event_subs')->insert([
+            'event_id'       => $event->id,
+            'band_id'        => $this->band->id,
+            'user_id'        => $this->user->id,
+            'invitation_key' => \Illuminate\Support\Str::uuid(),
+            'pending'        => false,
+            'accepted_at'    => Carbon::now()->subYear(),
+            'created_at'     => Carbon::now()->subYear(),
+            'updated_at'     => Carbon::now()->subYear(),
+        ]);
+
+        BandPayoutConfig::create([
+            'band_id'      => $this->band->id,
+            'name'         => 'Sub-inclusive config',
+            'is_active'    => true,
+            'flow_diagram' => [
+                'nodes' => [
+                    ['id' => 'income-1', 'type' => 'income', 'data' => []],
+                    ['id' => 'group-1', 'type' => 'payoutGroup', 'data' => [
+                        'sourceType' => 'roster', 'distributionMode' => 'equal_split',
+                        'incomingAllocationType' => 'remainder', 'incomingAllocationValue' => 0,
+                        'rosterConfig' => ['memberTypeFilter' => 'all'],
+                    ]],
+                ],
+                'edges' => [['id' => 'e1', 'source' => 'income-1', 'target' => 'group-1']],
+            ],
+        ]);
+
+        $service = new UserStatsService($this->user);
+        $stats   = $service->getUserStats();
+
+        // The booking predates his sub pivot but he was assigned the gig —
+        // it MUST appear. The performance is in the future, so it counts as
+        // UPCOMING (projected), not earned — earned booking_count stays 0.
+        $this->assertEquals(1, $stats['payments']['upcoming_booking_count'],
+            'Sub gig whose booking predates the band_subs pivot must still appear as upcoming');
+        $this->assertEquals('500.00', $stats['payments']['upcoming_earnings'],
+            'Sub should be credited their projected share for a future gig booked before their sub pivot');
+        // Earned totals stay zero — the gig hasn't happened yet.
+        $this->assertEquals('0.00', $stats['payments']['total_earnings'],
+            'A future gig must not count as earned');
+
+        // It must NOT yet count toward travel — the performance is in the
+        // future, so no miles have been driven. (date <= now() still applies.)
+        $this->assertEquals(0, $stats['travel']['event_count'],
+            'A future gig should not count toward travel stats yet');
+    }
+
     public function test_sub_user_assigned_via_event_members_sees_payment_stats()
     {
         // Sub added directly to event_members (no event_subs row) — the path
