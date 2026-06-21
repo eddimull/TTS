@@ -100,15 +100,11 @@ class UserStatsService
             // Use cached join date
             $joinDate = $bandJoinDates[$band->id];
 
-            // Get all bookings for this band after the user joined.
-            // date column was removed from bookings (moved to events); use created_at as a proxy.
-            // Eager load payouts to avoid N+1 queries.
             // For sub-only users, scope to bookings that contain at least one
             // event they were assigned to (mirrors getTravelStats scoping).
             $allowedEventIds = $this->getAllowedEventIds($band->id);
 
             $bookingsQuery = \App\Models\Bookings::where('band_id', $band->id)
-                ->where('created_at', '>=', $joinDate)
                 ->whereIn('status', ['confirmed', 'pending'])
                 ->with([
                     'payout.adjustments',
@@ -119,7 +115,17 @@ class UserStatsService
                 ->orderBy('created_at', 'desc');
 
             if ($allowedEventIds !== null) {
+                // Sub: their per-event assignment list already defines the exact
+                // scope. The join-date gate must NOT apply — a sub has no
+                // continuous tenure, and band_subs.created_at is just when they
+                // were first invited, which can post-date bookings they were
+                // later assigned to. Gating on it silently drops those gigs.
                 $bookingsQuery->whereHas('events', fn ($q) => $q->whereIn('events.id', $allowedEventIds));
+            } else {
+                // Owner/member: credit only bookings created on or after they
+                // joined the band. created_at is a proxy since bookings no
+                // longer carry a date column (moved to events).
+                $bookingsQuery->where('created_at', '>=', $joinDate);
             }
 
             $bookings = $bookingsQuery->get();
@@ -504,11 +510,15 @@ class UserStatsService
                     $query->where('user_id', $this->user->id);
                 },
             ])
-            ->where('date', '>=', $joinDate)
             ->where('date', '<=', Carbon::now());
 
             if ($allowedEventIds !== null) {
+                // Sub: scope by their assigned events, not by join date (see
+                // getPaymentStats — band_subs.created_at can post-date the gig).
                 $bandEventsQuery->whereIn('events.id', $allowedEventIds);
+            } else {
+                // Owner/member: only events on or after they joined the band.
+                $bandEventsQuery->where('date', '>=', $joinDate);
             }
 
             $bandEvents = $bandEventsQuery->get();
@@ -658,28 +668,32 @@ class UserStatsService
                 },
             ];
 
-            // Get events from bookings for this band after join date
+            // Get events from bookings for this band. Subs are scoped by their
+            // assigned events (no join-date gate — see getPaymentStats);
+            // owners/members are gated to events on or after they joined.
             $bookingEventsQuery = Events::whereHasMorph('eventable', [\App\Models\Bookings::class], function ($query) use ($band) {
                 $query->where('band_id', $band->id);
             })
             ->with($withClause)
-            ->where('date', '>=', $joinDate)
             ->where('date', '<=', Carbon::now());
 
             if ($allowedEventIds !== null) {
                 $bookingEventsQuery->whereIn('events.id', $allowedEventIds);
+            } else {
+                $bookingEventsQuery->where('date', '>=', $joinDate);
             }
 
-            // Get events from legacy band_events for this band after join date
+            // Get events from legacy band_events for this band (same scoping rules).
             $bandEventEventsQuery = Events::whereHasMorph('eventable', [\App\Models\BandEvents::class], function ($query) use ($band) {
                 $query->where('band_id', $band->id);
             })
             ->with($withClause)
-            ->where('date', '>=', $joinDate)
             ->where('date', '<=', Carbon::now());
 
             if ($allowedEventIds !== null) {
                 $bandEventEventsQuery->whereIn('events.id', $allowedEventIds);
+            } else {
+                $bandEventEventsQuery->where('date', '>=', $joinDate);
             }
 
             $bandEvents = $bookingEventsQuery->get()->concat($bandEventEventsQuery->get())
