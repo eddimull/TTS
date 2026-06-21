@@ -3,13 +3,45 @@
 namespace App\Services;
 use App\Models\State;
 use App\Models\Bands;
+use App\Models\Events;
 use App\Models\Bookings;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use App\Models\EventDistanceForMembers;
 
 class MileageService
 {
     protected array $stateCache = [];
+
+    /**
+     * Invalidate a user's cached mileage for events on or after a move date.
+     *
+     * When a user moves, only events from the move date onward were (or will be)
+     * driven from the new address — past events stay locked to the mileage that
+     * was correct when they happened. We delete the affected EventDistanceForMembers
+     * rows so MileageService recomputes them, against the new origin, on next view.
+     *
+     * @param  \App\Models\User|int  $user  The user (or user id) whose cache to invalidate.
+     * @param  mixed     $movedAt   Move date; anything Carbon can parse. Defaults to today.
+     * @return int  Number of cached rows invalidated.
+     */
+    public function invalidateFromMoveDate($user, $movedAt = null): int
+    {
+        $userId  = is_object($user) ? $user->id : $user;
+        $moveDay = ($movedAt ? Carbon::parse($movedAt) : Carbon::now())->toDateString();
+
+        $eventIds = Events::query()
+            ->whereDate('date', '>=', $moveDay)
+            ->pluck('id');
+
+        if ($eventIds->isEmpty()) {
+            return 0;
+        }
+
+        return EventDistanceForMembers::where('user_id', $userId)
+            ->whereIn('event_id', $eventIds)
+            ->delete();
+    }
     public function handle($events, ?Bands $band = null)
     {
         $user = Auth::user();
