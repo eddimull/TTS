@@ -30,16 +30,13 @@ class MileageService
         $userId  = is_object($user) ? $user->id : $user;
         $moveDay = ($movedAt ? Carbon::parse($movedAt) : Carbon::now())->toDateString();
 
-        $eventIds = Events::query()
-            ->whereDate('date', '>=', $moveDay)
-            ->pluck('id');
-
-        if ($eventIds->isEmpty()) {
-            return 0;
-        }
-
+        // Filter by event date with a subquery so the database does the work in
+        // one statement — avoids pulling every matching event id into memory and
+        // building a giant WHERE IN list. A no-match simply deletes 0 rows.
         return EventDistanceForMembers::where('user_id', $userId)
-            ->whereIn('event_id', $eventIds)
+            ->whereIn('event_id', Events::query()
+                ->whereDate('date', '>=', $moveDay)
+                ->select('id'))
             ->delete();
     }
     public function handle($events, ?Bands $band = null)
