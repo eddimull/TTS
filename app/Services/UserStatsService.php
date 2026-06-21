@@ -66,30 +66,28 @@ class UserStatsService
         // future (and bookings with no events yet, so no date) are still upcoming.
         $today = Carbon::now()->startOfDay();
 
-        // Get all bands the user owns or is a member of
-        // Eager load counts and payout configs to avoid N+1 queries in payout calculations
-        $ownedBands = $this->user->bandOwner()
-            ->withCount(['owners', 'members'])
-            ->with('activePayoutConfig')
-            ->get();
-        $memberBands = $this->user->bandMember()
-            ->withCount(['owners', 'members'])
-            ->with('activePayoutConfig')
-            ->get();
+        // Get all bands the user owns, is a member of, or subs for — subs can
+        // have a payout share when the band's flow config includes them.
+        // Use collection-level load methods so both calls batch across all bands
+        // rather than firing per-model queries (N+1).
+        $allBands = $this->getUserBands();
+        $allBands->loadMissing(['activePayoutConfig']);
+        $allBands->loadCount(['owners', 'members']);
 
-        $allBands = $ownedBands->merge($memberBands)->unique('id');
-        
         // Pre-calculate user's membership status and join dates for each band to avoid N+1 queries
         $userBandStatus = [];
         $bandJoinDates = [];
 
         $bandIds = $allBands->pluck('id')->toArray();
+        // getBandPivots queries band_owners, band_members, and band_subs and
+        // caches the result — derive owner/member presence from the same rows
+        // rather than issuing two more pluck queries.
         $pivots = $this->getBandPivots($bandIds);
 
         foreach ($allBands as $band) {
             $userBandStatus[$band->id] = [
-                'is_owner' => $ownedBands->contains('id', $band->id),
-                'is_member' => $memberBands->contains('id', $band->id),
+                'is_owner'  => $pivots['owners']->has($band->id),
+                'is_member' => $pivots['members']->has($band->id),
             ];
             $bandJoinDates[$band->id] = $this->getUserJoinDateFromPivots(
                 $pivots['owners']->get($band->id),
@@ -104,18 +102,27 @@ class UserStatsService
 
             // Get all bookings for this band after the user joined.
             // date column was removed from bookings (moved to events); use created_at as a proxy.
-            // Eager load payouts to avoid N+1 queries
-            $bookings = \App\Models\Bookings::where('band_id', $band->id)
+            // Eager load payouts to avoid N+1 queries.
+            // For sub-only users, scope to bookings that contain at least one
+            // event they were assigned to (mirrors getTravelStats scoping).
+            $allowedEventIds = $this->getAllowedEventIds($band->id);
+
+            $bookingsQuery = \App\Models\Bookings::where('band_id', $band->id)
                 ->where('created_at', '>=', $joinDate)
-                ->whereIn('status', ['confirmed', 'pending']) // Only count confirmed and pending bookings
+                ->whereIn('status', ['confirmed', 'pending'])
                 ->with([
                     'payout.adjustments',
                     'events.eventMembers.bandRole',
                     'events.eventMembers.rosterMember.bandRole',
                     'events.eventMembers.rosterMember.user',
                 ])
-                ->orderBy('created_at', 'desc')
-                ->get();
+                ->orderBy('created_at', 'desc');
+
+            if ($allowedEventIds !== null) {
+                $bookingsQuery->whereHas('events', fn ($q) => $q->whereIn('events.id', $allowedEventIds));
+            }
+
+            $bookings = $bookingsQuery->get();
 
             $bandTotal = 0;
             $bandBookingCount = 0;
@@ -264,11 +271,25 @@ class UserStatsService
             return null; // null = no restriction
         }
 
-        return DB::table('event_subs')
+        // Mirror UserEventsService::getSubEvents: union accepted event_subs
+        // invitations with event_members rows where roster_member_id is NULL
+        // (direct sub assignment without an invitation flow).
+        $fromInvitations = DB::table('event_subs')
             ->where('user_id', $this->user->id)
             ->where('band_id', $bandId)
+            ->where('pending', false)
             ->pluck('event_id')
-            ->toArray();
+            ->all();
+
+        $fromEventMembers = DB::table('event_members')
+            ->where('user_id', $this->user->id)
+            ->where('band_id', $bandId)
+            ->whereNull('roster_member_id')
+            ->whereNull('deleted_at')
+            ->pluck('event_id')
+            ->all();
+
+        return array_values(array_unique(array_merge($fromInvitations, $fromEventMembers)));
     }
 
     /**
