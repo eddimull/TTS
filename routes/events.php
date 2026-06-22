@@ -36,8 +36,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/attachments/{attachment}', [EventAttachmentsController::class, 'destroy'])->name('events.attachments.destroy');
 
         // Event members (absences and substitutes)
-        Route::get('/{event}/members', [EventMembersController::class, 'index'])->name('events.members.index');
-        Route::post('/{eventId}/members', [EventMembersController::class, 'store'])->name('events.members.store');
+        // NOTE: GET/POST /events/{event}/members are intentionally NOT defined here.
+        // They are owned by EventMemberController (the roster-aware controller) in
+        // routes/rosters.php. Defining them here too created a route collision where
+        // this file (loaded first) won the POST, and its store() early-returned on
+        // invite_substitute without ever creating the event_member — so subs invited
+        // from the booking lineup were emailed but never added. See EventMemberStoreTest.
         Route::post('/{event}/members/initialize', [EventMembersController::class, 'initializeFromBand'])->name('events.members.initialize');
         Route::patch('/{event}/members/{user}/status', [EventMembersController::class, 'updateStatus'])->name('events.members.updateStatus');
         Route::post('/{event}/members/substitutes', [EventMembersController::class, 'addSubstitute'])->name('events.members.addSubstitute');

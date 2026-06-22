@@ -25,6 +25,7 @@
       Setlist
     </a>
     <button
+      dusk="open-roster"
       :class="['flex items-center gap-1 text-sm font-medium', rosterColor]"
       @click="openRoster"
     >
@@ -128,6 +129,7 @@
                 <!-- Empty seat -->
                 <div v-else>
                   <button
+                    dusk="empty-seat-add-sub"
                     @click="openSubPicker(slot)"
                     :class="slot.isRequired ? 'text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'"
                     class="text-xs italic flex items-center gap-1"
@@ -224,6 +226,7 @@
     <ul v-else class="space-y-1 max-h-96 overflow-y-auto">
       <li v-for="option in subPickerOptions" :key="option.id">
         <button
+          dusk="sub-picker-option"
           @click="addSubToSlot(option)"
           class="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-blue-50 dark:hover:bg-slate-700 text-left transition-colors"
         >

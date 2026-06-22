@@ -216,4 +216,44 @@ class EventMemberStoreTest extends TestCase
 
         Mail::assertNothingSent();
     }
+
+    /**
+     * Inviting a substitute (invite_substitute=true with a valid email) must BOTH
+     * send the invitation AND add them to the event lineup.
+     *
+     * Regression: POST /events/{id}/members collided between two route definitions.
+     * The early-returning EventMembersController::store won the dispatch, so a sub
+     * invited from the booking lineup ("Add Sub" on an empty seat) was emailed but
+     * never created as an event_member — the lineup looked like nothing happened,
+     * while the dashboard modal (which never sends invite_substitute) worked.
+     */
+    public function test_invite_substitute_with_email_also_adds_member_to_lineup(): void
+    {
+        Mail::fake();
+
+        $response = $this->actingAs($this->owner)
+            ->postJson("/events/{$this->event->id}/members", [
+                'name' => 'Invited Sub',
+                'email' => 'invited-sub@example.com',
+                'invite_substitute' => true,
+                'attendance_status' => 'confirmed',
+                'slot_id' => $this->slot->id,
+            ]);
+
+        $response->assertStatus(201);
+
+        // The invitation record is created...
+        $this->assertDatabaseHas('event_subs', [
+            'event_id' => $this->event->id,
+        ]);
+
+        // ...AND the member is actually added to the event lineup, in the slot.
+        $this->assertDatabaseHas('event_members', [
+            'event_id' => $this->event->id,
+            'name' => 'Invited Sub',
+            'email' => 'invited-sub@example.com',
+            'slot_id' => $this->slot->id,
+            'band_role_id' => $this->role->id,
+        ]);
+    }
 }
