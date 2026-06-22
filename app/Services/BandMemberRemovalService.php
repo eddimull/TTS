@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use App\Models\BandSubInvitation;
 use App\Models\BandSubs;
 use App\Models\Bands;
 use App\Models\CalendarAccess;
 use App\Models\EventMember;
 use App\Models\EventSubs;
+use App\Models\GoogleDriveConnection;
+use App\Models\Invitations;
 use App\Models\RosterMember;
 use App\Models\User;
 use App\Models\userPermissions;
@@ -15,7 +18,10 @@ use Illuminate\Support\Facades\Log;
 
 class BandMemberRemovalService
 {
-    public function __construct(protected GoogleCalendarService $googleCalendarService) {}
+    public function __construct(
+        protected GoogleCalendarService $googleCalendarService,
+        protected GoogleDriveOAuthService $googleDriveOAuthService,
+    ) {}
 
     /**
      * Completely remove a user from a band, cleaning up all associated data.
@@ -31,6 +37,8 @@ class BandMemberRemovalService
             $this->removeFromRosters($band, $user);
             $this->removeBandSubRegistration($band, $user);
             $this->removePendingEventSubInvitations($band, $user);
+            $this->removePendingBandInvitations($band, $user);
+            $this->disconnectGoogleDrive($band, $user);
             $this->orphanMediaFiles($band, $user);
             $band->members()->where('user_id', $user->id)->delete();
             $band->owners()->where('user_id', $user->id)->delete();
@@ -140,6 +148,51 @@ class BandMemberRemovalService
             ->where('user_id', $user->id)
             ->where('pending', true)
             ->delete();
+    }
+
+    /**
+     * Remove pending band-level invitations for this user in this band.
+     * Covers both the band sub-invitation table (keyed by user_id) and the
+     * legacy member invitation table (keyed by email). Accepted band sub
+     * invitations are kept as historical records; only pending ones — which
+     * would otherwise let the removed user re-join the band — are deleted.
+     */
+    private function removePendingBandInvitations(Bands $band, User $user): void
+    {
+        BandSubInvitation::where('band_id', $band->id)
+            ->where('user_id', $user->id)
+            ->where('pending', true)
+            ->delete();
+
+        Invitations::where('band_id', $band->id)
+            ->where('email', $user->email)
+            ->where('pending', true)
+            ->delete();
+    }
+
+    /**
+     * Disconnect any Google Drive media-library connections this user set up
+     * for this band. Mirrors GoogleDriveController::disconnect: revoke the
+     * OAuth token with Google so their personal credentials can no longer
+     * sync into the band, then soft-delete the connection. Previously synced
+     * files are kept (they belong to the band, and MediaFile.drive_connection_id
+     * stays pointed at the soft-deleted row for provenance).
+     */
+    private function disconnectGoogleDrive(Bands $band, User $user): void
+    {
+        $connections = GoogleDriveConnection::where('band_id', $band->id)
+            ->where('user_id', $user->id)
+            ->get();
+
+        foreach ($connections as $connection) {
+            try {
+                $this->googleDriveOAuthService->revokeToken($connection);
+            } catch (\Exception $e) {
+                Log::warning("Could not revoke Google Drive token for user {$user->id} on connection {$connection->id}: {$e->getMessage()}");
+            }
+
+            $connection->delete();
+        }
     }
 
     /**
