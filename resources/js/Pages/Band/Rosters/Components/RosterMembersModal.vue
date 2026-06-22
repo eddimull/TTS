@@ -484,7 +484,7 @@
           <div class="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
             <div class="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700">
               <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Sync future events</h3>
-              <button @click="showReconcile = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">✕</button>
+              <button type="button" aria-label="Close" @click="showReconcile = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">✕</button>
             </div>
 
             <div class="p-5 space-y-5">

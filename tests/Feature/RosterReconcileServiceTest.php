@@ -92,6 +92,23 @@ class RosterReconcileServiceTest extends TestCase
     }
 
     #[Test]
+    public function add_member_includes_same_day_events()
+    {
+        // events.date is a DATE column; an event happening today must still
+        // count as "future" even when the clock is past midnight.
+        $todayEvent = $this->makeEvent($this->roster, now()->toDateString());
+        $member = RosterMember::factory()->user()->create(['roster_id' => $this->roster->id]);
+
+        $count = $this->service->addMemberToFutureEvents($member);
+
+        $this->assertEquals(1, $count);
+        $this->assertDatabaseHas('event_members', [
+            'event_id' => $todayEvent->id,
+            'roster_member_id' => $member->id,
+        ]);
+    }
+
+    #[Test]
     public function add_member_is_idempotent_when_already_present()
     {
         $event = $this->makeEvent($this->roster, $this->futureDate());

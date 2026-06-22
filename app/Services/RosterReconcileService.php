@@ -193,6 +193,11 @@ class RosterReconcileService
 
     /**
      * Future events using the given roster.
+     *
+     * `events.date` is a DATE column, so compare against the start of today
+     * (not now()) — otherwise same-day events drop out once the clock passes
+     * midnight. Eager-load `eventable` since createEventMemberFor() reads
+     * `$event->eventable->band_id`.
      */
     private function futureEventsForRoster(?int $rosterId)
     {
@@ -201,7 +206,8 @@ class RosterReconcileService
         }
 
         return Events::where('roster_id', $rosterId)
-            ->where('date', '>=', now())
+            ->where('date', '>=', now()->startOfDay())
+            ->with('eventable')
             ->get();
     }
 
