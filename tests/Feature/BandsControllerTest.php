@@ -13,6 +13,11 @@ use App\Models\RosterMember;
 use App\Models\BandCalendars;
 use App\Models\CalendarAccess;
 use App\Models\BandPaymentGroup;
+use App\Models\BandSubInvitation;
+use App\Models\Invitations;
+use App\Models\MediaFile;
+use App\Models\GoogleDriveConnection;
+use App\Services\GoogleDriveOAuthService;
 use Illuminate\Support\Str;
 use Google\Service\Calendar;
 use App\Services\CalendarService;
@@ -245,6 +250,72 @@ class BandsControllerTest extends TestCase
             'user_id'   => null,
             'is_active' => false,
         ]);
+    }
+
+    public function test_delete_member_removes_pending_band_invitations(): void
+    {
+        $this->mock(GoogleCalendarService::class)->shouldReceive('getCalendar', 'findAccess', 'revokeAccess')->andReturnNull();
+
+        // Pending band sub-invitation linked to the member (re-entry path).
+        $pendingSubInvite = BandSubInvitation::factory()->create([
+            'band_id' => $this->band->id,
+            'user_id' => $this->member->id,
+            'pending' => true,
+        ]);
+
+        // Accepted band sub-invitation should be kept as a historical record.
+        $acceptedSubInvite = BandSubInvitation::factory()->create([
+            'band_id'     => $this->band->id,
+            'user_id'     => $this->member->id,
+            'pending'     => false,
+            'accepted_at' => now()->subMonth(),
+        ]);
+
+        // Pending legacy member invitation keyed by the member's email.
+        $pendingInvite = Invitations::create([
+            'band_id'        => $this->band->id,
+            'email'          => $this->member->email,
+            'invite_type_id' => 1,
+            'pending'        => true,
+            'key'            => (string) Str::uuid(),
+        ]);
+
+        $this->actingAs($this->owner)
+            ->delete(route('bands.deleteMember', [$this->band, $this->member]));
+
+        $this->assertDatabaseMissing('band_sub_invitations', ['id' => $pendingSubInvite->id]);
+        $this->assertDatabaseHas('band_sub_invitations', ['id' => $acceptedSubInvite->id]);
+        $this->assertDatabaseMissing('invitations', ['id' => $pendingInvite->id]);
+    }
+
+    public function test_delete_member_disconnects_google_drive_but_keeps_synced_files(): void
+    {
+        $this->mock(GoogleCalendarService::class)->shouldReceive('getCalendar', 'findAccess', 'revokeAccess')->andReturnNull();
+        $this->mock(GoogleDriveOAuthService::class)->shouldReceive('revokeToken')->andReturnTrue();
+
+        $connection = GoogleDriveConnection::create([
+            'user_id'              => $this->member->id,
+            'band_id'              => $this->band->id,
+            'access_token'         => 'fake-access-token',
+            'refresh_token'        => 'fake-refresh-token',
+            'google_account_email' => $this->member->email,
+            'is_active'            => true,
+        ]);
+
+        // A file already synced into the band library through that connection.
+        $mediaFile = MediaFile::factory()->create([
+            'band_id'              => $this->band->id,
+            'drive_connection_id'  => $connection->id,
+        ]);
+
+        $this->actingAs($this->owner)
+            ->delete(route('bands.deleteMember', [$this->band, $this->member]));
+
+        // Connection is soft-deleted so it no longer syncs.
+        $this->assertSoftDeleted('google_drive_connections', ['id' => $connection->id]);
+
+        // Previously synced file is kept (it belongs to the band).
+        $this->assertDatabaseHas('media_files', ['id' => $mediaFile->id]);
     }
 
     public function test_delete_owner_performs_full_cleanup(): void
