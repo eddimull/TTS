@@ -20,23 +20,35 @@ class RosterMemberController extends Controller
      */
     public function store(StoreRosterMemberRequest $request, Roster $roster)
     {
-        $member = RosterMember::withTrashed()->updateOrCreate(
-            [
+        $attributes = [
+            'slot_id' => $request->slot_id,
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'role' => $request->role,
+            'band_role_id' => $request->band_role_id,
+            'notes' => $request->notes,
+            'is_active' => $request->boolean('is_active', true),
+            'deleted_at' => null, // Restore if soft-deleted
+        ];
+
+        if ($request->filled('user_id')) {
+            // A real user maps to one row per roster — upsert (and restore a
+            // soft-deleted row) on (roster_id, user_id).
+            $member = RosterMember::withTrashed()->updateOrCreate(
+                ['roster_id' => $roster->id, 'user_id' => $request->user_id],
+                $attributes,
+            );
+        } else {
+            // Custom (non-user) people have no natural key, so each add is a
+            // new row. updateOrCreate on a NULL user_id would collapse them all
+            // onto one record.
+            $member = RosterMember::create([
                 'roster_id' => $roster->id,
-                'user_id' => $request->user_id,
-            ],
-            [
-                'slot_id' => $request->slot_id,
-                'name' => $request->name,
-                'email' => $request->email,
-                'phone' => $request->phone,
-                'role' => $request->role,
-                'band_role_id' => $request->band_role_id,
-                'notes' => $request->notes,
-                'is_active' => $request->boolean('is_active', true),
-                'deleted_at' => null, // Restore if soft-deleted
-            ]
-        );
+                'user_id' => null,
+                ...$attributes,
+            ]);
+        }
 
         $futureEventsAffected = $request->boolean('apply_to_future_events')
             ? $this->reconcile->addMemberToFutureEvents($member)
