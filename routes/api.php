@@ -161,6 +161,8 @@ Route::prefix('mobile')->group(function () {
             Route::patch('/bands/{band}/rosters/{roster}', [App\Http\Controllers\Api\Mobile\RostersController::class, 'update'])->name('mobile.bands.rosters.update');
             Route::delete('/bands/{band}/rosters/{roster}', [App\Http\Controllers\Api\Mobile\RostersController::class, 'destroy'])->name('mobile.bands.rosters.destroy');
             Route::post('/bands/{band}/rosters/{roster}/set-default', [App\Http\Controllers\Api\Mobile\RostersController::class, 'setDefault'])->name('mobile.bands.rosters.set-default');
+            Route::get('/bands/{band}/rosters/{roster}/future-events-diff', [App\Http\Controllers\Api\Mobile\RostersController::class, 'futureEventsDiff'])->name('mobile.bands.rosters.future-events-diff');
+            Route::post('/bands/{band}/rosters/{roster}/reconcile-future-events', [App\Http\Controllers\Api\Mobile\RostersController::class, 'reconcileFutureEvents'])->name('mobile.bands.rosters.reconcile-future-events');
 
             // Roster slots
             Route::post('/bands/{band}/rosters/{roster}/slots', [App\Http\Controllers\Api\Mobile\RosterSlotsController::class, 'store'])->name('mobile.bands.roster-slots.store');

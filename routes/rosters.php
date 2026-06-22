@@ -18,6 +18,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/rosters/{roster}', [RosterController::class, 'destroy'])->name('rosters.destroy');
     Route::post('/bands/{band}/rosters/{roster}/set-default', [RosterController::class, 'setDefault'])->name('rosters.setDefault');
 
+    // Reconcile a roster against its future events (after-the-fact drift fix)
+    Route::get('/rosters/{roster}/future-events-diff', [RosterController::class, 'futureEventsDiff'])->name('rosters.futureEventsDiff');
+    Route::post('/rosters/{roster}/reconcile-future-events', [RosterController::class, 'reconcileFutureEvents'])->name('rosters.reconcileFutureEvents');
+
     // Band role management
     Route::get('/bands/{band}/roles/manage', [BandRoleController::class, 'page'])->name('bands.roles.page');
     Route::get('/bands/{band}/roles', [BandRoleController::class, 'index'])->name('bands.roles.index');

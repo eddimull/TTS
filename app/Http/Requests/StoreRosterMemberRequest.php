@@ -45,6 +45,7 @@ class StoreRosterMemberRequest extends FormRequest
             'slot_id' => ['nullable', Rule::exists('roster_slots', 'id')->where('roster_id', $rosterId)],
             'notes' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['boolean'],
+            'apply_to_future_events' => ['boolean'],
         ];
     }
 
