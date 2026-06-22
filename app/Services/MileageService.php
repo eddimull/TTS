@@ -33,9 +33,11 @@ class MileageService
         // Filter by event date with a subquery so the database does the work in
         // one statement — avoids pulling every matching event id into memory and
         // building a giant WHERE IN list. A no-match simply deletes 0 rows.
+        // events.date is a DATE column, so a plain where keeps the predicate
+        // sargable (whereDate would wrap it in DATE() and defeat any index).
         return EventDistanceForMembers::where('user_id', $userId)
             ->whereIn('event_id', Events::query()
-                ->whereDate('date', '>=', $moveDay)
+                ->where('date', '>=', $moveDay)
                 ->select('id'))
             ->delete();
     }
