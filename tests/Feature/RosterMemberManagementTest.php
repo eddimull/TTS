@@ -86,6 +86,31 @@ class RosterMemberManagementTest extends TestCase
     }
 
     #[Test]
+    public function owner_can_add_multiple_non_user_members_to_roster()
+    {
+        // Non-user members have no natural key, so each add must create a
+        // distinct row — updateOrCreate on (roster_id, user_id=null) would
+        // collapse them all onto one record.
+        foreach (['Guest Bassist', 'Guest Drummer', 'Guest Vocalist'] as $name) {
+            $this->actingAs($this->owner)
+                ->postJson("/rosters/{$this->roster->id}/members", ['name' => $name])
+                ->assertStatus(201);
+        }
+
+        $this->assertEquals(3, RosterMember::where('roster_id', $this->roster->id)
+            ->whereNull('user_id')
+            ->count());
+
+        foreach (['Guest Bassist', 'Guest Drummer', 'Guest Vocalist'] as $name) {
+            $this->assertDatabaseHas('roster_members', [
+                'roster_id' => $this->roster->id,
+                'user_id' => null,
+                'name' => $name,
+            ]);
+        }
+    }
+
+    #[Test]
     public function member_cannot_add_member_to_roster()
     {
         $newUser = User::factory()->create();
