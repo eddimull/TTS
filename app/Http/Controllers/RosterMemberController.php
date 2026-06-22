@@ -6,9 +6,15 @@ use App\Models\Roster;
 use App\Models\RosterMember;
 use App\Http\Requests\StoreRosterMemberRequest;
 use App\Http\Requests\UpdateRosterMemberRequest;
+use App\Services\RosterReconcileService;
+use Illuminate\Http\Request;
 
 class RosterMemberController extends Controller
 {
+    public function __construct(private RosterReconcileService $reconcile)
+    {
+    }
+
     /**
      * Add a member to a roster.
      */
@@ -32,9 +38,14 @@ class RosterMemberController extends Controller
             ]
         );
 
+        $futureEventsAffected = $request->boolean('apply_to_future_events')
+            ? $this->reconcile->addMemberToFutureEvents($member)
+            : 0;
+
         return response()->json([
             'message' => 'Member added to roster successfully',
             'member' => $member->load(['user', 'bandRole']),
+            'future_events_affected' => $futureEventsAffected,
         ], 201);
     }
 
@@ -54,12 +65,18 @@ class RosterMemberController extends Controller
     /**
      * Remove a member from a roster.
      */
-    public function destroy(RosterMember $rosterMember)
+    public function destroy(Request $request, RosterMember $rosterMember)
     {
         // Check authorization - only owners
         if (!$rosterMember->roster->band->owners()->where('user_id', auth()->id())->exists()) {
             return response()->json(['message' => 'Unauthorized'], 403);
         }
+
+        // Remove from future events before deleting, while the member's
+        // identity (roster_member_id / user_id) is still available.
+        $futureEventsAffected = $request->boolean('apply_to_future_events')
+            ? $this->reconcile->removeMemberFromFutureEvents($rosterMember)
+            : 0;
 
         // Check if member has attendance records
         $attendanceCount = $rosterMember->eventAttendance()->count();
@@ -71,6 +88,7 @@ class RosterMemberController extends Controller
             return response()->json([
                 'message' => 'Roster member removed (archived due to attendance history)',
                 'attendance_count' => $attendanceCount,
+                'future_events_affected' => $futureEventsAffected,
             ]);
         }
 
@@ -78,7 +96,8 @@ class RosterMemberController extends Controller
         $rosterMember->forceDelete();
 
         return response()->json([
-            'message' => 'Roster member removed successfully'
+            'message' => 'Roster member removed successfully',
+            'future_events_affected' => $futureEventsAffected,
         ]);
     }
 

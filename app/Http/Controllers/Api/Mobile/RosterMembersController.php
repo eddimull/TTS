@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Bands;
 use App\Models\Roster;
 use App\Models\RosterMember;
+use App\Services\RosterReconcileService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -18,6 +19,10 @@ use Illuminate\Validation\Rule;
  */
 class RosterMembersController extends Controller
 {
+    public function __construct(private RosterReconcileService $reconcile)
+    {
+    }
+
     public function store(Request $request, Bands $band, Roster $roster): JsonResponse
     {
         $this->ensureRosterBelongsToBand($band, $roster);
@@ -38,6 +43,7 @@ class RosterMembersController extends Controller
             'slot_id' => ['nullable', Rule::exists('roster_slots', 'id')->where('roster_id', $roster->id)],
             'notes' => ['nullable', 'string', 'max:1000'],
             'is_active' => ['boolean'],
+            'apply_to_future_events' => ['boolean'],
         ]);
 
         $attributes = [
@@ -70,9 +76,14 @@ class RosterMembersController extends Controller
             ]);
         }
 
+        $futureEventsAffected = $request->boolean('apply_to_future_events')
+            ? $this->reconcile->addMemberToFutureEvents($member)
+            : 0;
+
         return response()->json([
             'message' => 'Member added to roster successfully',
             'member' => $member->load(['user', 'bandRole']),
+            'future_events_affected' => $futureEventsAffected,
         ], 201);
     }
 
@@ -105,9 +116,15 @@ class RosterMembersController extends Controller
         ]);
     }
 
-    public function destroy(Bands $band, RosterMember $rosterMember): JsonResponse
+    public function destroy(Request $request, Bands $band, RosterMember $rosterMember): JsonResponse
     {
         $this->ensureMemberBelongsToBand($band, $rosterMember);
+
+        // Remove from future events before deleting, while the member's
+        // identity (roster_member_id / user_id) is still available.
+        $futureEventsAffected = $request->boolean('apply_to_future_events')
+            ? $this->reconcile->removeMemberFromFutureEvents($rosterMember)
+            : 0;
 
         $attendanceCount = $rosterMember->eventAttendance()->count();
 
@@ -118,6 +135,7 @@ class RosterMembersController extends Controller
             return response()->json([
                 'message' => 'Roster member removed (archived due to attendance history)',
                 'attendance_count' => $attendanceCount,
+                'future_events_affected' => $futureEventsAffected,
             ]);
         }
 
@@ -126,6 +144,7 @@ class RosterMembersController extends Controller
 
         return response()->json([
             'message' => 'Roster member removed successfully',
+            'future_events_affected' => $futureEventsAffected,
         ]);
     }
 
