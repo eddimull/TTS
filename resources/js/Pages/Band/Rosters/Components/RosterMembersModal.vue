@@ -346,6 +346,12 @@
                   />
                 </div>
 
+                <!-- Apply to future events -->
+                <label class="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                  <input type="checkbox" v-model="memberForm.apply_to_future_events" class="mt-0.5 rounded border-gray-300 dark:border-gray-600" />
+                  <span>Also add this person to future events using this roster</span>
+                </label>
+
                 <button
                   @click="addMember"
                   :disabled="processing"
@@ -454,10 +460,85 @@
           </div>
 
           <!-- Footer -->
-          <div class="flex items-center justify-end p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-slate-900">
+          <div class="flex items-center justify-between p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-slate-900">
+            <button
+              @click="openReconcile"
+              class="px-4 py-2 text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium"
+            >
+              Sync future events…
+            </button>
             <button @click="$emit('close')" class="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700">
               Done
             </button>
+          </div>
+        </div>
+      </transition>
+
+      <!-- Reconcile future events panel -->
+      <transition name="fade">
+        <div
+          v-if="showReconcile"
+          class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+          @click.self="showReconcile = false"
+        >
+          <div class="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-y-auto">
+            <div class="flex items-center justify-between p-5 border-b border-gray-200 dark:border-gray-700">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Sync future events</h3>
+              <button type="button" aria-label="Close" @click="showReconcile = false" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">✕</button>
+            </div>
+
+            <div class="p-5 space-y-5">
+              <p v-if="reconcileLoading" class="text-sm text-gray-500 dark:text-gray-400">Checking future events…</p>
+
+              <template v-else>
+                <p v-if="!reconcileDiff.extra.length && !reconcileDiff.missing.length" class="text-sm text-gray-500 dark:text-gray-400">
+                  Future events are already in sync with this roster.
+                </p>
+
+                <!-- People to remove -->
+                <div v-if="reconcileDiff.extra.length">
+                  <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">On future events but no longer on the roster</h4>
+                  <label
+                    v-for="row in reconcileDiff.extra"
+                    :key="'extra-' + (row.roster_member_id || row.user_id)"
+                    class="flex items-center justify-between gap-2 py-1.5 text-sm text-gray-700 dark:text-gray-200 cursor-pointer"
+                  >
+                    <span class="flex items-center gap-2">
+                      <input type="checkbox" v-model="reconcileRemove" :value="row.roster_member_id" :disabled="!row.roster_member_id" class="rounded border-gray-300 dark:border-gray-600" />
+                      {{ row.display_name }}
+                    </span>
+                    <span class="text-xs text-gray-400">{{ row.event_count }} event{{ row.event_count === 1 ? '' : 's' }}</span>
+                  </label>
+                </div>
+
+                <!-- Members to add -->
+                <div v-if="reconcileDiff.missing.length">
+                  <h4 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">On the roster but missing from future events</h4>
+                  <label
+                    v-for="row in reconcileDiff.missing"
+                    :key="'missing-' + row.roster_member_id"
+                    class="flex items-center justify-between gap-2 py-1.5 text-sm text-gray-700 dark:text-gray-200 cursor-pointer"
+                  >
+                    <span class="flex items-center gap-2">
+                      <input type="checkbox" v-model="reconcileAdd" :value="row.roster_member_id" class="rounded border-gray-300 dark:border-gray-600" />
+                      {{ row.display_name }}
+                    </span>
+                    <span class="text-xs text-gray-400">{{ row.event_count }} event{{ row.event_count === 1 ? '' : 's' }}</span>
+                  </label>
+                </div>
+              </template>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 p-5 border-t border-gray-200 dark:border-gray-700">
+              <button @click="showReconcile = false" class="px-4 py-2 text-gray-600 dark:text-gray-300 text-sm">Cancel</button>
+              <button
+                @click="applyReconcile"
+                :disabled="reconcileProcessing || (!reconcileRemove.length && !reconcileAdd.length)"
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Apply changes
+              </button>
+            </div>
           </div>
         </div>
       </transition>
@@ -516,9 +597,15 @@ export default {
       slotForm: { name: '', band_role_id: '', is_required: true, quantity: 1, notes: '' },
       slotEditForm: { name: '', band_role_id: '', is_required: true, quantity: 1, notes: '' },
       slotProcessing: false,
-      memberForm: { type: 'user', user_id: '', name: '', email: '', phone: '', slot_id: '', band_role_id: '', notes: '' },
+      memberForm: { type: 'user', user_id: '', name: '', email: '', phone: '', slot_id: '', band_role_id: '', notes: '', apply_to_future_events: false },
       memberErrors: {},
       processing: false,
+      showReconcile: false,
+      reconcileLoading: false,
+      reconcileProcessing: false,
+      reconcileDiff: { extra: [], missing: [] },
+      reconcileRemove: [],
+      reconcileAdd: [],
     }
   },
   computed: {
@@ -586,7 +673,7 @@ export default {
       this.memberErrors = {}
     },
     resetMemberForm() {
-      this.memberForm = { type: 'user', user_id: '', name: '', email: '', phone: '', slot_id: '', band_role_id: '', notes: '' }
+      this.memberForm = { type: 'user', user_id: '', name: '', email: '', phone: '', slot_id: '', band_role_id: '', notes: '', apply_to_future_events: false }
     },
     resetSlotForm() {
       this.slotForm = { name: '', band_role_id: '', is_required: true, quantity: 1, notes: '' }
@@ -598,6 +685,7 @@ export default {
       const data = this.memberForm.type === 'user'
         ? { user_id: this.memberForm.user_id, slot_id: this.memberForm.slot_id || null, band_role_id: this.memberForm.band_role_id, notes: this.memberForm.notes }
         : { name: this.memberForm.name, email: this.memberForm.email, phone: this.memberForm.phone, slot_id: this.memberForm.slot_id || null, band_role_id: this.memberForm.band_role_id, notes: this.memberForm.notes }
+      data.apply_to_future_events = this.memberForm.apply_to_future_events
 
       axios.post(route('rosters.members.store', this.roster.id), data)
         .then(() => { this.loadRosterDetails(); this.cancelAdd() })
@@ -617,9 +705,42 @@ export default {
     },
     removeMember(member) {
       if (!confirm(`Remove ${member.name} from this roster?`)) return
-      axios.delete(route('rosters.members.destroy', member.id))
-        .then(() => this.loadRosterDetails())
+      const applyToFuture = confirm(`Also remove ${member.name} from future events using this roster?`)
+      axios.delete(route('rosters.members.destroy', member.id), { data: { apply_to_future_events: applyToFuture } })
+        .then(response => {
+          this.loadRosterDetails()
+          const count = response.data?.future_events_affected
+          if (applyToFuture && count) {
+            alert(`Removed from ${count} future event${count === 1 ? '' : 's'}.`)
+          }
+        })
         .catch(error => alert(error.response?.data?.message || 'Failed to remove member'))
+    },
+    openReconcile() {
+      this.showReconcile = true
+      this.reconcileLoading = true
+      this.reconcileDiff = { extra: [], missing: [] }
+      this.reconcileRemove = []
+      this.reconcileAdd = []
+      axios.get(route('rosters.futureEventsDiff', this.roster.id))
+        .then(response => { this.reconcileDiff = { extra: response.data.extra || [], missing: response.data.missing || [] } })
+        .catch(() => alert('Failed to load future event differences'))
+        .finally(() => { this.reconcileLoading = false })
+    },
+    applyReconcile() {
+      this.reconcileProcessing = true
+      axios.post(route('rosters.reconcileFutureEvents', this.roster.id), {
+        remove_member_ids: this.reconcileRemove,
+        add_member_ids: this.reconcileAdd,
+      })
+        .then(response => {
+          const { removed = 0, added = 0 } = response.data || {}
+          this.showReconcile = false
+          this.loadRosterDetails()
+          alert(`Future events updated: ${added} added, ${removed} removed.`)
+        })
+        .catch(() => alert('Failed to update future events'))
+        .finally(() => { this.reconcileProcessing = false })
     },
     addSlot() {
       if (!this.slotForm.name) return

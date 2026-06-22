@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Mobile;
 use App\Http\Controllers\Controller;
 use App\Models\Bands;
 use App\Models\Roster;
+use App\Services\RosterReconcileService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -163,6 +164,43 @@ class RostersController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Show how this roster's current membership differs from the members on
+     * its future events (people to remove, members missing from events).
+     */
+    public function futureEventsDiff(Bands $band, Roster $roster, RosterReconcileService $reconcile): JsonResponse
+    {
+        $this->ensureRosterBelongsToBand($band, $roster);
+
+        return response()->json($reconcile->diffFutureEvents($roster));
+    }
+
+    /**
+     * Apply selected add/remove actions to this roster's future events.
+     */
+    public function reconcileFutureEvents(Request $request, Bands $band, Roster $roster, RosterReconcileService $reconcile): JsonResponse
+    {
+        $this->ensureRosterBelongsToBand($band, $roster);
+
+        $validated = $request->validate([
+            'remove_member_ids' => ['array'],
+            'remove_member_ids.*' => ['integer'],
+            'add_member_ids' => ['array'],
+            'add_member_ids.*' => ['integer'],
+        ]);
+
+        $result = $reconcile->applyReconcile(
+            $roster,
+            $validated['remove_member_ids'] ?? [],
+            $validated['add_member_ids'] ?? [],
+        );
+
+        return response()->json([
+            'message' => 'Future events updated',
+            ...$result,
+        ]);
     }
 
     private function ensureRosterBelongsToBand(Bands $band, Roster $roster): void
