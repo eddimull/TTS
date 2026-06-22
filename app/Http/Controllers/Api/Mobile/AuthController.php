@@ -9,6 +9,7 @@ use App\Models\Country;
 use App\Models\State;
 use App\Models\User;
 use App\Services\AccountDeletionService;
+use App\Services\MileageService;
 use App\Services\Mobile\TokenService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,6 +21,7 @@ class AuthController extends Controller
 {
     public function __construct(
         private readonly TokenService $tokenService,
+        private readonly MileageService $mileageService,
     ) {}
 
     public function token(TokenRequest $request): JsonResponse
@@ -124,7 +126,23 @@ class AuthController extends Controller
             // Match the band-settings address fields (ZIP+4 / international).
             'zip'                 => 'nullable|string|max:20',
             'email_notifications' => 'required|boolean',
+            // Optional: when the user moved. Drives mileage-cache invalidation —
+            // only events on/after this date recompute against the new address.
+            // Only consulted when the address actually changed; if omitted in
+            // that case the service defaults the boundary to today.
+            'moved_at'            => 'nullable|date',
         ]);
+
+        // Snapshot the address before mutating so we can tell whether it actually
+        // changed. Only a real change invalidates mileage; touching name/email/etc.
+        // must not nuke the user's cached distances.
+        $addressBefore = [
+            $user->Address1,
+            $user->Address2,
+            $user->City,
+            $user->StateID,
+            $user->Zip,
+        ];
 
         $user->name               = $data['name'];
         $user->email              = $data['email'];
@@ -141,6 +159,19 @@ class AuthController extends Controller
         }
 
         $user->save();
+
+        $addressAfter = [
+            $user->Address1,
+            $user->Address2,
+            $user->City,
+            $user->StateID,
+            $user->Zip,
+        ];
+
+        if ($addressBefore !== $addressAfter) {
+            // moved_at defaults to today inside the service when null.
+            $this->mileageService->invalidateFromMoveDate($user, $data['moved_at'] ?? null);
+        }
 
         return response()->json(['account' => $this->tokenService->formatAccount($user)]);
     }
