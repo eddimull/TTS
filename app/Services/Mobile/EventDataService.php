@@ -7,12 +7,18 @@ use App\Models\Bookings;
 use App\Models\EventAttachment;
 use App\Models\EventMember;
 use App\Models\Events;
+use App\Models\MediaFile;
 use App\Models\RosterSlot;
+use App\Services\MediaLibraryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 class EventDataService
 {
+    public function __construct(private readonly MediaLibraryService $mediaService)
+    {
+    }
+
     /**
      * Compute 'none' | 'red' | 'yellow' | 'green' roster status from a flat
      * collection of member arrays (each must have is_filled / is_sub keys).
@@ -324,6 +330,11 @@ class EventDataService
 
         $attachments = $event->attachments->map(fn ($a) => $this->formatAttachment($a))->values()->toArray();
 
+        $media = $this->mediaService->getEventMedia($event)
+            ->map(fn ($m) => $this->formatMedia($m))
+            ->values()
+            ->toArray();
+
         return [
             'id'              => $event->id,
             'key'             => $event->key,
@@ -344,6 +355,7 @@ class EventDataService
             'members'         => $members,
             'contacts'        => $contacts,
             'attachments'     => $attachments,
+            'media'           => $media,
             ...$additionalData,
         ];
     }
@@ -359,6 +371,25 @@ class EventDataService
             'mime_type' => $attachment->mime_type,
             'file_size' => $attachment->file_size,
             'url'       => $attachment->url,
+        ];
+    }
+
+    /**
+     * Format a media-library file to its API shape.
+     */
+    public function formatMedia(MediaFile $m): array
+    {
+        return [
+            'id'             => $m->id,
+            'filename'       => $m->filename,
+            'title'          => $m->title,
+            'media_type'     => $m->media_type,
+            'mime_type'      => $m->mime_type,
+            'file_size'      => $m->file_size,
+            'formatted_size' => $m->formatted_size,
+            'folder_path'    => $m->folder_path,
+            'thumbnail_url'  => $m->thumbnail_url,
+            'created_at'     => $m->created_at?->toIso8601String(),
         ];
     }
 

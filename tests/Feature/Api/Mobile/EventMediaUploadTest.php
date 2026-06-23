@@ -152,4 +152,30 @@ class EventMediaUploadTest extends TestCase
             'associable_id'   => $event->id,
         ]);
     }
+
+    public function test_event_detail_returns_associated_media(): void
+    {
+        Storage::fake('s3');
+        ['user' => $user, 'band' => $band, 'event' => $event] = $this->setup_band_event();
+        $event->update(['media_folder_path' => '2026/07/test-gig']);
+
+        $media = \App\Models\MediaFile::factory()->create([
+            'band_id'     => $band->id,
+            'user_id'     => $user->id,
+            'folder_path' => '2026/07/test-gig',
+            'filename'    => 'live.jpg',
+            'media_type'  => 'image',
+            'mime_type'   => 'image/jpeg',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson("/api/mobile/events/{$event->key}");
+
+        $response->assertStatus(200)
+            ->assertJsonStructure(['event' => ['media' => [['id', 'filename', 'media_type', 'mime_type', 'file_size', 'formatted_size', 'thumbnail_url', 'created_at']]]]);
+
+        $ids = collect($response->json('event.media'))->pluck('id');
+        $this->assertTrue($ids->contains($media->id), 'event media should include the file in the folder');
+    }
 }
