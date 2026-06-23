@@ -234,6 +234,25 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         return 'Multiple venues';
     }
 
+    /**
+     * Comma-separated list of the booking's event dates, de-duplicated and
+     * sorted chronologically (e.g. "Jun 12, 2026, Jun 14, 2026"). A booking
+     * can span multiple events on different dates, so a single date column
+     * no longer captures it. Returns null when the booking has no events.
+     */
+    public function getEventDatesAttribute(): ?string
+    {
+        $dates = $this->events
+            ->pluck('date')
+            ->filter()
+            ->sortBy(fn ($d) => $d->timestamp)
+            ->map(fn ($d) => $d->format('M j, Y'))
+            ->unique()
+            ->values();
+
+        return $dates->isEmpty() ? null : $dates->implode(', ');
+    }
+
     public function getTotalDurationAttribute(): float
     {
         $events = $this->events;

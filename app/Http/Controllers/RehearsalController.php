@@ -65,7 +65,7 @@ class RehearsalController extends Controller
                 'events.title',
                 'events.date',
                 'bookings.name as booking_name',
-                'bookings.venue_name',
+                'events.venue_name',
                 'events.notes'
             ])
             ->get();
@@ -211,7 +211,7 @@ class RehearsalController extends Controller
                 'events.title',
                 'events.date',
                 'bookings.name as booking_name',
-                'bookings.venue_name',
+                'events.venue_name',
                 'events.notes'
             ])
             ->get();
@@ -395,7 +395,7 @@ class RehearsalController extends Controller
                 'events.title',
                 'events.date',
                 'bookings.name as booking_name',
-                'bookings.venue_name',
+                'events.venue_name',
                 'events.notes'
             ])
             ->get();
@@ -443,7 +443,7 @@ class RehearsalController extends Controller
                 'events.title',
                 'events.date',
                 'bookings.name as booking_name',
-                'bookings.venue_name',
+                'events.venue_name',
                 'events.notes'
             ])
             ->get();

@@ -35,6 +35,7 @@
           Event Lineup ({{ eventMembers.length }})
         </h4>
         <button
+          dusk="lineup-add-sub"
           @click="openAddMemberModal"
           class="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1"
         >
@@ -147,6 +148,7 @@
                       {{ slot.is_required ? 'Needs filling' : 'Empty' }}
                     </span>
                     <button
+                      dusk="empty-seat-add-sub"
                       @click="openAddMemberModal(slot)"
                       class="ml-auto px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center gap-1"
                     >
@@ -311,6 +313,7 @@
                       <button
                         v-for="(sub, index) in subs"
                         :key="sub.id"
+                        dusk="sub-list-option"
                         @click="addFromCallList(sub)"
                         class="w-full flex items-center justify-between p-2 bg-white dark:bg-slate-600 rounded hover:bg-blue-50 dark:hover:bg-slate-500 transition-colors text-left"
                       >
