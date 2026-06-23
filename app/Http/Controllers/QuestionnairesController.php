@@ -150,7 +150,7 @@ class QuestionnairesController extends Controller
             'booking' => [
                 'id' => $i->booking->id,
                 'name' => $i->booking->name,
-                'date' => $i->booking->start_date?->format('M j, Y'),
+                'date' => $i->booking->event_dates,
             ],
             'fields' => $i->fields->map(fn ($f) => [
                 'id' => $f->id,
@@ -177,7 +177,7 @@ class QuestionnairesController extends Controller
             ->map(fn ($b) => [
                 'id' => $b->id,
                 'name' => $b->name,
-                'date' => $b->start_date?->format('M j, Y'),
+                'date' => $b->event_dates,
                 'already_sent' => in_array($b->id, $bookingIdsAlreadySent, true),
                 'contacts' => $b->contacts->map(fn ($c) => [
                     'id' => $c->id,
