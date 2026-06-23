@@ -46,7 +46,7 @@ class ProcessEventCreated implements ShouldQueue, ShouldBeUniqueUntilProcessing
                 $this->event->storeGoogleEventId($this->event->getGoogleCalendar(), $event->id);
             }
 
-            if ($this->event->additional_data && $this->event->additional_data->public && $this->shouldSyncToPublicCalendar())
+            if ($this->event->additional_data && !empty($this->event->additional_data->public) && $this->shouldSyncToPublicCalendar())
             {
                 Log::info('Event is public and eligible, writing to public calendar for event ID: ' . $this->event->id);
                 $publicEvent = $this->event->writeToGoogleCalendar($this->event->getPublicGoogleCalendar());

@@ -31,7 +31,7 @@ class ProcessEventDeleted
                 Log::info('Deleted event from calendar in observer for event ID: ' . $this->event->id);
             }
             
-            if($this->event->additional_data && $this->event->additional_data->public)
+            if($this->event->additional_data && !empty($this->event->additional_data->public))
             {
                 Log::info('Event is public, deleting from public calendar for event ID: ' . $this->event->id);
                 $publicCalendar = $this->event->getPublicGoogleCalendar();
