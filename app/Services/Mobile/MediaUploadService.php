@@ -5,6 +5,7 @@ namespace App\Services\Mobile;
 use App\Models\Bands;
 use App\Models\BandStorageQuota;
 use App\Models\ChunkedUpload;
+use App\Models\Events;
 use App\Models\MediaFile;
 use App\Services\MediaLibraryService;
 use Illuminate\Support\Facades\Auth;
@@ -86,6 +87,33 @@ class MediaUploadService
             ['quota_limit' => 5368709120, 'quota_used' => 0]
         );
         $quota->increment('quota_used', $upload->filesize);
+
+        // Resolve (and lazily create) the event's client-shared folder, reusing the
+        // same idempotent rule the web controllers use. The mobile client only ever
+        // sends event_id — folder path logic stays server-side.
+        if ($upload->event_id) {
+            $event = Events::find($upload->event_id);
+            if ($event) {
+                try {
+                    if ($event->enable_portal_media_access && !$event->media_folder_path) {
+                        $folderPath = $this->mediaService->createEventFolder($event);
+                        $event->update(['media_folder_path' => $folderPath]);
+                    }
+                    if ($event->media_folder_path && !$mediaFile->folder_path) {
+                        $mediaFile->update(['folder_path' => $event->media_folder_path]);
+                    }
+                } catch (\Exception $e) {
+                    // Non-fatal: the MediaFile is already valid and will still be
+                    // associated below. Match the thumbnail-generation stance and
+                    // leave folder_path null rather than aborting the upload.
+                    \Log::warning('Mobile upload: event folder creation failed', [
+                        'media_id' => $mediaFile->id,
+                        'event_id' => $event->id,
+                        'error'    => $e->getMessage(),
+                    ]);
+                }
+            }
+        }
 
         $this->mediaService->createAssociations($mediaFile, null, $upload->event_id);
 
