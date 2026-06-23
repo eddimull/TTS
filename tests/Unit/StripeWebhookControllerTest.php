@@ -116,6 +116,52 @@ class StripeWebhookControllerTest extends TestCase
         $this->assertEquals(200, $response->getStatusCode());
     }
 
+    public function testCheckoutSessionCompletedRecordsContactPayment()
+    {
+        // Regression for TTS-BAND-2W: a checkout.session.completed event with
+        // valid metadata must record a payment against the booking. The bug was
+        // a (array) cast on the Stripe Session that dropped the nested metadata,
+        // causing "Missing metadata in checkout session" and no payment.
+        Queue::fake();
+
+        $booking = Bookings::factory()->create();
+        $contact = Contacts::factory()->create(['band_id' => $booking->band_id]);
+        $booking->contacts()->attach($contact, [
+            'role' => 'client',
+            'is_primary' => true,
+            'notes' => '',
+        ]);
+
+        // A real StripeObject (not a stdClass) so the toArray()-vs-(array)
+        // distinction is actually exercised — metadata is a nested StripeObject.
+        $stripeEvent = new Event();
+        $stripeEvent->type = 'checkout.session.completed';
+        $stripeEvent->data = new \stdClass();
+        $stripeEvent->data->object = \Stripe\Checkout\Session::constructFrom([
+            'id' => 'cs_live_test_2w',
+            'payment_intent' => 'pi_test_2w',
+            'metadata' => [
+                'booking_id' => (string) $booking->id,
+                'contact_id' => (string) $contact->id,
+                'payment_amount' => '450000', // cents
+            ],
+        ]);
+
+        $request = new Request([], [], [], [], [], ['CONTENT_TYPE' => 'application/json'], json_encode($stripeEvent));
+
+        $response = $this->controller->index($request);
+
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertDatabaseHas('payments', [
+            'payable_id' => $booking->id,
+            'payable_type' => Bookings::class,
+            'payer_type' => Contacts::class,
+            'payer_id' => $contact->id,
+            'payment_type' => 'portal',
+            'status' => 'paid',
+        ]);
+    }
+
     public function testInvalidStripeSignature()
     {
         Config::set('services.stripe.webhook_secret', 'test_secret');
