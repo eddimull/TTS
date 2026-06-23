@@ -30,12 +30,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->middleware('media.write')
             ->name('media.destroy');
 
+        // serve/thumbnail accept either a web session OR a Sanctum Bearer
+        // token (auth.web-or-token) so the mobile app can load files without
+        // a web session. They sit inside the auth'd group but override its
+        // 'auth' middleware via the route-level middleware below.
         Route::get('/{media}/serve', [MediaLibraryController::class, 'serve'])
-            ->middleware('media.read')
+            ->withoutMiddleware(['auth', 'verified'])
+            ->middleware(['auth.web-or-token', 'media.read'])
             ->name('media.serve');
 
         Route::get('/{media}/thumbnail', [MediaLibraryController::class, 'thumbnail'])
-            ->middleware('media.read')
+            ->withoutMiddleware(['auth', 'verified'])
+            ->middleware(['auth.web-or-token', 'media.read'])
             ->name('media.thumbnail');
 
         Route::get('/{id}/download', [MediaLibraryController::class, 'download'])
@@ -124,13 +130,3 @@ Route::get('/share/{token}', [MediaShareController::class, 'access'])
     ->name('media.share.access');
 Route::post('/share/{token}', [MediaShareController::class, 'access'])
     ->name('media.share.access.post');
-
-// ── Mobile-compatible serve routes ────────────────────────────────────────────
-// These accept either a session cookie OR a Bearer token so the mobile app
-// can load thumbnails and serve files without a web session.
-Route::middleware(['auth.web-or-token', 'media.read'])->prefix('media')->group(function () {
-    Route::get('/{media}/thumbnail', [MediaLibraryController::class, 'thumbnail'])
-        ->name('media.thumbnail.token');
-    Route::get('/{media}/serve', [MediaLibraryController::class, 'serve'])
-        ->name('media.serve.token');
-});
