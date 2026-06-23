@@ -178,4 +178,27 @@ class EventMediaUploadTest extends TestCase
         $ids = collect($response->json('event.media'))->pluck('id');
         $this->assertTrue($ids->contains($media->id), 'event media should include the file in the folder');
     }
+
+    public function test_upload_status_returns_progress(): void
+    {
+        ['user' => $user, 'band' => $band] = $this->setup_band_event();
+
+        $upload = ChunkedUpload::factory()->create([
+            'user_id'         => $user->id,
+            'total_chunks'    => 4,
+            'chunks_uploaded' => 2,
+            'status'          => 'uploading',
+        ]);
+
+        $response = $this->actingAs($user)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson("/api/mobile/bands/{$band->id}/media/upload/{$upload->upload_id}");
+
+        $response->assertStatus(200)->assertJson([
+            'upload_id'       => $upload->upload_id,
+            'total_chunks'    => 4,
+            'chunks_uploaded' => 2,
+            'status'          => 'uploading',
+        ]);
+    }
 }

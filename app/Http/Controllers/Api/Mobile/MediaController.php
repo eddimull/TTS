@@ -261,6 +261,25 @@ class MediaController extends Controller
         }
     }
 
+    // ── Chunked upload (status) ────────────────────────────────────────────────
+
+    public function uploadStatus(Bands $band, string $uploadId): JsonResponse
+    {
+        $upload = ChunkedUpload::where('upload_id', $uploadId)
+            ->where('user_id', Auth::id())
+            ->firstOrFail();
+
+        return response()->json([
+            'upload_id'       => $upload->upload_id,
+            'filename'        => $upload->filename,
+            'filesize'        => $upload->filesize,
+            'mime_type'       => $upload->mime_type,
+            'total_chunks'    => $upload->total_chunks,
+            'chunks_uploaded' => $upload->chunks_uploaded,
+            'status'          => $upload->status,
+        ]);
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     private function formatFile(MediaFile $m, bool $detailed = false): array
