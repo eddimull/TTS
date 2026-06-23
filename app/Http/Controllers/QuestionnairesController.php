@@ -128,7 +128,8 @@ class QuestionnairesController extends Controller
         $rawInstances = $questionnaire->instances()
             ->with([
                 'recipientContact:id,name',
-                'booking:id,name,date,band_id',
+                'booking:id,name,band_id',
+                'booking.events:id,eventable_id,eventable_type,date,venue_name',
                 'fields' => fn ($q) => $q->orderBy('position'),
                 'responses',
             ])
@@ -149,7 +150,7 @@ class QuestionnairesController extends Controller
             'booking' => [
                 'id' => $i->booking->id,
                 'name' => $i->booking->name,
-                'date' => $i->booking->date?->format('M j, Y'),
+                'date' => $i->booking->start_date?->format('M j, Y'),
             ],
             'fields' => $i->fields->map(fn ($f) => [
                 'id' => $f->id,
@@ -170,13 +171,13 @@ class QuestionnairesController extends Controller
             ->all();
 
         $bookings = $band->bookings()
-            ->with(['contacts:id,name'])
-            ->whereDate('date', '>=', today())
-            ->get(['id', 'name', 'date', 'band_id'])
+            ->with(['contacts:id,name', 'events:id,eventable_id,eventable_type,date,venue_name'])
+            ->whereHas('events', fn ($q) => $q->whereDate('date', '>=', today()))
+            ->get(['id', 'name', 'band_id'])
             ->map(fn ($b) => [
                 'id' => $b->id,
                 'name' => $b->name,
-                'date' => $b->date?->format('M j, Y'),
+                'date' => $b->start_date?->format('M j, Y'),
                 'already_sent' => in_array($b->id, $bookingIdsAlreadySent, true),
                 'contacts' => $b->contacts->map(fn ($c) => [
                     'id' => $c->id,
