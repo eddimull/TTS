@@ -45,7 +45,7 @@ class MediaServeRouteNamesTest extends TestCase
         BandOwners::create(['user_id' => $user->id, 'band_id' => $band->id]);
 
         $booking = Bookings::factory()->create(['band_id' => $band->id]);
-        $event = Events::factory()->create([
+        Events::factory()->create([
             'eventable_id' => $booking->id,
             'eventable_type' => Bookings::class,
             'media_folder_path' => 'events/route-test',

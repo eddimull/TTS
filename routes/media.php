@@ -32,8 +32,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // serve/thumbnail accept either a web session OR a Sanctum Bearer
         // token (auth.web-or-token) so the mobile app can load files without
-        // a web session. They sit inside the auth'd group but override its
-        // 'auth' middleware via the route-level middleware below.
+        // a web session. They sit inside the ['auth','verified'] group but
+        // strip BOTH of those via withoutMiddleware below: 'auth' is replaced
+        // by auth.web-or-token (which also accepts a token), and 'verified' is
+        // intentionally dropped because a token-authenticated mobile user has
+        // no web email-verification gate. This matches the pre-existing
+        // behaviour — these URIs were already served (as media.serve.token)
+        // under exactly the same auth.web-or-token + media.read middleware,
+        // with no 'verified' check.
         Route::get('/{media}/serve', [MediaLibraryController::class, 'serve'])
             ->withoutMiddleware(['auth', 'verified'])
             ->middleware(['auth.web-or-token', 'media.read'])
