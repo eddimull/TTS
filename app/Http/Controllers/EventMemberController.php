@@ -69,6 +69,7 @@ class EventMemberController extends Controller
 
         $userId = $validated['user_id'] ?? null;
         $invitedNewUser = false;
+        $resolvedUserByEmail = false;
 
         // Handle substitute invitation if requested and email provided
         if ($validated['invite_substitute'] ?? false) {
@@ -97,6 +98,7 @@ class EventMemberController extends Controller
 
                 // If user exists, they'll be linked automatically by SubInvitationService
                 $existingUser = User::where('email', $validated['email'])->first();
+                $resolvedUserByEmail = true;
                 if ($existingUser) {
                     $userId = $existingUser->id;
                     $invitedNewUser = false;
@@ -111,6 +113,14 @@ class EventMemberController extends Controller
             }
         }
 
+        // Resolve user_id from email so the member record links to the registered
+        // user (their name resolves correctly, and re-adds restore rather than duplicate).
+        // Skip when the invite flow above already looked the email up, to avoid a
+        // duplicate query.
+        if (!$userId && !$resolvedUserByEmail && !empty($validated['email'])) {
+            $userId = User::where('email', $validated['email'])->value('id');
+        }
+
         $data = [
             'band_id' => $bandId,
             'roster_member_id' => $validated['roster_member_id'] ?? null,
@@ -123,7 +133,7 @@ class EventMemberController extends Controller
             'band_role_id' => $validated['band_role_id'] ?? null,
             'attendance_status' => $validated['attendance_status'] ?? 'confirmed',
         ];
-        
+
         // If a soft-deleted record exists for this user/roster-member on this event, restore it
         $existing = EventMember::withTrashed()
             ->where('event_id', $event->id)
