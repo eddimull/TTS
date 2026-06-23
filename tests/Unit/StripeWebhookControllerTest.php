@@ -15,12 +15,15 @@ use Illuminate\Http\Request;
 use App\Services\FinanceServices;
 use App\Services\InvoiceServices;
 use App\Services\PdfGeneratorService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Queue;
 use App\Http\Controllers\StripeWebhookController;
 
 class StripeWebhookControllerTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected $controller;
     protected $financeServicesMock;
 
