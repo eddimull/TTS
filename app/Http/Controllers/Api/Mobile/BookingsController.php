@@ -43,7 +43,7 @@ class BookingsController extends Controller
      */
     public function index(BookingIndexRequest $request, Bands $band): JsonResponse
     {
-        $query = $band->bookings()->with(['contacts', 'band', 'events']);
+        $query = $band->bookings()->with(['contacts', 'band', 'events', 'payments']);
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
@@ -96,7 +96,7 @@ class BookingsController extends Controller
         $bandIds = $user->bands()->pluck('id');
 
         $query = Bookings::query()
-            ->with(['band', 'contacts', 'events'])
+            ->with(['band', 'contacts', 'events', 'payments'])
             ->whereIn('band_id', $bandIds);
 
         if ($request->filled('status')) {
