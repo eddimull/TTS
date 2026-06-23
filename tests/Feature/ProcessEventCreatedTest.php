@@ -50,4 +50,36 @@ class ProcessEventCreatedTest extends TestCase
             'google_eventable_type' => Events::class,
         ]);
     }
+
+    public function test_handle_does_not_crash_when_additional_data_lacks_public_key(): void
+    {
+        // TTS-BAND-ZJ: additional_data is a valid object but has no `public`
+        // key. Reading ->public directly raises "Undefined property:
+        // stdClass::$public" under PHP 8. The job must treat a missing key as
+        // not-public, not crash.
+        $band = Bands::factory()->create();
+        $booking = Bookings::factory()->create(['band_id' => $band->id]);
+        $event = Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id'   => $booking->id,
+        ]);
+
+        // Well-formed JSON object without a `public` key.
+        DB::table('events')->where('id', $event->id)
+            ->update(['additional_data' => json_encode(['times' => []])]);
+
+        Log::spy();
+
+        (new ProcessEventCreated($event))->handle();
+
+        Log::shouldNotHaveReceived('error', [Mockery::on(
+            fn ($message) => is_string($message)
+                && str_contains($message, 'Undefined property: stdClass::$public')
+        )]);
+
+        $this->assertDatabaseMissing('google_events', [
+            'google_eventable_id'   => $event->id,
+            'google_eventable_type' => Events::class,
+        ]);
+    }
 }
