@@ -125,6 +125,13 @@ class MediaUploadService
 
         $this->mediaService->createAssociations($mediaFile, null, $eventId);
 
+        // Mirror the web upload paths: notify the booking's contacts that new
+        // media landed in their event folder. Only fires for event uploads that
+        // passed the tenant guard above ($eventId stays null otherwise).
+        if ($eventId) {
+            $this->mediaService->queueEventMediaNotification($eventId);
+        }
+
         if (in_array($mediaType, ['image', 'video'])) {
             try {
                 $this->mediaService->generateThumbnail($mediaFile);
