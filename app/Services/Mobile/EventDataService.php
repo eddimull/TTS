@@ -383,6 +383,7 @@ class EventDataService
             'id'             => $m->id,
             'filename'       => $m->filename,
             'title'          => $m->title,
+            'description'    => $m->description,
             'media_type'     => $m->media_type,
             'mime_type'      => $m->mime_type,
             'file_size'      => $m->file_size,

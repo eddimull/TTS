@@ -18,7 +18,7 @@ class EventMediaUploadTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function setup_band_event(): array
+    private function createUserWithBandAndEvent(): array
     {
         $user = User::factory()->create();
         $band = Bands::factory()->create();
@@ -36,15 +36,13 @@ class EventMediaUploadTest extends TestCase
             'enable_portal_media_access' => true,
         ]);
 
-        $token = $user->createToken('test-device')->plainTextToken;
-
-        return compact('user', 'band', 'booking', 'event', 'token');
+        return compact('user', 'band', 'booking', 'event');
     }
 
     public function test_completing_event_upload_creates_folder_and_associates_media(): void
     {
         Storage::fake('s3');
-        ['user' => $user, 'band' => $band, 'event' => $event] = $this->setup_band_event();
+        ['user' => $user, 'band' => $band, 'event' => $event] = $this->createUserWithBandAndEvent();
 
         $upload = ChunkedUpload::factory()->create([
             'user_id'        => $user->id,
@@ -84,7 +82,7 @@ class EventMediaUploadTest extends TestCase
     public function test_second_event_upload_reuses_existing_folder(): void
     {
         Storage::fake('s3');
-        ['user' => $user, 'band' => $band, 'event' => $event] = $this->setup_band_event();
+        ['user' => $user, 'band' => $band, 'event' => $event] = $this->createUserWithBandAndEvent();
         $event->update(['media_folder_path' => '2026/07/test-gig']);
 
         $upload = ChunkedUpload::factory()->create([
@@ -111,7 +109,7 @@ class EventMediaUploadTest extends TestCase
     public function test_folder_creation_failure_does_not_abort_upload(): void
     {
         Storage::fake('s3');
-        ['user' => $user, 'band' => $band, 'event' => $event] = $this->setup_band_event();
+        ['user' => $user, 'band' => $band, 'event' => $event] = $this->createUserWithBandAndEvent();
 
         // Force the (lazy) event-folder creation to blow up. The upload has
         // already been merged, stored on S3, and persisted by this point, so a
@@ -156,7 +154,7 @@ class EventMediaUploadTest extends TestCase
     public function test_event_detail_returns_associated_media(): void
     {
         Storage::fake('s3');
-        ['user' => $user, 'band' => $band, 'event' => $event] = $this->setup_band_event();
+        ['user' => $user, 'band' => $band, 'event' => $event] = $this->createUserWithBandAndEvent();
         $event->update(['media_folder_path' => '2026/07/test-gig']);
 
         $media = \App\Models\MediaFile::factory()->create([
@@ -173,7 +171,7 @@ class EventMediaUploadTest extends TestCase
             ->getJson("/api/mobile/events/{$event->key}");
 
         $response->assertStatus(200)
-            ->assertJsonStructure(['event' => ['media' => [['id', 'filename', 'media_type', 'mime_type', 'file_size', 'formatted_size', 'thumbnail_url', 'created_at']]]]);
+            ->assertJsonStructure(['event' => ['media' => [['id', 'filename', 'title', 'description', 'media_type', 'mime_type', 'file_size', 'formatted_size', 'thumbnail_url', 'created_at']]]]);
 
         $ids = collect($response->json('event.media'))->pluck('id');
         $this->assertTrue($ids->contains($media->id), 'event media should include the file in the folder');
@@ -181,7 +179,7 @@ class EventMediaUploadTest extends TestCase
 
     public function test_upload_status_returns_progress(): void
     {
-        ['user' => $user, 'band' => $band] = $this->setup_band_event();
+        ['user' => $user, 'band' => $band] = $this->createUserWithBandAndEvent();
 
         $upload = ChunkedUpload::factory()->create([
             'user_id'         => $user->id,
@@ -200,5 +198,88 @@ class EventMediaUploadTest extends TestCase
             'chunks_uploaded' => 2,
             'status'          => 'uploading',
         ]);
+    }
+
+    // ── Tenant isolation (security) ─────────────────────────────────────────
+
+    public function test_cross_band_event_id_is_not_associated_and_creates_no_folder(): void
+    {
+        Storage::fake('s3');
+
+        // Band A (the uploading band) and Band B (owns the foreign event).
+        ['user' => $user, 'band' => $bandA] = $this->createUserWithBandAndEvent();
+        ['event' => $foreignEvent] = $this->createUserWithBandAndEvent();
+
+        // Sanity: the foreign event belongs to a different band than band A.
+        $this->assertNotSame($bandA->id, $foreignEvent->eventable->band_id);
+
+        // Upload under band A, but pointing at band B's event_id.
+        $upload = ChunkedUpload::factory()->create([
+            'user_id'         => $user->id,
+            'band_id'         => $bandA->id,
+            'total_chunks'    => 1,
+            'chunks_uploaded' => 1,
+            'mime_type'       => 'image/jpeg',
+            'filename'        => 'cross.jpg',
+            'folder_path'     => null,
+            'event_id'        => $foreignEvent->id,
+        ]);
+        Storage::disk('local')->put("chunks/{$upload->upload_id}/0", 'chunkdata');
+
+        $response = $this->actingAs($user)
+            ->withHeaders(['X-Band-ID' => $bandA->id])
+            ->postJson(
+                "/api/mobile/bands/{$bandA->id}/media/upload/{$upload->upload_id}/complete"
+            );
+
+        // The upload itself still succeeds — it is just treated as a no-event upload.
+        $response->assertStatus(200);
+
+        $mediaId = $response->json('media.id');
+
+        // No cross-tenant association to the foreign event.
+        $this->assertDatabaseMissing('media_associations', [
+            'media_file_id'   => $mediaId,
+            'associable_type' => 'App\\Models\\Events',
+            'associable_id'   => $foreignEvent->id,
+        ]);
+
+        // The foreign event's folder path was not touched.
+        $foreignEvent->refresh();
+        $this->assertNull($foreignEvent->media_folder_path);
+    }
+
+    public function test_upload_status_is_scoped_to_the_initiating_band(): void
+    {
+        // One user owns BOTH bands so the failure is specifically the band_id
+        // guard, not a band-access failure.
+        $user = User::factory()->create();
+
+        $bandA = Bands::factory()->create();
+        $bandA->owners()->create(['user_id' => $user->id]);
+
+        $bandB = Bands::factory()->create();
+        $bandB->owners()->create(['user_id' => $user->id]);
+
+        // Initiate the upload under band A.
+        $upload = ChunkedUpload::factory()->create([
+            'user_id'         => $user->id,
+            'band_id'         => $bandA->id,
+            'total_chunks'    => 4,
+            'chunks_uploaded' => 2,
+            'status'          => 'uploading',
+        ]);
+
+        // Same-band status still works.
+        $this->actingAs($user)
+            ->withHeaders(['X-Band-ID' => $bandA->id])
+            ->getJson("/api/mobile/bands/{$bandA->id}/media/upload/{$upload->upload_id}")
+            ->assertStatus(200);
+
+        // Querying the same upload under band B must 404 — the upload is not band B's.
+        $this->actingAs($user)
+            ->withHeaders(['X-Band-ID' => $bandB->id])
+            ->getJson("/api/mobile/bands/{$bandB->id}/media/upload/{$upload->upload_id}")
+            ->assertStatus(404);
     }
 }

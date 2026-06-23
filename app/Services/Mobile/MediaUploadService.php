@@ -91,9 +91,17 @@ class MediaUploadService
         // Resolve (and lazily create) the event's client-shared folder, reusing the
         // same idempotent rule the web controllers use. The mobile client only ever
         // sends event_id — folder path logic stays server-side.
+        //
+        // Tenant guard: only honour event_id when the event actually belongs to the
+        // uploading band. A client could otherwise pass an event_id from another
+        // band and have the media associated with — and folder-pathed from — a
+        // foreign event. When the event doesn't belong to $band we fall through to
+        // a plain no-event upload (no folder, no association to the foreign event).
+        $eventId = null;
         if ($upload->event_id) {
             $event = Events::find($upload->event_id);
-            if ($event) {
+            if ($event && $event->eventable?->band_id === $band->id) {
+                $eventId = $event->id;
                 try {
                     if ($event->enable_portal_media_access && !$event->media_folder_path) {
                         $folderPath = $this->mediaService->createEventFolder($event);
@@ -115,7 +123,7 @@ class MediaUploadService
             }
         }
 
-        $this->mediaService->createAssociations($mediaFile, null, $upload->event_id);
+        $this->mediaService->createAssociations($mediaFile, null, $eventId);
 
         if (in_array($mediaType, ['image', 'video'])) {
             try {

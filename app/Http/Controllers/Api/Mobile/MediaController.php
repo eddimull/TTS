@@ -192,6 +192,7 @@ class MediaController extends Controller
             'event_id'     => $validated['event_id'] ?? null,
             'total_chunks' => $validated['total_chunks'],
             'user_id'      => Auth::id(),
+            'band_id'      => $band->id,
             'status'       => 'initiated',
         ]);
 
@@ -204,9 +205,7 @@ class MediaController extends Controller
     {
         $validated = $request->validated();
 
-        $upload = ChunkedUpload::where('upload_id', $uploadId)
-            ->where('user_id', Auth::id())
-            ->firstOrFail();
+        $upload = $this->findUploadForBand($uploadId, $band);
 
         if ($validated['chunk_index'] >= $upload->total_chunks) {
             return response()->json(['error' => 'Invalid chunk index.'], 400);
@@ -234,9 +233,7 @@ class MediaController extends Controller
 
     public function uploadComplete(Request $request, Bands $band, string $uploadId): JsonResponse
     {
-        $upload = ChunkedUpload::where('upload_id', $uploadId)
-            ->where('user_id', Auth::id())
-            ->firstOrFail();
+        $upload = $this->findUploadForBand($uploadId, $band);
 
         if ($upload->chunks_uploaded !== $upload->total_chunks) {
             return response()->json([
@@ -265,9 +262,7 @@ class MediaController extends Controller
 
     public function uploadStatus(Bands $band, string $uploadId): JsonResponse
     {
-        $upload = ChunkedUpload::where('upload_id', $uploadId)
-            ->where('user_id', Auth::id())
-            ->firstOrFail();
+        $upload = $this->findUploadForBand($uploadId, $band);
 
         return response()->json([
             'upload_id'       => $upload->upload_id,
@@ -281,6 +276,21 @@ class MediaController extends Controller
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
+
+    /**
+     * Resolve a chunked upload for the current user, scoped to the band in the
+     * route. Band-stamped uploads (new rows) must match the band exactly; legacy
+     * rows with a null band_id remain reachable so in-flight uploads don't break.
+     */
+    private function findUploadForBand(string $uploadId, Bands $band): ChunkedUpload
+    {
+        return ChunkedUpload::where('upload_id', $uploadId)
+            ->where('user_id', Auth::id())
+            ->where(function ($q) use ($band) {
+                $q->whereNull('band_id')->orWhere('band_id', $band->id);
+            })
+            ->firstOrFail();
+    }
 
     private function formatFile(MediaFile $m, bool $detailed = false): array
     {
