@@ -43,7 +43,9 @@ class BookingsController extends Controller
      */
     public function index(BookingIndexRequest $request, Bands $band): JsonResponse
     {
-        $query = $band->bookings()->with(['contacts', 'band', 'events', 'payments']);
+        $query = $band->bookings()
+            ->with(['contacts', 'band', 'events'])
+            ->withSum(['payments as payment_total_cents' => fn ($q) => $q->where('status', 'paid')], 'amount');
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
@@ -96,7 +98,12 @@ class BookingsController extends Controller
         $bandIds = $user->bands()->pluck('id');
 
         $query = Bookings::query()
-            ->with(['band', 'contacts', 'events', 'payments'])
+            ->with(['band', 'contacts', 'events'])
+            // Aggregate paid payments into payment_total_cents (raw cents) so the
+            // amount_paid accessor uses its fast-path instead of one sum() query
+            // per booking (N+1), without serializing the full payments relation
+            // into the list response.
+            ->withSum(['payments as payment_total_cents' => fn ($q) => $q->where('status', 'paid')], 'amount')
             ->whereIn('band_id', $bandIds);
 
         if ($request->filled('status')) {

@@ -273,11 +273,11 @@ class MeBookingsTest extends TestCase
         $response->assertJsonValidationErrors('from');
     }
 
-    public function test_amount_paid_is_correct_with_eager_loaded_payments(): void
+    public function test_amount_paid_is_correct_with_aggregated_payments(): void
     {
-        // Guards the eager-loaded amount_paid path: payments.amount is cast by
-        // Price to a formatted dollar string, so the loaded-relation sum must
-        // use raw cents (getRawOriginal), not the accessor.
+        // amount_paid is fed by the withSum('payment_total_cents') aggregate
+        // (paid-only, raw cents). Guards that the aggregate matches a manual
+        // sum and that pending payments are excluded.
         $user = User::factory()->create();
         $band = Bands::create([
             'name' => 'Band', 'site_name' => 'b-' . uniqid(), 'is_personal' => false,
@@ -342,7 +342,7 @@ class MeBookingsTest extends TestCase
             ->count();
         DB::disableQueryLog();
 
-        // With payments eager-loaded, the per-booking sum() queries are gone.
+        // With the withSum aggregate, the per-booking sum() queries are gone.
         $this->assertSame(0, $paymentAggregates,
             "Expected no per-booking payment sum() queries, found {$paymentAggregates}");
     }
