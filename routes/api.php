@@ -298,6 +298,7 @@ Route::prefix('mobile')->group(function () {
         // ── Media (write) ──────────────────────────────────────────────
         Route::prefix('bands/{band}')->middleware('mobile.band:write:media')->group(function () {
             Route::delete('/media/{media}', [App\Http\Controllers\Api\Mobile\MediaController::class, 'destroy'])->name('mobile.media.destroy');
+            Route::get('/media/upload/{uploadId}', [App\Http\Controllers\Api\Mobile\MediaController::class, 'uploadStatus'])->name('mobile.media.upload.status');
             Route::post('/media/upload/initiate', [App\Http\Controllers\Api\Mobile\MediaController::class, 'uploadInitiate'])->name('mobile.media.upload.initiate');
             Route::post('/media/upload/{uploadId}/chunk', [App\Http\Controllers\Api\Mobile\MediaController::class, 'uploadChunk'])->name('mobile.media.upload.chunk');
             Route::post('/media/upload/{uploadId}/complete', [App\Http\Controllers\Api\Mobile\MediaController::class, 'uploadComplete'])->name('mobile.media.upload.complete');

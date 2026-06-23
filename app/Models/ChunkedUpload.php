@@ -11,6 +11,7 @@ class ChunkedUpload extends Model
     protected $fillable = [
         'upload_id',
         'user_id',
+        'band_id',
         'filename',
         'filesize',
         'mime_type',
