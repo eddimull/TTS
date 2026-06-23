@@ -308,6 +308,11 @@ class MeBookingsTest extends TestCase
 
         $paid = collect($response->json('bookings'))->firstWhere('name', 'Paid Gig');
         $this->assertSame('450.00', $paid['amount_paid']);
+
+        // The list must not serialize per-payment detail: amount_paid comes
+        // from the withSum aggregate, not an eager-loaded payments relation.
+        // Guards against reintroducing ->with('payments') on the list query.
+        $this->assertSame([], $paid['payments']);
     }
 
     public function test_index_does_not_run_per_booking_payment_query(): void
