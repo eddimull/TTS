@@ -142,7 +142,10 @@ class StripeWebhookController extends Controller
                 // Check if this is a contact payment (has booking_id in metadata)
                 if (isset($session->metadata->booking_id)) {
                     $paymentService = app(ContactPaymentService::class);
-                    $paymentService->processSuccessfulPayment((array) $session);
+                    // Use Stripe's recursive toArray(): a plain (array) cast on a
+                    // StripeObject does not recurse and mangles protected keys, so
+                    // the nested `metadata` would be lost and the payment skipped.
+                    $paymentService->processSuccessfulPayment($session->toArray());
                     Log::info('Contact payment processed via checkout session', [
                         'session_id' => $session->id,
                         'booking_id' => $session->metadata->booking_id,
