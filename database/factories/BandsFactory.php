@@ -28,7 +28,7 @@ class BandsFactory extends Factory
         $band = $this->faker->company();
         return [
             'name' => $band,
-            'site_name' => Str::slug($band, '_')
+            'site_name' => Str::slug($band, '_') . '_' . uniqid()
         ];
     }
 
