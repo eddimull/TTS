@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Mail\SubInvitation;
 use App\Models\BandOwners;
 use App\Models\BandRole;
 use App\Models\Bands;
@@ -242,10 +243,13 @@ class EventMemberStoreTest extends TestCase
 
         $response->assertStatus(201);
 
-        // The invitation record is created...
+        // The invitation record is created and the invitation email is sent...
         $this->assertDatabaseHas('event_subs', [
             'event_id' => $this->event->id,
         ]);
+        Mail::assertSent(SubInvitation::class, function (SubInvitation $mail) {
+            return $mail->hasTo('invited-sub@example.com');
+        });
 
         // ...AND the member is actually added to the event lineup, in the slot.
         $this->assertDatabaseHas('event_members', [

@@ -69,6 +69,7 @@ class EventMemberController extends Controller
 
         $userId = $validated['user_id'] ?? null;
         $invitedNewUser = false;
+        $resolvedUserByEmail = false;
 
         // Handle substitute invitation if requested and email provided
         if ($validated['invite_substitute'] ?? false) {
@@ -97,6 +98,7 @@ class EventMemberController extends Controller
 
                 // If user exists, they'll be linked automatically by SubInvitationService
                 $existingUser = User::where('email', $validated['email'])->first();
+                $resolvedUserByEmail = true;
                 if ($existingUser) {
                     $userId = $existingUser->id;
                     $invitedNewUser = false;
@@ -113,7 +115,9 @@ class EventMemberController extends Controller
 
         // Resolve user_id from email so the member record links to the registered
         // user (their name resolves correctly, and re-adds restore rather than duplicate).
-        if (!$userId && !empty($validated['email'])) {
+        // Skip when the invite flow above already looked the email up, to avoid a
+        // duplicate query.
+        if (!$userId && !$resolvedUserByEmail && !empty($validated['email'])) {
             $userId = User::where('email', $validated['email'])->value('id');
         }
 
