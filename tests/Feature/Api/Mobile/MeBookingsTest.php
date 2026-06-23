@@ -7,8 +7,10 @@ use App\Models\Bands;
 use App\Models\BandSubs;
 use App\Models\Bookings;
 use App\Models\Events;
+use App\Models\Payments;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class MeBookingsTest extends TestCase
@@ -269,6 +271,80 @@ class MeBookingsTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors('from');
+    }
+
+    public function test_amount_paid_is_correct_with_eager_loaded_payments(): void
+    {
+        // Guards the eager-loaded amount_paid path: payments.amount is cast by
+        // Price to a formatted dollar string, so the loaded-relation sum must
+        // use raw cents (getRawOriginal), not the accessor.
+        $user = User::factory()->create();
+        $band = Bands::create([
+            'name' => 'Band', 'site_name' => 'b-' . uniqid(), 'is_personal' => false,
+        ]);
+        BandOwners::create(['user_id' => $user->id, 'band_id' => $band->id]);
+
+        $booking = Bookings::factory()->for($band, 'band')->create(['name' => 'Paid Gig']);
+        // Price cast set() multiplies by 100, so these are dollars: 300 + 150 = 450 paid.
+        Payments::factory()->create([
+                'band_id' => $band->id,
+            'payable_type' => Bookings::class, 'payable_id' => $booking->id,
+            'amount' => 300, 'status' => 'paid',
+        ]);
+        Payments::factory()->create([
+                'band_id' => $band->id,
+            'payable_type' => Bookings::class, 'payable_id' => $booking->id,
+            'amount' => 150, 'status' => 'paid',
+        ]);
+        // A pending payment must NOT count toward amount_paid.
+        Payments::factory()->create([
+                'band_id' => $band->id,
+            'payable_type' => Bookings::class, 'payable_id' => $booking->id,
+            'amount' => 999, 'status' => 'pending',
+        ]);
+
+        $response = $this->actingAs($user)->getJson('/api/mobile/me/bookings');
+        $response->assertOk();
+
+        $paid = collect($response->json('bookings'))->firstWhere('name', 'Paid Gig');
+        $this->assertSame('450.00', $paid['amount_paid']);
+    }
+
+    public function test_index_does_not_run_per_booking_payment_query(): void
+    {
+        // Regression for TTS-BAND-113: amount_paid ran a sum() query per
+        // booking. Query count must not scale with the number of bookings.
+        $user = User::factory()->create();
+        $band = Bands::create([
+            'name' => 'Band', 'site_name' => 'b-' . uniqid(), 'is_personal' => false,
+        ]);
+        BandOwners::create(['user_id' => $user->id, 'band_id' => $band->id]);
+
+        foreach (range(1, 5) as $i) {
+            $booking = Bookings::factory()->for($band, 'band')->create(['name' => "Gig $i"]);
+            Payments::factory()->create([
+                'band_id' => $band->id,
+                'payable_type' => Bookings::class, 'payable_id' => $booking->id,
+                'amount' => 100, 'status' => 'paid',
+            ]);
+        }
+
+        $token = $user->createToken('test')->plainTextToken;
+
+        DB::enableQueryLog();
+        $response = $this->withToken($token)->getJson('/api/mobile/me/bookings');
+        $response->assertOk();
+        $this->assertCount(5, $response->json('bookings'));
+
+        $paymentAggregates = collect(DB::getQueryLog())
+            ->filter(fn ($q) => str_contains($q['query'], 'sum(`amount`)')
+                && str_contains($q['query'], 'payments'))
+            ->count();
+        DB::disableQueryLog();
+
+        // With payments eager-loaded, the per-booking sum() queries are gone.
+        $this->assertSame(0, $paymentAggregates,
+            "Expected no per-booking payment sum() queries, found {$paymentAggregates}");
     }
 
     public function test_no_params_still_returns_all_bookings(): void

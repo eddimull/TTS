@@ -288,7 +288,18 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
             return number_format($rawValue / 100, 2, '.', '');
         }
 
-        // Otherwise, calculate it from the payments relationship
+        // If the payments relation is already loaded (e.g. eager-loaded by a
+        // list endpoint), sum in PHP to avoid an aggregate query per booking
+        // (N+1). Sum raw cents via getRawOriginal — the `amount` accessor is
+        // cast by Price to a formatted dollar string, which must not be summed.
+        // Otherwise fall back to a single aggregate query (also in raw cents).
+        if ($this->relationLoaded('payments')) {
+            $totalCents = $this->payments
+                ->where('status', 'paid')
+                ->sum(fn ($payment) => (int) $payment->getRawOriginal('amount'));
+            return number_format($totalCents / 100, 2, '.', '');
+        }
+
         $total = $this->payments()->where('status', 'paid')->sum('amount') / 100;
         return number_format($total, 2, '.', '');
     }
