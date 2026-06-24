@@ -249,6 +249,102 @@ class EventMediaUploadTest extends TestCase
         $this->assertNull($foreignEvent->media_folder_path);
     }
 
+    public function test_completing_event_upload_queues_contact_notification(): void
+    {
+        Storage::fake('s3');
+        \Illuminate\Support\Facades\Queue::fake();
+
+        ['user' => $user, 'band' => $band, 'event' => $event] = $this->createUserWithBandAndEvent();
+
+        $upload = ChunkedUpload::factory()->create([
+            'user_id'         => $user->id,
+            'total_chunks'    => 1,
+            'chunks_uploaded' => 1,
+            'mime_type'       => 'image/jpeg',
+            'filename'        => 'shot.jpg',
+            'folder_path'     => null,
+            'event_id'        => $event->id,
+        ]);
+        Storage::disk('local')->put("chunks/{$upload->upload_id}/0", 'chunkdata');
+
+        $this->actingAs($user)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->postJson("/api/mobile/bands/{$band->id}/media/upload/{$upload->upload_id}/complete")
+            ->assertStatus(200);
+
+        \Illuminate\Support\Facades\Queue::assertPushed(
+            \App\Jobs\NotifyContactsOfMediaUpload::class,
+            fn ($job) => $job->eventId === $event->id
+        );
+    }
+
+    public function test_completing_non_event_upload_does_not_queue_contact_notification(): void
+    {
+        Storage::fake('s3');
+        \Illuminate\Support\Facades\Queue::fake();
+
+        ['user' => $user, 'band' => $band] = $this->createUserWithBandAndEvent();
+
+        $upload = ChunkedUpload::factory()->create([
+            'user_id'         => $user->id,
+            'total_chunks'    => 1,
+            'chunks_uploaded' => 1,
+            'mime_type'       => 'image/jpeg',
+            'filename'        => 'loose.jpg',
+            'folder_path'     => null,
+            'event_id'        => null,
+        ]);
+        Storage::disk('local')->put("chunks/{$upload->upload_id}/0", 'chunkdata');
+
+        $this->actingAs($user)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->postJson("/api/mobile/bands/{$band->id}/media/upload/{$upload->upload_id}/complete")
+            ->assertStatus(200);
+
+        \Illuminate\Support\Facades\Queue::assertNotPushed(
+            \App\Jobs\NotifyContactsOfMediaUpload::class
+        );
+    }
+
+    public function test_media_uploaded_from_mobile_is_visible_to_booking_contact(): void
+    {
+        Storage::fake('s3');
+
+        ['user' => $user, 'band' => $band, 'booking' => $booking, 'event' => $event] =
+            $this->createUserWithBandAndEvent();
+
+        // A contact attached to the booking with portal login enabled.
+        $contact = \App\Models\Contacts::factory()->create([
+            'band_id'   => $band->id,
+            'can_login' => true,
+        ]);
+        $booking->contacts()->attach($contact->id);
+
+        $upload = ChunkedUpload::factory()->create([
+            'user_id'         => $user->id,
+            'total_chunks'    => 1,
+            'chunks_uploaded' => 1,
+            'mime_type'       => 'image/jpeg',
+            'filename'        => 'wedding.jpg',
+            'folder_path'     => null,
+            'event_id'        => $event->id,
+        ]);
+        Storage::disk('local')->put("chunks/{$upload->upload_id}/0", 'chunkdata');
+
+        $response = $this->actingAs($user)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->postJson("/api/mobile/bands/{$band->id}/media/upload/{$upload->upload_id}/complete");
+        $response->assertStatus(200);
+        $mediaId = $response->json('media.id');
+
+        $accessibleMedia = app(MediaLibraryService::class)->getContactAccessibleMedia($contact);
+
+        $this->assertTrue(
+            $accessibleMedia->contains(fn ($m) => $m->id === $mediaId),
+            'Media uploaded from mobile into the event folder should be visible to the booking contact.'
+        );
+    }
+
     public function test_upload_status_is_scoped_to_the_initiating_band(): void
     {
         // One user owns BOTH bands so the failure is specifically the band_id
