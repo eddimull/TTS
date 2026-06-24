@@ -1,0 +1,125 @@
+<?php
+
+namespace App\Http\Controllers\Api\Mobile;
+
+use App\Http\Controllers\Controller;
+use App\Models\Bands;
+use App\Models\BandPayoutConfig;
+use App\Services\PayoutFlowService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+/**
+ * Mobile API for the payout flow editor.
+ *
+ * Reuses the shared PayoutFlowService (flow→config mapping, preview-config
+ * building, active-config bookkeeping) so the calculation/validation logic
+ * stays in one place across web and mobile. The band is resolved by the
+ * `mobile.band` middleware and made available as `mobile_band` on the request;
+ * write routes are additionally gated by the `owner` middleware.
+ */
+class PayoutFlowController extends Controller
+{
+    public function __construct(
+        private readonly PayoutFlowService $payoutFlow,
+    ) {}
+
+    /**
+     * GET /api/mobile/bands/{band}/payout-flow/configs
+     * List a band's payout configurations.
+     */
+    public function listConfigs(Bands $band): JsonResponse
+    {
+        return response()->json([
+            'configs' => $band->payoutConfigs()->get()
+                ->map(fn (BandPayoutConfig $c) => $this->formatConfig($c))
+                ->values(),
+        ]);
+    }
+
+    /**
+     * GET /api/mobile/bands/{band}/payout-flow/configs/{configId}
+     * Fetch one configuration, including its full flow_diagram.
+     */
+    public function showConfig(Bands $band, int $configId): JsonResponse
+    {
+        $config = $this->findConfig($band->id, $configId);
+
+        return response()->json($this->formatConfig($config, withFlow: true));
+    }
+
+    /**
+     * PATCH /api/mobile/bands/{band}/payout-flow/configs/{configId}
+     * Update a configuration's flow_diagram (owner-only).
+     */
+    public function updateConfig(Request $request, Bands $band, int $configId): JsonResponse
+    {
+        $config = $this->findConfig($band->id, $configId);
+
+        $validated = $request->validate([
+            'flow_diagram' => 'nullable|array',
+            'name' => 'sometimes|required|string|max:255',
+            'is_active' => 'sometimes|boolean',
+        ]);
+
+        // Activating this config deactivates the others (shared service logic).
+        if (($validated['is_active'] ?? false) && ! $config->is_active) {
+            $this->payoutFlow->deactivateOtherConfigs($band->id, $config->id);
+        }
+
+        $config->update($validated);
+
+        return response()->json($this->formatConfig($config->fresh(), withFlow: true));
+    }
+
+    /**
+     * POST /api/mobile/bands/{band}/payout-flow/preview
+     * Preview a payout calculation for a flow + test amount (no persistence).
+     */
+    public function preview(Request $request, Bands $band): JsonResponse
+    {
+        $validated = $request->validate([
+            'nodes' => 'required|array',
+            'edges' => 'required|array',
+            'test_amount' => 'required|numeric|min:0',
+        ]);
+
+        try {
+            $tempConfig = $this->payoutFlow->buildPreviewConfig(
+                $band->id,
+                $validated['nodes'],
+                $validated['edges'],
+            );
+
+            return response()->json($tempConfig->calculatePayouts($validated['test_amount']));
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to preview calculation',
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    private function findConfig(int $bandId, int $configId): BandPayoutConfig
+    {
+        return BandPayoutConfig::where('band_id', $bandId)
+            ->where('id', $configId)
+            ->firstOrFail();
+    }
+
+    private function formatConfig(BandPayoutConfig $c, bool $withFlow = false): array
+    {
+        $out = [
+            'id' => $c->id,
+            'name' => $c->name,
+            'is_active' => $c->is_active,
+            'updated_at' => $c->updated_at,
+        ];
+        // Always include the flow on detail/update; keep the list response light.
+        if ($withFlow) {
+            $out['flow_diagram'] = $c->flow_diagram;
+        }
+
+        return $out;
+    }
+}
