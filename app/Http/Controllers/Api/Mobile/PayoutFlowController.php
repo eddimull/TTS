@@ -8,6 +8,7 @@ use App\Models\BandPayoutConfig;
 use App\Services\PayoutFlowService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * Mobile API for the payout flow editor.
@@ -30,8 +31,11 @@ class PayoutFlowController extends Controller
      */
     public function listConfigs(Bands $band): JsonResponse
     {
+        // The list response omits flow_diagram, so don't load that (potentially
+        // large) column — select only what formatConfig() needs.
         return response()->json([
-            'configs' => $band->payoutConfigs()->get()
+            'configs' => $band->payoutConfigs()
+                ->get(['id', 'band_id', 'name', 'is_active', 'updated_at'])
                 ->map(fn (BandPayoutConfig $c) => $this->formatConfig($c))
                 ->values(),
         ]);
@@ -82,7 +86,12 @@ class PayoutFlowController extends Controller
             'nodes' => 'required|array',
             'edges' => 'required|array',
             'test_amount' => 'required|numeric|min:0',
-            'roster_id' => 'sometimes|nullable|integer',
+            // Scope existence to this band so a bad/cross-band id 422s instead of
+            // silently falling back to an empty roster.
+            'roster_id' => [
+                'sometimes', 'nullable', 'integer',
+                Rule::exists('rosters', 'id')->where('band_id', $band->id),
+            ],
         ]);
 
         try {

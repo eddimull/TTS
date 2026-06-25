@@ -144,7 +144,7 @@ class PayoutFlowMobileTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_preview_resolves_roster_members_and_node_values()
+    public function test_preview_resolves_roster_members_and_node_values(): void
     {
         // A roster with 3 members on this band.
         $roster = Roster::factory()->create(['band_id' => $this->band->id, 'is_active' => true, 'is_default' => true]);

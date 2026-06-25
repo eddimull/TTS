@@ -157,14 +157,17 @@ class PayoutFlowService
         }
 
         return $roster->members()->where('is_active', true)
-            ->with('bandRole')->get()
+            ->with(['bandRole', 'user'])->get()
             ->map(fn ($m) => [
                 'roster_member_id' => $m->id,
                 'user_id' => $m->user_id,
                 'name' => $m->display_name,
                 'role' => $m->bandRole?->name,
                 'band_role_id' => $m->band_role_id,
-                'type' => 'member',
+                // Match calculateAttendanceWeights: a user-backed entry is a
+                // 'member', a non-user roster entry is a 'substitute'. This is
+                // what memberTypeFilter (members_only / substitutes_only) keys on.
+                'type' => $m->isUser() ? 'member' : 'substitute',
                 'events_attended' => 1,
                 'total_events' => 1,
                 'weight' => 1.0,
