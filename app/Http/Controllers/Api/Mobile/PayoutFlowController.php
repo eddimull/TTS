@@ -42,6 +42,23 @@ class PayoutFlowController extends Controller
     }
 
     /**
+     * The starter templates offered when creating a config (key/name/description
+     * only — no flow payload; the flow is applied server-side on create).
+     */
+    public function templates(Bands $band): JsonResponse
+    {
+        $templates = collect($this->payoutFlow->configTemplates())
+            ->map(fn (array $t, string $key) => [
+                'key' => $key,
+                'name' => $t['name'],
+                'description' => $t['description'],
+            ])
+            ->values();
+
+        return response()->json(['templates' => $templates]);
+    }
+
+    /**
      * GET /api/mobile/bands/{band}/payout-flow/configs/{configId}
      * Fetch one configuration, including its full flow_diagram.
      */
@@ -74,6 +91,41 @@ class PayoutFlowController extends Controller
         $config->update($validated);
 
         return response()->json($this->formatConfig($config->fresh(), withFlow: true));
+    }
+
+    /**
+     * POST /api/mobile/bands/{band}/payout-flow/configs
+     * Create a new configuration from a starter template (owner-only).
+     */
+    public function createConfig(Request $request, Bands $band): JsonResponse
+    {
+        // Validate against the service's actual template keys so the two can't
+        // drift (a stale hard-coded list would let templateFlow() return null
+        // and persist a config with a null flow_diagram).
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'template' => [
+                'required',
+                'string',
+                Rule::in(array_keys($this->payoutFlow->configTemplates())),
+            ],
+        ]);
+
+        $flow = $this->payoutFlow->templateFlow($validated['template']);
+
+        // New configs are created INACTIVE — the user activates explicitly.
+        // (is_active column defaults to 1, so it must be set here.)
+        $config = BandPayoutConfig::create([
+            'band_id' => $band->id,
+            'name' => $validated['name'],
+            'is_active' => false,
+            'flow_diagram' => $flow,
+        ]);
+
+        return response()->json(
+            ['config' => $this->formatConfig($config, withFlow: true)],
+            201,
+        );
     }
 
     /**

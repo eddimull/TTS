@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\Mobile;
 
+use App\Models\BandMembers;
 use App\Models\BandOwners;
 use App\Models\BandPayoutConfig;
 use App\Models\Bands;
@@ -31,6 +32,12 @@ class PayoutFlowMobileTest extends TestCase
 
         // Owner so allMembers payout groups resolve to a payable recipient.
         BandOwners::create(['band_id' => $this->band->id, 'user_id' => $this->owner->id]);
+
+        // $this->member is a band member but NOT an owner — so the owner-only
+        // tests actually exercise the `owner` middleware (a 403 from the band
+        // membership check would otherwise be a false pass), and read-gated
+        // routes can assert a non-owner member is allowed.
+        BandMembers::create(['band_id' => $this->band->id, 'user_id' => $this->member->id]);
 
         $this->ownerToken = $this->owner->createToken('test-device')->plainTextToken;
         $this->memberToken = $this->member->createToken('test-device')->plainTextToken;
@@ -171,5 +178,123 @@ class PayoutFlowMobileTest extends TestCase
         $res->assertJsonPath('node_values.p1.memberCount', 3);
         $res->assertJsonPath('node_values.p1.allocated', 900);
         $res->assertJsonPath('node_values.p1.perMember', 300);
+    }
+
+    public function test_config_templates_are_all_structurally_valid(): void
+    {
+        $service = app(\App\Services\PayoutFlowService::class);
+        $templates = $service->configTemplates();
+
+        $this->assertSame(
+            ['blank', 'equal_split', 'band_cut_equal', 'roster_sub_pay'],
+            array_keys($templates),
+        );
+
+        foreach ($templates as $key => $tpl) {
+            $this->assertArrayHasKey('name', $tpl, "template $key name");
+            $this->assertArrayHasKey('description', $tpl, "template $key description");
+            $flow = $tpl['flowDiagram'];
+            $this->assertArrayHasKey('nodes', $flow);
+            $this->assertArrayHasKey('edges', $flow);
+
+            $incomes = array_filter($flow['nodes'], fn ($n) => $n['type'] === 'income');
+            $this->assertCount(1, $incomes, "template $key must have one income node");
+
+            $errors = $service->collectFlowValidationErrors($flow['nodes'], $flow['edges']);
+            $this->assertSame([], $errors, "template $key flow invalid: " . json_encode($errors));
+        }
+    }
+
+    public function test_templates_endpoint_lists_pickable_templates(): void
+    {
+        $res = $this->withHeaders($this->headers($this->ownerToken))
+            ->getJson("/api/mobile/bands/{$this->band->id}/payout-flow/templates");
+
+        $res->assertOk();
+        $res->assertJsonCount(4, 'templates');
+        $res->assertJsonStructure(['templates' => [['key', 'name', 'description']]]);
+        $keys = array_column($res->json('templates'), 'key');
+        $this->assertEqualsCanonicalizing(
+            ['blank', 'equal_split', 'band_cut_equal', 'roster_sub_pay'],
+            $keys,
+        );
+    }
+
+    public function test_band_member_can_list_templates(): void
+    {
+        // Templates are read-gated, not owner-only — a band member (non-owner)
+        // can list them.
+        $this->withHeaders($this->headers($this->memberToken))
+            ->getJson("/api/mobile/bands/{$this->band->id}/payout-flow/templates")
+            ->assertOk()
+            ->assertJsonCount(4, 'templates');
+    }
+
+    public function test_create_config_from_blank_template_returns_inactive_config_with_income(): void
+    {
+        $res = $this->withHeaders($this->headers($this->ownerToken))
+            ->postJson("/api/mobile/bands/{$this->band->id}/payout-flow/configs", [
+                'name' => 'My New Config',
+                'template' => 'blank',
+            ]);
+
+        $res->assertCreated();
+        $res->assertJsonPath('config.name', 'My New Config');
+        $res->assertJsonPath('config.is_active', false);
+        $nodes = $res->json('config.flow_diagram.nodes');
+        $this->assertCount(1, $nodes);
+        $this->assertSame('income', $nodes[0]['type']);
+
+        $this->assertDatabaseHas('band_payout_configs', [
+            'band_id' => $this->band->id,
+            'name' => 'My New Config',
+            'is_active' => false,
+        ]);
+    }
+
+    public function test_create_config_from_band_cut_template_has_three_nodes(): void
+    {
+        $res = $this->withHeaders($this->headers($this->ownerToken))
+            ->postJson("/api/mobile/bands/{$this->band->id}/payout-flow/configs", [
+                'name' => 'Cut + split',
+                'template' => 'band_cut_equal',
+            ]);
+
+        $res->assertCreated();
+        $types = array_column($res->json('config.flow_diagram.nodes'), 'type');
+        $this->assertEqualsCanonicalizing(['income', 'bandCut', 'payoutGroup'], $types);
+    }
+
+    public function test_create_config_does_not_deactivate_existing_active_config(): void
+    {
+        $active = BandPayoutConfig::create([
+            'band_id' => $this->band->id,
+            'name' => 'Existing active',
+            'is_active' => true,
+            'flow_diagram' => ['nodes' => [['id' => 'income-1', 'type' => 'income', 'data' => ['amount' => 100]]], 'edges' => []],
+        ]);
+
+        $this->withHeaders($this->headers($this->ownerToken))
+            ->postJson("/api/mobile/bands/{$this->band->id}/payout-flow/configs", [
+                'name' => 'New one', 'template' => 'blank',
+            ])->assertCreated();
+
+        $this->assertDatabaseHas('band_payout_configs', ['id' => $active->id, 'is_active' => true]);
+    }
+
+    public function test_create_config_rejects_unknown_template(): void
+    {
+        $this->withHeaders($this->headers($this->ownerToken))
+            ->postJson("/api/mobile/bands/{$this->band->id}/payout-flow/configs", [
+                'name' => 'Bad', 'template' => 'nope',
+            ])->assertStatus(422);
+    }
+
+    public function test_non_owner_cannot_create_config(): void
+    {
+        $this->withHeaders($this->headers($this->memberToken))
+            ->postJson("/api/mobile/bands/{$this->band->id}/payout-flow/configs", [
+                'name' => 'X', 'template' => 'blank',
+            ])->assertForbidden();
     }
 }
