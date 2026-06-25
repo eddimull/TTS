@@ -202,6 +202,23 @@ class PayoutFlowMobileTest extends TestCase
 
             $errors = $service->collectFlowValidationErrors($flow['nodes'], $flow['edges']);
             $this->assertSame([], $errors, "template $key flow invalid: " . json_encode($errors));
+
+            // Every edge needs a unique, non-empty id and source/target handles —
+            // Vue Flow on web drops edges that lack an id, so without this the
+            // connections render on mobile but not on web.
+            $ids = [];
+            foreach ($flow['edges'] as $edge) {
+                $this->assertArrayHasKey('id', $edge, "template $key edge missing id");
+                $this->assertNotEmpty($edge['id'], "template $key edge has empty id");
+                $this->assertArrayHasKey('sourceHandle', $edge, "template $key edge missing sourceHandle");
+                $this->assertArrayHasKey('targetHandle', $edge, "template $key edge missing targetHandle");
+                $ids[] = $edge['id'];
+            }
+            $this->assertSame(
+                count($ids),
+                count(array_unique($ids)),
+                "template $key has duplicate edge ids",
+            );
         }
     }
 
@@ -296,5 +313,44 @@ class PayoutFlowMobileTest extends TestCase
             ->postJson("/api/mobile/bands/{$this->band->id}/payout-flow/configs", [
                 'name' => 'X', 'template' => 'blank',
             ])->assertForbidden();
+    }
+
+    public function test_owner_can_delete_config(): void
+    {
+        $config = BandPayoutConfig::create([
+            'band_id' => $this->band->id,
+            'name' => 'To delete',
+            'is_active' => false,
+            'flow_diagram' => ['nodes' => [['id' => 'income-1', 'type' => 'income', 'data' => ['amount' => 0]]], 'edges' => []],
+        ]);
+
+        $this->withHeaders($this->headers($this->ownerToken))
+            ->deleteJson("/api/mobile/bands/{$this->band->id}/payout-flow/configs/{$config->id}")
+            ->assertNoContent();
+
+        $this->assertDatabaseMissing('band_payout_configs', ['id' => $config->id]);
+    }
+
+    public function test_delete_unknown_config_returns_404(): void
+    {
+        $this->withHeaders($this->headers($this->ownerToken))
+            ->deleteJson("/api/mobile/bands/{$this->band->id}/payout-flow/configs/999999")
+            ->assertNotFound();
+    }
+
+    public function test_non_owner_cannot_delete_config(): void
+    {
+        $config = BandPayoutConfig::create([
+            'band_id' => $this->band->id,
+            'name' => 'Keep',
+            'is_active' => false,
+            'flow_diagram' => ['nodes' => [['id' => 'income-1', 'type' => 'income', 'data' => ['amount' => 0]]], 'edges' => []],
+        ]);
+
+        $this->withHeaders($this->headers($this->memberToken))
+            ->deleteJson("/api/mobile/bands/{$this->band->id}/payout-flow/configs/{$config->id}")
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('band_payout_configs', ['id' => $config->id]);
     }
 }
