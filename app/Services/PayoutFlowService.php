@@ -231,17 +231,24 @@ class PayoutFlowService
             'data' => ['cutType' => 'percentage', 'value' => 10, 'tierConfig' => null, 'deactivated' => false],
         ];
 
-        // Every edge gets a unique id derived from its endpoints + handle. Vue
-        // Flow on web silently drops edges that have no id, so omitting it makes
-        // template connections render on mobile but NOT on web.
-        $edge = fn (string $source, string $sourceHandle, string $target, string $targetHandle) => [
-            'id' => "edge-$source-$sourceHandle-$target-$targetHandle",
-            'source' => $source,
-            'target' => $target,
-            'sourceHandle' => $sourceHandle,
-            'targetHandle' => $targetHandle,
-            'type' => 'custom',
-        ];
+        // Every edge needs a unique id — Vue Flow on web silently drops edges
+        // that lack one, so omitting it makes template connections render on
+        // mobile but NOT on web. A monotonic counter guarantees uniqueness
+        // regardless of node-id/handle contents (a dash-joined descriptive id
+        // could in theory collide when segments themselves contain dashes).
+        $edgeSeq = 0;
+        $edge = function (string $source, string $sourceHandle, string $target, string $targetHandle) use (&$edgeSeq) {
+            $edgeSeq++;
+
+            return [
+                'id' => "tpl-edge-{$edgeSeq}",
+                'source' => $source,
+                'target' => $target,
+                'sourceHandle' => $sourceHandle,
+                'targetHandle' => $targetHandle,
+                'type' => 'custom',
+            ];
+        };
 
         return [
             'blank' => [
