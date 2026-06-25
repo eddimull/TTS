@@ -231,6 +231,18 @@ class PayoutFlowService
             'data' => ['cutType' => 'percentage', 'value' => 10, 'tierConfig' => null, 'deactivated' => false],
         ];
 
+        // Every edge gets a unique id derived from its endpoints + handle. Vue
+        // Flow on web silently drops edges that have no id, so omitting it makes
+        // template connections render on mobile but NOT on web.
+        $edge = fn (string $source, string $sourceHandle, string $target, string $targetHandle) => [
+            'id' => "edge-$source-$sourceHandle-$target-$targetHandle",
+            'source' => $source,
+            'target' => $target,
+            'sourceHandle' => $sourceHandle,
+            'targetHandle' => $targetHandle,
+            'type' => 'custom',
+        ];
+
         return [
             'blank' => [
                 'name' => 'Blank',
@@ -245,11 +257,9 @@ class PayoutFlowService
                 'description' => 'Everyone splits the income evenly.',
                 'flowDiagram' => [
                     'nodes' => [$income(), $allMembersGroup('group-1')],
-                    'edges' => [[
-                        'source' => 'income-1', 'target' => 'group-1',
-                        'sourceHandle' => 'income-out', 'targetHandle' => 'payoutgroup-in',
-                        'type' => 'custom',
-                    ]],
+                    'edges' => [
+                        $edge('income-1', 'income-out', 'group-1', 'payoutgroup-in'),
+                    ],
                 ],
             ],
             'band_cut_equal' => [
@@ -258,16 +268,8 @@ class PayoutFlowService
                 'flowDiagram' => [
                     'nodes' => [$income(), $bandCut, $allMembersGroup('group-1')],
                     'edges' => [
-                        [
-                            'source' => 'income-1', 'target' => 'cut-1',
-                            'sourceHandle' => 'income-out', 'targetHandle' => 'bandcut-in',
-                            'type' => 'custom',
-                        ],
-                        [
-                            'source' => 'cut-1', 'target' => 'group-1',
-                            'sourceHandle' => 'bandcut-out', 'targetHandle' => 'payoutgroup-in',
-                            'type' => 'custom',
-                        ],
+                        $edge('income-1', 'income-out', 'cut-1', 'bandcut-in'),
+                        $edge('cut-1', 'bandcut-out', 'group-1', 'payoutgroup-in'),
                     ],
                 ],
             ],
@@ -317,21 +319,9 @@ class PayoutFlowService
                         ],
                     ],
                     'edges' => [
-                        [
-                            'source' => 'income-1', 'target' => 'cut-1',
-                            'sourceHandle' => 'income-out', 'targetHandle' => 'bandcut-in',
-                            'type' => 'custom',
-                        ],
-                        [
-                            'source' => 'cut-1', 'target' => 'group-subs',
-                            'sourceHandle' => 'bandcut-out', 'targetHandle' => 'payoutgroup-in',
-                            'type' => 'custom',
-                        ],
-                        [
-                            'source' => 'cut-1', 'target' => 'group-roster',
-                            'sourceHandle' => 'bandcut-out', 'targetHandle' => 'payoutgroup-in',
-                            'type' => 'custom',
-                        ],
+                        $edge('income-1', 'income-out', 'cut-1', 'bandcut-in'),
+                        $edge('cut-1', 'bandcut-out', 'group-subs', 'payoutgroup-in'),
+                        $edge('cut-1', 'bandcut-out', 'group-roster', 'payoutgroup-in'),
                     ],
                 ],
             ],
