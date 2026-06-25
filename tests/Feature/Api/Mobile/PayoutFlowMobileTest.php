@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\Mobile;
 
+use App\Models\BandMembers;
 use App\Models\BandOwners;
 use App\Models\BandPayoutConfig;
 use App\Models\Bands;
@@ -31,6 +32,12 @@ class PayoutFlowMobileTest extends TestCase
 
         // Owner so allMembers payout groups resolve to a payable recipient.
         BandOwners::create(['band_id' => $this->band->id, 'user_id' => $this->owner->id]);
+
+        // $this->member is a band member but NOT an owner — so the owner-only
+        // tests actually exercise the `owner` middleware (a 403 from the band
+        // membership check would otherwise be a false pass), and read-gated
+        // routes can assert a non-owner member is allowed.
+        BandMembers::create(['band_id' => $this->band->id, 'user_id' => $this->member->id]);
 
         $this->ownerToken = $this->owner->createToken('test-device')->plainTextToken;
         $this->memberToken = $this->member->createToken('test-device')->plainTextToken;
@@ -211,6 +218,16 @@ class PayoutFlowMobileTest extends TestCase
             ['blank', 'equal_split', 'band_cut_equal', 'roster_sub_pay'],
             $keys,
         );
+    }
+
+    public function test_band_member_can_list_templates(): void
+    {
+        // Templates are read-gated, not owner-only — a band member (non-owner)
+        // can list them.
+        $this->withHeaders($this->headers($this->memberToken))
+            ->getJson("/api/mobile/bands/{$this->band->id}/payout-flow/templates")
+            ->assertOk()
+            ->assertJsonCount(4, 'templates');
     }
 
     public function test_create_config_from_blank_template_returns_inactive_config_with_income(): void

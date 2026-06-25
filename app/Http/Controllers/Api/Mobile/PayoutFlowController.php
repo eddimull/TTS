@@ -99,9 +99,16 @@ class PayoutFlowController extends Controller
      */
     public function createConfig(Request $request, Bands $band): JsonResponse
     {
+        // Validate against the service's actual template keys so the two can't
+        // drift (a stale hard-coded list would let templateFlow() return null
+        // and persist a config with a null flow_diagram).
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'template' => 'required|string|in:blank,equal_split,band_cut_equal,roster_sub_pay',
+            'template' => [
+                'required',
+                'string',
+                Rule::in(array_keys($this->payoutFlow->configTemplates())),
+            ],
         ]);
 
         $flow = $this->payoutFlow->templateFlow($validated['template']);
