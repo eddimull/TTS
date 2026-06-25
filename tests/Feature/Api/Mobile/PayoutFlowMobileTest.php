@@ -172,4 +172,29 @@ class PayoutFlowMobileTest extends TestCase
         $res->assertJsonPath('node_values.p1.allocated', 900);
         $res->assertJsonPath('node_values.p1.perMember', 300);
     }
+
+    public function test_config_templates_are_all_structurally_valid(): void
+    {
+        $service = app(\App\Services\PayoutFlowService::class);
+        $templates = $service->configTemplates();
+
+        $this->assertSame(
+            ['blank', 'equal_split', 'band_cut_equal', 'roster_sub_pay'],
+            array_keys($templates),
+        );
+
+        foreach ($templates as $key => $tpl) {
+            $this->assertArrayHasKey('name', $tpl, "template $key name");
+            $this->assertArrayHasKey('description', $tpl, "template $key description");
+            $flow = $tpl['flowDiagram'];
+            $this->assertArrayHasKey('nodes', $flow);
+            $this->assertArrayHasKey('edges', $flow);
+
+            $incomes = array_filter($flow['nodes'], fn ($n) => $n['type'] === 'income');
+            $this->assertCount(1, $incomes, "template $key must have one income node");
+
+            $errors = $service->collectFlowValidationErrors($flow['nodes'], $flow['edges']);
+            $this->assertSame([], $errors, "template $key flow invalid: " . json_encode($errors));
+        }
+    }
 }
