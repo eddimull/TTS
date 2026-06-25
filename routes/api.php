@@ -262,6 +262,7 @@ Route::prefix('mobile')->group(function () {
 
         // ── Payout flow editor: reads + preview (band member) ──────────
         Route::middleware('mobile.band:read:bookings')->group(function () {
+            Route::get('/bands/{band}/payout-flow/templates', [App\Http\Controllers\Api\Mobile\PayoutFlowController::class, 'templates'])->name('mobile.payout-flow.templates');
             Route::get('/bands/{band}/payout-flow/configs', [App\Http\Controllers\Api\Mobile\PayoutFlowController::class, 'listConfigs'])->name('mobile.payout-flow.configs.list');
             Route::get('/bands/{band}/payout-flow/configs/{configId}', [App\Http\Controllers\Api\Mobile\PayoutFlowController::class, 'showConfig'])->name('mobile.payout-flow.configs.show');
             Route::post('/bands/{band}/payout-flow/preview', [App\Http\Controllers\Api\Mobile\PayoutFlowController::class, 'preview'])->name('mobile.payout-flow.preview');
@@ -269,6 +270,7 @@ Route::prefix('mobile')->group(function () {
 
         // ── Payout flow editor: writes (owner-only) ────────────────────
         Route::middleware('owner')->group(function () {
+            Route::post('/bands/{band}/payout-flow/configs', [App\Http\Controllers\Api\Mobile\PayoutFlowController::class, 'createConfig'])->name('mobile.payout-flow.configs.create');
             Route::patch('/bands/{band}/payout-flow/configs/{configId}', [App\Http\Controllers\Api\Mobile\PayoutFlowController::class, 'updateConfig'])->name('mobile.payout-flow.configs.update');
         });
 

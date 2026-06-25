@@ -191,4 +191,158 @@ class PayoutFlowService
 
         $query->update(['is_active' => false]);
     }
+
+    /**
+     * Starter templates offered when creating a config. Each is a complete,
+     * editable flow_diagram. Keyed by template id; order is the picker order.
+     *
+     * @return array<string, array{name: string, description: string, flowDiagram: array}>
+     */
+    public function configTemplates(): array
+    {
+        $income = fn (array $extra = []) => array_merge([
+            'id' => 'income-1',
+            'type' => 'income',
+            'data' => ['amount' => 0, 'label' => 'Income', 'deactivated' => false],
+        ], $extra);
+
+        $allMembersGroup = fn (string $id, array $data = []) => [
+            'id' => $id,
+            'type' => 'payoutGroup',
+            'data' => array_merge([
+                'label' => 'Members',
+                'sourceType' => 'allMembers',
+                'allMembersConfig' => [
+                    'includeOwners' => true,
+                    'includeMembers' => true,
+                    'includeProduction' => false,
+                    'productionCount' => 0,
+                ],
+                'distributionMode' => 'equal_split',
+                'incomingAllocationType' => 'remainder',
+                'incomingAllocationValue' => 0,
+                'deactivated' => false,
+            ], $data),
+        ];
+
+        $bandCut = [
+            'id' => 'cut-1',
+            'type' => 'bandCut',
+            'data' => ['cutType' => 'percentage', 'value' => 10, 'tierConfig' => null, 'deactivated' => false],
+        ];
+
+        return [
+            'blank' => [
+                'name' => 'Blank',
+                'description' => 'Start from scratch with a single income node.',
+                'flowDiagram' => [
+                    'nodes' => [$income()],
+                    'edges' => [],
+                ],
+            ],
+            'equal_split' => [
+                'name' => 'Equal split',
+                'description' => 'Everyone splits the income evenly.',
+                'flowDiagram' => [
+                    'nodes' => [$income(), $allMembersGroup('group-1')],
+                    'edges' => [[
+                        'source' => 'income-1', 'target' => 'group-1',
+                        'sourceHandle' => 'income-out', 'targetHandle' => 'payoutgroup-in',
+                        'type' => 'custom',
+                    ]],
+                ],
+            ],
+            'band_cut_equal' => [
+                'name' => 'Band cut + equal split',
+                'description' => 'The band takes a cut, then the rest is split evenly.',
+                'flowDiagram' => [
+                    'nodes' => [$income(), $bandCut, $allMembersGroup('group-1')],
+                    'edges' => [
+                        [
+                            'source' => 'income-1', 'target' => 'cut-1',
+                            'sourceHandle' => 'income-out', 'targetHandle' => 'bandcut-in',
+                            'type' => 'custom',
+                        ],
+                        [
+                            'source' => 'cut-1', 'target' => 'group-1',
+                            'sourceHandle' => 'bandcut-out', 'targetHandle' => 'payoutgroup-in',
+                            'type' => 'custom',
+                        ],
+                    ],
+                ],
+            ],
+            'roster_sub_pay' => [
+                'name' => 'Roster + sub pay',
+                'description' => 'Roster members split the remainder; subs get a fixed amount.',
+                'flowDiagram' => [
+                    'nodes' => [
+                        $income(),
+                        $bandCut,
+                        [
+                            'id' => 'group-roster',
+                            'type' => 'payoutGroup',
+                            'data' => [
+                                'label' => 'Roster',
+                                'sourceType' => 'roster',
+                                'rosterConfig' => [
+                                    'useAttendanceWeighting' => true,
+                                    'filterByRoleId' => [],
+                                    'memberTypeFilter' => 'all',
+                                    'minEventsToQualify' => 1,
+                                ],
+                                'distributionMode' => 'equal_split',
+                                'incomingAllocationType' => 'remainder',
+                                'incomingAllocationValue' => 0,
+                                'deactivated' => false,
+                            ],
+                        ],
+                        [
+                            'id' => 'group-subs',
+                            'type' => 'payoutGroup',
+                            'data' => [
+                                'label' => 'Sub pay',
+                                'sourceType' => 'roster',
+                                'rosterConfig' => [
+                                    'useAttendanceWeighting' => false,
+                                    'filterByRoleId' => [],
+                                    'memberTypeFilter' => 'substitutes_only',
+                                    'minEventsToQualify' => 1,
+                                ],
+                                'distributionMode' => 'fixed',
+                                'fixedAmountPerMember' => 0,
+                                'incomingAllocationType' => 'fixed',
+                                'incomingAllocationValue' => 0,
+                                'deactivated' => false,
+                            ],
+                        ],
+                    ],
+                    'edges' => [
+                        [
+                            'source' => 'income-1', 'target' => 'cut-1',
+                            'sourceHandle' => 'income-out', 'targetHandle' => 'bandcut-in',
+                            'type' => 'custom',
+                        ],
+                        [
+                            'source' => 'cut-1', 'target' => 'group-subs',
+                            'sourceHandle' => 'bandcut-out', 'targetHandle' => 'payoutgroup-in',
+                            'type' => 'custom',
+                        ],
+                        [
+                            'source' => 'cut-1', 'target' => 'group-roster',
+                            'sourceHandle' => 'bandcut-out', 'targetHandle' => 'payoutgroup-in',
+                            'type' => 'custom',
+                        ],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * The flow_diagram for a template key, or null if the key is unknown.
+     */
+    public function templateFlow(string $key): ?array
+    {
+        return $this->configTemplates()[$key]['flowDiagram'] ?? null;
+    }
 }
