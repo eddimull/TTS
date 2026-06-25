@@ -212,4 +212,72 @@ class PayoutFlowMobileTest extends TestCase
             $keys,
         );
     }
+
+    public function test_create_config_from_blank_template_returns_inactive_config_with_income(): void
+    {
+        $res = $this->withHeaders($this->headers($this->ownerToken))
+            ->postJson("/api/mobile/bands/{$this->band->id}/payout-flow/configs", [
+                'name' => 'My New Config',
+                'template' => 'blank',
+            ]);
+
+        $res->assertCreated();
+        $res->assertJsonPath('config.name', 'My New Config');
+        $res->assertJsonPath('config.is_active', false);
+        $nodes = $res->json('config.flow_diagram.nodes');
+        $this->assertCount(1, $nodes);
+        $this->assertSame('income', $nodes[0]['type']);
+
+        $this->assertDatabaseHas('band_payout_configs', [
+            'band_id' => $this->band->id,
+            'name' => 'My New Config',
+            'is_active' => false,
+        ]);
+    }
+
+    public function test_create_config_from_band_cut_template_has_three_nodes(): void
+    {
+        $res = $this->withHeaders($this->headers($this->ownerToken))
+            ->postJson("/api/mobile/bands/{$this->band->id}/payout-flow/configs", [
+                'name' => 'Cut + split',
+                'template' => 'band_cut_equal',
+            ]);
+
+        $res->assertCreated();
+        $types = array_column($res->json('config.flow_diagram.nodes'), 'type');
+        $this->assertEqualsCanonicalizing(['income', 'bandCut', 'payoutGroup'], $types);
+    }
+
+    public function test_create_config_does_not_deactivate_existing_active_config(): void
+    {
+        $active = BandPayoutConfig::create([
+            'band_id' => $this->band->id,
+            'name' => 'Existing active',
+            'is_active' => true,
+            'flow_diagram' => ['nodes' => [['id' => 'income-1', 'type' => 'income', 'data' => ['amount' => 100]]], 'edges' => []],
+        ]);
+
+        $this->withHeaders($this->headers($this->ownerToken))
+            ->postJson("/api/mobile/bands/{$this->band->id}/payout-flow/configs", [
+                'name' => 'New one', 'template' => 'blank',
+            ])->assertCreated();
+
+        $this->assertDatabaseHas('band_payout_configs', ['id' => $active->id, 'is_active' => true]);
+    }
+
+    public function test_create_config_rejects_unknown_template(): void
+    {
+        $this->withHeaders($this->headers($this->ownerToken))
+            ->postJson("/api/mobile/bands/{$this->band->id}/payout-flow/configs", [
+                'name' => 'Bad', 'template' => 'nope',
+            ])->assertStatus(422);
+    }
+
+    public function test_non_owner_cannot_create_config(): void
+    {
+        $this->withHeaders($this->headers($this->memberToken))
+            ->postJson("/api/mobile/bands/{$this->band->id}/payout-flow/configs", [
+                'name' => 'X', 'template' => 'blank',
+            ])->assertForbidden();
+    }
 }

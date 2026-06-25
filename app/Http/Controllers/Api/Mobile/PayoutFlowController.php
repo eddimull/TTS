@@ -94,6 +94,34 @@ class PayoutFlowController extends Controller
     }
 
     /**
+     * POST /api/mobile/bands/{band}/payout-flow/configs
+     * Create a new configuration from a starter template (owner-only).
+     */
+    public function createConfig(Request $request, Bands $band): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'template' => 'required|string|in:blank,equal_split,band_cut_equal,roster_sub_pay',
+        ]);
+
+        $flow = $this->payoutFlow->templateFlow($validated['template']);
+
+        // New configs are created INACTIVE — the user activates explicitly.
+        // (is_active column defaults to 1, so it must be set here.)
+        $config = BandPayoutConfig::create([
+            'band_id' => $band->id,
+            'name' => $validated['name'],
+            'is_active' => false,
+            'flow_diagram' => $flow,
+        ]);
+
+        return response()->json(
+            ['config' => $this->formatConfig($config, withFlow: true)],
+            201,
+        );
+    }
+
+    /**
      * POST /api/mobile/bands/{band}/payout-flow/preview
      * Preview a payout calculation for a flow + test amount (no persistence).
      */

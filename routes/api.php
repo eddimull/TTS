@@ -270,6 +270,7 @@ Route::prefix('mobile')->group(function () {
 
         // ── Payout flow editor: writes (owner-only) ────────────────────
         Route::middleware('owner')->group(function () {
+            Route::post('/bands/{band}/payout-flow/configs', [App\Http\Controllers\Api\Mobile\PayoutFlowController::class, 'createConfig'])->name('mobile.payout-flow.configs.create');
             Route::patch('/bands/{band}/payout-flow/configs/{configId}', [App\Http\Controllers\Api\Mobile\PayoutFlowController::class, 'updateConfig'])->name('mobile.payout-flow.configs.update');
         });
 
