@@ -260,6 +260,18 @@ Route::prefix('mobile')->group(function () {
             Route::get('/bands/{band}/finances/paid', [App\Http\Controllers\Api\Mobile\FinancesController::class, 'paid'])->name('mobile.finances.paid');
         });
 
+        // ── Payout flow editor: reads + preview (band member) ──────────
+        Route::middleware('mobile.band:read:bookings')->group(function () {
+            Route::get('/bands/{band}/payout-flow/configs', [App\Http\Controllers\Api\Mobile\PayoutFlowController::class, 'listConfigs'])->name('mobile.payout-flow.configs.list');
+            Route::get('/bands/{band}/payout-flow/configs/{configId}', [App\Http\Controllers\Api\Mobile\PayoutFlowController::class, 'showConfig'])->name('mobile.payout-flow.configs.show');
+            Route::post('/bands/{band}/payout-flow/preview', [App\Http\Controllers\Api\Mobile\PayoutFlowController::class, 'preview'])->name('mobile.payout-flow.preview');
+        });
+
+        // ── Payout flow editor: writes (owner-only) ────────────────────
+        Route::middleware('owner')->group(function () {
+            Route::patch('/bands/{band}/payout-flow/configs/{configId}', [App\Http\Controllers\Api\Mobile\PayoutFlowController::class, 'updateConfig'])->name('mobile.payout-flow.configs.update');
+        });
+
         // ── Rehearsals (read) ──────────────────────────────────────────
         Route::middleware('mobile.band:read:rehearsals')->group(function () {
             Route::get('/bands/{band}/rehearsal-schedules', [App\Http\Controllers\Api\Mobile\RehearsalsController::class, 'schedules'])->name('mobile.rehearsals.schedules');
