@@ -816,4 +816,44 @@ class PayoutFlowCalculationTest extends TestCase
         $this->assertEquals(0, $result['remaining'],
             'Remaining should be $0 after final band cut takes everything');
     }
+
+    public function test_node_values_records_per_node_input_output_bandcut_allocated()
+    {
+        // income(1000) -> bandCut(10%) -> payoutGroup(allMembers, remainder, equal_split)
+        $config = $this->createPayoutConfig([
+            'nodes' => [
+                ['id' => 'income-1', 'type' => 'income', 'data' => ['amount' => 1000]],
+                ['id' => 'cut-1', 'type' => 'bandCut', 'data' => ['cutType' => 'percentage', 'value' => 10]],
+                ['id' => 'payout-1', 'type' => 'payoutGroup', 'data' => [
+                    'sourceType' => 'allMembers',
+                    'allMembersConfig' => ['includeOwners' => true, 'includeMembers' => false, 'includeProduction' => false],
+                    'incomingAllocationType' => 'remainder',
+                    'distributionMode' => 'equal_split',
+                ]],
+            ],
+            'edges' => [
+                ['source' => 'income-1', 'target' => 'cut-1'],
+                ['source' => 'cut-1', 'target' => 'payout-1'],
+            ],
+        ]);
+
+        $result = $config->calculatePayouts(1000);
+        $nv = $result['node_values'];
+
+        // income: passes 1000 through
+        $this->assertEquals(1000, $nv['income-1']['input']);
+        $this->assertEquals(1000, $nv['income-1']['output']);
+
+        // bandCut: takes 10% ($100), outputs $900
+        $this->assertEquals(1000, $nv['cut-1']['input']);
+        $this->assertEquals(100, $nv['cut-1']['bandCut']);
+        $this->assertEquals(900, $nv['cut-1']['output']);
+
+        // payoutGroup: remainder ($900) allocated to 1 owner, $0 remaining
+        $this->assertEquals(900, $nv['payout-1']['input']);
+        $this->assertEquals(900, $nv['payout-1']['allocated']);
+        $this->assertEquals(1, $nv['payout-1']['memberCount']);
+        $this->assertEquals(900, $nv['payout-1']['perMember']);
+        $this->assertEquals(0, $nv['payout-1']['output']);
+    }
 }

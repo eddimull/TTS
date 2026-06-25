@@ -544,6 +544,10 @@ class BandPayoutConfig extends Model
             'payment_group_payouts' => [],
             'total_member_payout' => 0,
             'remaining' => 0,
+            // Per-node computed values (keyed by node id): input/output, plus
+            // bandCut for bandCut nodes and allocated/perMember/memberCount for
+            // payoutGroup nodes. Consumed by the mobile editor's node cards.
+            'node_values' => [],
         ];
 
         // Band cuts will be calculated during traversal
@@ -626,6 +630,7 @@ class BandPayoutConfig extends Model
 
         // Bypass deactivated nodes - pass amount through unchanged but still split to multiple outputs
         if (isset($node['data']['deactivated']) && $node['data']['deactivated']) {
+            $result['node_values'][$nodeId] = ['input' => $amount, 'output' => $amount];
             $outgoingEdges = $adjacency->get($nodeId, collect());
             $this->traverseMultipleOutputs($outgoingEdges, $amount, $nodes, $adjacency, $attendanceData, $result, $nodeInputs);
             return;
@@ -633,6 +638,7 @@ class BandPayoutConfig extends Model
 
         // Process income nodes (just pass through)
         if ($node['type'] === 'income') {
+            $result['node_values'][$nodeId] = ['input' => $amount, 'output' => $amount];
             $outgoingEdges = $adjacency->get($nodeId, collect());
             $this->traverseMultipleOutputs($outgoingEdges, $amount, $nodes, $adjacency, $attendanceData, $result, $nodeInputs);
             return;
@@ -645,10 +651,13 @@ class BandPayoutConfig extends Model
             // Skip if deactivated
             if ($nodeData['deactivated'] ?? false) {
                 // Pass through without taking a cut
+                $result['node_values'][$nodeId] = ['input' => $amount, 'output' => $amount, 'bandCut' => 0];
                 $outgoingEdges = $adjacency->get($nodeId, collect());
                 $this->traverseMultipleOutputs($outgoingEdges, $amount, $nodes, $adjacency, $attendanceData, $result, $nodeInputs);
                 return;
             }
+
+            $inputAmount = $amount;
 
             // Calculate band cut
             $cutType = $nodeData['cutType'] ?? 'none';
@@ -675,6 +684,8 @@ class BandPayoutConfig extends Model
             // Accumulate band cut
             $result['band_cut'] += $bandCut;
             $amount -= $bandCut;
+
+            $result['node_values'][$nodeId] = ['input' => $inputAmount, 'output' => $amount, 'bandCut' => $bandCut];
 
             // Continue to next nodes
             $outgoingEdges = $adjacency->get($nodeId, collect());
@@ -842,6 +853,14 @@ class BandPayoutConfig extends Model
 
             // Continue with remaining amount
             $remainingAmount = $amount - $groupAllocation;
+
+            $result['node_values'][$nodeId] = [
+                'input' => $amount,
+                'allocated' => $groupAllocation,
+                'output' => $remainingAmount,
+                'memberCount' => $memberCount ?? 0,
+                'perMember' => ($memberCount ?? 0) > 0 ? $groupAllocation / $memberCount : 0,
+            ];
 
             // Traverse outgoing edges with multiple output support
             $outgoingEdges = $adjacency->get($nodeId, collect());
