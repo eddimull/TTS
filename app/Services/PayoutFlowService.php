@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\BandPayoutConfig;
+use App\Models\Roster;
+use Illuminate\Support\Collection;
 
 /**
  * Shared payout-flow logic used by both the web PayoutFlowController/
@@ -133,6 +135,43 @@ class PayoutFlowService
         $config->flow_diagram = ['nodes' => $nodes, 'edges' => $edges];
 
         return $config;
+    }
+
+    /**
+     * Build a preview attendance set from a band's roster, in the shape the
+     * flow calculator expects. Used so roster-source payout groups resolve real
+     * members during a no-booking preview (each member counted as attending one
+     * of one event, i.e. full weight).
+     *
+     * Pass an explicit $rosterId, or null to use the band's default/active roster.
+     */
+    public function attendanceFromRoster(int $bandId, ?int $rosterId = null): Collection
+    {
+        $roster = $rosterId
+            ? Roster::where('band_id', $bandId)->where('id', $rosterId)->first()
+            : Roster::where('band_id', $bandId)->where('is_active', true)
+                ->orderByDesc('is_default')->orderByDesc('id')->first();
+
+        if (! $roster) {
+            return collect();
+        }
+
+        return $roster->members()->where('is_active', true)
+            ->with('bandRole')->get()
+            ->map(fn ($m) => [
+                'roster_member_id' => $m->id,
+                'user_id' => $m->user_id,
+                'name' => $m->display_name,
+                'role' => $m->bandRole?->name,
+                'band_role_id' => $m->band_role_id,
+                'type' => 'member',
+                'events_attended' => 1,
+                'total_events' => 1,
+                'weight' => 1.0,
+                'value_attended' => 0,
+                'custom_payout' => null,
+            ])
+            ->values();
     }
 
     /**

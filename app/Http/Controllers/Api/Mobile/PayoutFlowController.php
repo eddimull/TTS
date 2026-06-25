@@ -82,6 +82,7 @@ class PayoutFlowController extends Controller
             'nodes' => 'required|array',
             'edges' => 'required|array',
             'test_amount' => 'required|numeric|min:0',
+            'roster_id' => 'sometimes|nullable|integer',
         ]);
 
         try {
@@ -91,7 +92,19 @@ class PayoutFlowController extends Controller
                 $validated['edges'],
             );
 
-            return response()->json($tempConfig->calculatePayouts($validated['test_amount']));
+            // Resolve roster members so roster-source payout groups compute real
+            // counts in the preview (no booking context otherwise).
+            $attendance = $this->payoutFlow->attendanceFromRoster(
+                $band->id,
+                $validated['roster_id'] ?? null,
+            );
+
+            return response()->json($tempConfig->calculatePayouts(
+                $validated['test_amount'],
+                null,
+                null,
+                $attendance->isNotEmpty() ? $attendance : null,
+            ));
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Failed to preview calculation',

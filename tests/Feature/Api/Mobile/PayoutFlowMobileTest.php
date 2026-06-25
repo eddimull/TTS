@@ -5,6 +5,8 @@ namespace Tests\Feature\Api\Mobile;
 use App\Models\BandOwners;
 use App\Models\BandPayoutConfig;
 use App\Models\Bands;
+use App\Models\Roster;
+use App\Models\RosterMember;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -140,5 +142,34 @@ class PayoutFlowMobileTest extends TestCase
                 'name' => 'Hacked',
             ])
             ->assertForbidden();
+    }
+
+    public function test_preview_resolves_roster_members_and_node_values()
+    {
+        // A roster with 3 members on this band.
+        $roster = Roster::factory()->create(['band_id' => $this->band->id, 'is_active' => true, 'is_default' => true]);
+        RosterMember::factory()->count(3)->create(['roster_id' => $roster->id, 'is_active' => true]);
+
+        // income(900) -> payoutGroup(roster, remainder, equal_split)
+        $res = $this->withHeaders($this->headers($this->ownerToken))
+            ->postJson("/api/mobile/bands/{$this->band->id}/payout-flow/preview", [
+                'test_amount' => 900,
+                'nodes' => [
+                    ['id' => 'income-1', 'type' => 'income', 'data' => ['amount' => 900]],
+                    ['id' => 'p1', 'type' => 'payoutGroup', 'data' => [
+                        'sourceType' => 'roster',
+                        'rosterConfig' => ['memberTypeFilter' => 'all'],
+                        'incomingAllocationType' => 'remainder',
+                        'distributionMode' => 'equal_split',
+                    ]],
+                ],
+                'edges' => [['source' => 'income-1', 'target' => 'p1']],
+            ]);
+
+        $res->assertOk();
+        // The roster's 3 members resolved (previously 0 with no roster context).
+        $res->assertJsonPath('node_values.p1.memberCount', 3);
+        $res->assertJsonPath('node_values.p1.allocated', 900);
+        $res->assertJsonPath('node_values.p1.perMember', 300);
     }
 }

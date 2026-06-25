@@ -61,10 +61,13 @@ class BandPayoutConfig extends Model
      * @param array|null $memberCounts Optional array with ['owners' => int, 'members' => int] to avoid N+1 queries
      * @param Bookings|null $booking Optional booking to check event attendance for weighted payouts
      */
-    public function calculatePayouts(float $totalAmount, ?array $memberCounts = null, ?Bookings $booking = null): array
+    public function calculatePayouts(float $totalAmount, ?array $memberCounts = null, ?Bookings $booking = null, ?\Illuminate\Support\Collection $attendanceOverride = null): array
     {
-        // Pre-calculate attendance weights once to avoid repeated queries in sub-methods
-        $attendanceWeights = $booking ? $this->calculateAttendanceWeights($booking) : collect();
+        // Pre-calculate attendance weights once to avoid repeated queries in sub-methods.
+        // An explicit override (e.g. a roster-derived set for a no-booking preview)
+        // takes precedence over booking-derived attendance.
+        $attendanceWeights = $attendanceOverride
+            ?? ($booking ? $this->calculateAttendanceWeights($booking) : collect());
 
         // If this config has a flow_diagram, use flow-based calculation
         if ($this->flow_diagram && is_array($this->flow_diagram) && isset($this->flow_diagram['nodes'])) {
