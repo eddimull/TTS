@@ -202,6 +202,23 @@ class PayoutFlowMobileTest extends TestCase
 
             $errors = $service->collectFlowValidationErrors($flow['nodes'], $flow['edges']);
             $this->assertSame([], $errors, "template $key flow invalid: " . json_encode($errors));
+
+            // Every edge needs a unique, non-empty id and source/target handles —
+            // Vue Flow on web drops edges that lack an id, so without this the
+            // connections render on mobile but not on web.
+            $ids = [];
+            foreach ($flow['edges'] as $edge) {
+                $this->assertArrayHasKey('id', $edge, "template $key edge missing id");
+                $this->assertNotEmpty($edge['id'], "template $key edge has empty id");
+                $this->assertArrayHasKey('sourceHandle', $edge, "template $key edge missing sourceHandle");
+                $this->assertArrayHasKey('targetHandle', $edge, "template $key edge missing targetHandle");
+                $ids[] = $edge['id'];
+            }
+            $this->assertSame(
+                count($ids),
+                count(array_unique($ids)),
+                "template $key has duplicate edge ids",
+            );
         }
     }
 
