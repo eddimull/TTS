@@ -42,6 +42,23 @@ class PayoutFlowController extends Controller
     }
 
     /**
+     * The starter templates offered when creating a config (key/name/description
+     * only — no flow payload; the flow is applied server-side on create).
+     */
+    public function templates(Bands $band): JsonResponse
+    {
+        $templates = collect($this->payoutFlow->configTemplates())
+            ->map(fn (array $t, string $key) => [
+                'key' => $key,
+                'name' => $t['name'],
+                'description' => $t['description'],
+            ])
+            ->values();
+
+        return response()->json(['templates' => $templates]);
+    }
+
+    /**
      * GET /api/mobile/bands/{band}/payout-flow/configs/{configId}
      * Fetch one configuration, including its full flow_diagram.
      */

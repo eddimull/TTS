@@ -197,4 +197,19 @@ class PayoutFlowMobileTest extends TestCase
             $this->assertSame([], $errors, "template $key flow invalid: " . json_encode($errors));
         }
     }
+
+    public function test_templates_endpoint_lists_pickable_templates(): void
+    {
+        $res = $this->withHeaders($this->headers($this->ownerToken))
+            ->getJson("/api/mobile/bands/{$this->band->id}/payout-flow/templates");
+
+        $res->assertOk();
+        $res->assertJsonCount(4, 'templates');
+        $res->assertJsonStructure(['templates' => [['key', 'name', 'description']]]);
+        $keys = array_column($res->json('templates'), 'key');
+        $this->assertEqualsCanonicalizing(
+            ['blank', 'equal_split', 'band_cut_equal', 'roster_sub_pay'],
+            $keys,
+        );
+    }
 }
