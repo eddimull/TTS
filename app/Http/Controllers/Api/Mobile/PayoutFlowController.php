@@ -129,6 +129,18 @@ class PayoutFlowController extends Controller
     }
 
     /**
+     * DELETE /api/mobile/bands/{band}/payout-flow/configs/{configId}
+     * Delete a config (owner-only). The mobile UI blocks deleting the active
+     * config; there is intentionally no server-side active-guard (mirrors web).
+     */
+    public function destroyConfig(Bands $band, int $configId): JsonResponse
+    {
+        $this->findConfig($band->id, $configId)->delete();
+
+        return response()->json(null, 204);
+    }
+
+    /**
      * POST /api/mobile/bands/{band}/payout-flow/preview
      * Preview a payout calculation for a flow + test amount (no persistence).
      */

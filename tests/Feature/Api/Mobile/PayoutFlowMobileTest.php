@@ -314,4 +314,43 @@ class PayoutFlowMobileTest extends TestCase
                 'name' => 'X', 'template' => 'blank',
             ])->assertForbidden();
     }
+
+    public function test_owner_can_delete_config(): void
+    {
+        $config = BandPayoutConfig::create([
+            'band_id' => $this->band->id,
+            'name' => 'To delete',
+            'is_active' => false,
+            'flow_diagram' => ['nodes' => [['id' => 'income-1', 'type' => 'income', 'data' => ['amount' => 0]]], 'edges' => []],
+        ]);
+
+        $this->withHeaders($this->headers($this->ownerToken))
+            ->deleteJson("/api/mobile/bands/{$this->band->id}/payout-flow/configs/{$config->id}")
+            ->assertNoContent();
+
+        $this->assertDatabaseMissing('band_payout_configs', ['id' => $config->id]);
+    }
+
+    public function test_delete_unknown_config_returns_404(): void
+    {
+        $this->withHeaders($this->headers($this->ownerToken))
+            ->deleteJson("/api/mobile/bands/{$this->band->id}/payout-flow/configs/999999")
+            ->assertNotFound();
+    }
+
+    public function test_non_owner_cannot_delete_config(): void
+    {
+        $config = BandPayoutConfig::create([
+            'band_id' => $this->band->id,
+            'name' => 'Keep',
+            'is_active' => false,
+            'flow_diagram' => ['nodes' => [['id' => 'income-1', 'type' => 'income', 'data' => ['amount' => 0]]], 'edges' => []],
+        ]);
+
+        $this->withHeaders($this->headers($this->memberToken))
+            ->deleteJson("/api/mobile/bands/{$this->band->id}/payout-flow/configs/{$config->id}")
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('band_payout_configs', ['id' => $config->id]);
+    }
 }
