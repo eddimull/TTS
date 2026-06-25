@@ -6,6 +6,7 @@ use App\Models\BandPayoutConfig;
 use App\Services\FinanceServices;
 use App\Services\PaymentGroupService;
 use App\Services\PaymentGroupMemberService;
+use App\Services\PayoutFlowService;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Http\Request;
@@ -13,7 +14,8 @@ use Illuminate\Http\Request;
 class FinancesController extends Controller
 {
     public function __construct(
-        private readonly FinanceServices $financeServices
+        private readonly FinanceServices $financeServices,
+        private readonly PayoutFlowService $payoutFlow,
     ) {}
 
     public function index()
@@ -170,7 +172,7 @@ class FinancesController extends Controller
         ]);
 
         if ($request->is_active) {
-            $this->deactivateOtherConfigs($bandId);
+            $this->payoutFlow->deactivateOtherConfigs($bandId);
         }
 
         BandPayoutConfig::create([
@@ -205,7 +207,7 @@ class FinancesController extends Controller
         ]);
 
         if ($request->is_active && !$config->is_active) {
-            $this->deactivateOtherConfigs($bandId, $configId);
+            $this->payoutFlow->deactivateOtherConfigs($bandId, $configId);
         }
 
         $config->update($request->all());
@@ -224,7 +226,7 @@ class FinancesController extends Controller
     {
         $config = $this->findPayoutConfig($bandId, $configId);
 
-        $this->deactivateOtherConfigs($bandId, $configId);
+        $this->payoutFlow->deactivateOtherConfigs($bandId, $configId);
         $config->update(['is_active' => true]);
 
         return redirect()->back()->with('success', 'Payout configuration activated successfully!');
@@ -258,20 +260,5 @@ class FinancesController extends Controller
         return BandPayoutConfig::where('band_id', $bandId)
             ->where('id', $configId)
             ->firstOrFail();
-    }
-
-    /**
-     * Deactivate all other payout configs for a band.
-     */
-    private function deactivateOtherConfigs($bandId, $excludeConfigId = null): void
-    {
-        $query = BandPayoutConfig::where('band_id', $bandId)
-            ->where('is_active', true);
-
-        if ($excludeConfigId) {
-            $query->where('id', '!=', $excludeConfigId);
-        }
-
-        $query->update(['is_active' => false]);
     }
 }
