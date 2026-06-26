@@ -79,4 +79,27 @@ class FinancesController extends Controller
             'bookings' => $paid->map(fn ($b) => $this->formatter->formatForFinance($b))->values(),
         ]);
     }
+
+    /**
+     * GET /api/mobile/bands/{band}/finances/revenue
+     *
+     * Returns total recorded revenue grouped by year (newest first), scoped to
+     * the band. Amounts are in cents. Payments without a date (e.g. pending
+     * invoices) are excluded.
+     */
+    public function revenue(\Illuminate\Http\Request $request): JsonResponse
+    {
+        $band = $request->input('mobile_band');
+
+        $revenue = $band->paymentsByYear()
+            ->whereNotNull('date')
+            ->get()
+            ->map(fn ($row) => [
+                'year'  => (int) $row->year,
+                'total' => (int) $row->total,
+            ])
+            ->values();
+
+        return response()->json(['revenue' => $revenue]);
+    }
 }
