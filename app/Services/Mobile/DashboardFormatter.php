@@ -86,8 +86,18 @@ class DashboardFormatter
             $time = substr($time, 0, 5);
         }
 
+        // For real rehearsals the dashboard query selects events.id as `id`, but
+        // the mobile /rehearsals/{id} route resolves App\Models\Rehearsal by its
+        // own primary key — which is events.eventable_id, NOT events.id. Emitting
+        // events.id here makes the detail lookup 404. Virtual rehearsals
+        // (event_source "rehearsal_schedule") have no real row yet, so they keep a
+        // null id and the app navigates them by key.
+        $id = ($source === 'rehearsal')
+            ? ($e['eventable_id'] ?? $e['id'] ?? null)
+            : ($e['id'] ?? null);
+
         return [
-            'id'              => $e['id'] ?? null,
+            'id'              => $id,
             'key'             => $e['key'] ?? null,
             'title'           => $e['title'] ?? $e['booking_name'] ?? 'Untitled',
             'date'            => $date,

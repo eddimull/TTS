@@ -226,4 +226,64 @@ class DashboardTest extends TestCase
         $this->getJson('/api/mobile/dashboard/load-older?before_date=2026-01-01')
             ->assertUnauthorized();
     }
+
+    /**
+     * Regression: a real rehearsal on the dashboard must carry an `id` that
+     * resolves at /api/mobile/rehearsals/{id}. The bug emitted events.id, which
+     * 404'd as "No query results for model [App\Models\Rehearsal]".
+     */
+    public function test_dashboard_rehearsal_id_resolves_against_the_detail_route(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        $eventType = EventTypes::factory()->create();
+
+        // Create a decoy event first so the rehearsal's event row gets a HIGHER
+        // events.id than the rehearsals.id — otherwise both would be 1 and the
+        // test couldn't tell which key the payload echoed (the original bug
+        // emitted events.id).
+        $decoyBooking = Bookings::factory()->create(['band_id' => $band->id]);
+        Events::factory()->create([
+            'eventable_id'   => $decoyBooking->id,
+            'eventable_type' => 'App\\Models\\Bookings',
+            'event_type_id'  => $eventType->id,
+            'date'           => now()->addDays(3)->format('Y-m-d'),
+        ]);
+
+        $schedule = \App\Models\RehearsalSchedule::factory()->weekly()->create(['band_id' => $band->id]);
+        $rehearsal = \App\Models\Rehearsal::factory()->create([
+            'rehearsal_schedule_id' => $schedule->id,
+            'band_id'               => $band->id,
+        ]);
+
+        $event = Events::factory()->create([
+            'eventable_id'   => $rehearsal->id,
+            'eventable_type' => 'App\\Models\\Rehearsal',
+            'event_type_id'  => $eventType->id,
+            'date'           => now()->addDays(7)->format('Y-m-d'),
+            'start_time'     => '19:00:00',
+        ]);
+
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        $dashboard = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson('/api/mobile/dashboard');
+        $dashboard->assertOk();
+
+        $rehearsalItem = collect($dashboard->json('events'))
+            ->firstWhere('event_source', 'rehearsal');
+
+        $this->assertNotNull($rehearsalItem, 'expected the rehearsal in the dashboard payload');
+        $this->assertSame($rehearsal->id, $rehearsalItem['id'], 'dashboard must emit the rehearsals.id, not events.id');
+        $this->assertNotSame($event->id, $rehearsalItem['id'], 'dashboard must not emit events.id as the rehearsal id');
+
+        // The id the dashboard handed back must resolve at the detail route.
+        $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson("/api/mobile/rehearsals/{$rehearsalItem['id']}")
+            ->assertOk();
+    }
 }
