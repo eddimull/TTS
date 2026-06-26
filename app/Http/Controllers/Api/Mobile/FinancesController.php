@@ -103,4 +103,83 @@ class FinancesController extends Controller
 
         return response()->json(['revenue' => $revenue]);
     }
+
+    /**
+     * GET /api/mobile/bands/{band}/finances/trends
+     *
+     * Per-month paid/unpaid/forecast/net/count for a year (cents), scoped to the
+     * band. Optional ?snapshot_date=Y-m-d limits the primary series to bookings
+     * created on/before that date; ?compare_with_current=1 (only with a snapshot)
+     * additionally returns the current (unfiltered) series as current_months.
+     */
+    public function trends(Request $request): JsonResponse
+    {
+        $band = $request->input('mobile_band');
+        $year = $request->integer('year') ?: (int) date('Y');
+        $snapshotDate = $request->input('snapshot_date');
+        $compare = $request->boolean('compare_with_current');
+
+        $months = $this->bucketByMonth($band, $year, $snapshotDate);
+
+        $payload = [
+            'year' => $year,
+            'snapshot_date' => $snapshotDate,
+            'available_years' => $this->availableYears($band),
+            'months' => $months,
+        ];
+
+        if ($compare && $snapshotDate) {
+            $payload['current_months'] = $this->bucketByMonth($band, $year, null);
+        }
+
+        return response()->json($payload);
+    }
+
+    private function bucketByMonth($band, int $year, ?string $snapshotDate): array
+    {
+        $bands = $this->financeServices->getPaidUnpaid([$band], $snapshotDate);
+        $b = $bands->first();
+        $bookings = collect($b->paidBookings)->concat(collect($b->unpaidBookings));
+
+        $rows = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $rows[$m] = ['month' => $m, 'paid' => 0.0, 'unpaid' => 0.0, 'forecast' => 0.0, 'net' => 0.0, 'count' => 0];
+        }
+
+        foreach ($bookings as $booking) {
+            if (($booking->status ?? null) === 'cancelled') continue;
+            if (empty($booking->start_date)) continue;
+            $date = \Carbon\Carbon::parse($booking->start_date);
+            if ((int) $date->year !== $year) continue;
+            $m = (int) $date->month;
+            $price = (float) $booking->price;
+            $paid = (float) $booking->amount_paid;
+            $net = (float) ($booking->net_amount ?? 0);
+            $rows[$m]['forecast'] += $price;
+            $rows[$m]['paid'] += $paid;
+            $rows[$m]['unpaid'] += max(0, $price - $paid);
+            $rows[$m]['net'] += $net;
+            $rows[$m]['count'] += 1;
+        }
+
+        return array_values(array_map(fn ($r) => [
+            'month' => $r['month'],
+            'paid' => (int) round($r['paid'] * 100),
+            'unpaid' => (int) round($r['unpaid'] * 100),
+            'forecast' => (int) round($r['forecast'] * 100),
+            'net' => (int) round($r['net'] * 100),
+            'count' => $r['count'],
+        ], $rows));
+    }
+
+    private function availableYears($band): array
+    {
+        $bands = $this->financeServices->getPaidUnpaid([$band], null);
+        $b = $bands->first();
+        $bookings = collect($b->paidBookings)->concat(collect($b->unpaidBookings));
+        return $bookings
+            ->filter(fn ($bk) => ($bk->status ?? null) !== 'cancelled' && !empty($bk->start_date))
+            ->map(fn ($bk) => (int) \Carbon\Carbon::parse($bk->start_date)->year)
+            ->unique()->sortDesc()->values()->all();
+    }
 }
