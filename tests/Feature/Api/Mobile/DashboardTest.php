@@ -155,4 +155,75 @@ class DashboardTest extends TestCase
             'sub-only user must see their assigned event on the mobile dashboard',
         );
     }
+
+    public function test_dashboard_includes_events_from_the_past_30_days(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        $eventType = EventTypes::factory()->create();
+        $booking = Bookings::factory()->create(['band_id' => $band->id]);
+        Events::factory()->create([
+            'eventable_id'   => $booking->id,
+            'eventable_type' => 'App\\Models\\Bookings',
+            'event_type_id'  => $eventType->id,
+            'date'           => now()->subDays(10)->format('Y-m-d'),
+        ]);
+
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        $response = $this->withToken($token)->getJson('/api/mobile/dashboard');
+
+        $response->assertOk();
+        $this->assertCount(1, $response->json('events'), 'expected the 10-day-old event in the past-30d window');
+    }
+
+    public function test_load_older_returns_events_in_the_requested_past_window(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        $eventType = EventTypes::factory()->create();
+        $booking = Bookings::factory()->create(['band_id' => $band->id]);
+        // 45 days ago: outside the initial 30d window, inside the load-older window.
+        Events::factory()->create([
+            'eventable_id'   => $booking->id,
+            'eventable_type' => 'App\\Models\\Bookings',
+            'event_type_id'  => $eventType->id,
+            'date'           => now()->subDays(45)->format('Y-m-d'),
+        ]);
+
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        // Initial dashboard (30d window) must NOT include the 45-day-old event.
+        $initial = $this->withToken($token)->getJson('/api/mobile/dashboard');
+        $initial->assertOk();
+        $this->assertCount(0, $initial->json('events'));
+
+        // load-older with before_date = now-30d should reach back to now-60d and find it.
+        $before = now()->subDays(30)->toDateString();
+        $older = $this->withToken($token)->getJson("/api/mobile/dashboard/load-older?before_date={$before}");
+
+        $older->assertOk()->assertJsonStructure(['events']);
+        $this->assertCount(1, $older->json('events'), 'expected the 45-day-old event in the load-older window');
+    }
+
+    public function test_load_older_returns_empty_when_before_date_missing(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        $response = $this->withToken($token)->getJson('/api/mobile/dashboard/load-older');
+
+        $response->assertOk();
+        $this->assertSame([], $response->json('events'));
+    }
+
+    public function test_load_older_requires_authentication(): void
+    {
+        $this->getJson('/api/mobile/dashboard/load-older?before_date=2026-01-01')
+            ->assertUnauthorized();
+    }
 }
