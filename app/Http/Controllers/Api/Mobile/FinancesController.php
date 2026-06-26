@@ -7,6 +7,7 @@ use App\Http\Requests\Mobile\FinanceYearRequest;
 use App\Services\FinanceServices;
 use App\Services\Mobile\BookingFormatter;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class FinancesController extends Controller
 {
@@ -87,7 +88,7 @@ class FinancesController extends Controller
      * the band. Amounts are in cents. Payments without a date (e.g. pending
      * invoices) are excluded.
      */
-    public function revenue(\Illuminate\Http\Request $request): JsonResponse
+    public function revenue(Request $request): JsonResponse
     {
         $band = $request->input('mobile_band');
 
