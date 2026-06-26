@@ -259,6 +259,7 @@ Route::prefix('mobile')->group(function () {
             Route::get('/bands/{band}/finances', [App\Http\Controllers\Api\Mobile\FinancesController::class, 'index'])->name('mobile.finances.index');
             Route::get('/bands/{band}/finances/unpaid', [App\Http\Controllers\Api\Mobile\FinancesController::class, 'unpaid'])->name('mobile.finances.unpaid');
             Route::get('/bands/{band}/finances/paid', [App\Http\Controllers\Api\Mobile\FinancesController::class, 'paid'])->name('mobile.finances.paid');
+            Route::get('/bands/{band}/finances/revenue', [App\Http\Controllers\Api\Mobile\FinancesController::class, 'revenue'])->name('mobile.finances.revenue');
         });
 
         // ── Payout flow editor: reads + preview (band member) ──────────
