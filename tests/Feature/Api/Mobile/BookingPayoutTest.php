@@ -103,7 +103,7 @@ class BookingPayoutTest extends TestCase
             ->assertStatus(422);
     }
 
-    public function test_destroy_adjustment_recalculates_and_rejects_foreign(): void
+    public function test_destroy_adjustment_recalculates(): void
     {
         ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->setup_booking();
         $this->withHeaders($this->headers($token, $band->id))
@@ -114,6 +114,46 @@ class BookingPayoutTest extends TestCase
             ->deleteJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/payout/adjustments/{$adjId}")
             ->assertOk();
         $this->assertSame('1000.00', (string) $booking->fresh()->payout->adjusted_amount);
+    }
+
+    public function test_destroy_adjustment_rejects_foreign_adjustment(): void
+    {
+        // booking1 belongs to the same band as booking2.  The band-membership
+        // middleware passes for both routes (same user, same band).  The 403
+        // must come exclusively from the payout-ownership guard:
+        //   abort_unless($adjustment->payout_id === $payout->id, 403, …)
+        ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->setup_booking();
+
+        // Create a second booking for the SAME band and same owner.
+        $booking2 = Bookings::factory()->create(['band_id' => $band->id, 'price' => 500]);
+        Events::factory()->create([
+            'eventable_id'   => $booking2->id,
+            'eventable_type' => Bookings::class,
+            'value'          => 500,
+        ]);
+
+        // Add an adjustment to booking #1's payout.
+        $this->withHeaders($this->headers($token, $band->id))
+            ->postJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/payout/adjustments", [
+                'amount'      => -100,
+                'description' => 'Booking1 adjustment',
+            ]);
+
+        $adjId = $booking->fresh()->payout->adjustments->first()->id;
+
+        // Ensure booking #2 has a payout record so the cross-ownership guard is
+        // reached (not the earlier 404 "payout not found" guard).
+        $this->withHeaders($this->headers($token, $band->id))
+            ->getJson("/api/mobile/bands/{$band->id}/bookings/{$booking2->id}/payout")
+            ->assertOk();
+
+        // Attempt to delete booking #1's adjustment via booking #2's URL — must be 403.
+        $this->withHeaders($this->headers($token, $band->id))
+            ->deleteJson("/api/mobile/bands/{$band->id}/bookings/{$booking2->id}/payout/adjustments/{$adjId}")
+            ->assertForbidden();
+
+        // Adjustment must still exist in the DB.
+        $this->assertDatabaseHas('payout_adjustments', ['id' => $adjId]);
     }
 
     public function test_store_adjustment_forbidden_for_sub(): void

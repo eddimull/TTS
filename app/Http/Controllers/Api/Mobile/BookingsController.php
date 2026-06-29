@@ -722,7 +722,7 @@ class BookingsController extends Controller
             'amount' => $validated['amount'],
             'description' => $validated['description'],
             'notes' => $validated['notes'] ?? null,
-            'created_by' => \Illuminate\Support\Facades\Auth::id(),
+            'created_by' => $user->id,
         ]);
         $payout->recalculateAdjustedAmount();
 
