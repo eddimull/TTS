@@ -254,4 +254,80 @@ class BookingPayoutTest extends TestCase
             ])
             ->assertForbidden();
     }
+
+    public function test_update_attendance_sets_status(): void
+    {
+        ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->setup_booking();
+        $event = $booking->fresh()->events->first();
+        $member = \App\Models\EventMember::create([
+            'event_id' => $event->id, 'band_id' => $band->id,
+            'name' => 'Bob', 'attendance_status' => 'confirmed',
+        ]);
+
+        $response = $this->withHeaders($this->headers($token, $band->id))
+            ->patchJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/events/{$event->id}/members/{$member->id}/attendance", [
+                'attendance_status' => 'absent',
+            ]);
+
+        $response->assertOk()->assertJsonPath('member.attendance_status', 'absent');
+        $this->assertSame('absent', $member->fresh()->attendance_status);
+    }
+
+    public function test_update_attendance_validates_status_enum(): void
+    {
+        ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->setup_booking();
+        $event = $booking->fresh()->events->first();
+        $member = \App\Models\EventMember::create([
+            'event_id' => $event->id, 'band_id' => $band->id, 'name' => 'Bob',
+            'attendance_status' => 'confirmed',
+        ]);
+
+        $this->withHeaders($this->headers($token, $band->id))
+            ->patchJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/events/{$event->id}/members/{$member->id}/attendance", ['attendance_status' => 'playing'])
+            ->assertStatus(422);
+    }
+
+    public function test_update_attendance_member_from_other_event_404(): void
+    {
+        ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->setup_booking();
+        $event = $booking->fresh()->events->first();
+
+        // Create a second event and an EventMember on it.
+        $otherEvent = Events::factory()->create([
+            'eventable_id' => $booking->id,
+            'eventable_type' => Bookings::class,
+            'value' => 0,
+        ]);
+        $otherMember = \App\Models\EventMember::create([
+            'event_id' => $otherEvent->id, 'band_id' => $band->id,
+            'name' => 'Alice', 'attendance_status' => 'confirmed',
+        ]);
+
+        // PATCH via the FIRST event's URL with the member belonging to otherEvent → 404.
+        $this->withHeaders($this->headers($token, $band->id))
+            ->patchJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/events/{$event->id}/members/{$otherMember->id}/attendance", [
+                'attendance_status' => 'absent',
+            ])
+            ->assertNotFound();
+    }
+
+    public function test_update_attendance_forbidden_for_sub(): void
+    {
+        ['band' => $band, 'booking' => $booking] = $this->setup_booking();
+        $event = $booking->fresh()->events->first();
+        $member = \App\Models\EventMember::create([
+            'event_id' => $event->id, 'band_id' => $band->id,
+            'name' => 'Bob', 'attendance_status' => 'confirmed',
+        ]);
+
+        $sub = User::factory()->create();
+        BandSubs::create(['user_id' => $sub->id, 'band_id' => $band->id]);
+
+        $this->actingAs($sub, 'sanctum')
+            ->withHeaders(['X-Band-ID' => $band->id, 'Accept' => 'application/json'])
+            ->patchJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/events/{$event->id}/members/{$member->id}/attendance", [
+                'attendance_status' => 'absent',
+            ])
+            ->assertForbidden();
+    }
 }

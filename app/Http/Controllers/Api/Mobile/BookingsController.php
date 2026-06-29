@@ -779,6 +779,30 @@ class BookingsController extends Controller
         return response()->json(['result' => $result]);
     }
 
+    public function updateMemberAttendance(Request $request, Bands $band, Bookings $booking, Events $event, int $member): JsonResponse
+    {
+        // Authorize: owner/member only — subs must not mutate attendance data.
+        $user = $request->user();
+        if (!$user->bands()->contains('id', $band->id)) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'attendance_status' => 'required|in:confirmed,attended,absent,excused',
+        ]);
+
+        $eventMember = \App\Models\EventMember::where('id', $member)
+            ->where('event_id', $event->id)
+            ->firstOrFail();
+
+        $eventMember->update(['attendance_status' => $validated['attendance_status']]);
+
+        return response()->json(['member' => [
+            'id' => $eventMember->id,
+            'attendance_status' => $eventMember->attendance_status,
+        ]]);
+    }
+
     private function getOrCreatePayout(Bookings $booking, Bands $band): \App\Models\Payout
     {
         if ($booking->payout) {
