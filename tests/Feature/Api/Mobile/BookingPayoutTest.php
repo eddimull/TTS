@@ -4,6 +4,7 @@ namespace Tests\Feature\Api\Mobile;
 
 use App\Models\BandOwners;
 use App\Models\BandPayoutConfig;
+use App\Models\BandSubs;
 use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\Events;
@@ -50,6 +51,10 @@ class BookingPayoutTest extends TestCase
             'events' => [['id', 'label', 'value', 'members']],
             'available_configs' => [['id', 'name', 'is_active']],
         ]);
+
+        $response->assertJsonPath('config.is_active', true);
+        // 20% of 1000 = 200; PHP returns an int here, assertJsonPath uses ===
+        $response->assertJsonPath('result.band_cut', 200);
     }
 
     public function test_payout_show_forbidden_for_non_member(): void
@@ -57,6 +62,20 @@ class BookingPayoutTest extends TestCase
         ['band' => $band, 'booking' => $booking] = $this->setup_booking();
         $outsider = User::factory()->create();
         $token = $outsider->createToken('d')->plainTextToken;
+
+        $this->withHeaders($this->headers($token, $band->id))
+            ->getJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/payout")
+            ->assertForbidden();
+    }
+
+    public function test_payout_show_forbidden_for_sub(): void
+    {
+        ['band' => $band, 'booking' => $booking] = $this->setup_booking();
+
+        // Create a sub: a user who appears in band_subs but NOT in band_owners/band_members
+        $sub = User::factory()->create();
+        BandSubs::create(['user_id' => $sub->id, 'band_id' => $band->id]);
+        $token = $sub->createToken('sub-device')->plainTextToken;
 
         $this->withHeaders($this->headers($token, $band->id))
             ->getJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/payout")

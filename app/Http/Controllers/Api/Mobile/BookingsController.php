@@ -625,6 +625,14 @@ class BookingsController extends Controller
 
     public function payout(Request $request, Bands $band, Bookings $booking): JsonResponse
     {
+        // Authorize: user must belong to the band (owner or member). Subs are
+        // intentionally excluded — payout data carries money/PII they shouldn't
+        // see (matches indexForUser's bands() vs allBands() rule).
+        $user = $request->user();
+        if (!$user->bands()->contains('id', $band->id)) {
+            abort(403);
+        }
+
         $payout = $this->getOrCreatePayout($booking, $band);
 
         $booking->load([
@@ -632,11 +640,27 @@ class BookingsController extends Controller
             'events.eventMembers.user',
         ]);
 
-        $config = $payout->payout_config_id
-            ? \App\Models\BandPayoutConfig::where('id', $payout->payout_config_id)->where('band_id', $band->id)->with(['band.paymentGroups.users'])->first()
-            : \App\Models\BandPayoutConfig::where('band_id', $band->id)->where('is_active', true)->with(['band.paymentGroups.users'])->first();
-
         $adjustedTotal = $payout->adjusted_amount_float;
+
+        // Use stored config if exists, otherwise fall back to active config.
+        $config = null;
+        if ($adjustedTotal > 0) {
+            if ($payout->payout_config_id) {
+                $config = \App\Models\BandPayoutConfig::where('id', $payout->payout_config_id)
+                    ->where('band_id', $band->id)
+                    ->with(['band.paymentGroups.users'])
+                    ->first();
+            }
+
+            // Fallback to active config if no stored config or stored config not found.
+            if (!$config) {
+                $config = \App\Models\BandPayoutConfig::where('band_id', $band->id)
+                    ->where('is_active', true)
+                    ->with(['band.paymentGroups.users'])
+                    ->first();
+            }
+        }
+
         $result = ($config && $adjustedTotal > 0)
             ? $config->calculatePayouts($adjustedTotal, null, $booking)
             : null;
@@ -654,6 +678,8 @@ class BookingsController extends Controller
         ])->values();
 
         $availableConfigs = \App\Models\BandPayoutConfig::where('band_id', $band->id)
+            ->orderBy('is_active', 'desc')
+            ->orderBy('name')
             ->get(['id', 'name', 'is_active'])
             ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'is_active' => (bool) $c->is_active]);
 
