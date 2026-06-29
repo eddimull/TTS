@@ -261,6 +261,7 @@ Route::prefix('mobile')->group(function () {
         Route::middleware('mobile.band:write:bookings')->group(function () {
             Route::post('/bands/{band}/bookings/{booking}/payout/adjustments', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'storePayoutAdjustment'])->name('mobile.bookings.payout.adjustments.store');
             Route::delete('/bands/{band}/bookings/{booking}/payout/adjustments/{adjustment}', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'destroyPayoutAdjustment'])->name('mobile.bookings.payout.adjustments.destroy');
+            Route::put('/bands/{band}/bookings/{booking}/payout/configuration', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'updatePayoutConfiguration'])->name('mobile.bookings.payout.configuration.update');
         });
 
         // ── Finances (uses read:bookings permission) ───────────────────

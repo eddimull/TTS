@@ -192,4 +192,61 @@ class BookingPayoutTest extends TestCase
             ->deleteJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/payout/adjustments/{$adjId}")
             ->assertForbidden();
     }
+
+    public function test_update_configuration_switches_and_returns_result(): void
+    {
+        ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->setup_booking();
+        $other = \App\Models\BandPayoutConfig::factory()->create([
+            'band_id' => $band->id, 'is_active' => false,
+            'band_cut_type' => 'percentage', 'band_cut_value' => 50,
+        ]);
+
+        $response = $this->withHeaders($this->headers($token, $band->id))
+            ->putJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/payout/configuration", [
+                'payout_config_id' => $other->id,
+            ]);
+
+        $response->assertOk()->assertJsonStructure(['result' => ['band_cut', 'distributable_amount']]);
+        $this->assertEquals($other->id, $booking->fresh()->payout->payout_config_id);
+        $this->assertEqualsWithDelta(500.0, $response->json('result.band_cut'), 0.01);
+    }
+
+    public function test_update_configuration_rejects_config_from_other_band(): void
+    {
+        ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->setup_booking();
+        $foreign = \App\Models\BandPayoutConfig::factory()->create(['band_id' => Bands::factory()->create()->id]);
+
+        $this->withHeaders($this->headers($token, $band->id))
+            ->putJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/payout/configuration", ['payout_config_id' => $foreign->id])
+            ->assertStatus(404);
+    }
+
+    public function test_update_configuration_forbidden_for_sub(): void
+    {
+        ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->setup_booking();
+
+        // Owner first switches config to ensure a payout record exists.
+        $config = \App\Models\BandPayoutConfig::factory()->create([
+            'band_id' => $band->id, 'is_active' => false,
+            'band_cut_type' => 'percentage', 'band_cut_value' => 10,
+        ]);
+
+        $this->withHeaders($this->headers($token, $band->id))
+            ->putJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/payout/configuration", [
+                'payout_config_id' => $config->id,
+            ])
+            ->assertOk();
+
+        // Sub attempts the same — use actingAs to avoid Sanctum token-cache
+        // interference from the preceding owner request in this same test.
+        $sub = User::factory()->create();
+        BandSubs::create(['user_id' => $sub->id, 'band_id' => $band->id]);
+
+        $this->actingAs($sub, 'sanctum')
+            ->withHeaders(['X-Band-ID' => $band->id, 'Accept' => 'application/json'])
+            ->putJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/payout/configuration", [
+                'payout_config_id' => $config->id,
+            ])
+            ->assertForbidden();
+    }
 }

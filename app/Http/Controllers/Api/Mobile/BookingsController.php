@@ -752,6 +752,33 @@ class BookingsController extends Controller
         return response()->json(['message' => 'Payout adjustment removed']);
     }
 
+    public function updatePayoutConfiguration(Request $request, Bands $band, Bookings $booking): JsonResponse
+    {
+        // Authorize: owner/member only — subs must not mutate payout data.
+        $user = $request->user();
+        if (!$user->bands()->contains('id', $band->id)) {
+            abort(403);
+        }
+
+        $validated = $request->validate(['payout_config_id' => 'required|exists:band_payout_configs,id']);
+
+        $payout = $this->getOrCreatePayout($booking, $band);
+        $config = \App\Models\BandPayoutConfig::where('id', $validated['payout_config_id'])
+            ->where('band_id', $band->id)
+            ->with(['band.paymentGroups.users'])
+            ->firstOrFail();
+
+        $booking->load(['events.eventMembers.rosterMember', 'events.eventMembers.user']);
+
+        $payout->payout_config_id = $config->id;
+        $adjustedTotal = $payout->adjusted_amount_float;
+        $result = $adjustedTotal > 0 ? $config->calculatePayouts($adjustedTotal, null, $booking) : null;
+        $payout->calculation_result = $result;
+        $payout->save();
+
+        return response()->json(['result' => $result]);
+    }
+
     private function getOrCreatePayout(Bookings $booking, Bands $band): \App\Models\Payout
     {
         if ($booking->payout) {
