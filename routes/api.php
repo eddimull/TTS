@@ -219,6 +219,7 @@ Route::prefix('mobile')->group(function () {
             Route::get('/bands/{band}/bookings/{booking}/contract/view-url', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'viewContractUrl'])->name('mobile.bookings.contract.view.url');
             Route::get('/bands/{band}/bookings/{booking}/contract/download', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'downloadContract'])->name('mobile.bookings.contract.download');
             Route::get('/bands/{band}/bookings/{booking}/history', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'showHistory'])->name('mobile.bookings.history');
+            Route::get('/bands/{band}/bookings/{booking}/payout', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'payout'])->name('mobile.bookings.payout.show');
         });
 
         // ── Bookings (write) ───────────────────────────────────────────
@@ -252,6 +253,16 @@ Route::prefix('mobile')->group(function () {
             Route::post('/bands/{band}/bookings/{booking}/contract/upload', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'uploadContract'])->name('mobile.bookings.contract.upload');
             Route::post('/bands/{band}/bookings/{booking}/contract/send', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'sendContract'])->name('mobile.bookings.contract.send');
             Route::post('/bands/{band}/bookings/{booking}/contract/terms', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'saveContractTerms'])->name('mobile.bookings.contract.terms');
+
+        });
+
+        // Booking payout adjustments (write) — separate group to avoid scopeBindings
+        // scoping {adjustment} through Bookings (PayoutAdjustment belongs to Payout, not Booking directly)
+        Route::middleware('mobile.band:write:bookings')->group(function () {
+            Route::post('/bands/{band}/bookings/{booking}/payout/adjustments', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'storePayoutAdjustment'])->name('mobile.bookings.payout.adjustments.store');
+            Route::delete('/bands/{band}/bookings/{booking}/payout/adjustments/{adjustment}', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'destroyPayoutAdjustment'])->name('mobile.bookings.payout.adjustments.destroy');
+            Route::put('/bands/{band}/bookings/{booking}/payout/configuration', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'updatePayoutConfiguration'])->name('mobile.bookings.payout.configuration.update');
+            Route::patch('/bands/{band}/bookings/{booking}/events/{event}/members/{member}/attendance', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'updateMemberAttendance'])->name('mobile.bookings.events.members.attendance');
         });
 
         // ── Finances (uses read:bookings permission) ───────────────────
