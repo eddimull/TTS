@@ -209,6 +209,11 @@ class BookingPayoutTest extends TestCase
         $response->assertOk()->assertJsonStructure(['result' => ['band_cut', 'distributable_amount']]);
         $this->assertEquals($other->id, $booking->fresh()->payout->payout_config_id);
         $this->assertEqualsWithDelta(500.0, $response->json('result.band_cut'), 0.01);
+
+        // Assert calculation_result is persisted to the DB and reflects the switched config.
+        $persistedResult = $booking->fresh()->payout->calculation_result;
+        $this->assertIsArray($persistedResult);
+        $this->assertEqualsWithDelta(500.0, $persistedResult['band_cut'], 0.01);
     }
 
     public function test_update_configuration_rejects_config_from_other_band(): void
