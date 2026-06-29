@@ -17,6 +17,7 @@ use App\Models\BookingContacts;
 use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\Contracts;
+use App\Models\EventMember;
 use App\Models\Events;
 use App\Models\Payments;
 use App\Services\BookingActivityService;
@@ -621,5 +622,243 @@ class BookingsController extends Controller
         }
 
         return response()->json(['history' => $contract->auditTrail()]);
+    }
+
+    public function payout(Request $request, Bands $band, Bookings $booking): JsonResponse
+    {
+        // Authorize: user must belong to the band (owner or member). Subs are
+        // intentionally excluded — payout data carries money/PII they shouldn't
+        // see (matches indexForUser's bands() vs allBands() rule).
+        $user = $request->user();
+        if (!$user->bands()->contains('id', $band->id)) {
+            abort(403);
+        }
+
+        abort_unless($booking->band_id === $band->id, 404);
+
+        $payout = $this->getOrCreatePayout($booking, $band);
+
+        $booking->load([
+            'events.eventMembers.rosterMember',
+            'events.eventMembers.user',
+        ]);
+
+        $adjustedTotal = $payout->adjusted_amount_float;
+
+        // Use stored config if exists, otherwise fall back to active config.
+        $config = null;
+        if ($adjustedTotal > 0) {
+            if ($payout->payout_config_id) {
+                $config = \App\Models\BandPayoutConfig::where('id', $payout->payout_config_id)
+                    ->where('band_id', $band->id)
+                    ->with(['band.paymentGroups.users'])
+                    ->first();
+            }
+
+            // Fallback to active config if no stored config or stored config not found.
+            if (!$config) {
+                $config = \App\Models\BandPayoutConfig::where('band_id', $band->id)
+                    ->where('is_active', true)
+                    ->with(['band.paymentGroups.users'])
+                    ->first();
+            }
+        }
+
+        $result = ($config && $adjustedTotal > 0)
+            ? $config->calculatePayouts($adjustedTotal, null, $booking)
+            : null;
+
+        $events = $booking->events->map(fn ($e) => [
+            'id' => $e->id,
+            'label' => trim(($e->date ? $e->date->format('D M j') : '').($e->title ? ' · '.$e->title : '')),
+            'value' => (string) $e->value,
+            'members' => $e->eventMembers->map(fn ($m) => [
+                'id' => $m->id,
+                'user_id' => $m->user_id,
+                'name' => $m->name ?? optional($m->user)->name ?? '',
+                'attendance_status' => $m->attendance_status,
+            ])->values(),
+        ])->values();
+
+        $availableConfigs = \App\Models\BandPayoutConfig::where('band_id', $band->id)
+            ->orderBy('is_active', 'desc')
+            ->orderBy('name')
+            ->get(['id', 'name', 'is_active'])
+            ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'is_active' => (bool) $c->is_active]);
+
+        return response()->json([
+            'payout' => [
+                'id' => $payout->id,
+                'base_amount' => (string) $payout->base_amount,
+                'adjusted_amount' => (string) $payout->adjusted_amount,
+                'payout_config_id' => $payout->payout_config_id,
+            ],
+            'config' => $config ? ['id' => $config->id, 'name' => $config->name, 'is_active' => (bool) $config->is_active] : null,
+            'result' => $result,
+            'adjustments' => $payout->adjustments->map(fn ($a) => [
+                'id' => $a->id,
+                'amount' => (string) $a->amount,
+                'description' => $a->description,
+                'notes' => $a->notes,
+            ])->values(),
+            'events' => $events,
+            'available_configs' => $availableConfigs,
+        ]);
+    }
+
+    public function storePayoutAdjustment(Request $request, Bands $band, Bookings $booking): JsonResponse
+    {
+        // Authorize: owner/member only — subs must not mutate payout data.
+        $user = $request->user();
+        if (!$user->bands()->contains('id', $band->id)) {
+            abort(403);
+        }
+
+        abort_unless($booking->band_id === $band->id, 404);
+
+        $validated = $request->validate([
+            'amount' => 'required|numeric',
+            'description' => 'required|string|max:255',
+            'notes' => 'nullable|string',
+        ]);
+
+        $payout = $this->getOrCreatePayout($booking, $band);
+        $adjustment = $payout->adjustments()->create([
+            'amount' => $validated['amount'],
+            'description' => $validated['description'],
+            'notes' => $validated['notes'] ?? null,
+            'created_by' => $user->id,
+        ]);
+        $payout->recalculateAdjustedAmount();
+
+        activity()
+            ->performedOn($booking)
+            ->causedBy($user)
+            ->withProperties([
+                'adjustment_id' => $adjustment->id,
+                'amount' => $validated['amount'],
+                'description' => $validated['description'],
+            ])
+            ->log('payout_adjustment_added');
+
+        return response()->json(['adjustment' => [
+            'id' => $adjustment->id,
+            'amount' => (string) $adjustment->amount,
+            'description' => $adjustment->description,
+            'notes' => $adjustment->notes,
+        ]], 201);
+    }
+
+    public function destroyPayoutAdjustment(Request $request, Bands $band, Bookings $booking, \App\Models\PayoutAdjustment $adjustment): JsonResponse
+    {
+        // Authorize: owner/member only — subs must not mutate payout data.
+        $user = $request->user();
+        if (!$user->bands()->contains('id', $band->id)) {
+            abort(403);
+        }
+
+        abort_unless($booking->band_id === $band->id, 404);
+
+        $payout = $booking->payout;
+        abort_unless($payout, 404, 'Payout not found');
+        abort_unless($adjustment->payout_id === $payout->id, 403, 'Adjustment does not belong to this booking payout');
+
+        $amount = $adjustment->amount;
+        $description = $adjustment->description;
+
+        $adjustment->delete();
+        $payout->recalculateAdjustedAmount();
+
+        activity()
+            ->performedOn($booking)
+            ->causedBy($user)
+            ->withProperties([
+                'amount' => $amount,
+                'description' => $description,
+            ])
+            ->log('payout_adjustment_removed');
+
+        return response()->json(['message' => 'Payout adjustment removed']);
+    }
+
+    public function updatePayoutConfiguration(Request $request, Bands $band, Bookings $booking): JsonResponse
+    {
+        // Authorize: owner/member only — subs must not mutate payout data.
+        $user = $request->user();
+        if (!$user->bands()->contains('id', $band->id)) {
+            abort(403);
+        }
+
+        abort_unless($booking->band_id === $band->id, 404);
+
+        $validated = $request->validate(['payout_config_id' => 'required|exists:band_payout_configs,id']);
+
+        $payout = $this->getOrCreatePayout($booking, $band);
+        $config = \App\Models\BandPayoutConfig::where('id', $validated['payout_config_id'])
+            ->where('band_id', $band->id)
+            ->with(['band.paymentGroups.users'])
+            ->firstOrFail();
+
+        $booking->load(['events.eventMembers.rosterMember', 'events.eventMembers.user']);
+
+        $payout->payout_config_id = $config->id;
+        $adjustedTotal = $payout->adjusted_amount_float;
+        $result = $adjustedTotal > 0 ? $config->calculatePayouts($adjustedTotal, null, $booking) : null;
+        $payout->calculation_result = $result;
+        $payout->save();
+
+        activity()
+            ->performedOn($booking)
+            ->causedBy($user)
+            ->withProperties([
+                'config_id' => $config->id,
+                'config_name' => $config->name,
+            ])
+            ->log('payout_configuration_updated');
+
+        return response()->json(['result' => $result]);
+    }
+
+    public function updateMemberAttendance(Request $request, Bands $band, Bookings $booking, Events $event, int $member): JsonResponse
+    {
+        // Authorize: owner/member only — subs must not mutate attendance data.
+        $user = $request->user();
+        if (!$user->bands()->contains('id', $band->id)) {
+            abort(403);
+        }
+
+        abort_unless($booking->band_id === $band->id, 404);
+
+        if ($event->eventable_type !== Bookings::class || $event->eventable_id !== $booking->id) {
+            return response()->json(['error' => 'Event does not belong to this booking.'], 404);
+        }
+
+        $validated = $request->validate([
+            'attendance_status' => 'required|in:confirmed,attended,absent,excused',
+        ]);
+
+        $eventMember = EventMember::where('id', $member)
+            ->where('event_id', $event->id)
+            ->firstOrFail();
+
+        $eventMember->update(['attendance_status' => $validated['attendance_status']]);
+
+        return response()->json(['member' => [
+            'id' => $eventMember->id,
+            'attendance_status' => $eventMember->attendance_status,
+        ]]);
+    }
+
+    private function getOrCreatePayout(Bookings $booking, Bands $band): \App\Models\Payout
+    {
+        if ($booking->payout) {
+            return $booking->payout;
+        }
+        $baseAmount = $booking->total_event_value;
+        return $booking->payout()->create([
+            'band_id' => $band->id,
+            'base_amount' => $baseAmount,
+            'adjusted_amount' => $baseAmount,
+        ]);
     }
 }
