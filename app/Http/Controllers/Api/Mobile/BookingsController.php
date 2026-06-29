@@ -634,6 +634,8 @@ class BookingsController extends Controller
             abort(403);
         }
 
+        abort_unless($booking->band_id === $band->id, 404);
+
         $payout = $this->getOrCreatePayout($booking, $band);
 
         $booking->load([
@@ -712,6 +714,8 @@ class BookingsController extends Controller
             abort(403);
         }
 
+        abort_unless($booking->band_id === $band->id, 404);
+
         $validated = $request->validate([
             'amount' => 'required|numeric',
             'description' => 'required|string|max:255',
@@ -726,6 +730,16 @@ class BookingsController extends Controller
             'created_by' => $user->id,
         ]);
         $payout->recalculateAdjustedAmount();
+
+        activity()
+            ->performedOn($booking)
+            ->causedBy($user)
+            ->withProperties([
+                'adjustment_id' => $adjustment->id,
+                'amount' => $validated['amount'],
+                'description' => $validated['description'],
+            ])
+            ->log('payout_adjustment_added');
 
         return response()->json(['adjustment' => [
             'id' => $adjustment->id,
@@ -743,12 +757,26 @@ class BookingsController extends Controller
             abort(403);
         }
 
+        abort_unless($booking->band_id === $band->id, 404);
+
         $payout = $booking->payout;
         abort_unless($payout, 404, 'Payout not found');
         abort_unless($adjustment->payout_id === $payout->id, 403, 'Adjustment does not belong to this booking payout');
 
+        $amount = $adjustment->amount;
+        $description = $adjustment->description;
+
         $adjustment->delete();
         $payout->recalculateAdjustedAmount();
+
+        activity()
+            ->performedOn($booking)
+            ->causedBy($user)
+            ->withProperties([
+                'amount' => $amount,
+                'description' => $description,
+            ])
+            ->log('payout_adjustment_removed');
 
         return response()->json(['message' => 'Payout adjustment removed']);
     }
@@ -760,6 +788,8 @@ class BookingsController extends Controller
         if (!$user->bands()->contains('id', $band->id)) {
             abort(403);
         }
+
+        abort_unless($booking->band_id === $band->id, 404);
 
         $validated = $request->validate(['payout_config_id' => 'required|exists:band_payout_configs,id']);
 
@@ -777,6 +807,15 @@ class BookingsController extends Controller
         $payout->calculation_result = $result;
         $payout->save();
 
+        activity()
+            ->performedOn($booking)
+            ->causedBy($user)
+            ->withProperties([
+                'config_id' => $config->id,
+                'config_name' => $config->name,
+            ])
+            ->log('payout_configuration_updated');
+
         return response()->json(['result' => $result]);
     }
 
@@ -787,6 +826,8 @@ class BookingsController extends Controller
         if (!$user->bands()->contains('id', $band->id)) {
             abort(403);
         }
+
+        abort_unless($booking->band_id === $band->id, 404);
 
         if ($event->eventable_type !== Bookings::class || $event->eventable_id !== $booking->id) {
             return response()->json(['error' => 'Event does not belong to this booking.'], 404);

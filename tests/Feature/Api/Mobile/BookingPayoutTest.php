@@ -354,4 +354,94 @@ class BookingPayoutTest extends TestCase
             ])
             ->assertForbidden();
     }
+
+    // ── C1: cross-band booking IDOR rejection ──────────────────────────
+    // The four write endpoints sit in a route group WITHOUT scopeBindings(),
+    // so {booking} resolves by id alone. An attacker who owns band A could pass
+    // a DIFFERENT band's booking id and mutate its payout/attendance. Each test
+    // authenticates as band A's owner, uses band A in the URL but band B's
+    // booking id, and asserts the booking→band guard rejects it (404) with no
+    // mutation on band B's data.
+
+    public function test_store_adjustment_rejects_cross_band_booking(): void
+    {
+        // Band A — the authenticated attacker's own band.
+        ['band' => $bandA, 'token' => $token] = $this->setup_booking();
+        // Band B — a separate band with its own owner + booking.
+        ['band' => $bandB, 'booking' => $bookingB] = $this->setup_booking();
+
+        // Attacker (band A owner) targets band B's booking via band A's URL.
+        $this->withHeaders($this->headers($token, $bandA->id))
+            ->postJson("/api/mobile/bands/{$bandA->id}/bookings/{$bookingB->id}/payout/adjustments", [
+                'amount' => -250, 'description' => 'Cross-band attack',
+            ])
+            ->assertNotFound();
+
+        // No adjustment may have been created against band B's payout.
+        $payoutB = $bookingB->fresh()->payout;
+        $this->assertTrue($payoutB === null || $payoutB->adjustments()->count() === 0);
+        $this->assertDatabaseMissing('payout_adjustments', ['description' => 'Cross-band attack']);
+    }
+
+    public function test_destroy_adjustment_rejects_cross_band_booking(): void
+    {
+        ['band' => $bandA, 'token' => $token] = $this->setup_booking();
+        ['band' => $bandB, 'booking' => $bookingB, 'user' => $ownerB] = $this->setup_booking();
+
+        // Band B's booking has a payout + adjustment (created directly to keep this
+        // test on a single authenticated HTTP call — the attacker's).
+        $payoutB = $bookingB->payout()->create([
+            'band_id' => $bandB->id, 'base_amount' => 500, 'adjusted_amount' => 500,
+        ]);
+        $adjId = $payoutB->adjustments()->create([
+            'amount' => -100, 'description' => 'BandB adjustment', 'created_by' => $ownerB->id,
+        ])->id;
+
+        // Attacker (band A owner) tries to delete it via band A's URL + band B's booking.
+        $this->withHeaders($this->headers($token, $bandA->id))
+            ->deleteJson("/api/mobile/bands/{$bandA->id}/bookings/{$bookingB->id}/payout/adjustments/{$adjId}")
+            ->assertNotFound();
+
+        // Band B's adjustment must still exist.
+        $this->assertDatabaseHas('payout_adjustments', ['id' => $adjId]);
+    }
+
+    public function test_update_configuration_rejects_cross_band_booking(): void
+    {
+        ['band' => $bandA, 'token' => $token] = $this->setup_booking();
+        ['band' => $bandB, 'booking' => $bookingB, 'config' => $configB] = $this->setup_booking();
+
+        $this->withHeaders($this->headers($token, $bandA->id))
+            ->putJson("/api/mobile/bands/{$bandA->id}/bookings/{$bookingB->id}/payout/configuration", [
+                'payout_config_id' => $configB->id,
+            ])
+            ->assertNotFound();
+
+        // Band B's booking must have no payout config set by the attacker.
+        $payoutB = $bookingB->fresh()->payout;
+        $this->assertTrue($payoutB === null || $payoutB->payout_config_id === null);
+    }
+
+    public function test_update_attendance_rejects_cross_band_booking(): void
+    {
+        ['band' => $bandA, 'token' => $token] = $this->setup_booking();
+        ['band' => $bandB, 'booking' => $bookingB] = $this->setup_booking();
+
+        // Band B's own event + member.
+        $eventB = $bookingB->fresh()->events->first();
+        $memberB = \App\Models\EventMember::create([
+            'event_id' => $eventB->id, 'band_id' => $bandB->id,
+            'name' => 'Bob', 'attendance_status' => 'confirmed',
+        ]);
+
+        // Attacker (band A owner) targets band B's booking/event/member.
+        $this->withHeaders($this->headers($token, $bandA->id))
+            ->patchJson("/api/mobile/bands/{$bandA->id}/bookings/{$bookingB->id}/events/{$eventB->id}/members/{$memberB->id}/attendance", [
+                'attendance_status' => 'absent',
+            ])
+            ->assertNotFound();
+
+        // Band B's member attendance must be unchanged.
+        $this->assertSame('confirmed', $memberB->fresh()->attendance_status);
+    }
 }
