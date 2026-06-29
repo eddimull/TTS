@@ -703,6 +703,55 @@ class BookingsController extends Controller
         ]);
     }
 
+    public function storePayoutAdjustment(Request $request, Bands $band, Bookings $booking): JsonResponse
+    {
+        // Authorize: owner/member only — subs must not mutate payout data.
+        $user = $request->user();
+        if (!$user->bands()->contains('id', $band->id)) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'amount' => 'required|numeric',
+            'description' => 'required|string|max:255',
+            'notes' => 'nullable|string',
+        ]);
+
+        $payout = $this->getOrCreatePayout($booking, $band);
+        $adjustment = $payout->adjustments()->create([
+            'amount' => $validated['amount'],
+            'description' => $validated['description'],
+            'notes' => $validated['notes'] ?? null,
+            'created_by' => \Illuminate\Support\Facades\Auth::id(),
+        ]);
+        $payout->recalculateAdjustedAmount();
+
+        return response()->json(['adjustment' => [
+            'id' => $adjustment->id,
+            'amount' => (string) $adjustment->amount,
+            'description' => $adjustment->description,
+            'notes' => $adjustment->notes,
+        ]], 201);
+    }
+
+    public function destroyPayoutAdjustment(Request $request, Bands $band, Bookings $booking, \App\Models\PayoutAdjustment $adjustment): JsonResponse
+    {
+        // Authorize: owner/member only — subs must not mutate payout data.
+        $user = $request->user();
+        if (!$user->bands()->contains('id', $band->id)) {
+            abort(403);
+        }
+
+        $payout = $booking->payout;
+        abort_unless($payout, 404, 'Payout not found');
+        abort_unless($adjustment->payout_id === $payout->id, 403, 'Adjustment does not belong to this booking payout');
+
+        $adjustment->delete();
+        $payout->recalculateAdjustedAmount();
+
+        return response()->json(['message' => 'Payout adjustment removed']);
+    }
+
     private function getOrCreatePayout(Bookings $booking, Bands $band): \App\Models\Payout
     {
         if ($booking->payout) {

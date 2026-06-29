@@ -81,4 +81,75 @@ class BookingPayoutTest extends TestCase
             ->getJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/payout")
             ->assertForbidden();
     }
+
+    public function test_store_adjustment_recalculates_adjusted_amount(): void
+    {
+        ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->setup_booking();
+
+        $response = $this->withHeaders($this->headers($token, $band->id))
+            ->postJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/payout/adjustments", [
+                'amount' => -250, 'description' => 'Gas / travel', 'notes' => 'Reimbursed',
+            ]);
+
+        $response->assertCreated()->assertJsonStructure(['adjustment' => ['id', 'amount', 'description', 'notes']]);
+        $this->assertSame('750.00', (string) $booking->fresh()->payout->adjusted_amount);
+    }
+
+    public function test_store_adjustment_validates_description_required(): void
+    {
+        ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->setup_booking();
+        $this->withHeaders($this->headers($token, $band->id))
+            ->postJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/payout/adjustments", ['amount' => 10])
+            ->assertStatus(422);
+    }
+
+    public function test_destroy_adjustment_recalculates_and_rejects_foreign(): void
+    {
+        ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->setup_booking();
+        $this->withHeaders($this->headers($token, $band->id))
+            ->postJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/payout/adjustments", ['amount' => -250, 'description' => 'X']);
+        $adjId = $booking->fresh()->payout->adjustments->first()->id;
+
+        $this->withHeaders($this->headers($token, $band->id))
+            ->deleteJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/payout/adjustments/{$adjId}")
+            ->assertOk();
+        $this->assertSame('1000.00', (string) $booking->fresh()->payout->adjusted_amount);
+    }
+
+    public function test_store_adjustment_forbidden_for_sub(): void
+    {
+        ['band' => $band, 'booking' => $booking] = $this->setup_booking();
+
+        $sub = User::factory()->create();
+        BandSubs::create(['user_id' => $sub->id, 'band_id' => $band->id]);
+        $token = $sub->createToken('sub-device')->plainTextToken;
+
+        $this->withHeaders($this->headers($token, $band->id))
+            ->postJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/payout/adjustments", [
+                'amount' => -100, 'description' => 'Should be blocked',
+            ])
+            ->assertForbidden();
+    }
+
+    public function test_destroy_adjustment_forbidden_for_sub(): void
+    {
+        ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->setup_booking();
+
+        // Owner creates an adjustment first
+        $this->withHeaders($this->headers($token, $band->id))
+            ->postJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/payout/adjustments", [
+                'amount' => -100, 'description' => 'Owner adjustment',
+            ]);
+        $adjId = $booking->fresh()->payout->adjustments->first()->id;
+
+        // Sub attempts to delete it — use actingAs to avoid Sanctum token-cache
+        // interference from the preceding owner request in this same test.
+        $sub = User::factory()->create();
+        BandSubs::create(['user_id' => $sub->id, 'band_id' => $band->id]);
+
+        $this->actingAs($sub, 'sanctum')
+            ->withHeaders(['X-Band-ID' => $band->id, 'Accept' => 'application/json'])
+            ->deleteJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/payout/adjustments/{$adjId}")
+            ->assertForbidden();
+    }
 }
