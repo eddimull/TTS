@@ -219,6 +219,7 @@ Route::prefix('mobile')->group(function () {
             Route::get('/bands/{band}/bookings/{booking}/contract/view-url', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'viewContractUrl'])->name('mobile.bookings.contract.view.url');
             Route::get('/bands/{band}/bookings/{booking}/contract/download', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'downloadContract'])->name('mobile.bookings.contract.download');
             Route::get('/bands/{band}/bookings/{booking}/history', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'showHistory'])->name('mobile.bookings.history');
+            Route::get('/bands/{band}/bookings/{booking}/payout', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'payout'])->name('mobile.bookings.payout.show');
         });
 
         // ── Bookings (write) ───────────────────────────────────────────

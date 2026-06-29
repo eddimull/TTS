@@ -622,4 +622,71 @@ class BookingsController extends Controller
 
         return response()->json(['history' => $contract->auditTrail()]);
     }
+
+    public function payout(Request $request, Bands $band, Bookings $booking): JsonResponse
+    {
+        $payout = $this->getOrCreatePayout($booking, $band);
+
+        $booking->load([
+            'events.eventMembers.rosterMember',
+            'events.eventMembers.user',
+        ]);
+
+        $config = $payout->payout_config_id
+            ? \App\Models\BandPayoutConfig::where('id', $payout->payout_config_id)->where('band_id', $band->id)->with(['band.paymentGroups.users'])->first()
+            : \App\Models\BandPayoutConfig::where('band_id', $band->id)->where('is_active', true)->with(['band.paymentGroups.users'])->first();
+
+        $adjustedTotal = $payout->adjusted_amount_float;
+        $result = ($config && $adjustedTotal > 0)
+            ? $config->calculatePayouts($adjustedTotal, null, $booking)
+            : null;
+
+        $events = $booking->events->map(fn ($e) => [
+            'id' => $e->id,
+            'label' => trim(($e->date ? $e->date->format('D M j') : '').($e->title ? ' · '.$e->title : '')),
+            'value' => (string) $e->value,
+            'members' => $e->eventMembers->map(fn ($m) => [
+                'id' => $m->id,
+                'user_id' => $m->user_id,
+                'name' => $m->name ?? optional($m->user)->name ?? '',
+                'attendance_status' => $m->attendance_status,
+            ])->values(),
+        ])->values();
+
+        $availableConfigs = \App\Models\BandPayoutConfig::where('band_id', $band->id)
+            ->get(['id', 'name', 'is_active'])
+            ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'is_active' => (bool) $c->is_active]);
+
+        return response()->json([
+            'payout' => [
+                'id' => $payout->id,
+                'base_amount' => (string) $payout->base_amount,
+                'adjusted_amount' => (string) $payout->adjusted_amount,
+                'payout_config_id' => $payout->payout_config_id,
+            ],
+            'config' => $config ? ['id' => $config->id, 'name' => $config->name, 'is_active' => (bool) $config->is_active] : null,
+            'result' => $result,
+            'adjustments' => $payout->adjustments->map(fn ($a) => [
+                'id' => $a->id,
+                'amount' => (string) $a->amount,
+                'description' => $a->description,
+                'notes' => $a->notes,
+            ])->values(),
+            'events' => $events,
+            'available_configs' => $availableConfigs,
+        ]);
+    }
+
+    private function getOrCreatePayout(Bookings $booking, Bands $band): \App\Models\Payout
+    {
+        if ($booking->payout) {
+            return $booking->payout;
+        }
+        $baseAmount = $booking->total_event_value;
+        return $booking->payout()->create([
+            'band_id' => $band->id,
+            'base_amount' => $baseAmount,
+            'adjusted_amount' => $baseAmount,
+        ]);
+    }
 }
