@@ -311,6 +311,30 @@ class BookingPayoutTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_update_attendance_rejects_event_from_other_booking(): void
+    {
+        ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->setup_booking();
+
+        // Create a second booking in the SAME band with its own event + member.
+        $booking2 = Bookings::factory()->create(['band_id' => $band->id, 'price' => 500]);
+        $event2 = Events::factory()->create([
+            'eventable_id'   => $booking2->id,
+            'eventable_type' => Bookings::class,
+            'value'          => 500,
+        ]);
+        $member2 = \App\Models\EventMember::create([
+            'event_id' => $event2->id, 'band_id' => $band->id,
+            'name' => 'Alice', 'attendance_status' => 'confirmed',
+        ]);
+
+        // PATCH attendance via booking #1's URL but with booking #2's event and member → 404.
+        $this->withHeaders($this->headers($token, $band->id))
+            ->patchJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}/events/{$event2->id}/members/{$member2->id}/attendance", [
+                'attendance_status' => 'absent',
+            ])
+            ->assertNotFound();
+    }
+
     public function test_update_attendance_forbidden_for_sub(): void
     {
         ['band' => $band, 'booking' => $booking] = $this->setup_booking();

@@ -17,6 +17,7 @@ use App\Models\BookingContacts;
 use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\Contracts;
+use App\Models\EventMember;
 use App\Models\Events;
 use App\Models\Payments;
 use App\Services\BookingActivityService;
@@ -787,11 +788,15 @@ class BookingsController extends Controller
             abort(403);
         }
 
+        if ($event->eventable_type !== Bookings::class || $event->eventable_id !== $booking->id) {
+            return response()->json(['error' => 'Event does not belong to this booking.'], 404);
+        }
+
         $validated = $request->validate([
             'attendance_status' => 'required|in:confirmed,attended,absent,excused',
         ]);
 
-        $eventMember = \App\Models\EventMember::where('id', $member)
+        $eventMember = EventMember::where('id', $member)
             ->where('event_id', $event->id)
             ->firstOrFail();
 
