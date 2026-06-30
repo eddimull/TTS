@@ -37,10 +37,25 @@ return [
             'app_id' => env('PUSHER_APP_ID'),
             'options' => [
                 'cluster' => env('PUSHER_APP_CLUSTER'),
-                'host' => env('PUSHER_HOST', '127.0.0.1'),
-                'port' => env('PUSHER_PORT', 6001),
-                'scheme' => env('PUSHER_SCHEME', 'http'),
-                'useTLS' => false,
+                // When PUSHER_HOST is unset, fall back to Pusher Cloud's host for
+                // the configured cluster (api-<cluster>.pusher.com) rather than a
+                // self-hosted default. A blank/absent PUSHER_HOST therefore means
+                // "use real Pusher", while a self-hosted soketi can still override
+                // host/port/scheme via env.
+                //
+                // The mobile client (pusher_channels_flutter) connects to
+                // ws-<cluster>.pusher.com and cannot target a custom host, so the
+                // server MUST broadcast to the same Pusher Cloud endpoint or events
+                // never reach the device (silent: no error, message marked complete,
+                // client spins forever).
+                // Use ?: (not env()'s default arg) so a set-but-empty env var
+                // (PUSHER_HOST= / PUSHER_PORT=) still falls through to the Pusher
+                // Cloud default — env('KEY', $default) only applies $default when
+                // the key is absent, not when it's present-but-blank.
+                'host' => env('PUSHER_HOST') ?: 'api-' . env('PUSHER_APP_CLUSTER') . '.pusher.com',
+                'port' => env('PUSHER_PORT') ?: 443,
+                'scheme' => env('PUSHER_SCHEME') ?: 'https',
+                'useTLS' => (env('PUSHER_SCHEME') ?: 'https') === 'https',
             ],
         ],
 
