@@ -85,27 +85,29 @@ class RehearsalPlannerService
 
     public static function parsePlan(string $text): ?array
     {
-        if (!preg_match('/```plan\s*(\{.*?\})\s*```/s', $text, $m)) {
+        // Anchor on the fences (brace-count-agnostic) so nested objects in a
+        // multi-item plan are captured whole, not truncated at the first `}`.
+        if (!preg_match('/```plan\s*(.*?)```/s', $text, $m)) {
             return null;
         }
-        $decoded = json_decode($m[1], true);
+        $decoded = json_decode(trim($m[1]), true);
         return is_array($decoded) ? $decoded : null;
     }
 
     /** @return array<int,string> */
     public static function parseSuggestions(string $text): array
     {
-        if (!preg_match('/```suggestions\s*(\[.*?\])\s*```/s', $text, $m)) {
+        if (!preg_match('/```suggestions\s*(.*?)```/s', $text, $m)) {
             return [];
         }
-        $decoded = json_decode($m[1], true);
+        $decoded = json_decode(trim($m[1]), true);
         return is_array($decoded) ? array_values(array_filter($decoded, 'is_string')) : [];
     }
 
     public static function stripBlocks(string $text): string
     {
-        $text = preg_replace('/```plan\s*\{.*?\}\s*```/s', '', $text);
-        $text = preg_replace('/```suggestions\s*\[.*?\]\s*```/s', '', $text);
+        $text = preg_replace('/```plan\s*.*?```/s', '', $text);
+        $text = preg_replace('/```suggestions\s*.*?```/s', '', $text);
         return trim($text);
     }
 }
