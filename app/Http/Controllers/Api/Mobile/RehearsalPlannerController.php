@@ -9,18 +9,29 @@ use App\Models\RehearsalPlannerSession;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class RehearsalPlannerController extends Controller
 {
-    public function start(Bands $band): JsonResponse
+    public function start(Request $request, Bands $band): JsonResponse
     {
         if ($guard = $this->keyGuard()) {
             return $guard;
         }
 
+        $validated = $request->validate([
+            // The rehearsal must belong to this band — scope the exists rule to it.
+            'rehearsal_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('rehearsals', 'id')->where('band_id', $band->id),
+            ],
+        ]);
+
         $session = RehearsalPlannerSession::create([
-            'band_id' => $band->id,
-            'user_id' => Auth::id(),
+            'band_id'      => $band->id,
+            'user_id'      => Auth::id(),
+            'rehearsal_id' => $validated['rehearsal_id'] ?? null,
         ]);
 
         $assistant = $session->messages()->create([
