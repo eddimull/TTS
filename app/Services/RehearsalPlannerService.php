@@ -22,18 +22,24 @@ class RehearsalPlannerService
         ?int $userMessageId = null,
     ): void {
         try {
-            $session->loadMissing('band');
+            $session->loadMissing(['band', 'rehearsal.rehearsalSchedule', 'rehearsal.events']);
             $context = $this->contextBuilder->build($session->band);
 
             $history = $this->historyForTurn($session, $assistantMessage, $userText, $userMessageId);
 
+            $focus = $this->rehearsalFocus($session);
+
             // The opening turn has no userText; prompt the agent to assess the context.
             $prompt = $userText !== null && $userText !== ''
                 ? $userText
-                : 'Assess what the band should rehearse and open the conversation.';
+                : ($focus !== ''
+                    ? 'Assess what the band should rehearse at this rehearsal and open the conversation.'
+                    : 'Assess what the band should rehearse and open the conversation.');
 
             // Prepend the context as a system-style preamble on the first user turn.
-            $promptWithContext = "BAND CONTEXT:\n{$context['text']}\n\n---\n{$prompt}";
+            // When the session targets a specific rehearsal, lead with that focus so
+            // the agent centers its advice on it (context sources are unchanged).
+            $promptWithContext = "BAND CONTEXT:\n{$context['text']}\n{$focus}\n---\n{$prompt}";
 
             $agent = (new RehearsalPlannerAgent())->withHistory($history);
 
@@ -122,6 +128,37 @@ class RehearsalPlannerService
             ->get()
             ->map(fn (RehearsalPlannerMessage $m) => new Message($m->role, (string) $m->content))
             ->all();
+    }
+
+    /**
+     * When the session targets a specific rehearsal, produce a short focus
+     * block telling the agent to center its advice on that rehearsal. Returns
+     * an empty string for band-wide sessions (no rehearsal). The four context
+     * sources are unchanged — this only frames them.
+     */
+    protected function rehearsalFocus(RehearsalPlannerSession $session): string
+    {
+        $rehearsal = $session->rehearsal;
+        if ($rehearsal === null) {
+            return '';
+        }
+
+        // Date comes from the rehearsal's first associated event (the rehearsals
+        // table itself has no date column); fall back gracefully if absent.
+        $event = $rehearsal->events->first();
+        $date = $event
+            ? (is_string($event->date) ? $event->date : optional($event->date)->format('Y-m-d'))
+            : null;
+        $scheduleName = $rehearsal->rehearsalSchedule?->name;
+
+        $label = trim(implode(' ', array_filter([
+            $date ? "on {$date}" : null,
+            $scheduleName ? "({$scheduleName})" : null,
+        ])));
+        $label = $label !== '' ? " {$label}" : '';
+
+        return "\nPLANNING FOCUS: The band leader is planning for a specific upcoming rehearsal{$label}. "
+            . "Center your advice on what to rehearse at THIS rehearsal, drawing on the context above.\n";
     }
 
     public static function parsePlan(string $text): ?array

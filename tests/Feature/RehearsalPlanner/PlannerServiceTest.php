@@ -255,4 +255,58 @@ class PlannerServiceTest extends TestCase
                 && ($e->data['message_id'] ?? null) === $assistant->id,
         );
     }
+
+    public function test_rehearsal_focus_is_empty_for_band_wide_session(): void
+    {
+        $session = RehearsalPlannerSession::factory()->create(['rehearsal_id' => null]);
+
+        $service = $this->focusSeam();
+
+        $this->assertSame('', $service->exposeFocus($session->fresh()));
+    }
+
+    public function test_rehearsal_focus_centers_on_selected_rehearsal(): void
+    {
+        $band = \App\Models\Bands::factory()->create();
+        $schedule = \App\Models\RehearsalSchedule::factory()->create([
+            'band_id' => $band->id,
+            'name'    => 'Tuesday Practice',
+        ]);
+        $rehearsal = \App\Models\Rehearsal::factory()->create([
+            'band_id'               => $band->id,
+            'rehearsal_schedule_id' => $schedule->id,
+        ]);
+        // The rehearsal's date lives on its associated event.
+        \App\Models\Events::factory()->create([
+            'eventable_type' => \App\Models\Rehearsal::class,
+            'eventable_id'   => $rehearsal->id,
+            'date'           => '2026-07-15',
+        ]);
+
+        $session = RehearsalPlannerSession::factory()->create([
+            'band_id'      => $band->id,
+            'rehearsal_id' => $rehearsal->id,
+        ]);
+
+        $focus = $this->focusSeam()->exposeFocus($session->fresh());
+
+        $this->assertStringContainsString('PLANNING FOCUS', $focus);
+        $this->assertStringContainsString('2026-07-15', $focus);
+        $this->assertStringContainsString('Tuesday Practice', $focus);
+    }
+
+    /**
+     * Anonymous subclass exposing the protected rehearsalFocus() for testing,
+     * mirroring the exposeHistory() seam used above.
+     */
+    private function focusSeam(): RehearsalPlannerService
+    {
+        return new class (app(RehearsalPlannerContextBuilder::class)) extends RehearsalPlannerService {
+            public function exposeFocus(RehearsalPlannerSession $session): string
+            {
+                $session->loadMissing(['rehearsal.rehearsalSchedule', 'rehearsal.events']);
+                return $this->rehearsalFocus($session);
+            }
+        };
+    }
 }
