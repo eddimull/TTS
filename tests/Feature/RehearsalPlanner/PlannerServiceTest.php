@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\RehearsalPlanner;
 
+use App\Ai\Agents\RehearsalPlannerAgent;
 use App\Events\RehearsalPlannerStreamEvent;
 use App\Models\RehearsalPlannerMessage;
 use App\Models\RehearsalPlannerSession;
@@ -200,5 +201,58 @@ class PlannerServiceTest extends TestCase
         $contents = array_map(fn (Message $m) => (string) $m->content, $history);
 
         $this->assertSame(['Earlier message'], $contents);
+    }
+
+    public function test_run_turn_happy_path_streams_and_persists(): void
+    {
+        // Fix 2: live streaming happy-path — uses laravel/ai's built-in
+        // FakeTextGateway (RehearsalPlannerAgent::fake()) which drives the
+        // full stream→accumulate→persist→done flow without a live AI call.
+        Event::fake([RehearsalPlannerStreamEvent::class]);
+
+        $fakeResponse = "Here is your plan.\n" .
+            "```plan\n" .
+            "{\"title\":\"Wedding Prep\",\"items\":[{\"song_id\":1,\"title\":\"Song A\",\"reason\":\"popular\"}]}\n" .
+            "```\n" .
+            "```suggestions\n[\"Draft another plan\",\"Explore new songs\"]\n```";
+
+        RehearsalPlannerAgent::fake([$fakeResponse]);
+
+        $session = RehearsalPlannerSession::factory()->create();
+        $assistant = RehearsalPlannerMessage::factory()->create([
+            'session_id' => $session->id,
+            'role'       => 'assistant',
+            'status'     => 'streaming',
+        ]);
+
+        $service = app(RehearsalPlannerService::class);
+        $service->runTurn($session, $assistant, 'What should we rehearse?');
+
+        $fresh = $assistant->fresh();
+
+        // Message must be complete with stripped visible text (no fenced blocks).
+        $this->assertSame('complete', $fresh->status);
+        $this->assertStringContainsString('Here is your plan.', $fresh->content);
+        $this->assertStringNotContainsString('```plan', $fresh->content);
+        $this->assertStringNotContainsString('```suggestions', $fresh->content);
+
+        // Payload must contain the parsed plan and suggestions.
+        $payload = $fresh->payload;
+        $this->assertSame('Wedding Prep', $payload['plan']['title'] ?? null);
+        $this->assertCount(1, $payload['plan']['items'] ?? []);
+        $this->assertSame(['Draft another plan', 'Explore new songs'], $payload['suggestions'] ?? []);
+
+        // At least one text_delta event and exactly one done event must be dispatched.
+        Event::assertDispatched(
+            RehearsalPlannerStreamEvent::class,
+            fn (RehearsalPlannerStreamEvent $e) => $e->type === 'text_delta'
+                && $e->sessionId === $session->id,
+        );
+        Event::assertDispatched(
+            RehearsalPlannerStreamEvent::class,
+            fn (RehearsalPlannerStreamEvent $e) => $e->type === 'done'
+                && $e->sessionId === $session->id
+                && ($e->data['message_id'] ?? null) === $assistant->id,
+        );
     }
 }

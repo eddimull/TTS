@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Events\RehearsalPlannerStreamEvent;
 use App\Models\RehearsalPlannerMessage;
 use App\Models\RehearsalPlannerSession;
 use App\Services\RehearsalPlannerService;
@@ -45,5 +46,29 @@ class RehearsalPlannerTurnJob implements ShouldQueue
         }
 
         $service->runTurn($session, $assistant, $this->userText, $this->userMessageId);
+    }
+
+    /**
+     * Handle job-level death (worker timeout, OOM, deserialization failure).
+     *
+     * If the job dies before the service's own catch block runs, the assistant
+     * message is left in 'streaming' status and the client spins indefinitely.
+     * This method ensures the message is marked 'failed' and an error event is
+     * dispatched so the client can stop waiting.
+     */
+    public function failed(\Throwable $e): void
+    {
+        $assistant = RehearsalPlannerMessage::find($this->assistantMessageId);
+
+        if (!$assistant || $assistant->status !== 'streaming') {
+            return;
+        }
+
+        $assistant->update(['status' => 'failed']);
+
+        RehearsalPlannerStreamEvent::dispatch($this->sessionId, 'error', [
+            'message_id' => $this->assistantMessageId,
+            'error'      => 'The planner failed to respond. Please retry.',
+        ]);
     }
 }

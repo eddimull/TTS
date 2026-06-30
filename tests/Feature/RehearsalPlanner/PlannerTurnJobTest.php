@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\RehearsalPlanner;
 
+use App\Events\RehearsalPlannerStreamEvent;
 use App\Jobs\RehearsalPlannerTurnJob;
 use App\Models\RehearsalPlannerMessage;
 use App\Models\RehearsalPlannerSession;
 use App\Services\RehearsalPlannerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Mockery;
 use Tests\TestCase;
 
@@ -74,5 +76,64 @@ class PlannerTurnJobTest extends TestCase
         // on an already-failed placeholder.
         $job = new RehearsalPlannerTurnJob(1, 2, null, null);
         $this->assertSame(1, $job->tries, '$tries must be 1 — no auto-retry on a streamed turn.');
+    }
+
+    public function test_failed_marks_streaming_message_failed_and_dispatches_error(): void
+    {
+        Event::fake([RehearsalPlannerStreamEvent::class]);
+
+        $session = RehearsalPlannerSession::factory()->create();
+        $assistant = RehearsalPlannerMessage::factory()->create([
+            'session_id' => $session->id,
+            'role'       => 'assistant',
+            'status'     => 'streaming',
+        ]);
+
+        $job = new RehearsalPlannerTurnJob($session->id, $assistant->id, null);
+        $job->failed(new \Exception('boom'));
+
+        $this->assertSame('failed', $assistant->fresh()->status);
+
+        Event::assertDispatched(
+            RehearsalPlannerStreamEvent::class,
+            fn (RehearsalPlannerStreamEvent $e) => $e->type === 'error'
+                && $e->sessionId === $session->id
+                && ($e->data['message_id'] ?? null) === $assistant->id
+                && isset($e->data['error']),
+        );
+    }
+
+    public function test_failed_does_not_overwrite_already_complete_message(): void
+    {
+        Event::fake([RehearsalPlannerStreamEvent::class]);
+
+        $session = RehearsalPlannerSession::factory()->create();
+        $assistant = RehearsalPlannerMessage::factory()->create([
+            'session_id' => $session->id,
+            'role'       => 'assistant',
+            'status'     => 'complete',
+        ]);
+
+        $job = new RehearsalPlannerTurnJob($session->id, $assistant->id, null);
+        $job->failed(new \Exception('boom'));
+
+        // Status must remain 'complete' — the job finished successfully before the worker killed it.
+        $this->assertSame('complete', $assistant->fresh()->status);
+
+        // No error event should be dispatched since the message already succeeded.
+        Event::assertNotDispatched(RehearsalPlannerStreamEvent::class);
+    }
+
+    public function test_failed_no_ops_when_message_missing(): void
+    {
+        Event::fake([RehearsalPlannerStreamEvent::class]);
+
+        // Use a non-existent assistant message id.
+        $job = new RehearsalPlannerTurnJob(999999, 999999, null);
+        $job->failed(new \Exception('boom'));
+
+        // Should not throw and should not dispatch any event.
+        Event::assertNotDispatched(RehearsalPlannerStreamEvent::class);
+        $this->assertTrue(true);
     }
 }
