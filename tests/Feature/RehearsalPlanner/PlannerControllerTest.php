@@ -176,4 +176,79 @@ class PlannerControllerTest extends TestCase
 
         Queue::assertNothingPushed();
     }
+
+    public function test_start_with_valid_rehearsal_id_persists_it_on_the_session(): void
+    {
+        Queue::fake();
+
+        [$user, $band, $token] = $this->actingMember();
+
+        $schedule = \App\Models\RehearsalSchedule::factory()->create(['band_id' => $band->id]);
+        $rehearsal = \App\Models\Rehearsal::factory()->create([
+            'band_id'               => $band->id,
+            'rehearsal_schedule_id' => $schedule->id,
+        ]);
+
+        $res = $this->withToken($token)->postJson(
+            "/api/mobile/bands/{$band->id}/rehearsal-planner/sessions",
+            ['rehearsal_id' => $rehearsal->id],
+            $this->headers($band)
+        );
+
+        $res->assertOk();
+        $this->assertDatabaseHas('rehearsal_planner_sessions', [
+            'id'           => $res->json('session_id'),
+            'band_id'      => $band->id,
+            'rehearsal_id' => $rehearsal->id,
+        ]);
+    }
+
+    public function test_start_rejects_soft_deleted_rehearsal(): void
+    {
+        Queue::fake();
+
+        [$user, $band, $token] = $this->actingMember();
+
+        // A trashed rehearsal must not be plannable: exists() ignores the
+        // SoftDeletes global scope, so the rule must exclude deleted rows or it
+        // would persist a dangling rehearsal_id that resolves to null focus.
+        $schedule = \App\Models\RehearsalSchedule::factory()->create(['band_id' => $band->id]);
+        $rehearsal = \App\Models\Rehearsal::factory()->create([
+            'band_id'               => $band->id,
+            'rehearsal_schedule_id' => $schedule->id,
+        ]);
+        $rehearsal->delete();
+
+        $this->withToken($token)->postJson(
+            "/api/mobile/bands/{$band->id}/rehearsal-planner/sessions",
+            ['rehearsal_id' => $rehearsal->id],
+            $this->headers($band)
+        )->assertStatus(422)->assertJsonValidationErrors('rehearsal_id');
+
+        Queue::assertNothingPushed();
+    }
+
+    public function test_start_rejects_rehearsal_id_from_another_band(): void
+    {
+        Queue::fake();
+
+        [$user, $band, $token] = $this->actingMember();
+
+        // A rehearsal that belongs to a DIFFERENT band must not be plannable
+        // under this band's route — the scoped exists rule rejects it (422).
+        $otherBand = Bands::factory()->create();
+        $otherSchedule = \App\Models\RehearsalSchedule::factory()->create(['band_id' => $otherBand->id]);
+        $otherRehearsal = \App\Models\Rehearsal::factory()->create([
+            'band_id'               => $otherBand->id,
+            'rehearsal_schedule_id' => $otherSchedule->id,
+        ]);
+
+        $this->withToken($token)->postJson(
+            "/api/mobile/bands/{$band->id}/rehearsal-planner/sessions",
+            ['rehearsal_id' => $otherRehearsal->id],
+            $this->headers($band)
+        )->assertStatus(422)->assertJsonValidationErrors('rehearsal_id');
+
+        Queue::assertNothingPushed();
+    }
 }

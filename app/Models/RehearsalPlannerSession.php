@@ -11,11 +11,16 @@ class RehearsalPlannerSession extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['band_id', 'user_id', 'title'];
+    protected $fillable = ['band_id', 'user_id', 'rehearsal_id', 'title'];
 
     public function band(): BelongsTo
     {
         return $this->belongsTo(Bands::class, 'band_id');
+    }
+
+    public function rehearsal(): BelongsTo
+    {
+        return $this->belongsTo(Rehearsal::class, 'rehearsal_id');
     }
 
     public function user(): BelongsTo
