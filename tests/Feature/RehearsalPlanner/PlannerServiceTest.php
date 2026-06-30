@@ -9,6 +9,7 @@ use App\Services\RehearsalPlannerContextBuilder;
 use App\Services\RehearsalPlannerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Laravel\Ai\Messages\Message;
 use Tests\TestCase;
 
 class PlannerServiceTest extends TestCase
@@ -107,5 +108,95 @@ class PlannerServiceTest extends TestCase
                 && $e->sessionId === $session->id
                 && ($e->data['message_id'] ?? null) === $assistant->id,
         );
+    }
+
+    public function test_history_excludes_current_user_turn_but_keeps_prior_turns(): void
+    {
+        // Fix 2 invariant: history carries only PRIOR complete turns; the
+        // current user turn is carried solely by the prompt, so it must NOT be
+        // replayed in history (otherwise the agent sees it twice).
+        $session = RehearsalPlannerSession::factory()->create();
+
+        // A prior, complete user+assistant exchange.
+        $priorUser = RehearsalPlannerMessage::factory()->create([
+            'session_id' => $session->id,
+            'role'       => 'user',
+            'content'    => 'Prior question',
+            'status'     => 'complete',
+        ]);
+        $priorAssistant = RehearsalPlannerMessage::factory()->create([
+            'session_id' => $session->id,
+            'role'       => 'assistant',
+            'content'    => 'Prior answer',
+            'status'     => 'complete',
+        ]);
+
+        // The current turn: a new user message followed by the assistant
+        // placeholder (mirrors the controller's create order).
+        $currentUser = RehearsalPlannerMessage::factory()->create([
+            'session_id' => $session->id,
+            'role'       => 'user',
+            'content'    => 'Current question',
+            'status'     => 'complete',
+        ]);
+        $assistant = RehearsalPlannerMessage::factory()->create([
+            'session_id' => $session->id,
+            'role'       => 'assistant',
+            'status'     => 'streaming',
+        ]);
+
+        $service = new class (app(RehearsalPlannerContextBuilder::class)) extends RehearsalPlannerService {
+            public function exposeHistory(
+                RehearsalPlannerSession $session,
+                RehearsalPlannerMessage $assistant,
+                ?string $userText,
+            ): array {
+                return $this->historyForTurn($session, $assistant, $userText);
+            }
+        };
+
+        /** @var Message[] $history */
+        $history = $service->exposeHistory($session, $assistant, 'Current question');
+
+        $contents = array_map(fn (Message $m) => (string) $m->content, $history);
+
+        $this->assertContains('Prior question', $contents);
+        $this->assertContains('Prior answer', $contents);
+        $this->assertNotContains('Current question', $contents, 'Current user turn must NOT be replayed in history.');
+        $this->assertCount(2, $history, 'History should contain only the two prior turns.');
+    }
+
+    public function test_start_turn_history_excludes_only_assistant_placeholder(): void
+    {
+        // The opening start() turn has no user text; prior complete turns (if
+        // any) are replayed and only the assistant placeholder is excluded.
+        $session = RehearsalPlannerSession::factory()->create();
+
+        $priorUser = RehearsalPlannerMessage::factory()->create([
+            'session_id' => $session->id,
+            'role'       => 'user',
+            'content'    => 'Earlier message',
+            'status'     => 'complete',
+        ]);
+        $assistant = RehearsalPlannerMessage::factory()->create([
+            'session_id' => $session->id,
+            'role'       => 'assistant',
+            'status'     => 'streaming',
+        ]);
+
+        $service = new class (app(RehearsalPlannerContextBuilder::class)) extends RehearsalPlannerService {
+            public function exposeHistory(
+                RehearsalPlannerSession $session,
+                RehearsalPlannerMessage $assistant,
+                ?string $userText,
+            ): array {
+                return $this->historyForTurn($session, $assistant, $userText);
+            }
+        };
+
+        $history = $service->exposeHistory($session, $assistant, null);
+        $contents = array_map(fn (Message $m) => (string) $m->content, $history);
+
+        $this->assertSame(['Earlier message'], $contents);
     }
 }

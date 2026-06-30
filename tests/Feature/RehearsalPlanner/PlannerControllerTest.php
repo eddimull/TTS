@@ -2,11 +2,12 @@
 
 namespace Tests\Feature\RehearsalPlanner;
 
+use App\Jobs\RehearsalPlannerTurnJob;
 use App\Models\Bands;
 use App\Models\RehearsalPlannerSession;
 use App\Models\User;
-use App\Services\RehearsalPlannerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class PlannerControllerTest extends TestCase
@@ -41,12 +42,11 @@ class PlannerControllerTest extends TestCase
         return ['X-Band-ID' => $band->id];
     }
 
-    public function test_start_creates_session_and_placeholder_and_returns_channel(): void
+    public function test_start_creates_session_and_placeholder_and_dispatches_job(): void
     {
-        // Stub the service so runTurn does nothing (no AI).
-        $this->mock(RehearsalPlannerService::class, function ($m) {
-            $m->shouldReceive('runTurn')->once();
-        });
+        // The turn runs on the queue (Fix 1): the request returns the channel
+        // immediately, before any broadcast, and pushes the job.
+        Queue::fake();
 
         [$user, $band, $token] = $this->actingMember();
 
@@ -68,11 +68,18 @@ class PlannerControllerTest extends TestCase
             'role'   => 'assistant',
             'status' => 'streaming',
         ]);
+
+        Queue::assertPushed(
+            RehearsalPlannerTurnJob::class,
+            fn (RehearsalPlannerTurnJob $job) => $job->sessionId === (int) $res->json('session_id')
+                && $job->assistantMessageId === (int) $res->json('assistant_message_id')
+                && $job->userText === null,
+        );
     }
 
-    public function test_message_persists_user_turn(): void
+    public function test_message_persists_user_turn_and_dispatches_job(): void
     {
-        $this->mock(RehearsalPlannerService::class, fn ($m) => $m->shouldReceive('runTurn')->once());
+        Queue::fake();
 
         [$user, $band, $token] = $this->actingMember();
         $session = RehearsalPlannerSession::factory()->create([
@@ -96,6 +103,13 @@ class PlannerControllerTest extends TestCase
             'role'       => 'user',
             'content'    => 'What should we rehearse?',
         ]);
+
+        Queue::assertPushed(
+            RehearsalPlannerTurnJob::class,
+            fn (RehearsalPlannerTurnJob $job) => $job->sessionId === $session->id
+                && $job->assistantMessageId === (int) $res->json('assistant_message_id')
+                && $job->userText === 'What should we rehearse?',
+        );
     }
 
     public function test_missing_api_key_returns_503(): void
@@ -141,7 +155,7 @@ class PlannerControllerTest extends TestCase
 
     public function test_message_for_session_from_another_band_returns_404(): void
     {
-        $this->mock(RehearsalPlannerService::class, fn ($m) => $m->shouldReceive('runTurn')->never());
+        Queue::fake();
 
         [$user, $band, $token] = $this->actingMember();
 
@@ -157,5 +171,7 @@ class PlannerControllerTest extends TestCase
             ['text' => 'cross-band attempt'],
             $this->headers($band)
         )->assertNotFound();
+
+        Queue::assertNothingPushed();
     }
 }

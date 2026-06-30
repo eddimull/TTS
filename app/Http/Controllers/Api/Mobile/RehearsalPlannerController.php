@@ -3,17 +3,15 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\RehearsalPlannerTurnJob;
 use App\Models\Bands;
 use App\Models\RehearsalPlannerSession;
-use App\Services\RehearsalPlannerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class RehearsalPlannerController extends Controller
 {
-    public function __construct(private RehearsalPlannerService $service) {}
-
     public function start(Bands $band): JsonResponse
     {
         if ($guard = $this->keyGuard()) {
@@ -30,7 +28,7 @@ class RehearsalPlannerController extends Controller
             'status' => 'streaming',
         ]);
 
-        $this->service->runTurn($session, $assistant, null);
+        RehearsalPlannerTurnJob::dispatch($session->id, $assistant->id, null);
 
         return response()->json([
             'session_id'           => $session->id,
@@ -60,7 +58,7 @@ class RehearsalPlannerController extends Controller
             'status' => 'streaming',
         ]);
 
-        $this->service->runTurn($session, $assistant, $validated['text']);
+        RehearsalPlannerTurnJob::dispatch($session->id, $assistant->id, $validated['text']);
 
         return response()->json([
             'user_message'         => $this->formatMessage($user),

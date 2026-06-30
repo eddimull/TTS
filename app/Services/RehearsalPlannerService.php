@@ -24,7 +24,7 @@ class RehearsalPlannerService
             $session->loadMissing('band');
             $context = $this->contextBuilder->build($session->band);
 
-            $history = $this->buildHistory($session, $assistantMessage->id);
+            $history = $this->historyForTurn($session, $assistantMessage, $userText);
 
             // The opening turn has no userText; prompt the agent to assess the context.
             $prompt = $userText !== null && $userText !== ''
@@ -72,8 +72,49 @@ class RehearsalPlannerService
         }
     }
 
-    /** @return Message[] */
-    private function buildHistory(RehearsalPlannerSession $session, int $excludeMessageId): array
+    /**
+     * Build the replayed history for a turn while keeping it disjoint from the
+     * current prompt. History must contain only PRIOR complete turns; the
+     * current user turn (when present) is carried solely by the prompt, so it
+     * is excluded here to avoid the agent seeing it twice.
+     *
+     * The user row is created immediately before the assistant placeholder, so
+     * for a message() turn the current turn's earliest row is the most recent
+     * user message below the assistant placeholder; history must stop strictly
+     * before it. For the opening start() turn there is no user text, so we
+     * simply exclude the assistant placeholder itself.
+     *
+     * Made protected so the disjointness invariant is unit-testable via a thin
+     * subclass seam.
+     *
+     * @return Message[]
+     */
+    protected function historyForTurn(
+        RehearsalPlannerSession $session,
+        RehearsalPlannerMessage $assistantMessage,
+        ?string $userText,
+    ): array {
+        $boundaryId = $assistantMessage->id;
+
+        if ($userText !== null && $userText !== '') {
+            $currentUserId = $session->messages()
+                ->where('role', 'user')
+                ->where('id', '<', $assistantMessage->id)
+                ->max('id');
+            if ($currentUserId !== null) {
+                $boundaryId = $currentUserId;
+            }
+        }
+
+        return $this->buildHistory($session, $boundaryId);
+    }
+
+    /**
+     * Replay only complete turns strictly before $excludeMessageId.
+     *
+     * @return Message[]
+     */
+    protected function buildHistory(RehearsalPlannerSession $session, int $excludeMessageId): array
     {
         return $session->messages()
             ->where('id', '<', $excludeMessageId)
