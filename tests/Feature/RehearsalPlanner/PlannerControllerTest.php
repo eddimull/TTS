@@ -1,0 +1,161 @@
+<?php
+
+namespace Tests\Feature\RehearsalPlanner;
+
+use App\Models\Bands;
+use App\Models\RehearsalPlannerSession;
+use App\Models\User;
+use App\Services\RehearsalPlannerService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class PlannerControllerTest extends TestCase
+{
+    use RefreshDatabase;
+
+    /**
+     * Create a user who owns the band, authenticated via Sanctum.
+     *
+     * The `mobile.band:read:rehearsals` middleware (EnsureUserInBand) has
+     * three gates: (1) X-Band-ID header present, (2) band membership via
+     * allBands(), (3) Sanctum tokenCan('read:rehearsals'). Owning the band
+     * satisfies membership; a plain createToken() grants ['*'] abilities so
+     * tokenCan passes. The X-Band-ID header (and bearer token) must be sent
+     * on every request (see headers()). This mirrors
+     * tests/Feature/Api/Mobile/RehearsalsTest.php exactly.
+     */
+    private function actingMember(): array
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        $token = $user->createToken('test-device')->plainTextToken;
+        config(['services.anthropic.key' => 'test-key']);
+
+        return [$user, $band, $token];
+    }
+
+    private function headers(Bands $band): array
+    {
+        return ['X-Band-ID' => $band->id];
+    }
+
+    public function test_start_creates_session_and_placeholder_and_returns_channel(): void
+    {
+        // Stub the service so runTurn does nothing (no AI).
+        $this->mock(RehearsalPlannerService::class, function ($m) {
+            $m->shouldReceive('runTurn')->once();
+        });
+
+        [$user, $band, $token] = $this->actingMember();
+
+        $res = $this->withToken($token)->postJson(
+            "/api/mobile/bands/{$band->id}/rehearsal-planner/sessions",
+            [],
+            $this->headers($band)
+        );
+
+        $res->assertOk()->assertJsonStructure(['session_id', 'channel', 'assistant_message_id']);
+        $this->assertSame('private-rehearsal-planner.' . $res->json('session_id'), $res->json('channel'));
+        $this->assertDatabaseHas('rehearsal_planner_sessions', [
+            'id'      => $res->json('session_id'),
+            'band_id' => $band->id,
+            'user_id' => $user->id,
+        ]);
+        $this->assertDatabaseHas('rehearsal_planner_messages', [
+            'id'     => $res->json('assistant_message_id'),
+            'role'   => 'assistant',
+            'status' => 'streaming',
+        ]);
+    }
+
+    public function test_message_persists_user_turn(): void
+    {
+        $this->mock(RehearsalPlannerService::class, fn ($m) => $m->shouldReceive('runTurn')->once());
+
+        [$user, $band, $token] = $this->actingMember();
+        $session = RehearsalPlannerSession::factory()->create([
+            'band_id' => $band->id,
+            'user_id' => $user->id,
+        ]);
+
+        $res = $this->withToken($token)->postJson(
+            "/api/mobile/bands/{$band->id}/rehearsal-planner/sessions/{$session->id}/messages",
+            ['text' => 'What should we rehearse?'],
+            $this->headers($band)
+        );
+
+        $res->assertOk()->assertJsonStructure([
+            'user_message' => ['id', 'role', 'content'],
+            'assistant_message_id',
+            'channel',
+        ]);
+        $this->assertDatabaseHas('rehearsal_planner_messages', [
+            'session_id' => $session->id,
+            'role'       => 'user',
+            'content'    => 'What should we rehearse?',
+        ]);
+    }
+
+    public function test_missing_api_key_returns_503(): void
+    {
+        [$user, $band, $token] = $this->actingMember();
+        config(['services.anthropic.key' => null]);
+
+        $this->withToken($token)->postJson(
+            "/api/mobile/bands/{$band->id}/rehearsal-planner/sessions",
+            [],
+            $this->headers($band)
+        )
+            ->assertStatus(503)
+            ->assertJson(['error' => 'Anthropic API key not configured.']);
+    }
+
+    public function test_requires_auth(): void
+    {
+        $band = Bands::factory()->create();
+        $this->postJson("/api/mobile/bands/{$band->id}/rehearsal-planner/sessions")
+            ->assertUnauthorized();
+    }
+
+    public function test_show_for_session_from_another_band_returns_404(): void
+    {
+        [$user, $band, $token] = $this->actingMember();
+
+        // A session belonging to a DIFFERENT band the user also owns
+        // (so route membership passes) but mismatched against the URL band.
+        $otherBand = Bands::factory()->create();
+        $otherBand->owners()->create(['user_id' => $user->id]);
+        $session = RehearsalPlannerSession::factory()->create([
+            'band_id' => $otherBand->id,
+            'user_id' => $user->id,
+        ]);
+
+        // URL + header use $band, but the session belongs to $otherBand → abort_unless 404.
+        $this->withToken($token)->getJson(
+            "/api/mobile/bands/{$band->id}/rehearsal-planner/sessions/{$session->id}",
+            $this->headers($band)
+        )->assertNotFound();
+    }
+
+    public function test_message_for_session_from_another_band_returns_404(): void
+    {
+        $this->mock(RehearsalPlannerService::class, fn ($m) => $m->shouldReceive('runTurn')->never());
+
+        [$user, $band, $token] = $this->actingMember();
+
+        $otherBand = Bands::factory()->create();
+        $otherBand->owners()->create(['user_id' => $user->id]);
+        $session = RehearsalPlannerSession::factory()->create([
+            'band_id' => $otherBand->id,
+            'user_id' => $user->id,
+        ]);
+
+        $this->withToken($token)->postJson(
+            "/api/mobile/bands/{$band->id}/rehearsal-planner/sessions/{$session->id}/messages",
+            ['text' => 'cross-band attempt'],
+            $this->headers($band)
+        )->assertNotFound();
+    }
+}
