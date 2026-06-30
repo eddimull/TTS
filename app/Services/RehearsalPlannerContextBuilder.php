@@ -75,21 +75,39 @@ class RehearsalPlannerContextBuilder
     {
         // Rehearsals have no `date` column; the date lives on the rehearsal's
         // polymorphic events (Rehearsal morphMany Events as `eventable`).
-        // Pick rehearsals whose most-recent event is in the past, newest first.
+        // Pick rehearsals that have at least one PAST event, newest-past first.
+        //
+        // Ordering subtlety: a rehearsal may have both past AND future events.
+        // Ordering by its overall most-recent event would let a future event
+        // rank a rehearsal — so "last 5 past rehearsals" could be mis-ranked.
+        // We therefore order by each rehearsal's most-recent PAST event date,
+        // ignoring any future events for ranking purposes.
         $today = Carbon::today()->toDateString();
 
+        // We reach associated bookings through `associations()` (hasMany
+        // RehearsalAssociation, morphTo `associable`) rather than the
+        // `Rehearsal::bookings()` morphToMany. The latter injects a default
+        // `associable_type = Rehearsal` pivot constraint AND a manual
+        // `wherePivot('associable_type', Bookings)` constraint, so the two
+        // contradict and the relation always returns zero rows. The
+        // associations path resolves Booking associables correctly.
         $rehearsals = Rehearsal::query()
             ->where('band_id', $band->id)
             ->whereHas('events', fn ($q) => $q->whereDate('date', '<', $today))
-            ->withMax('events', 'date')
-            ->with(['bookings.events.setlist.songs.song'])
-            ->orderByDesc('events_max_date')
+            ->withMax(['events as events_max_past_date' => fn ($q) => $q->whereDate('date', '<', $today)], 'date')
+            ->with(['associations' => fn ($q) => $q->where('associable_type', Bookings::class),
+                    'associations.associable.events.setlist.songs.song'])
+            ->orderByDesc('events_max_past_date')
             ->limit(self::PAST_REHEARSAL_LIMIT)
             ->get();
 
         $titles = collect();
         foreach ($rehearsals as $rehearsal) {
-            foreach ($rehearsal->bookings as $booking) {
+            foreach ($rehearsal->associations as $association) {
+                $booking = $association->associable;
+                if (! $booking instanceof Bookings) {
+                    continue;
+                }
                 foreach ($booking->events as $event) {
                     $songs = $event->setlist?->songs ?? collect();
                     foreach ($songs as $setlistSong) {
