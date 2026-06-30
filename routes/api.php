@@ -15,6 +15,7 @@ use App\Http\Controllers\RehearsalController;
 use App\Http\Controllers\ChunkedUploadController;
 use App\Http\Controllers\Api\Mobile\AuthController as MobileAuthController;
 use App\Http\Controllers\Api\Mobile\BandSettingsController;
+use App\Http\Controllers\Api\Mobile\RehearsalPlannerController;
 
 /*
 |--------------------------------------------------------------------------
@@ -292,6 +293,19 @@ Route::prefix('mobile')->group(function () {
         // ── Rehearsals (read) ──────────────────────────────────────────
         Route::middleware('mobile.band:read:rehearsals')->group(function () {
             Route::get('/bands/{band}/rehearsal-schedules', [App\Http\Controllers\Api\Mobile\RehearsalsController::class, 'schedules'])->name('mobile.rehearsals.schedules');
+        });
+
+        // ── Rehearsal planner (AI) ─────────────────────────────────────
+        // No scopeBindings(): there is no Bands->sessions() relationship to scope
+        // {session} against. Band-scoping is enforced explicitly in the controller
+        // via abort_unless($session->band_id === $band->id, 404).
+        Route::middleware('mobile.band:read:rehearsals')->group(function () {
+            Route::post('/bands/{band}/rehearsal-planner/sessions', [RehearsalPlannerController::class, 'start'])
+                ->name('mobile.rehearsal-planner.start');
+            Route::post('/bands/{band}/rehearsal-planner/sessions/{session}/messages', [RehearsalPlannerController::class, 'message'])
+                ->name('mobile.rehearsal-planner.message');
+            Route::get('/bands/{band}/rehearsal-planner/sessions/{session}', [RehearsalPlannerController::class, 'show'])
+                ->name('mobile.rehearsal-planner.show');
         });
 
         // ── Music / Charts (read) ──────────────────────────────────────

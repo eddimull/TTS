@@ -25,3 +25,11 @@ Broadcast::channel('setlist.{sessionId}', function ($user, $sessionId) {
     if (!$session) return false;
     return $user->canRead('events', $session->band_id);
 });
+
+Broadcast::channel('rehearsal-planner.{sessionId}', function ($user, $sessionId) {
+    $session = \App\Models\RehearsalPlannerSession::find($sessionId);
+    if (!$session) {
+        return false;
+    }
+    return $user->canRead('rehearsals', $session->band_id);
+});
