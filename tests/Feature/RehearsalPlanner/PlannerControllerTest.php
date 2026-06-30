@@ -73,7 +73,8 @@ class PlannerControllerTest extends TestCase
             RehearsalPlannerTurnJob::class,
             fn (RehearsalPlannerTurnJob $job) => $job->sessionId === (int) $res->json('session_id')
                 && $job->assistantMessageId === (int) $res->json('assistant_message_id')
-                && $job->userText === null,
+                && $job->userText === null
+                && $job->userMessageId === null,
         );
     }
 
@@ -108,7 +109,8 @@ class PlannerControllerTest extends TestCase
             RehearsalPlannerTurnJob::class,
             fn (RehearsalPlannerTurnJob $job) => $job->sessionId === $session->id
                 && $job->assistantMessageId === (int) $res->json('assistant_message_id')
-                && $job->userText === 'What should we rehearse?',
+                && $job->userText === 'What should we rehearse?'
+                && $job->userMessageId === (int) $res->json('user_message.id'),
         );
     }
 

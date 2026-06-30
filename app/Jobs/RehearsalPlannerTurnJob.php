@@ -21,10 +21,18 @@ class RehearsalPlannerTurnJob implements ShouldQueue
      */
     public int $timeout = 130;
 
+    /**
+     * A streamed AI turn must not auto-retry/re-broadcast: a failed turn
+     * is already marked 'failed' and the error event has been dispatched;
+     * retrying would re-run the stream and re-broadcast on a stale placeholder.
+     */
+    public int $tries = 1;
+
     public function __construct(
         public int $sessionId,
         public int $assistantMessageId,
         public ?string $userText = null,
+        public ?int $userMessageId = null,
     ) {}
 
     public function handle(RehearsalPlannerService $service): void
@@ -36,6 +44,6 @@ class RehearsalPlannerTurnJob implements ShouldQueue
             return;
         }
 
-        $service->runTurn($session, $assistant, $this->userText);
+        $service->runTurn($session, $assistant, $this->userText, $this->userMessageId);
     }
 }

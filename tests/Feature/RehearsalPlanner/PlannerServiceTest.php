@@ -150,13 +150,14 @@ class PlannerServiceTest extends TestCase
                 RehearsalPlannerSession $session,
                 RehearsalPlannerMessage $assistant,
                 ?string $userText,
+                ?int $userMessageId = null,
             ): array {
-                return $this->historyForTurn($session, $assistant, $userText);
+                return $this->historyForTurn($session, $assistant, $userText, $userMessageId);
             }
         };
 
         /** @var Message[] $history */
-        $history = $service->exposeHistory($session, $assistant, 'Current question');
+        $history = $service->exposeHistory($session, $assistant, 'Current question', $currentUser->id);
 
         $contents = array_map(fn (Message $m) => (string) $m->content, $history);
 
@@ -189,12 +190,13 @@ class PlannerServiceTest extends TestCase
                 RehearsalPlannerSession $session,
                 RehearsalPlannerMessage $assistant,
                 ?string $userText,
+                ?int $userMessageId = null,
             ): array {
-                return $this->historyForTurn($session, $assistant, $userText);
+                return $this->historyForTurn($session, $assistant, $userText, $userMessageId);
             }
         };
 
-        $history = $service->exposeHistory($session, $assistant, null);
+        $history = $service->exposeHistory($session, $assistant, null, null);
         $contents = array_map(fn (Message $m) => (string) $m->content, $history);
 
         $this->assertSame(['Earlier message'], $contents);

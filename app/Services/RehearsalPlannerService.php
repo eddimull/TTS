@@ -19,12 +19,13 @@ class RehearsalPlannerService
         RehearsalPlannerSession $session,
         RehearsalPlannerMessage $assistantMessage,
         ?string $userText,
+        ?int $userMessageId = null,
     ): void {
         try {
             $session->loadMissing('band');
             $context = $this->contextBuilder->build($session->band);
 
-            $history = $this->historyForTurn($session, $assistantMessage, $userText);
+            $history = $this->historyForTurn($session, $assistantMessage, $userText, $userMessageId);
 
             // The opening turn has no userText; prompt the agent to assess the context.
             $prompt = $userText !== null && $userText !== ''
@@ -78,11 +79,11 @@ class RehearsalPlannerService
      * current user turn (when present) is carried solely by the prompt, so it
      * is excluded here to avoid the agent seeing it twice.
      *
-     * The user row is created immediately before the assistant placeholder, so
-     * for a message() turn the current turn's earliest row is the most recent
-     * user message below the assistant placeholder; history must stop strictly
-     * before it. For the opening start() turn there is no user text, so we
-     * simply exclude the assistant placeholder itself.
+     * Invariant: the controller always creates the user row immediately before
+     * the assistant placeholder and passes its id as $userMessageId. When
+     * $userMessageId is provided the history boundary is set directly to that
+     * id (eliminating any fragile re-derivation). When null (opening start()
+     * turn with no user text) we simply exclude the assistant placeholder.
      *
      * Made protected so the disjointness invariant is unit-testable via a thin
      * subclass seam.
@@ -93,17 +94,16 @@ class RehearsalPlannerService
         RehearsalPlannerSession $session,
         RehearsalPlannerMessage $assistantMessage,
         ?string $userText,
+        ?int $userMessageId = null,
     ): array {
-        $boundaryId = $assistantMessage->id;
-
-        if ($userText !== null && $userText !== '') {
-            $currentUserId = $session->messages()
-                ->where('role', 'user')
-                ->where('id', '<', $assistantMessage->id)
-                ->max('id');
-            if ($currentUserId !== null) {
-                $boundaryId = $currentUserId;
-            }
+        if ($userMessageId !== null) {
+            // Boundary passed explicitly: history stops strictly before the
+            // current user row — robust against insertion-order changes.
+            $boundaryId = $userMessageId;
+        } else {
+            // Opening turn (start()): no user row exists; exclude only the
+            // assistant placeholder.
+            $boundaryId = $assistantMessage->id;
         }
 
         return $this->buildHistory($session, $boundaryId);

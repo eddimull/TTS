@@ -28,7 +28,7 @@ class RehearsalPlannerController extends Controller
             'status' => 'streaming',
         ]);
 
-        RehearsalPlannerTurnJob::dispatch($session->id, $assistant->id, null);
+        RehearsalPlannerTurnJob::dispatch($session->id, $assistant->id, null, null);
 
         return response()->json([
             'session_id'           => $session->id,
@@ -58,7 +58,7 @@ class RehearsalPlannerController extends Controller
             'status' => 'streaming',
         ]);
 
-        RehearsalPlannerTurnJob::dispatch($session->id, $assistant->id, $validated['text']);
+        RehearsalPlannerTurnJob::dispatch($session->id, $assistant->id, $validated['text'], $user->id);
 
         return response()->json([
             'user_message'         => $this->formatMessage($user),
