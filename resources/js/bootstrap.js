@@ -24,14 +24,27 @@ import Pusher from 'pusher-js';
 
 window.Pusher = Pusher;
 
+// When VITE_PUSHER_HOST is set (self-hosted soketi, e.g. tts.band), pin Echo to
+// that host/port. When it is blank/absent, omit wsHost/wsPort entirely so
+// pusher-js routes to Pusher Cloud via `cluster` (ws-<cluster>.pusher.com).
+// This must track the server's broadcast target in config/broadcasting.php: the
+// browser and the backend have to terminate at the same broker. The mobile app
+// (pusher_channels_flutter) can only reach Pusher Cloud, so when the server moves
+// to Pusher Cloud the web client must move with it by blanking VITE_PUSHER_HOST.
+const pusherHost = import.meta.env.VITE_PUSHER_HOST;
+
 window.Echo = new Echo({
     broadcaster: 'pusher',
     key: import.meta.env.VITE_PUSHER_APP_KEY,
-    wsHost: import.meta.env.VITE_PUSHER_HOST,
-    wsPort: import.meta.env.VITE_PUSHER_PORT,
-    wssPort: import.meta.env.VITE_PUSHER_PORT,
+    cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER || 'mt1',
     forceTLS: true,
     disableStats: true,
     enabledTransports: ['ws', 'wss'],
-    cluster: 'mt1',
+    ...(pusherHost
+        ? {
+              wsHost: pusherHost,
+              wsPort: import.meta.env.VITE_PUSHER_PORT,
+              wssPort: import.meta.env.VITE_PUSHER_PORT,
+          }
+        : {}),
 });
