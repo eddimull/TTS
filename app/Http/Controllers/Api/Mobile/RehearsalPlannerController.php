@@ -20,11 +20,16 @@ class RehearsalPlannerController extends Controller
         }
 
         $validated = $request->validate([
-            // The rehearsal must belong to this band — scope the exists rule to it.
+            // The rehearsal must belong to this band and not be soft-deleted —
+            // Rehearsal uses SoftDeletes, and exists() ignores the global scope,
+            // so exclude trashed rows explicitly (matches the codebase
+            // convention in StoreRosterMemberRequest / SendQuestionnaireRequest).
             'rehearsal_id' => [
                 'nullable',
                 'integer',
-                Rule::exists('rehearsals', 'id')->where('band_id', $band->id),
+                Rule::exists('rehearsals', 'id')
+                    ->where('band_id', $band->id)
+                    ->whereNull('deleted_at'),
             ],
         ]);
 

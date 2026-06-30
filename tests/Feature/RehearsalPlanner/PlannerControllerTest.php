@@ -203,6 +203,31 @@ class PlannerControllerTest extends TestCase
         ]);
     }
 
+    public function test_start_rejects_soft_deleted_rehearsal(): void
+    {
+        Queue::fake();
+
+        [$user, $band, $token] = $this->actingMember();
+
+        // A trashed rehearsal must not be plannable: exists() ignores the
+        // SoftDeletes global scope, so the rule must exclude deleted rows or it
+        // would persist a dangling rehearsal_id that resolves to null focus.
+        $schedule = \App\Models\RehearsalSchedule::factory()->create(['band_id' => $band->id]);
+        $rehearsal = \App\Models\Rehearsal::factory()->create([
+            'band_id'               => $band->id,
+            'rehearsal_schedule_id' => $schedule->id,
+        ]);
+        $rehearsal->delete();
+
+        $this->withToken($token)->postJson(
+            "/api/mobile/bands/{$band->id}/rehearsal-planner/sessions",
+            ['rehearsal_id' => $rehearsal->id],
+            $this->headers($band)
+        )->assertStatus(422)->assertJsonValidationErrors('rehearsal_id');
+
+        Queue::assertNothingPushed();
+    }
+
     public function test_start_rejects_rehearsal_id_from_another_band(): void
     {
         Queue::fake();
