@@ -103,11 +103,18 @@ class SendContractCcRecipientTest extends TestCase
         $response->assertOk();
 
         // Prove the coercion worked end-to-end: PandaDoc was called with both the
-        // signer and the single CC recipient in the payload.
+        // signer and the single CC recipient in the payload. Assert on presence
+        // (not position) so the test isn't coupled to sendToPandaDoc()'s
+        // recipient ordering.
         Http::assertSent(function ($request) use ($signer, $cc) {
-            return $request->url() === 'https://api.pandadoc.com/public/v1/documents'
-                && $request['recipients'][0]['email'] === $signer->email
-                && collect($request['recipients'])->contains(
+            if ($request->url() !== 'https://api.pandadoc.com/public/v1/documents') {
+                return false;
+            }
+
+            $recipients = collect($request['recipients'] ?? []);
+
+            return $recipients->contains(fn ($r) => ($r['email'] ?? null) === $signer->email)
+                && $recipients->contains(
                     fn ($r) => ($r['email'] ?? null) === $cc->email && ($r['recipient_type'] ?? null) === 'CC'
                 );
         });
