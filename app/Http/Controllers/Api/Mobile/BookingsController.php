@@ -534,7 +534,11 @@ class BookingsController extends Controller
             return response()->json(['message' => 'Signer contact not found on this booking.'], 422);
         }
 
-        $ccContact = !empty($validated['cc_id']) ? $booking->contacts()->find($validated['cc_id']) : null;
+        $ccContacts = null;
+        if (!empty($validated['cc_id'])) {
+            $found = $booking->contacts()->whereKey($validated['cc_id'])->get();
+            $ccContacts = $found->isNotEmpty() ? $found : null;
+        }
 
         try {
             $contractPdf = $booking->getContractPdf($contact);
@@ -553,7 +557,7 @@ class BookingsController extends Controller
         }
 
         try {
-            $contract->sendToPandaDoc($contact, $ccContact);
+            $contract->sendToPandaDoc($contact, $ccContacts);
             $booking->update(['status' => 'pending']);
 
             return response()->json([

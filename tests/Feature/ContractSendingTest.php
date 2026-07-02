@@ -121,6 +121,52 @@ class ContractSendingTest extends TestCase
 
 
 
+    public function test_single_cc_id_is_coerced_to_collection_for_pandadoc()
+    {
+        // Regression for TTS-BAND-158: the mobile sendContract controller
+        // previously passed a single Contacts model (from ->find($id)) to
+        // sendToPandaDoc, which type-hints ?Eloquent\Collection and blew up
+        // with a TypeError. Resolving a single cc_id via ->whereKey()->get()
+        // must yield an Eloquent Collection that sendToPandaDoc accepts.
+        Http::fake([
+            'api.pandadoc.com/*' => Http::response([
+                'id' => 'fake-pandadoc-id',
+                'status' => 'document.draft',
+            ], 201)
+        ]);
+
+        $band = Bands::factory()->create();
+        $booking = Bookings::factory()->forBand($band)->create();
+        $contact = Contacts::factory()->create();
+        $ccContact = Contacts::factory()->create();
+        $booking->contacts()->attach($contact, ['role' => 'Primary', 'is_primary' => true]);
+        $booking->contacts()->attach($ccContact, ['role' => 'CC']);
+
+        $contract = Contracts::factory()->for($booking, 'contractable')->create([
+            'asset_url' => 'https://example.com/fake-contract.pdf',
+            'custom_terms' => [
+                ['title' => 'Term 1', 'content' => 'Content 1'],
+            ],
+        ]);
+
+        // Reproduce exactly how BookingsController::sendContract resolves a
+        // single cc_id into the argument passed to sendToPandaDoc.
+        $ccContacts = $booking->contacts()->whereKey($ccContact->id)->get();
+        $this->assertInstanceOf(\Illuminate\Database\Eloquent\Collection::class, $ccContacts);
+
+        $result = $contract->sendToPandaDoc($contact, $ccContacts);
+
+        Http::assertSent(function ($request) use ($contact, $ccContact)
+        {
+            return $request->url() == 'https://api.pandadoc.com/public/v1/documents' &&
+                $request['recipients'][0]['email'] == $contact->email &&
+                $request['recipients'][1]['email'] == $ccContact->email;
+        });
+
+        $this->assertEquals('fake-pandadoc-id', $result['id']);
+        $this->assertEquals('document.draft', $result['status']);
+    }
+
     public function test_contract_sending_handles_api_error()
     {
         // Override the fake to simulate an API error
