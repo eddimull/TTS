@@ -85,19 +85,39 @@ class MobileChartsAggregateTest extends TestCase
         $this->assertContains('Member Chart', $titles);
     }
 
-    public function test_band_sub_also_sees_charts(): void
+    public function test_band_sub_sees_only_assigned_gig_charts(): void
     {
+        // A sub sees charts for gigs they're assigned to, but NOT the sub band's
+        // whole chart library (which can include pricing they shouldn't see).
         $user = User::factory()->create();
         $band = $this->makeBand('Sub Band');
         BandSubs::create(['user_id' => $user->id, 'band_id' => $band->id]);
-        Charts::create(['band_id' => $band->id, 'title' => 'Sub Chart']);
+
+        $assigned   = Charts::create(['band_id' => $band->id, 'title' => 'Assigned Sub Chart']);
+        Charts::create(['band_id' => $band->id, 'title' => 'Unassigned Sub Chart']);
+
+        $booking = \App\Models\Bookings::factory()->create(['band_id' => $band->id]);
+        $event   = \App\Models\Events::factory()->create([
+            'eventable_id'    => $booking->id,
+            'eventable_type'  => \App\Models\Bookings::class,
+            'date'            => now()->addDays(5)->format('Y-m-d'),
+            'additional_data' => ['performance' => ['charts' => [['id' => $assigned->id, 'title' => 'Assigned Sub Chart']]]],
+        ]);
+        \App\Models\EventMember::create([
+            'event_id'         => $event->id,
+            'band_id'          => $band->id,
+            'user_id'          => $user->id,
+            'roster_member_id' => null,
+            'name'             => $user->name,
+        ]);
 
         $token = $user->createToken('test')->plainTextToken;
         $response = $this->withToken($token)->getJson('/api/mobile/charts');
 
         $response->assertOk();
         $titles = collect($response->json('charts'))->pluck('title');
-        $this->assertContains('Sub Chart', $titles);
+        $this->assertContains('Assigned Sub Chart', $titles);
+        $this->assertNotContains('Unassigned Sub Chart', $titles);
     }
 
     public function test_each_chart_includes_band_block(): void
