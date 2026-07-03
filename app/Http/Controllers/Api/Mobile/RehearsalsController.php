@@ -63,8 +63,8 @@ class RehearsalsController extends Controller
             abort(404, 'Band not found for this rehearsal.');
         }
 
-        if (!$request->user()->allBands()->contains('id', $band->id)) {
-            abort(403, 'You are not a member of this band.');
+        if (!$request->user()->canRead('rehearsals', $band->id)) {
+            abort(403, 'You do not have permission to view this rehearsal.');
         }
 
         return response()->json([
@@ -94,6 +94,10 @@ class RehearsalsController extends Controller
                 abort(404, 'Band not found for this rehearsal.');
             }
 
+            if (!$request->user()->canRead('rehearsals', $band->id)) {
+                abort(403, 'You do not have permission to view this rehearsal.');
+            }
+
             return response()->json([
                 'rehearsal' => $this->rehearsalService->formatDetail($rehearsalModel),
             ]);
@@ -106,6 +110,10 @@ class RehearsalsController extends Controller
 
         if (!$band) {
             abort(404, 'Band not found for this rehearsal.');
+        }
+
+        if (!$request->user()->canRead('rehearsals', $band->id)) {
+            abort(403, 'You do not have permission to view this rehearsal.');
         }
 
         $rehearsalModel = $this->rehearsalService->findOrCreateStub($schedule, $date, $key);
@@ -127,6 +135,10 @@ class RehearsalsController extends Controller
 
         if (!$band) {
             abort(404, 'Band not found for this rehearsal.');
+        }
+
+        if (!$request->user()->canWrite('rehearsals', $band->id)) {
+            abort(403, 'You do not have permission to edit this rehearsal.');
         }
 
         $validated = $request->validated();

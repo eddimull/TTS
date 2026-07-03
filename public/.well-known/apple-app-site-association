@@ -1,5 +1,9 @@
 {
   "webcredentials": {
     "apps": ["FBE5WVZKNK.band.tts.mate"]
+  },
+  "applinks": {
+    "apps": [],
+    "details": [{ "appID": "FBE5WVZKNK.band.tts.mate", "paths": ["/invite/*"] }]
   }
 }

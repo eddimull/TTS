@@ -81,6 +81,59 @@ class User extends Authenticatable
     }
 
     /**
+     * Chart IDs a sub is entitled to see for a given band: the charts referenced
+     * in the additional_data of events the user is assigned to (accepted
+     * event_subs, or event_members rows filling a sub slot). A sub does NOT get
+     * the band's whole chart library — only the charts for gigs they play.
+     *
+     * @return array<int>
+     */
+    public function assignedChartIdsForBand($bandId): array
+    {
+        // Events in this band the user is assigned to as a sub.
+        $assignedEventIds = array_values(array_unique(array_merge(
+            \DB::table('event_subs')
+                ->where('user_id', $this->id)
+                ->where('pending', false)
+                ->pluck('event_id')
+                ->toArray(),
+            \DB::table('event_members')
+                ->where('user_id', $this->id)
+                ->whereNull('roster_member_id')
+                ->whereNull('deleted_at')
+                ->pluck('event_id')
+                ->toArray(),
+        )));
+
+        if (empty($assignedEventIds)) {
+            return [];
+        }
+
+        // Restrict to events that belong to this band, then pull chart ids out of
+        // their additional_data->performance->charts[].id references.
+        $events = \App\Models\Events::whereIn('id', $assignedEventIds)
+            ->whereHasMorph('eventable', [\App\Models\Bookings::class, \App\Models\Rehearsal::class], function ($q) use ($bandId) {
+                $q->where('band_id', $bandId);
+            })
+            ->pluck('additional_data');
+
+        $chartIds = [];
+        foreach ($events as $additionalData) {
+            $charts = $additionalData->performance->charts ?? null;
+            if (is_array($charts)) {
+                foreach ($charts as $chart) {
+                    $id = is_object($chart) ? ($chart->id ?? null) : ($chart['id'] ?? null);
+                    if ($id !== null) {
+                        $chartIds[] = (int) $id;
+                    }
+                }
+            }
+        }
+
+        return array_values(array_unique($chartIds));
+    }
+
+    /**
      * Return this user's calendar feed token, minting one on first access.
      *
      * The token authenticates the unauthenticated ICS subscription URL
@@ -139,7 +192,12 @@ class User extends Authenticatable
             return true;
         }
 
-        if ($resource === 'events' && $this->isSubOfBand($bandId)) {
+        // Subs may READ events and charts for bands they sub for, but the
+        // controller must scope the results to the gigs they're assigned to
+        // (their assigned events / the charts on those events) — a sub does not
+        // get the band's full library. Any other resource (bookings, finances,
+        // media, rehearsals) is NOT readable by a sub without an explicit grant.
+        if (in_array($resource, ['events', 'charts'], true) && $this->isSubOfBand($bandId)) {
             return true;
         }
 
