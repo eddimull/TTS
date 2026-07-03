@@ -41,6 +41,12 @@ Route::get('/stats', 'UserStatsController@index')
 Route::get('/contracts/{contractId}/public', [App\Http\Controllers\ContractsController::class, 'publicView'])
     ->name('contracts.public.view');
 
+// Public invite landing — target of the invite QR URL (https://tts.band/invite/{key}).
+// Phones with the app installed never hit this (App Links / Universal Links open the
+// app instead); browsers land here to get the app or join on the web.
+Route::get('/invite/{key}', [App\Http\Controllers\Onboarding\InviteLandingController::class, 'show'])
+    ->name('invite.landing');
+
 // Public per-user ICS calendar feed (subscribed in Google/Apple Calendar).
 // Authenticated by the random calendar_token in the URL; no session/Sanctum.
 // The {token} may carry a trailing ".ics" so calendar clients treat it as a file.

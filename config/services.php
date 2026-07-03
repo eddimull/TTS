@@ -67,4 +67,11 @@ return [
         'upload_notification_delay' => env('MEDIA_UPLOAD_NOTIFICATION_DELAY', 5), // minutes
     ],
 
+    // Store listings for the Bandmate mobile app; the invite landing page
+    // hides each button until its URL is configured.
+    'mobile_app' => [
+        'app_store_url' => env('APP_STORE_URL'),
+        'play_store_url' => env('PLAY_STORE_URL'),
+    ],
+
 ];
