@@ -27,9 +27,14 @@ class FinanceTrendsTest extends TestCase
         $this->member = User::factory()->create();
         $this->band = Bands::factory()->create();
 
-        // Band member with the read:bookings ability — the finances routes are
-        // gated by `mobile.band:read:bookings`.
+        // Band member with the read:bookings permission — the finances routes are
+        // gated by `mobile.band:read:bookings`, which re-checks the per-band
+        // permission (not just the token ability), so the member must actually
+        // hold read:bookings for this band.
         BandMembers::create(['band_id' => $this->band->id, 'user_id' => $this->member->id]);
+        setPermissionsTeamId($this->band->id);
+        $this->member->givePermissionTo('read:bookings');
+        setPermissionsTeamId(0);
         $this->memberToken = $this->member
             ->createToken('test-device', ['read:bookings'])
             ->plainTextToken;

@@ -50,6 +50,30 @@ class EnsureUserInBand
             ], 403);
         }
 
+        // Token abilities are band-agnostic: a user who has, say, read:bookings on
+        // ANY of their bands carries a bare "read:bookings" ability, which the
+        // tokenCan() check above cannot tie back to THIS band. Re-check the
+        // ability against the resolved band so a sub (who is in allBands() but
+        // lacks the per-band permission) can't reach another band's resources.
+        // canRead()/canWrite() are band-scoped and already encode the owner
+        // shortcut and the sub-can-read-events exception.
+        if ($ability && str_contains($ability, ':')) {
+            [$action, $resource] = explode(':', $ability, 2);
+
+            $allowed = match ($action) {
+                'read'  => $user->canRead($resource, $band->id),
+                'write' => $user->canWrite($resource, $band->id),
+                default => true, // unrecognised action shape: leave to tokenCan()
+            };
+
+            if (!$allowed) {
+                return response()->json([
+                    'error' => 'Forbidden.',
+                    'message' => 'You do not have permission for this resource in this band.',
+                ], 403);
+            }
+        }
+
         $request->merge(['mobile_band' => $band]);
 
         // Substitute the resolved model back into the route parameter so that

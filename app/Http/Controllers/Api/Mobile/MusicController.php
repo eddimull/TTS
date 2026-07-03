@@ -18,6 +18,17 @@ use Illuminate\Support\Facades\Storage;
 class MusicController extends Controller
 {
     /**
+     * True when the user reaches this band ONLY as a sub (not owner/member).
+     * Such a user is entitled to see charts only for gigs they're assigned to.
+     */
+    private function isSubOnly(\App\Models\User $user, int $bandId): bool
+    {
+        return $user->isSubOfBand($bandId)
+            && !$user->ownsBand($bandId)
+            && !$user->isPartOfBand($bandId);
+    }
+
+    /**
      * List all active songs for a band.
      */
     public function songs(Request $_request, Bands $band): JsonResponse
@@ -45,7 +56,15 @@ class MusicController extends Controller
      */
     public function charts(Request $_request, Bands $band): JsonResponse
     {
-        $charts = Charts::where('band_id', $band->id)
+        $query = Charts::where('band_id', $band->id);
+
+        // A sub (not owner/member) sees only the charts for gigs they're assigned
+        // to, not the band's whole library.
+        if ($this->isSubOnly($_request->user(), $band->id)) {
+            $query->whereIn('id', $_request->user()->assignedChartIdsForBand($band->id));
+        }
+
+        $charts = $query
             ->withCount('uploads')
             ->orderBy('title')
             ->get();
@@ -75,15 +94,33 @@ class MusicController extends Controller
     {
         $user = $request->user();
         $bands = $user->allBands();
-        $bandIds = $bands->pluck('id')->all();
 
-        if (empty($bandIds)) {
+        // Owner/member bands contribute their whole chart library. Bands the user
+        // ONLY subs for contribute only the charts for gigs they're assigned to
+        // (not the full library — see User::assignedChartIdsForBand).
+        $fullLibraryBandIds = $user->bands()->pluck('id')->all();
+        $subOnlyBandIds = array_values(array_diff($bands->pluck('id')->all(), $fullLibraryBandIds));
+
+        $assignedChartIds = [];
+        foreach ($subOnlyBandIds as $subBandId) {
+            $assignedChartIds = array_merge($assignedChartIds, $user->assignedChartIdsForBand($subBandId));
+        }
+        $assignedChartIds = array_values(array_unique($assignedChartIds));
+
+        if (empty($fullLibraryBandIds) && empty($assignedChartIds)) {
             return response()->json(['charts' => []]);
         }
 
         $bandLookup = $bands->keyBy('id');
 
-        $charts = Charts::whereIn('band_id', $bandIds)
+        $charts = Charts::where(function ($q) use ($fullLibraryBandIds, $assignedChartIds) {
+                if (!empty($fullLibraryBandIds)) {
+                    $q->whereIn('band_id', $fullLibraryBandIds);
+                }
+                if (!empty($assignedChartIds)) {
+                    $q->orWhereIn('id', $assignedChartIds);
+                }
+            })
             ->withCount('uploads')
             ->orderBy('title')
             ->get();
@@ -118,6 +155,12 @@ class MusicController extends Controller
     {
         // Ensure the chart belongs to this band
         if ((int) $chart->band_id !== (int) $band->id) {
+            return response()->json(['message' => 'Chart not found.'], 404);
+        }
+
+        // A sub may only view charts for gigs they're assigned to.
+        if ($this->isSubOnly($_request->user(), $band->id)
+            && !in_array((int) $chart->id, $_request->user()->assignedChartIdsForBand($band->id), true)) {
             return response()->json(['message' => 'Chart not found.'], 404);
         }
 
@@ -294,6 +337,12 @@ class MusicController extends Controller
     public function downloadChartUpload(Request $_request, Bands $band, Charts $chart, ChartUploads $upload)
     {
         if ((int) $chart->band_id !== (int) $band->id) {
+            return response()->json(['message' => 'Chart not found.'], 404);
+        }
+
+        // A sub may only download files for charts on gigs they're assigned to.
+        if ($this->isSubOnly($_request->user(), $band->id)
+            && !in_array((int) $chart->id, $_request->user()->assignedChartIdsForBand($band->id), true)) {
             return response()->json(['message' => 'Chart not found.'], 404);
         }
 
