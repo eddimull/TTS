@@ -41,7 +41,11 @@ class OnboardingController extends Controller
             return redirect(RouteServiceProvider::HOME);
         }
 
-        return Inertia::render('Onboarding/PathSelection');
+        return Inertia::render('Onboarding/PathSelection', [
+            // Stashed by the public invite landing page (/invite/{key}) so a
+            // scanner who had to register first doesn't retype the code.
+            'pendingInviteKey' => $request->session()->get('pending_invite_key', ''),
+        ]);
     }
 
     /**
@@ -100,6 +104,8 @@ class OnboardingController extends Controller
             $invitation->pending = false;
             $invitation->save();
         }
+
+        $request->session()->forget('pending_invite_key');
 
         return redirect(RouteServiceProvider::HOME)
             ->with('successMessage', 'You\'ve joined the band!');
