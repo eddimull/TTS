@@ -9,11 +9,13 @@ use App\Services\GoogleCalendarService;
 use App\Services\Stripe\StripeClientWrapper;
 use Google\Client;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\ParallelTesting;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use SocialiteProviders\Manager\SocialiteWasCalled;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -51,6 +53,8 @@ class AppServiceProvider extends ServiceProvider
         if (env('VITE_FORCE_BUILD')) {
             Vite::useHotFile(storage_path('framework/vite.dusk.never-exists'));
         }
+
+        Event::listen(SocialiteWasCalled::class, [\SocialiteProviders\Apple\AppleExtendSocialite::class, 'handle']);
 
         ParallelTesting::setUpProcess(function() {
             Artisan::call('migrate:fresh', ['--seed' => true]);
