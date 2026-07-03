@@ -54,6 +54,16 @@ abstract class AbstractIdTokenVerifier implements SocialTokenVerifier
             throw new InvalidSocialTokenException("Could not verify your {$this->provider()} sign-in.");
         }
 
+        // email_verified may arrive as a boolean or, for Apple, a string.
+        // Fail closed: a missing or falsy claim is treated as unverified so an
+        // unverified-email token can never auto-link to an existing account.
+        $emailVerified = $claims->email_verified ?? null;
+        if ($emailVerified !== true && $emailVerified !== 'true') {
+            throw new InvalidSocialTokenException(
+                "Your {$this->provider()} account's email address is not verified."
+            );
+        }
+
         return $this->toProfile($claims);
     }
 }

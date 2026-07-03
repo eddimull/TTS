@@ -41,12 +41,13 @@ class AppleIdTokenVerifierTest extends TestCase
     private function makeToken(array $overrides = []): string
     {
         $claims = array_merge([
-            'iss'   => 'https://appleid.apple.com',
-            'aud'   => 'band.tts.bandmate',
-            'sub'   => 'apple-user-1',
-            'email' => 'apple-user@example.com',
-            'iat'   => time(),
-            'exp'   => time() + 300,
+            'iss'            => 'https://appleid.apple.com',
+            'aud'            => 'band.tts.bandmate',
+            'sub'            => 'apple-user-1',
+            'email'          => 'apple-user@example.com',
+            'email_verified' => true,
+            'iat'            => time(),
+            'exp'            => time() + 300,
         ], $overrides);
 
         return JWT::encode($claims, $this->privateKey, 'RS256', 'test-key');
@@ -84,13 +85,29 @@ class AppleIdTokenVerifierTest extends TestCase
     {
         $this->expectException(InvalidSocialTokenException::class);
         $claims = [
-            'iss'   => 'https://appleid.apple.com',
-            'aud'   => 'band.tts.bandmate',
-            'email' => 'apple-user@example.com',
-            'iat'   => time(),
-            'exp'   => time() + 300,
+            'iss'            => 'https://appleid.apple.com',
+            'aud'            => 'band.tts.bandmate',
+            'email'          => 'apple-user@example.com',
+            'email_verified' => true,
+            'iat'            => time(),
+            'exp'            => time() + 300,
         ];
         $tokenWithoutSub = JWT::encode($claims, $this->privateKey, 'RS256', 'test-key');
         app(AppleIdTokenVerifier::class)->verify($tokenWithoutSub);
+    }
+
+    public function test_unverified_email_is_rejected(): void
+    {
+        $this->expectException(InvalidSocialTokenException::class);
+        $this->expectExceptionMessage("Your apple account's email address is not verified.");
+        app(AppleIdTokenVerifier::class)->verify($this->makeToken(['email_verified' => false]));
+    }
+
+    public function test_string_true_email_verified_is_accepted(): void
+    {
+        $profile = app(AppleIdTokenVerifier::class)->verify($this->makeToken(['email_verified' => 'true']));
+
+        $this->assertSame('apple', $profile->provider);
+        $this->assertSame('apple-user@example.com', $profile->email);
     }
 }
