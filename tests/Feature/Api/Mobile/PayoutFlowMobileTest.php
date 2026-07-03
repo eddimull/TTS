@@ -39,6 +39,13 @@ class PayoutFlowMobileTest extends TestCase
         // routes can assert a non-owner member is allowed.
         BandMembers::create(['band_id' => $this->band->id, 'user_id' => $this->member->id]);
 
+        // The payout-flow read routes are gated by `mobile.band:read:bookings`,
+        // which re-checks the per-band permission — grant it so the non-owner
+        // member is genuinely allowed on the read-gated routes.
+        setPermissionsTeamId($this->band->id);
+        $this->member->givePermissionTo('read:bookings');
+        setPermissionsTeamId(0);
+
         $this->ownerToken = $this->owner->createToken('test-device')->plainTextToken;
         $this->memberToken = $this->member->createToken('test-device')->plainTextToken;
     }

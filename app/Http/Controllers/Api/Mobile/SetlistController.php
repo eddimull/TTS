@@ -13,7 +13,6 @@ use App\Models\LiveSetlistSession;
 use App\Models\User;
 use App\Services\LiveSetlistSessionService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class SetlistController extends Controller
@@ -26,6 +25,10 @@ class SetlistController extends Controller
     {
         $event->loadMissing('eventable.band');
         $band = $event->eventable->band;
+
+        if (!$band || !Auth::user()->canRead('events', $band->id)) {
+            abort(403);
+        }
 
         $session = $event->liveSetlistSession()
             ->with(['queue.song.leadSinger', 'captains.user', 'startedBy'])
@@ -64,6 +67,10 @@ class SetlistController extends Controller
     {
         $event->loadMissing('eventable.band');
         $band = $event->eventable->band;
+
+        if (!$band || !Auth::user()->canWrite('events', $band->id)) {
+            abort(403);
+        }
 
         if ($event->liveSetlistSession()->whereIn('status', ['active', 'paused', 'break'])->exists()) {
             return response()->json(['error' => 'A session is already in progress.'], 422);
