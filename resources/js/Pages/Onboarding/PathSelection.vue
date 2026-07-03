@@ -161,10 +161,16 @@ export default {
   layout: BreezeGuestWideLayout,
   pageTitle: 'Get Started',
 
+  props: {
+    // Stashed by the invite landing page (/invite/{key}) so a scanner who
+    // had to register first doesn't retype the code.
+    pendingInviteKey: { type: String, default: '' },
+  },
+
   data() {
     return {
       joinForm: this.$inertia.form({
-        key: '',
+        key: this.pendingInviteKey,
       }),
       soloForm: this.$inertia.form({}),
     }
