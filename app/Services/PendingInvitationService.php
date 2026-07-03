@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\BandMembers;
 use App\Models\BandOwners;
+use App\Models\BandSubInvitation;
 use App\Models\EventSubs;
 use App\Models\Invitations;
 use App\Models\User;
@@ -28,6 +29,17 @@ class PendingInvitationService
             $service = new SubInvitationService();
             foreach ($subInvitations as $eventSub) {
                 $service->acceptInvitation($eventSub->invitation_key, $user);
+            }
+        }
+
+        $bandSubInvitations = BandSubInvitation::where('email', $user->email)
+            ->where('pending', true)
+            ->get();
+
+        if ($bandSubInvitations->isNotEmpty()) {
+            $service = $service ?? new SubInvitationService();
+            foreach ($bandSubInvitations as $bandInvitation) {
+                $service->acceptBandInvitation($bandInvitation->invitation_key, $user);
             }
         }
 
