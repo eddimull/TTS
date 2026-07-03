@@ -583,4 +583,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(\App\Models\DeviceToken::class);
     }
+
+    public function socialAccounts()
+    {
+        return $this->hasMany(SocialAccount::class);
+    }
 }

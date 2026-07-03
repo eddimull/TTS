@@ -61,6 +61,7 @@ Route::get('/contracts/{contract:envelope_id}/history', [ContractsController::cl
 Route::prefix('mobile')->group(function () {
     // Public: login
     Route::post('/auth/token', [MobileAuthController::class, 'token'])->name('mobile.auth.token');
+    Route::post('/auth/social', [App\Http\Controllers\Api\Mobile\SocialAuthController::class, 'token'])->name('mobile.auth.social');
 
     // Registration
     Route::post('/auth/register', [App\Http\Controllers\Api\Mobile\OnboardingController::class, 'register'])->name('mobile.auth.register');

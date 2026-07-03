@@ -74,4 +74,26 @@ return [
         'play_store_url' => env('PLAY_STORE_URL'),
     ],
 
+    'google' => [
+        'client_id'     => env('GOOGLE_SIGNIN_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_SIGNIN_CLIENT_SECRET'),
+        'redirect'      => env('APP_URL') . '/auth/google/callback',
+        // id_token `aud` whitelist: web client id + Android + iOS client ids, comma-separated.
+        'allowed_client_ids' => array_filter(explode(',', env('GOOGLE_SIGNIN_ALLOWED_CLIENT_IDS', ''))),
+    ],
+
+    'facebook' => [
+        'client_id'     => env('FACEBOOK_CLIENT_ID'),
+        'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
+        'redirect'      => env('APP_URL') . '/auth/facebook/callback',
+    ],
+
+    'apple' => [
+        'client_id'     => env('APPLE_SERVICES_CLIENT_ID'),   // Services ID (web flow)
+        'client_secret' => env('APPLE_CLIENT_SECRET'),         // pre-generated JWT, expires ≤6 months
+        'redirect'      => env('APP_URL') . '/auth/apple/callback',
+        // id_token `aud` whitelist: iOS bundle id + Services ID, comma-separated.
+        'allowed_client_ids' => array_filter(explode(',', env('APPLE_SIGNIN_ALLOWED_CLIENT_IDS', ''))),
+    ],
+
 ];

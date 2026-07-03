@@ -105,6 +105,8 @@
       </breeze-button>
     </div>
   </form>
+
+  <social-login-buttons />
 </template>
 
 <script>
@@ -113,6 +115,7 @@
     import BreezeInput from '@/Components/Input'
     import BreezeLabel from '@/Components/Label'
     import BreezeValidationErrors from '@/Components/ValidationErrors'
+    import SocialLoginButtons from '@/Components/SocialLoginButtons'
 
     export default {
         components: {
@@ -120,6 +123,7 @@
             BreezeInput,
             BreezeLabel,
             BreezeValidationErrors,
+            SocialLoginButtons,
         },
         layout: BreezeGuestLayout,
         data() {

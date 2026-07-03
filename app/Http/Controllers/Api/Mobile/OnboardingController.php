@@ -9,6 +9,7 @@ use App\Models\Bands;
 use App\Models\Invitations;
 use App\Services\InvitationServices;
 use App\Services\Mobile\TokenService;
+use App\Services\PendingInvitationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,15 +17,16 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
-use App\Models\EventSubs;
-use App\Services\SubInvitationService;
 
 class OnboardingController extends Controller
 {
     const OWNER_INVITE_TYPE = 1;
     const MEMBER_INVITE_TYPE = 2;
 
-    public function __construct(private readonly TokenService $tokenService) {}
+    public function __construct(
+        private readonly TokenService $tokenService,
+        private readonly PendingInvitationService $pendingInvitations,
+    ) {}
 
     // ── POST /api/mobile/auth/register ────────────────────────────────────────
 
@@ -43,43 +45,7 @@ class OnboardingController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        // Apply any pending sub-invitations
-        $subInvitations = EventSubs::where('email', $user->email)
-            ->where('pending', true)
-            ->get();
-
-        if ($subInvitations->isNotEmpty()) {
-            $service = new SubInvitationService();
-            foreach ($subInvitations as $eventSub) {
-                $service->acceptInvitation($eventSub->invitation_key, $user);
-            }
-        }
-
-        // Apply any pending band invitations
-        $invitations = Invitations::where('email', $user->email)
-            ->where('pending', true)
-            ->get();
-
-        foreach ($invitations as $invitation) {
-            if ($invitation->invite_type_id === static::OWNER_INVITE_TYPE) {
-                BandOwners::create([
-                    'user_id' => $user->id,
-                    'band_id' => $invitation->band_id,
-                ]);
-                setPermissionsTeamId($invitation->band_id);
-                $user->assignRole('band-owner');
-                setPermissionsTeamId(null);
-            }
-            if ($invitation->invite_type_id === static::MEMBER_INVITE_TYPE) {
-                BandMembers::create([
-                    'user_id' => $user->id,
-                    'band_id' => $invitation->band_id,
-                ]);
-                $user->assignBandMemberDefaults($invitation->band_id);
-            }
-            $invitation->pending = false;
-            $invitation->save();
-        }
+        $this->pendingInvitations->applyFor($user);
 
         $abilities = $this->tokenService->buildAbilities($user);
         $token     = $user->createToken($request->device_name, $abilities)->plainTextToken;

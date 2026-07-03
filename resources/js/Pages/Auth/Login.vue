@@ -75,6 +75,8 @@
     </div>
   </form>
 
+  <social-login-buttons />
+
   <div
     v-if="canRegister"
     class="mt-6 text-center"
@@ -111,6 +113,7 @@
     import BreezeCheckbox from '@/Components/Checkbox'
     import BreezeLabel from '@/Components/Label'
     import BreezeValidationErrors from '@/Components/ValidationErrors'
+    import SocialLoginButtons from '@/Components/SocialLoginButtons'
 
     export default {
 
@@ -119,7 +122,8 @@
             BreezeInput,
             BreezeCheckbox,
             BreezeLabel,
-            BreezeValidationErrors
+            BreezeValidationErrors,
+            SocialLoginButtons
         },
         layout: BreezeGuestLayout,
 

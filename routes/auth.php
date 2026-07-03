@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Auth\SocialLoginController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\Onboarding\OnboardingController;
 use Illuminate\Support\Facades\Route;
@@ -24,6 +25,21 @@ Route::get('/login', [AuthenticatedSessionController::class, 'create'])
 
 Route::post('/login', [AuthenticatedSessionController::class, 'store'])
                 ->middleware('guest');
+
+// Social login (web / Inertia session flow). Apple posts its callback back
+// cross-site (form_post response mode), so it also needs a POST route; that
+// path is CSRF-exempt (see App\Http\Middleware\VerifyCsrfToken).
+Route::get('auth/{provider}/redirect', [SocialLoginController::class, 'redirect'])
+                ->middleware('guest')
+                ->name('social.redirect');
+
+Route::get('auth/{provider}/callback', [SocialLoginController::class, 'callback'])
+                ->middleware('guest')
+                ->name('social.callback');
+
+Route::post('auth/apple/callback', fn (\Illuminate\Http\Request $r) => app(SocialLoginController::class)->callback($r, 'apple'))
+                ->middleware('guest')
+                ->name('social.callback.apple');
 
 Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])
                 ->middleware('guest')
