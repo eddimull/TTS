@@ -31,9 +31,10 @@ class InviteLandingController extends Controller
         if ($invitation) {
             // Remember the key so a guest who registers gets it prefilled on
             // the onboarding join form, and send post-login traffic straight
-            // back to this page.
+            // back to this page ('url.intended' is what the login
+            // controller's redirect()->intended() reads).
             $request->session()->put('pending_invite_key', $key);
-            redirect()->setIntendedUrl(route('invite.landing', $key));
+            $request->session()->put('url.intended', route('invite.landing', $key));
         }
 
         return Inertia::render('Onboarding/InviteLanding', [
