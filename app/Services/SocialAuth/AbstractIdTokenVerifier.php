@@ -50,6 +50,10 @@ abstract class AbstractIdTokenVerifier implements SocialTokenVerifier
             );
         }
 
+        if (empty($claims->sub)) {
+            throw new InvalidSocialTokenException("Could not verify your {$this->provider()} sign-in.");
+        }
+
         return $this->toProfile($claims);
     }
 }

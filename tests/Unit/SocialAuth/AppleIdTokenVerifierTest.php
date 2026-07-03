@@ -79,4 +79,18 @@ class AppleIdTokenVerifierTest extends TestCase
         $this->expectException(InvalidSocialTokenException::class);
         app(AppleIdTokenVerifier::class)->verify('not-a-jwt');
     }
+
+    public function test_token_without_sub_is_rejected(): void
+    {
+        $this->expectException(InvalidSocialTokenException::class);
+        $claims = [
+            'iss'   => 'https://appleid.apple.com',
+            'aud'   => 'band.tts.bandmate',
+            'email' => 'apple-user@example.com',
+            'iat'   => time(),
+            'exp'   => time() + 300,
+        ];
+        $tokenWithoutSub = JWT::encode($claims, $this->privateKey, 'RS256', 'test-key');
+        app(AppleIdTokenVerifier::class)->verify($tokenWithoutSub);
+    }
 }
