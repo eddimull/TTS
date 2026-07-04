@@ -22,6 +22,7 @@ class SocialWebLoginTest extends TestCase
             'name'   => 'Web Person',
             'avatar' => null,
         ]);
+        $socialiteUser->user = ['email_verified' => true];
 
         $provider = Mockery::mock(Provider::class);
         $provider->shouldReceive('user')->andReturn($socialiteUser);
@@ -74,5 +75,27 @@ class SocialWebLoginTest extends TestCase
     public function test_unknown_provider_404s(): void
     {
         $this->get('/auth/myspace/redirect')->assertNotFound();
+    }
+
+    public function test_callback_rejects_unverified_email(): void
+    {
+        $socialiteUser = (new SocialiteUser())->map([
+            'id'     => 'g-web-2',
+            'email'  => 'unverified@example.com',
+            'name'   => 'Unverified Person',
+            'avatar' => null,
+        ]);
+        $socialiteUser->user = ['email_verified' => false];
+
+        $provider = Mockery::mock(Provider::class);
+        $provider->shouldReceive('user')->andReturn($socialiteUser);
+        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+        $response = $this->get('/auth/google/callback?code=abc&state=xyz');
+
+        $response->assertRedirect(route('login'))
+            ->assertSessionHasErrors('email');
+        $this->assertGuest();
+        $this->assertNull(User::where('email', 'unverified@example.com')->first());
     }
 }

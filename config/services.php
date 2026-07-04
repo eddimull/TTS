@@ -91,6 +91,11 @@ return [
     'apple' => [
         'client_id'     => env('APPLE_SERVICES_CLIENT_ID'),   // Services ID (web flow)
         'client_secret' => env('APPLE_CLIENT_SECRET'),         // pre-generated JWT, expires ≤6 months
+        // When these three are set, the client_secret is auto-minted at runtime
+        // from the .p8 key (see AppleClientSecretGenerator), superseding APPLE_CLIENT_SECRET.
+        'private_key'   => env('APPLE_PRIVATE_KEY_BASE64'),    // base64 of the .p8 file contents
+        'key_id'        => env('APPLE_KEY_ID'),
+        'team_id'       => env('APPLE_TEAM_ID'),
         'redirect'      => env('APP_URL') . '/auth/apple/callback',
         // id_token `aud` whitelist: iOS bundle id + Services ID, comma-separated.
         'allowed_client_ids' => array_filter(explode(',', env('APPLE_SIGNIN_ALLOWED_CLIENT_IDS', ''))),

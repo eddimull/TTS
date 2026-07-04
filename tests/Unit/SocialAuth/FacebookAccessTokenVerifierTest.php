@@ -4,6 +4,7 @@ namespace Tests\Unit\SocialAuth;
 
 use App\Services\SocialAuth\FacebookAccessTokenVerifier;
 use App\Services\SocialAuth\InvalidSocialTokenException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -46,6 +47,16 @@ class FacebookAccessTokenVerifierTest extends TestCase
     public function test_account_without_email_is_rejected(): void
     {
         Http::fake(['graph.facebook.com/*' => Http::response(['id' => 'fb-1', 'name' => 'No Mail'])]);
+
+        $this->expectException(InvalidSocialTokenException::class);
+        app(FacebookAccessTokenVerifier::class)->verify('fb-token');
+    }
+
+    public function test_network_failure_is_rejected_not_a_500(): void
+    {
+        Http::fake(function () {
+            throw new ConnectionException('Connection timed out');
+        });
 
         $this->expectException(InvalidSocialTokenException::class);
         app(FacebookAccessTokenVerifier::class)->verify('fb-token');

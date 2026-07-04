@@ -24,6 +24,18 @@ class SocialLoginController extends Controller
 
         // Apple returns via cross-site form_post, which drops the SameSite=lax
         // session cookie — state validation would always fail. Go stateless.
+        //
+        // SECURITY (accepted risk, not fixed here): Apple's form_post response
+        // mode pairs with our SameSite=lax session cookie in a way that forces
+        // stateless() — Socialite's `state` param can never be validated for
+        // this provider. That means the Apple callback is vulnerable to
+        // login-CSRF: an attacker can capture their OWN valid callback POST
+        // body and get a victim's browser to auto-submit it (e.g. via an
+        // auto-submitting cross-site form), silently logging the victim into
+        // the attacker's account. This is accepted for launch. Mitigation
+        // (issuing a short-lived SameSite=None state cookie so Apple's
+        // form_post can still read it) is tracked as a follow-up, not
+        // implemented now.
         if ($provider === 'apple') {
             $driver->stateless();
         }
@@ -44,6 +56,29 @@ class SocialLoginController extends Controller
                 return redirect()->route('login')->withErrors([
                     'email' => ucfirst($provider) . ' did not share an email address. Please log in with email instead.',
                 ]);
+            }
+
+            if (in_array($provider, ['google', 'apple'], true)) {
+                // Google and Apple both relay an email_verified claim into the raw
+                // user payload Socialite exposes as $socialiteUser->user. Mirror the
+                // fail-closed check in AbstractIdTokenVerifier (see commit 1aa4b00f):
+                // a present-but-falsy OR missing claim is treated as unverified, so a
+                // spoofed/unverified email can never auto-link to an existing account.
+                //
+                // Google always sends this claim, so its absence is suspicious.
+                //
+                // Apple: SocialiteProviders\Apple\Provider::mapUserToObject() calls
+                // setRaw($user) with the full decoded id_token payload (see
+                // vendor/socialiteproviders/apple/Provider.php), and Apple's identity
+                // token spec documents email_verified as a standard claim Apple sends
+                // on every id_token. So the driver DOES relay it in normal operation —
+                // we fail closed on a missing claim for Apple too, same as Google.
+                $emailVerified = $socialiteUser->user['email_verified'] ?? null;
+                if ($emailVerified !== true && $emailVerified !== 'true') {
+                    return redirect()->route('login')->withErrors([
+                        'email' => ucfirst($provider) . ' reported your email address as unverified.',
+                    ]);
+                }
             }
 
             $user = $this->socialAuth->resolveUser(new SocialProfile(
