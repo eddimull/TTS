@@ -77,6 +77,36 @@ class SocialWebLoginTest extends TestCase
         $this->get('/auth/myspace/redirect')->assertNotFound();
     }
 
+    public function test_facebook_redirect_404s_when_flag_disabled(): void
+    {
+        $this->get('/auth/facebook/redirect')->assertNotFound();
+    }
+
+    public function test_facebook_callback_404s_when_flag_disabled(): void
+    {
+        $this->get('/auth/facebook/callback?code=abc&state=xyz')->assertNotFound();
+    }
+
+    public function test_google_redirect_still_works_when_facebook_flag_disabled(): void
+    {
+        $provider = Mockery::mock(Provider::class);
+        $provider->shouldReceive('redirect')->andReturn(redirect('https://accounts.google.com/o/oauth2/auth'));
+        Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
+
+        $this->get('/auth/google/redirect')->assertRedirect();
+    }
+
+    public function test_facebook_redirect_works_when_flag_enabled(): void
+    {
+        config(['services.facebook.enabled' => true]);
+
+        $provider = Mockery::mock(Provider::class);
+        $provider->shouldReceive('redirect')->andReturn(redirect('https://www.facebook.com/v12.0/dialog/oauth'));
+        Socialite::shouldReceive('driver')->with('facebook')->andReturn($provider);
+
+        $this->get('/auth/facebook/redirect')->assertRedirect();
+    }
+
     public function test_callback_rejects_unverified_email(): void
     {
         $socialiteUser = (new SocialiteUser())->map([

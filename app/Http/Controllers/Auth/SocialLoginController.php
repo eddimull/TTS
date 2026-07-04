@@ -12,13 +12,27 @@ use Laravel\Socialite\Facades\Socialite;
 
 class SocialLoginController extends Controller
 {
-    private const PROVIDERS = ['google', 'apple', 'facebook'];
-
     public function __construct(private readonly SocialAuthService $socialAuth) {}
+
+    /**
+     * Providers enabled for the web redirect/callback flow. Facebook is gated
+     * behind FACEBOOK_LOGIN_ENABLED until Meta business verification is
+     * complete (see config/services.php).
+     */
+    private function enabledProviders(): array
+    {
+        $providers = ['google', 'apple'];
+
+        if (config('services.facebook.enabled')) {
+            $providers[] = 'facebook';
+        }
+
+        return $providers;
+    }
 
     public function redirect(string $provider): RedirectResponse
     {
-        abort_unless(in_array($provider, self::PROVIDERS, true), 404);
+        abort_unless(in_array($provider, $this->enabledProviders(), true), 404);
 
         $driver = Socialite::driver($provider);
 
@@ -45,7 +59,7 @@ class SocialLoginController extends Controller
 
     public function callback(Request $request, string $provider): RedirectResponse
     {
-        abort_unless(in_array($provider, self::PROVIDERS, true), 404);
+        abort_unless(in_array($provider, $this->enabledProviders(), true), 404);
 
         try {
             $driver = Socialite::driver($provider);
