@@ -24,6 +24,18 @@ class SocialLoginController extends Controller
 
         // Apple returns via cross-site form_post, which drops the SameSite=lax
         // session cookie — state validation would always fail. Go stateless.
+        //
+        // SECURITY (accepted risk, not fixed here): Apple's form_post response
+        // mode pairs with our SameSite=lax session cookie in a way that forces
+        // stateless() — Socialite's `state` param can never be validated for
+        // this provider. That means the Apple callback is vulnerable to
+        // login-CSRF: an attacker can capture their OWN valid callback POST
+        // body and get a victim's browser to auto-submit it (e.g. via an
+        // auto-submitting cross-site form), silently logging the victim into
+        // the attacker's account. This is accepted for launch. Mitigation
+        // (issuing a short-lived SameSite=None state cookie so Apple's
+        // form_post can still read it) is tracked as a follow-up, not
+        // implemented now.
         if ($provider === 'apple') {
             $driver->stateless();
         }
