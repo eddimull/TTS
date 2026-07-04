@@ -31,6 +31,7 @@
       </a>
 
       <a
+        v-if="$page.props.features?.facebookLogin"
         href="/auth/facebook/redirect"
         class="w-full inline-flex items-center justify-center gap-3 py-2 px-4 rounded-md shadow-sm text-sm font-medium text-white hover:opacity-90"
         style="background-color: #1877F2"

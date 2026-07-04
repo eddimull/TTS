@@ -74,6 +74,9 @@ class HandleInertiaRequests extends Middleware
             'eventTypes' => Cache::remember('event_types', 3600, function () {
                 return \App\Models\EventTypes::all();
             }),
+            'features' => [
+                'facebookLogin' => (bool) config('services.facebook.enabled'),
+            ],
         ]);
     }
 }

@@ -86,6 +86,9 @@ return [
         'client_id'     => env('FACEBOOK_CLIENT_ID'),
         'client_secret' => env('FACEBOOK_CLIENT_SECRET'),
         'redirect'      => env('APP_URL') . '/auth/facebook/callback',
+        // Meta requires business verification for public Facebook Login, which
+        // this app hasn't completed. Kept dark (off) by default until then.
+        'enabled'       => env('FACEBOOK_LOGIN_ENABLED', false),
     ],
 
     'apple' => [
