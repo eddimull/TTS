@@ -13,5 +13,8 @@ class VerifyCsrfToken extends Middleware
      */
     protected $except = [
         'api/stripe',
+        // Apple's social-login callback arrives cross-site via form_post, so it
+        // carries no CSRF token and drops the SameSite=lax session cookie.
+        'auth/apple/callback',
     ];
 }
