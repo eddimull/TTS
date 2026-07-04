@@ -51,6 +51,25 @@ class AuthTest extends TestCase
             ->assertJsonValidationErrors(['email']);
     }
 
+    public function test_mobile_token_endpoint_rejects_password_login_for_null_password_user(): void
+    {
+        // Social-only accounts (created via SocialAuthService::resolveUser) are
+        // created with password = null. Regression test: Laravel's BcryptHasher
+        // guards against hashing/checking a null password, so this should 422
+        // rather than throw. No production change expected here.
+        $user = User::factory()->create(['password' => null]);
+
+        $response = $this->postJson('/api/mobile/auth/token', [
+            'email' => $user->email,
+            'password' => 'anything',
+            'device_name' => 'iPhone 15',
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['email']);
+        $this->assertGuest();
+    }
+
     public function test_mobile_me_endpoint_returns_user_and_bands(): void
     {
         $user = User::factory()->create();
