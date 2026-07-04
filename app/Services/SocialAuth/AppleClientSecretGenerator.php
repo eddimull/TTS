@@ -22,7 +22,9 @@ class AppleClientSecretGenerator
 
     public function generate(): string
     {
-        return Cache::remember('apple-client-secret', now()->addHours(12), function () {
+        $cacheKey = 'apple-client-secret:'.config('services.apple.key_id');
+
+        return Cache::remember($cacheKey, now()->addHours(12), function () {
             $now = time();
 
             return JWT::encode([

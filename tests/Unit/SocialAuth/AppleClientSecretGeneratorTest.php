@@ -87,4 +87,22 @@ class AppleClientSecretGeneratorTest extends TestCase
         config(['services.apple.private_key' => null]);
         $this->assertFalse($generator->isConfigured());
     }
+
+    public function test_rotating_key_id_self_heals_instead_of_serving_stale_cached_kid(): void
+    {
+        $generator = new AppleClientSecretGenerator();
+
+        $first = $generator->generate();
+
+        // Simulate rotating the .p8 key: only the kid changes, the signing
+        // key material can stay the same for the purposes of this test.
+        config(['services.apple.key_id' => 'NEWKEYID999']);
+
+        $second = $generator->generate();
+
+        $header = json_decode($this->base64UrlDecode(explode('.', $second)[0]), true);
+
+        $this->assertSame('NEWKEYID999', $header['kid'], 'Rotated key id should be reflected immediately, not served from the old cache entry.');
+        $this->assertNotSame($first, $second);
+    }
 }
