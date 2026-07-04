@@ -56,6 +56,24 @@ class AppServiceProvider extends ServiceProvider
 
         Event::listen(SocialiteWasCalled::class, [\SocialiteProviders\Apple\AppleExtendSocialite::class, 'handle']);
 
+        // Auto-mint the Sign in with Apple client secret from the stored .p8 key
+        // material, so the ES256 JWT (max 6-month lifetime) is never hand-regenerated.
+        // Minting is cached (Cache::remember, 12h), so this boot-time check is one
+        // cheap cache read per request even though boot() runs for every request —
+        // including ones that never touch Apple login. Boot-time override is the
+        // simplest correct point because Socialite reads config lazily but we don't
+        // control when; a lazy config value would require intercepting that read.
+        $appleSecrets = $this->app->make(\App\Services\SocialAuth\AppleClientSecretGenerator::class);
+        if ($appleSecrets->isConfigured()) {
+            try {
+                config(['services.apple.client_secret' => $appleSecrets->generate()]);
+            } catch (\Throwable $e) {
+                // On failure, keep the existing static APPLE_CLIENT_SECRET-derived
+                // config value rather than overwriting it with garbage.
+                report($e);
+            }
+        }
+
         ParallelTesting::setUpProcess(function() {
             Artisan::call('migrate:fresh', ['--seed' => true]);
         });
