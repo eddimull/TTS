@@ -117,10 +117,10 @@ class ProcessRehearsalCancelledTest extends TestCase
         (new ProcessRehearsalCancelled($rehearsal, $actor->id, true, 'key-4'))->handle();
 
         Notification::assertSentToTimes($overlapUser, RehearsalCancelled::class, 1);
-        Queue::assertPushed(
-            SendUserPush::class,
-            fn (SendUserPush $job) => $job->userId === $overlapUser->id,
-            1
+        $this->assertSame(
+            1,
+            Queue::pushed(SendUserPush::class, fn ($job) => $job->userId === $overlapUser->id)->count(),
+            'Overlap user must receive exactly one push',
         );
 
         // Sanity: unrelated member is unaffected by the overlap.
