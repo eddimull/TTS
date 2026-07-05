@@ -15,6 +15,7 @@ use App\Http\Requests\Media\CreateFolderRequest;
 use App\Http\Requests\Media\RenameFolderRequest;
 use App\Http\Requests\Media\DeleteFolderRequest;
 use App\Http\Resources\MediaFileResource;
+use App\Http\Traits\ServesByteRanges;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,8 @@ use Inertia\Inertia;
 
 class MediaLibraryController extends Controller
 {
+    use ServesByteRanges;
+
     public function __construct(
         protected MediaLibraryService $mediaService
     ) {}
@@ -272,7 +275,7 @@ class MediaLibraryController extends Controller
             ->with('successMessage', 'Media deleted successfully');
     }
 
-    public function serve(MediaFile $media)
+    public function serve(Request $request, MediaFile $media)
     {
         $user = Auth::user();
 
@@ -285,8 +288,8 @@ class MediaLibraryController extends Controller
         $lastModified = $media->updated_at->format('D, d M Y H:i:s') . ' GMT';
 
         // Check if client has cached version
-        $ifNoneMatch = request()->header('If-None-Match');
-        $ifModifiedSince = request()->header('If-Modified-Since');
+        $ifNoneMatch = $request->header('If-None-Match');
+        $ifModifiedSince = $request->header('If-Modified-Since');
 
         if ($ifNoneMatch === $etag || $ifModifiedSince === $lastModified) {
             return response('', 304)
@@ -296,14 +299,18 @@ class MediaLibraryController extends Controller
         }
 
         try {
-            $file = Storage::disk($media->disk)->get($media->stored_filename);
-
-            return response($file)
-                ->header('Content-Type', $media->mime_type)
-                ->header('Content-Disposition', 'inline; filename="' . $media->filename . '"')
-                ->header('Cache-Control', 'public, max-age=2592000, immutable')
-                ->header('ETag', $etag)
-                ->header('Last-Modified', $lastModified);
+            return $this->streamWithByteRanges(
+                $request,
+                Storage::disk($media->disk),
+                $media->stored_filename,
+                [
+                    'Content-Type'        => $media->mime_type,
+                    'Content-Disposition' => 'inline; filename="' . $media->filename . '"',
+                    'Cache-Control'       => 'public, max-age=2592000, immutable',
+                    'ETag'                => $etag,
+                    'Last-Modified'       => $lastModified,
+                ],
+            );
         } catch (\Exception $e) {
             \Log::error('Failed to serve media file', [
                 'media_id' => $media->id,
