@@ -182,10 +182,10 @@ class RehearsalsController extends Controller
                 $request->user()->id,
                 $isCancelled,
                 sprintf(
-                    'rehearsal:%d:%s:%d',
+                    'rehearsal:%d:%s:%s',
                     $rehearsalModel->id,
                     $isCancelled ? 'cancelled' : 'restored',
-                    $rehearsalModel->updated_at->timestamp,
+                    $rehearsalModel->updated_at->getPreciseTimestamp(3),
                 ),
             );
         }
