@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Contact;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\ServesByteRanges;
 use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Services\ContactPaymentService;
@@ -13,6 +14,8 @@ use Inertia\Inertia;
 
 class ContactPortalController extends Controller
 {
+    use ServesByteRanges;
+
     protected $paymentService;
 
     public function __construct(ContactPaymentService $paymentService)
@@ -603,7 +606,7 @@ class ContactPortalController extends Controller
     /**
      * Serve a media file for inline viewing (with contact permission check)
      */
-    public function serveMedia($mediaId)
+    public function serveMedia(Request $request, $mediaId)
     {
         $contact = Auth::guard('contact')->user();
         $mediaService = app(MediaLibraryService::class);
@@ -640,14 +643,18 @@ class ContactPortalController extends Controller
         }
 
         try {
-            $file = \Storage::disk($disk)->get($mediaFile->stored_filename);
-
-            return response($file)
-                ->header('Content-Type', $mediaFile->mime_type)
-                ->header('Content-Disposition', 'inline; filename="' . $mediaFile->filename . '"')
-                ->header('Cache-Control', 'public, max-age=2592000, immutable')
-                ->header('ETag', $etag)
-                ->header('Last-Modified', $lastModified);
+            return $this->streamWithByteRanges(
+                $request,
+                \Storage::disk($disk),
+                $mediaFile->stored_filename,
+                [
+                    'Content-Type'        => $mediaFile->mime_type,
+                    'Content-Disposition' => 'inline; filename="' . $mediaFile->filename . '"',
+                    'Cache-Control'       => 'public, max-age=2592000, immutable',
+                    'ETag'                => $etag,
+                    'Last-Modified'       => $lastModified,
+                ],
+            );
         } catch (\Exception $e) {
             abort(404, 'File not found');
         }
