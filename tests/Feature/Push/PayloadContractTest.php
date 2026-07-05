@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Push;
 
-use App\Jobs\SendEventPush;
+use App\Jobs\SendUserPush;
 use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\DeviceToken;
@@ -43,17 +43,19 @@ class PayloadContractTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-06-14 11:00:00', 'UTC'));
         $this->app->make(LeaveByPushService::class)->run(Carbon::now());
 
-        Queue::assertPushed(SendEventPush::class, function ($job) {
-            $allowed = ['type', 'eventKey', 'title', 'venueAddress', 'firstItemTitle', 'firstItemTime', 'showTime'];
-            foreach (array_keys($job->payload) as $k) {
+        Queue::assertPushed(SendUserPush::class, function ($job) {
+            $allowed = ['type', 'eventKey', 'title', 'body', 'venueAddress', 'firstItemTitle', 'firstItemTime', 'showTime'];
+            foreach (array_keys($job->data) as $k) {
                 if (!in_array($k, $allowed, true)) {
                     return false;
                 }
             }
-            return $job->payload['type'] === 'event_reminder_8h'
-                && $job->payload['eventKey'] !== ''
-                && array_key_exists('firstItemTitle', $job->payload)
-                && array_key_exists('showTime', $job->payload);
+            return $job->data['type'] === 'event_reminder_8h'
+                && $job->data['eventKey'] !== ''
+                && array_key_exists('body', $job->data)
+                && $job->data['body'] !== ''
+                && array_key_exists('firstItemTitle', $job->data)
+                && array_key_exists('showTime', $job->data);
         });
     }
 }

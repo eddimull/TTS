@@ -11,18 +11,24 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class SendEventPush implements ShouldQueue
+/**
+ * Generic per-user push send. Callers supply the full data payload
+ * (contract: type/title/body + routing keys) and a dedupe key that is
+ * unique per logical send — the (user_id, dedupe_key) log row guarantees
+ * at-most-one recorded delivery per user per logical send.
+ */
+class SendUserPush implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     /**
-     * @param array<string,string> $payload
+     * @param array<string,string> $data
      */
     public function __construct(
-        public int $eventId,
         public int $userId,
-        public string $type,
-        public array $payload,
+        public array $data,
+        public string $dedupeKey,
+        public bool $alert = false,
     ) {}
 
     public function handle(FcmSender $fcm): void
@@ -31,7 +37,15 @@ class SendEventPush implements ShouldQueue
         $anyDelivered = false;
 
         foreach ($tokens as $deviceToken) {
-            $result = $fcm->sendData($deviceToken->token, $this->payload);
+            $result = $this->alert
+                ? $fcm->sendAlert(
+                    $deviceToken->token,
+                    (string) ($this->data['title'] ?? ''),
+                    (string) ($this->data['body'] ?? ''),
+                    $this->data,
+                )
+                : $fcm->sendData($deviceToken->token, $this->data);
+
             if ($result === FcmSender::PRUNE) {
                 $deviceToken->delete();
             } elseif ($result === FcmSender::DELIVERED) {
@@ -41,8 +55,8 @@ class SendEventPush implements ShouldQueue
 
         if ($anyDelivered) {
             PushNotificationLog::firstOrCreate(
-                ['event_id' => $this->eventId, 'user_id' => $this->userId, 'type' => $this->type],
-                ['sent_at' => now()],
+                ['user_id' => $this->userId, 'dedupe_key' => $this->dedupeKey],
+                ['type' => (string) ($this->data['type'] ?? 'generic'), 'sent_at' => now()],
             );
         }
     }

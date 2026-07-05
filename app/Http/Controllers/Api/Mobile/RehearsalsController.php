@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Mobile\SetRehearsalCancelledRequest;
 use App\Http\Requests\Mobile\UpdateRehearsalNotesRequest;
+use App\Jobs\ProcessRehearsalCancelled;
 use App\Models\Rehearsal;
 use App\Models\RehearsalSchedule;
 use App\Services\Mobile\RehearsalService;
@@ -146,5 +148,52 @@ class RehearsalsController extends Controller
         $rehearsalModel->update(['notes' => $notes]);
 
         return response()->json(['notes' => $rehearsalModel->fresh()->notes]);
+    }
+
+    /**
+     * PATCH /api/mobile/rehearsals/{rehearsal}/cancelled
+     *
+     * Explicitly set (not toggle) the cancelled flag. Idempotent: setting the
+     * current value succeeds without notifying the band again.
+     */
+    public function setCancelled(SetRehearsalCancelledRequest $request, int $rehearsal): JsonResponse
+    {
+        $rehearsalModel = Rehearsal::with(['rehearsalSchedule.band', 'events', 'bookings'])
+            ->findOrFail($rehearsal);
+
+        $band = $rehearsalModel->rehearsalSchedule?->band ?? $rehearsalModel->band;
+
+        if (!$band) {
+            abort(404, 'Band not found for this rehearsal.');
+        }
+
+        if (!$request->user()->canWrite('rehearsals', $band->id)) {
+            abort(403, 'You do not have permission to edit this rehearsal.');
+        }
+
+        $isCancelled = (bool) $request->validated()['is_cancelled'];
+
+        if ($rehearsalModel->is_cancelled !== $isCancelled) {
+            $rehearsalModel->update(['is_cancelled' => $isCancelled]);
+            $rehearsalModel->refresh();
+
+            ProcessRehearsalCancelled::dispatch(
+                $rehearsalModel,
+                $request->user()->id,
+                $isCancelled,
+                sprintf(
+                    'rehearsal:%d:%s:%s',
+                    $rehearsalModel->id,
+                    $isCancelled ? 'cancelled' : 'restored',
+                    now()->getPreciseTimestamp(3),
+                ),
+            );
+        }
+
+        $rehearsalModel->load(['rehearsalSchedule', 'events', 'bookings']);
+
+        return response()->json([
+            'rehearsal' => $this->rehearsalService->formatDetail($rehearsalModel),
+        ]);
     }
 }
