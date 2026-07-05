@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\Mobile;
 
+use App\Jobs\ProcessRehearsalCancelled;
 use App\Models\Bands;
 use App\Models\Events;
 use App\Models\EventTypes;
@@ -9,6 +10,7 @@ use App\Models\Rehearsal;
 use App\Models\RehearsalSchedule;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class RehearsalsTest extends TestCase
@@ -157,5 +159,78 @@ class RehearsalsTest extends TestCase
         $this->withToken($otherToken)
             ->getJson("/api/mobile/rehearsals/{$rehearsal->id}")
             ->assertStatus(403);
+    }
+
+    // -------------------------------------------------------------------------
+    // rehearsals.set-cancelled
+    // -------------------------------------------------------------------------
+
+    public function test_set_cancelled_cancels_a_rehearsal_and_dispatches_fanout(): void
+    {
+        Queue::fake();
+        ['rehearsal' => $rehearsal, 'token' => $token] = $this->createUserWithBandAndRehearsal();
+
+        $response = $this->withToken($token)
+            ->patchJson("/api/mobile/rehearsals/{$rehearsal->id}/cancelled", ['is_cancelled' => true]);
+
+        $response->assertOk();
+        $this->assertTrue($response->json('rehearsal.is_cancelled'));
+        $this->assertTrue($rehearsal->fresh()->is_cancelled);
+        Queue::assertPushed(ProcessRehearsalCancelled::class, 1);
+    }
+
+    public function test_set_cancelled_restores_a_cancelled_rehearsal(): void
+    {
+        Queue::fake();
+        ['rehearsal' => $rehearsal, 'token' => $token] = $this->createUserWithBandAndRehearsal();
+        $rehearsal->update(['is_cancelled' => true]);
+
+        $response = $this->withToken($token)
+            ->patchJson("/api/mobile/rehearsals/{$rehearsal->id}/cancelled", ['is_cancelled' => false]);
+
+        $response->assertOk();
+        $this->assertFalse($response->json('rehearsal.is_cancelled'));
+        $this->assertFalse($rehearsal->fresh()->is_cancelled);
+        Queue::assertPushed(ProcessRehearsalCancelled::class, 1);
+    }
+
+    public function test_set_cancelled_is_idempotent_and_skips_fanout_when_unchanged(): void
+    {
+        Queue::fake();
+        ['rehearsal' => $rehearsal, 'token' => $token] = $this->createUserWithBandAndRehearsal();
+        $rehearsal->update(['is_cancelled' => true]);
+
+        $this->withToken($token)
+            ->patchJson("/api/mobile/rehearsals/{$rehearsal->id}/cancelled", ['is_cancelled' => true])
+            ->assertOk();
+
+        Queue::assertNotPushed(ProcessRehearsalCancelled::class);
+    }
+
+    public function test_set_cancelled_requires_boolean_body(): void
+    {
+        ['rehearsal' => $rehearsal, 'token' => $token] = $this->createUserWithBandAndRehearsal();
+
+        $this->withToken($token)
+            ->patchJson("/api/mobile/rehearsals/{$rehearsal->id}/cancelled", [])
+            ->assertStatus(422);
+    }
+
+    public function test_set_cancelled_returns_403_for_user_without_access(): void
+    {
+        ['rehearsal' => $rehearsal] = $this->createUserWithBandAndRehearsal();
+        $otherToken = User::factory()->create()->createToken('test-device')->plainTextToken;
+
+        $this->withToken($otherToken)
+            ->patchJson("/api/mobile/rehearsals/{$rehearsal->id}/cancelled", ['is_cancelled' => true])
+            ->assertStatus(403);
+    }
+
+    public function test_set_cancelled_requires_authentication(): void
+    {
+        ['rehearsal' => $rehearsal] = $this->createUserWithBandAndRehearsal();
+
+        $this->patchJson("/api/mobile/rehearsals/{$rehearsal->id}/cancelled", ['is_cancelled' => true])
+            ->assertUnauthorized();
     }
 }
