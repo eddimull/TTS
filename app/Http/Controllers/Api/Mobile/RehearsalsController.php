@@ -185,7 +185,7 @@ class RehearsalsController extends Controller
                     'rehearsal:%d:%s:%s',
                     $rehearsalModel->id,
                     $isCancelled ? 'cancelled' : 'restored',
-                    $rehearsalModel->updated_at->getPreciseTimestamp(3),
+                    now()->getPreciseTimestamp(3),
                 ),
             );
         }
