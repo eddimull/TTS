@@ -100,4 +100,30 @@ class ProcessRehearsalCancelledTest extends TestCase
 
         Queue::assertPushed(SendUserPush::class, fn (SendUserPush $job) => $job->data['type'] === 'rehearsal_restored');
     }
+
+    public function test_user_who_is_owner_and_member_is_notified_once(): void
+    {
+        Notification::fake();
+        Queue::fake();
+        ['rehearsal' => $rehearsal, 'actor' => $actor, 'member' => $member] =
+            $this->setUpBandWithRehearsal();
+
+        $band = $rehearsal->rehearsalSchedule->band;
+        $overlapUser = User::factory()->create();
+        $band->owners()->create(['user_id' => $overlapUser->id]);
+        $band->members()->create(['user_id' => $overlapUser->id]);
+        DeviceToken::create(['user_id' => $overlapUser->id, 'token' => 'tok-overlap', 'platform' => 'android']);
+
+        (new ProcessRehearsalCancelled($rehearsal, $actor->id, true, 'key-4'))->handle();
+
+        Notification::assertSentToTimes($overlapUser, RehearsalCancelled::class, 1);
+        Queue::assertPushed(
+            SendUserPush::class,
+            fn (SendUserPush $job) => $job->userId === $overlapUser->id,
+            1
+        );
+
+        // Sanity: unrelated member is unaffected by the overlap.
+        Notification::assertSentTo($member, RehearsalCancelled::class);
+    }
 }
