@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Push;
 
-use App\Jobs\SendEventPush;
+use App\Jobs\SendUserPush;
 use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\DeviceToken;
@@ -57,12 +57,11 @@ class LeaveByPushServiceTest extends TestCase
 
         $this->app->make(LeaveByPushService::class)->run(Carbon::now());
 
-        Queue::assertPushed(SendEventPush::class, function ($job) use ($event, $user) {
-            return $job->type === 'event_reminder_8h'
-                && $job->eventId === $event->id
+        Queue::assertPushed(SendUserPush::class, function ($job) use ($event, $user) {
+            return $job->data['type'] === 'event_reminder_8h'
+                && $job->dedupeKey === "event:{$event->id}:event_reminder_8h"
                 && $job->userId === $user->id
-                && $job->payload['type'] === 'event_reminder_8h'
-                && $job->payload['firstItemTitle'] === 'Load In';
+                && $job->data['firstItemTitle'] === 'Load In';
         });
     }
 
@@ -75,26 +74,28 @@ class LeaveByPushServiceTest extends TestCase
 
         $this->app->make(LeaveByPushService::class)->run(Carbon::now());
 
-        Queue::assertPushed(SendEventPush::class, function ($job) use ($event, $user) {
-            return $job->type === 'event_departure'
-                && $job->eventId === $event->id
-                && $job->userId === $user->id
-                && $job->payload['type'] === 'event_departure';
+        Queue::assertPushed(SendUserPush::class, function ($job) use ($event, $user) {
+            return $job->data['type'] === 'event_departure'
+                && $job->dedupeKey === "event:{$event->id}:event_departure"
+                && $job->userId === $user->id;
         });
         // The 8h window (06:00 CT) is long past, so it must NOT also fire.
-        Queue::assertNotPushed(SendEventPush::class, fn ($j) => $j->type === 'event_reminder_8h');
+        Queue::assertNotPushed(SendUserPush::class, fn ($j) => $j->data['type'] === 'event_reminder_8h');
     }
 
     public function test_does_not_dispatch_when_already_logged(): void
     {
         Queue::fake();
         [$event, $user] = $this->makeRosteredEvent('2026-06-14', '19:00', '2026-06-14 14:00:00');
-        PushNotificationLog::create(['event_id' => $event->id, 'user_id' => $user->id, 'type' => 'event_reminder_8h']);
+        PushNotificationLog::create([
+            'event_id' => $event->id, 'user_id' => $user->id, 'type' => 'event_reminder_8h',
+            'dedupe_key' => "event:{$event->id}:event_reminder_8h",
+        ]);
         Carbon::setTestNow(Carbon::parse('2026-06-14 11:00:00', 'UTC'));
 
         $this->app->make(LeaveByPushService::class)->run(Carbon::now());
 
-        Queue::assertNotPushed(SendEventPush::class, fn ($j) => $j->type === 'event_reminder_8h');
+        Queue::assertNotPushed(SendUserPush::class, fn ($j) => $j->data['type'] === 'event_reminder_8h');
     }
 
     public function test_excludes_absent_members(): void
@@ -106,7 +107,7 @@ class LeaveByPushServiceTest extends TestCase
 
         $this->app->make(LeaveByPushService::class)->run(Carbon::now());
 
-        Queue::assertNotPushed(SendEventPush::class);
+        Queue::assertNotPushed(SendUserPush::class);
     }
 
     public function test_nothing_dispatched_outside_windows(): void
@@ -117,6 +118,6 @@ class LeaveByPushServiceTest extends TestCase
 
         $this->app->make(LeaveByPushService::class)->run(Carbon::now());
 
-        Queue::assertNotPushed(SendEventPush::class);
+        Queue::assertNotPushed(SendUserPush::class);
     }
 }
