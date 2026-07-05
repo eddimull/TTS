@@ -45,9 +45,20 @@ trait ServesByteRanges
                     fseek($stream, $start);
                 } else {
                     $skipped = 0;
-                    while ($skipped < $start) {
-                        $chunk    = min(65536, $start - $skipped);
-                        $skipped += strlen(fread($stream, $chunk));
+                    while ($skipped < $start && !feof($stream)) {
+                        $chunk = fread($stream, min(65536, $start - $skipped));
+                        if ($chunk === false || $chunk === '') {
+                            break;
+                        }
+                        $skipped += strlen($chunk);
+                    }
+
+                    // Stream ended before the range start: the stored size is
+                    // out of sync with the actual object; the range is unservable.
+                    if ($skipped < $start) {
+                        fclose($stream);
+
+                        return response('', 416, ['Content-Range' => "bytes */{$size}"]);
                     }
                 }
             }

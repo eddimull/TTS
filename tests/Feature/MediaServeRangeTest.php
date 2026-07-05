@@ -120,6 +120,38 @@ class MediaServeRangeTest extends TestCase
         $this->assertSame('abcde', $response->streamedContent());
     }
 
+    /**
+     * A non-seekable stream that hits EOF before the requested range start
+     * (stored size out of sync with the actual object) must not spin the
+     * skip loop forever — it should give up with a 416.
+     */
+    public function test_range_on_stream_shorter_than_reported_size_returns_416(): void
+    {
+        [$writer, $reader] = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
+        fwrite($writer, '0123456789'); // 10 real bytes
+        fclose($writer);
+
+        $disk = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
+        $disk->shouldReceive('size')->andReturn(100); // metadata claims 100
+        $disk->shouldReceive('readStream')->andReturn($reader);
+
+        $server = new class {
+            use \App\Http\Traits\ServesByteRanges;
+
+            public function call($request, $disk)
+            {
+                return $this->streamWithByteRanges($request, $disk, 'whatever', []);
+            }
+        };
+
+        $request = \Illuminate\Http\Request::create('/file', 'GET', server: ['HTTP_RANGE' => 'bytes=50-59']);
+
+        $response = $server->call($request, $disk);
+
+        $this->assertSame(416, $response->getStatusCode());
+        $this->assertSame('bytes */100', $response->headers->get('Content-Range'));
+    }
+
     public function test_contact_portal_serve_honors_range_requests(): void
     {
         $contact = Contacts::factory()->create([
