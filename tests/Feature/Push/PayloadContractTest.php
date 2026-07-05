@@ -44,7 +44,7 @@ class PayloadContractTest extends TestCase
         $this->app->make(LeaveByPushService::class)->run(Carbon::now());
 
         Queue::assertPushed(SendUserPush::class, function ($job) {
-            $allowed = ['type', 'eventKey', 'title', 'venueAddress', 'firstItemTitle', 'firstItemTime', 'showTime'];
+            $allowed = ['type', 'eventKey', 'title', 'body', 'venueAddress', 'firstItemTitle', 'firstItemTime', 'showTime'];
             foreach (array_keys($job->data) as $k) {
                 if (!in_array($k, $allowed, true)) {
                     return false;
@@ -52,6 +52,8 @@ class PayloadContractTest extends TestCase
             }
             return $job->data['type'] === 'event_reminder_8h'
                 && $job->data['eventKey'] !== ''
+                && array_key_exists('body', $job->data)
+                && $job->data['body'] !== ''
                 && array_key_exists('firstItemTitle', $job->data)
                 && array_key_exists('showTime', $job->data);
         });

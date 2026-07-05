@@ -115,6 +115,13 @@ class LeaveByPushService
         if (!empty($event->resolved_venue_address)) {
             $data['venueAddress'] = (string) $event->resolved_venue_address;
         }
+
+        // Contract: every push carries a display-ready body so clients that
+        // don't know the type can still render it. Known clients ignore this
+        // and render richer copy from the structured fields.
+        $data['body'] = !empty($event->resolved_venue_address)
+            ? ((string) $event->resolved_venue_address) . ' · You have an event today'
+            : 'You have an event today';
         if ($firstItem) {
             $data['firstItemTitle'] = (string) ($firstItem['title'] ?? '');
             $data['firstItemTime'] = $firstItemDt->toIso8601String();
