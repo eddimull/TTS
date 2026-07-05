@@ -2,7 +2,7 @@
 
 namespace App\Services\Push;
 
-use App\Jobs\SendEventPush;
+use App\Jobs\SendUserPush;
 use App\Models\EventMember;
 use App\Models\Events;
 use App\Models\PushNotificationLog;
@@ -81,25 +81,25 @@ class LeaveByPushService
             ->get();
 
         foreach ($members as $member) {
-            // Idempotency pre-check. NOTE: the log row is written by SendEventPush
+            $dedupeKey = "event:{$event->id}:{$type}";
+
+            // Idempotency pre-check. NOTE: the log row is written by SendUserPush
             // only after delivery, so two ticks within the grace window could both
             // pass this check and dispatch before either logs — a user could get a
-            // duplicate push. The (event_id,user_id,type) unique index guarantees a
+            // duplicate push. The (user_id,dedupe_key) unique index guarantees a
             // single log row regardless. Acceptable for a reminder; if at-most-once
             // delivery is ever required, claim the log row here before dispatching.
-            $already = PushNotificationLog::where('event_id', $event->id)
-                ->where('user_id', $member->user_id)
-                ->where('type', $type)
+            $already = PushNotificationLog::where('user_id', $member->user_id)
+                ->where('dedupe_key', $dedupeKey)
                 ->exists();
             if ($already) {
                 continue;
             }
 
-            SendEventPush::dispatch(
-                $event->id,
+            SendUserPush::dispatch(
                 $member->user_id,
-                $type,
                 $this->payload($event, $type, $firstItem, $tz, $firstItemDt),
+                $dedupeKey,
             );
         }
     }
@@ -115,6 +115,13 @@ class LeaveByPushService
         if (!empty($event->resolved_venue_address)) {
             $data['venueAddress'] = (string) $event->resolved_venue_address;
         }
+
+        // Contract: every push carries a display-ready body so clients that
+        // don't know the type can still render it. Known clients ignore this
+        // and render richer copy from the structured fields.
+        $data['body'] = !empty($event->resolved_venue_address)
+            ? ((string) $event->resolved_venue_address) . ' · You have an event today'
+            : 'You have an event today';
         if ($firstItem) {
             $data['firstItemTitle'] = (string) ($firstItem['title'] ?? '');
             $data['firstItemTime'] = $firstItemDt->toIso8601String();

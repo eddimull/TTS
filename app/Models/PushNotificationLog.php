@@ -8,7 +8,7 @@ class PushNotificationLog extends Model
 {
     protected $table = 'push_notification_log';
 
-    protected $fillable = ['event_id', 'user_id', 'type', 'sent_at'];
+    protected $fillable = ['event_id', 'user_id', 'type', 'dedupe_key', 'sent_at'];
 
     protected $casts = ['sent_at' => 'datetime'];
 
