@@ -244,15 +244,20 @@ class ContractsController extends Controller
 
     public function amendBookingContract(Bands $band, Bookings $booking, ContractAmendmentService $amendmentService)
     {
-        try {
+        try
+        {
             $amendmentService->amend($booking);
-        } catch (\InvalidArgumentException $e) {
+        }
+        catch (\InvalidArgumentException $e)
+        {
             return redirect()->back()->withErrors(['Cannot amend' => $e->getMessage()]);
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e)
+        {
             return redirect()->back()->withErrors(['Amend failed' => $e->getMessage()]);
         }
 
-        return redirect()->back();
+        return redirect()->back()->with('successMessage', 'Contract recalled — edit and resend when ready.');
     }
 
     /**
