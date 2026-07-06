@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use App\Http\Requests\StoreContractsRequest;
 use App\Http\Requests\UpdateContractsRequest;
 use App\Http\Requests\SendBookingContractRequest;
+use App\Services\ContractAmendmentService;
 
 class ContractsController extends Controller
 {
@@ -239,6 +240,19 @@ class ContractsController extends Controller
                 ->withErrors(['Failed to send contract:' => $e->getMessage()])
                 ->withInput();
         }
+    }
+
+    public function amendBookingContract(Bands $band, Bookings $booking, ContractAmendmentService $amendmentService)
+    {
+        try {
+            $amendmentService->amend($booking);
+        } catch (\InvalidArgumentException $e) {
+            return redirect()->back()->withErrors(['Cannot amend' => $e->getMessage()]);
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['Amend failed' => $e->getMessage()]);
+        }
+
+        return redirect()->back();
     }
 
     /**
