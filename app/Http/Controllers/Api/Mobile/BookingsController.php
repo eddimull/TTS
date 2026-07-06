@@ -21,6 +21,7 @@ use App\Models\EventMember;
 use App\Models\Events;
 use App\Models\Payments;
 use App\Services\BookingActivityService;
+use App\Services\ContractAmendmentService;
 use App\Services\Mobile\BookingFormatter;
 use App\Services\Mobile\BookingService;
 use Illuminate\Http\JsonResponse;
@@ -568,6 +569,27 @@ class BookingsController extends Controller
         } catch (\Exception $e) {
             return response()->json(['message' => 'Failed to send contract: ' . $e->getMessage()], 500);
         }
+    }
+
+    public function amendContract(
+        Request $request,
+        Bands $band,
+        Bookings $booking,
+        ContractAmendmentService $amendmentService
+    ): JsonResponse {
+        try {
+            $amendmentService->amend($booking);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Failed to amend contract: ' . $e->getMessage()], 500);
+        }
+
+        return response()->json([
+            'booking' => $this->formatter->format(
+                $booking->fresh()->load(['contacts', 'events', 'contract', 'payments', 'band'])
+            ),
+        ]);
     }
 
     public function saveContractTerms(
