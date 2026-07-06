@@ -155,6 +155,38 @@ trait Signable
         }
     }
 
+    /**
+     * Void the PandaDoc document for this contract so it can be amended.
+     *
+     * A 404 means the document was already deleted (e.g. by hand in the
+     * PandaDoc dashboard) — treated as success so amendment is idempotent.
+     * Any other failure throws and the caller must not mutate local state.
+     */
+    public function voidPandaDocDocument(): void
+    {
+        if (!$this->envelope_id)
+        {
+            return;
+        }
+
+        $apiKey = config('services.pandadoc.api_key');
+
+        $response = Http::withHeaders([
+            'Authorization' => 'API-Key ' . $apiKey,
+            'Content-Type' => 'application/json',
+        ])->patch("https://api.pandadoc.com/public/v1/documents/{$this->envelope_id}/status/", [
+            'status' => 11, // document.voided
+        ]);
+
+        if ($response->successful() || $response->status() === 404)
+        {
+            return;
+        }
+
+        Log::error('Failed to void PandaDoc document: ' . $response->body());
+        throw new \Exception('Failed to void the PandaDoc document: ' . $response->body());
+    }
+
     public function auditTrail()
     {
         $pandaDocService = new PandaDocService();

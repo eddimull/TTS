@@ -24,6 +24,17 @@ class UpdateBookingRequest extends FormRequest
             'venue_address' => 'prohibited',
             'notes'         => 'sometimes|nullable|string',
             'status'        => 'sometimes|in:draft,pending,confirmed,cancelled',
+            'contract_option' => [
+                'sometimes', 'in:default,none,external',
+                function ($attribute, $value, $fail)
+                {
+                    $contract = $this->route('booking')?->contract;
+                    if ($contract && in_array($contract->status, ['sent', 'completed'], true))
+                    {
+                        $fail('The contract type cannot be changed after the contract has been sent.');
+                    }
+                },
+            ],
             'deposit_type' => [
                 'sometimes', 'required', 'in:percent,amount',
                 new \App\Http\Requests\Rules\DepositNotLocked($this->route('booking')),
