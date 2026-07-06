@@ -33,12 +33,23 @@
       >
         This contract is confirmed and was created externally. The contract is no longer editable.
       </p>
-      <p
+      <div
         v-if="booking.status === 'pending'"
-        class="text-xl text-center text-gray-700 font-semibold bg-blue-100 py-3 px-4 rounded-lg shadow-sm"
+        class="text-center bg-blue-100 py-3 px-4 rounded-lg shadow-sm space-y-3"
       >
-        This contract is pending. The contract is no longer editable.
-      </p>
+        <p class="text-xl text-gray-700 font-semibold">
+          This contract is pending. The contract is no longer editable.
+        </p>
+        <button
+          v-if="booking.contract_option === 'default'"
+          data-testid="amend-contract"
+          type="button"
+          class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md"
+          @click="amendContract"
+        >
+          Amend contract
+        </button>
+      </div>
       <div class="grid gap-6 lg:grid-cols-3">
         <div
           class="bg-white dark:bg-slate-700 rounded-lg shadow-md overflow-hidden"
@@ -75,7 +86,8 @@
 </template>
 
 <script setup>
-import BookingLayout from './Layout/BookingLayout.vue'  
+import { router } from '@inertiajs/vue3'
+import BookingLayout from './Layout/BookingLayout.vue'
 import ContractEditor from './Components/ContractEditor.vue'
 import ContractNone from './Components/ContractNone.vue';
 import ContractExternal from './Components/ContractExternal.vue';
@@ -89,4 +101,17 @@ const props = defineProps({
   booking: Object,
   band: Object,
 })
+
+const amendContract = () => {
+  if (!window.confirm(
+    'This voids the contract that is out for signature. ' +
+    'You will be able to edit the terms and resend it.'
+  )) {
+    return;
+  }
+  router.post(route('Amend Booking Contract', {
+    band: props.booking.band_id,
+    booking: props.booking.id,
+  }));
+}
 </script>
