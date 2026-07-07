@@ -180,6 +180,41 @@ class BroadcastsBandChangesTest extends TestCase
         Event::assertNotDispatched(BandDataChanged::class);
     }
 
+    public function test_media_file_create_and_delete_broadcast(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        Event::fake([BandDataChanged::class]);
+        $band = Bands::factory()->create();
+        $user = User::factory()->create();
+
+        $media = \App\Models\MediaFile::create([
+            'band_id' => $band->id,
+            'user_id' => $user->id,
+            'filename' => 'poster.jpg',
+            'stored_filename' => 'media/poster.jpg',
+            'mime_type' => 'image/jpeg',
+            'file_size' => 1024,
+            'disk' => 'local',
+            'media_type' => 'image',
+            'folder_path' => '/',
+        ]);
+
+        Event::assertDispatched(
+            BandDataChanged::class,
+            fn (BandDataChanged $e) => $e->model === 'media_file'
+                && $e->id === $media->id
+                && $e->bandId === $band->id
+                && $e->action === 'created',
+        );
+
+        $media->delete();
+
+        Event::assertDispatched(
+            BandDataChanged::class,
+            fn (BandDataChanged $e) => $e->model === 'media_file' && $e->action === 'deleted',
+        );
+    }
+
     public function test_payout_page_renders_are_silent_once_config_converged(): void
     {
         $user = User::factory()->create();

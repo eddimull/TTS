@@ -232,6 +232,9 @@ const props = defineProps({
 
 useBandRealtime(props.band.id, {
   bookings: { props: ['booking'], when: (p) => p.id === props.booking.id },
+  // Media→event linkage is by folder path (no FK), so media signals are
+  // band-level; reloading this booking's file list is cheap and debounced.
+  media_file: ['mediaFiles'],
 })
 
 const page = usePage()
