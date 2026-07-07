@@ -33,3 +33,11 @@ Broadcast::channel('rehearsal-planner.{sessionId}', function ($user, $sessionId)
     }
     return $user->canRead('rehearsals', $session->band_id);
 });
+
+// Generic band data channel: thin BandDataChanged invalidation signals.
+// Same audience idiom as the setlist/planner channels — any user who can
+// read the band's events (owners, members, subs). Signals carry no data;
+// the API enforces per-resource permissions on the refetch.
+Broadcast::channel('band.{bandId}', function ($user, $bandId) {
+    return $user->canRead('events', (int) $bandId);
+});
