@@ -2,13 +2,21 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BroadcastsBandChanges;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class EventMember extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, BroadcastsBandChanges;
+
+    protected function broadcastParent(): ?array
+    {
+        return $this->event_id
+            ? ['model' => 'events', 'id' => (int) $this->event_id]
+            : null;
+    }
 
     protected static function booted(): void
     {

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Formatters\CalendarEventFormatter;
 use App\Models\Interfaces\GoogleCalenderable;
 use App\Models\Traits\GoogleCalendarWritable;
+use App\Models\Traits\BroadcastsBandChanges;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -17,7 +18,7 @@ use Spatie\Activitylog\LogOptions;
 
 class Rehearsal extends Model implements GoogleCalenderable
 {
-    use HasFactory, SoftDeletes, GoogleCalendarWritable, LogsActivity;
+    use HasFactory, SoftDeletes, GoogleCalendarWritable, LogsActivity, BroadcastsBandChanges;
 
     protected $fillable = [
         'rehearsal_schedule_id',
