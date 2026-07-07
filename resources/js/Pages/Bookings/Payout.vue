@@ -554,7 +554,7 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, watch } from 'vue'
 import { Link, usePage, useForm, router } from '@inertiajs/vue3'
 import Container from '@/Components/Container.vue'
 import BookingLayout from './Layout/BookingLayout.vue'
@@ -621,6 +621,13 @@ const adjustmentForm = useForm({
 
 // Configuration selector
 const selectedConfigId = ref(props.payoutConfig?.id || null)
+
+// Keep the selector in sync when a realtime partial reload refreshes
+// payoutConfig (e.g. someone else switched the configuration) — the local
+// ref only seeds at mount otherwise and the label would lie.
+watch(() => props.payoutConfig?.id, (id) => {
+  selectedConfigId.value = id ?? null
+})
 
 const page = usePage()
 
