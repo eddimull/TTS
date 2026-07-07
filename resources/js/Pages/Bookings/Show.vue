@@ -63,6 +63,7 @@ useBandRealtime(props.band.id, {
   bookings: { props: ['booking', 'recentActivities'], when: (p) => p.id === props.booking.id },
   events: ['booking'],
   event_member: ['booking'],
+  payments: { props: ['booking'], when: (p) => p.parent?.id === props.booking.id },
 })
 
 const page = usePage()

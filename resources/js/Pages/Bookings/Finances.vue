@@ -92,6 +92,7 @@ const props = defineProps({
 
 useBandRealtime(props.band.id, {
     bookings: { props: ['booking', 'payments'], when: (p) => p.id === props.booking.id },
+    payments: { props: ['payments', 'booking'], when: (p) => p.parent?.id === props.booking.id },
 });
 
 //watch for changes in the action

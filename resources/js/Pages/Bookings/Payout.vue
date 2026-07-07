@@ -606,6 +606,10 @@ useBandRealtime(props.band.id, {
   bookings: { props: ['booking', 'payoutResult', 'adjustedTotal'], when: (p) => p.id === props.booking.id },
   events: ['booking', 'payoutResult', 'adjustedTotal'],
   event_member: ['booking', 'payoutResult', 'adjustedTotal'],
+  payments: { props: ['adjustedTotal', 'payoutResult'], when: (p) => p.parent?.id === props.booking.id },
+  payout: { props: ['adjustments', 'payoutResult', 'adjustedTotal'], when: (p) => p.parent?.id === props.booking.id },
+  payout_adjustment: { props: ['adjustments', 'payoutResult', 'adjustedTotal'], when: (p) => p.parent?.id === props.booking.id },
+  band_payout_config: ['payoutConfig', 'availableConfigs', 'payoutResult'],
 })
 
 const showAdjustmentDialog = ref(false)
