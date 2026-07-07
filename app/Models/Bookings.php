@@ -11,6 +11,7 @@ use App\Formatters\CalendarEventFormatter;
 use App\Http\Traits\BookingTraits;
 use App\Models\Interfaces\Contractable;
 use App\Models\Interfaces\GoogleCalenderable;
+use App\Models\Traits\BroadcastsBandChanges;
 use App\Models\Traits\GoogleCalendarWritable;
 use App\Services\CalendarService;
 use Carbon\Carbon;
@@ -28,6 +29,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
     use Searchable;
     use GoogleCalendarWritable;
     use LogsActivity;
+    use BroadcastsBandChanges;
 
     protected $fillable = [
         'band_id',
