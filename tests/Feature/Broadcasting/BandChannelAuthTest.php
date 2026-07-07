@@ -64,8 +64,9 @@ class BandChannelAuthTest extends TestCase
         $band = Bands::factory()->create();
         $band->owners()->create(['user_id' => $user->id]);
 
-        // Browser flow: session auth + stateful referer (no Bearer token).
-        // Sanctum only consults the web guard for stateful first-party hosts.
+        // Browser flow: session auth, no Bearer token. Sanctum's guard falls
+        // back to the web guard, which the `web` middleware group's session
+        // makes available.
         $response = $this->actingAs($user)
             ->withHeader('Referer', config('app.url'))
             ->postJson('/broadcasting/auth', [

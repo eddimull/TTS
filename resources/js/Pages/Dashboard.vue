@@ -367,7 +367,7 @@
     import UpcomingCharts from '../Components/Dashboard/UpcomingCharts.vue'
     import RehearsalEditorModal from '../Components/Rehearsal/RehearsalEditorModal.vue'
     import Dialog from 'primevue/dialog';
-    import { nextTick, onMounted, onUnmounted, ref } from 'vue';
+    import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
     import { router, usePage } from '@inertiajs/vue3';
     import { useBandRealtime } from '@/composables/useBandRealtime';
 
@@ -399,6 +399,33 @@
 
     // Create a local reactive copy of events that we can mutate
     const localEvents = ref([...props.events]);
+
+    // Realtime signals (events/event_member/roster) trigger a partial reload of
+    // the `events` prop, but the template renders `localEvents`, not `props.events`
+    // directly — that's what lets loadOlderEvents() page in older events without
+    // Inertia clobbering them on the next unrelated prop refresh. So we must
+    // re-sync localEvents whenever props.events changes underneath us, while
+    // preserving anything the user has paged in that's older than this fresh
+    // window. We keep the paged-in events strictly older than the earliest date
+    // in the refreshed props.events, then splice in the fresh window verbatim,
+    // deduping by id in case of overlap.
+    watch(() => props.events, (freshEvents) => {
+      if (!freshEvents || freshEvents.length === 0) {
+        localEvents.value = [...(freshEvents || [])];
+        return;
+      }
+
+      const earliestFreshDate = freshEvents[0].date;
+      const freshIds = new Set(freshEvents.map(e => e.id || e.key));
+
+      const pagedInOlderEvents = localEvents.value.filter(event => {
+        const isOlder = event.date < earliestFreshDate;
+        const isDuplicate = freshIds.has(event.id || event.key);
+        return isOlder && !isDuplicate;
+      });
+
+      localEvents.value = [...pagedInOlderEvents, ...freshEvents];
+    });
 
     // Rehearsal editor state
     const showRehearsalEditor = ref(false);

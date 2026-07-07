@@ -171,7 +171,7 @@ const props = defineProps({
 });
 
 useBandRealtime(props.band.id, {
-    bookings: { props: ['booking'], when: (p) => p.id === props.booking.id },
+    bookings: { props: ['booking', 'activities'], when: (p) => p.id === props.booking.id },
 });
 
 // Helper methods

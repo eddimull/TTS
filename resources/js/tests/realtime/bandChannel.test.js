@@ -82,4 +82,10 @@ describe('subscribeBandSignals', () => {
 		expect(seen).toHaveLength(3); // second subscription still delivers
 		expect(echo.leaveCalls).toEqual([]);
 	});
+
+	it('pins the wire event name to the backend broadcastAs contract', () => {
+		// Must match BandDataChanged::broadcastAs() = 'band.data-changed',
+		// listened with Echo's leading-dot convention for custom names.
+		expect(BAND_EVENT).toBe('.band.data-changed');
+	});
 });
