@@ -402,12 +402,20 @@
 </template>
 
 <script>
+import { usePage } from '@inertiajs/vue3';
+import { useBandRealtime } from '@/composables/useBandRealtime';
 import BreezeAuthenticatedLayout from "@/Layouts/Authenticated";
 import Card from "primevue/card";
 import Tag from "primevue/tag";
 import pdf from "@jbtje/vite-vue3pdf";
 
 export default {
+    setup(props) {
+        useBandRealtime(usePage().props.auth?.user?.band_ids ?? [], {
+            charts: { props: ['chart'], when: (p) => p.id === props.chart?.id },
+            chart_uploads: { props: ['chart'], when: (p) => p.parent?.id === props.chart?.id },
+        });
+    },
     components: {
         BreezeAuthenticatedLayout,
         Card,

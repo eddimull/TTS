@@ -180,6 +180,46 @@ class BroadcastsBandChangesTest extends TestCase
         Event::assertNotDispatched(BandDataChanged::class);
     }
 
+    public function test_song_and_chart_assets_broadcast(): void
+    {
+        Event::fake([BandDataChanged::class]);
+        $band = Bands::factory()->create();
+
+        $song = \App\Models\Song::create([
+            'band_id' => $band->id,
+            'title' => 'Realtime Anthem',
+        ]);
+        Event::assertDispatched(
+            BandDataChanged::class,
+            fn (BandDataChanged $e) => $e->model === 'song' && $e->id === $song->id && $e->bandId === $band->id,
+        );
+
+        $chart = \App\Models\Charts::create([
+            'band_id' => $band->id,
+            'title' => 'Realtime Chart',
+        ]);
+        Event::assertDispatched(
+            BandDataChanged::class,
+            fn (BandDataChanged $e) => $e->model === 'charts' && $e->id === $chart->id && $e->bandId === $band->id,
+        );
+
+        $uploadTypeId = \DB::table('upload_types')->insertGetId(['name' => 'pdf']);
+        $upload = \App\Models\ChartUploads::create([
+            'chart_id' => $chart->id,
+            'upload_type_id' => $uploadTypeId,
+            'displayName' => 'Horns.pdf',
+            'url' => 'charts/horns.pdf',
+            'fileType' => 'pdf',
+            'notes' => '',
+        ]);
+        Event::assertDispatched(
+            BandDataChanged::class,
+            fn (BandDataChanged $e) => $e->model === 'chart_uploads'
+                && $e->bandId === $band->id
+                && $e->parent === ['model' => 'charts', 'id' => $chart->id],
+        );
+    }
+
     public function test_media_file_create_and_delete_broadcast(): void
     {
         \Illuminate\Support\Facades\Storage::fake('local');

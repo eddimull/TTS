@@ -8,6 +8,8 @@ use Laravel\Scout\Searchable;
 
 class Song extends Model
 {
+    use \App\Models\Traits\BroadcastsBandChanges;
+
     use HasFactory, Searchable;
 
     protected $fillable = [
