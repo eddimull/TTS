@@ -604,8 +604,8 @@ const props = defineProps({
 
 useBandRealtime(props.band.id, {
   bookings: { props: ['booking', 'payoutResult', 'adjustedTotal'], when: (p) => p.id === props.booking.id },
-  events: ['payoutResult', 'adjustedTotal'],
-  event_member: ['payoutResult', 'adjustedTotal'],
+  events: ['booking', 'payoutResult', 'adjustedTotal'],
+  event_member: ['booking', 'payoutResult', 'adjustedTotal'],
 })
 
 const showAdjustmentDialog = ref(false)

@@ -61,6 +61,8 @@ const props = defineProps({
 
 useBandRealtime(props.band.id, {
   bookings: { props: ['booking', 'recentActivities'], when: (p) => p.id === props.booking.id },
+  events: ['booking'],
+  event_member: ['booking'],
 })
 
 const page = usePage()
