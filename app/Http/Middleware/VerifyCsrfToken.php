@@ -16,5 +16,8 @@ class VerifyCsrfToken extends Middleware
         // Apple's social-login callback arrives cross-site via form_post, so it
         // carries no CSRF token and drops the SameSite=lax session cookie.
         'auth/apple/callback',
+        // Broadcasting auth serves both web (session) and mobile (Bearer)
+        // clients under auth:sanctum; token clients carry no CSRF token.
+        'broadcasting/auth',
     ];
 }
