@@ -38,6 +38,12 @@ Broadcast::channel('rehearsal-planner.{sessionId}', function ($user, $sessionId)
 // Same audience idiom as the setlist/planner channels — any user who can
 // read the band's events (owners, members, subs). Signals carry no data;
 // the API enforces per-resource permissions on the refetch.
+//
+// Deliberate trade-off (see the mobile repo's realtime spec): one shared
+// channel per band means subs also receive thin signals for models they
+// cannot read (bookings/rehearsal/roster) — existence + numeric id only,
+// never fields. Their refetch is still denied by the API. Splitting into
+// per-ability channels would multiply subscriptions for no data-level gain.
 Broadcast::channel('band.{bandId}', function ($user, $bandId) {
     return $user->canRead('events', (int) $bandId);
 });

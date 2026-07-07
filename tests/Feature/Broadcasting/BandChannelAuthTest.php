@@ -6,6 +6,7 @@ use App\Models\Bands;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Broadcast;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class BandChannelAuthTest extends TestCase
@@ -35,7 +36,7 @@ class BandChannelAuthTest extends TestCase
         require base_path('routes/channels.php');
     }
 
-    private function authAgainstChannel(User $user, int $bandId)
+    private function authAgainstChannel(User $user, int $bandId): TestResponse
     {
         $token = $user->createToken('test-device')->plainTextToken;
 
