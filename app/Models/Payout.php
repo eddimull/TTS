@@ -33,6 +33,18 @@ class Payout extends Model
 
     protected $with = ['adjustments'];
 
+    /**
+     * These are derived caches rewritten by READ paths (the Payout page GET
+     * recomputes and stores calculation_result on every render). Broadcasting
+     * them creates an infinite loop: signal -> client partial reload ->
+     * controller recomputes + saves -> signal. Only user-meaningful payout
+     * changes (amounts, payable) should reach the band channel.
+     */
+    protected function broadcastIgnoreDirty(): array
+    {
+        return ['calculation_result', 'payout_config_id'];
+    }
+
     public function payable(): MorphTo
     {
         return $this->morphTo();

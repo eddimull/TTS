@@ -159,6 +159,59 @@ class BroadcastsBandChangesTest extends TestCase
         );
     }
 
+    public function test_payout_cache_recalculation_does_not_broadcast(): void
+    {
+        $band = Bands::factory()->create();
+        $booking = Bookings::factory()->create(['band_id' => $band->id]);
+        $payout = Payout::create([
+            'payable_type' => Bookings::class,
+            'payable_id' => $booking->id,
+            'band_id' => $band->id,
+            'base_amount' => 10000,
+            'adjusted_amount' => 10000,
+        ]);
+
+        // The Payout page GET rewrites these derived caches on every render.
+        // If this dispatched, signal -> partial reload -> re-save would loop
+        // the page forever (the production incident this test pins).
+        Event::fake([BandDataChanged::class]);
+        $payout->update(['calculation_result' => ['total' => 100.0]]);
+
+        Event::assertNotDispatched(BandDataChanged::class);
+    }
+
+    public function test_meaningful_payout_change_still_broadcasts(): void
+    {
+        $band = Bands::factory()->create();
+        $booking = Bookings::factory()->create(['band_id' => $band->id]);
+        $payout = Payout::create([
+            'payable_type' => Bookings::class,
+            'payable_id' => $booking->id,
+            'band_id' => $band->id,
+            'base_amount' => 10000,
+            'adjusted_amount' => 10000,
+        ]);
+
+        Event::fake([BandDataChanged::class]);
+        $payout->update(['adjusted_amount' => 12000]);
+
+        Event::assertDispatched(
+            BandDataChanged::class,
+            fn (BandDataChanged $e) => $e->model === 'payout' && $e->action === 'updated',
+        );
+    }
+
+    public function test_timestamp_only_touch_does_not_broadcast(): void
+    {
+        $band = Bands::factory()->create();
+        $booking = Bookings::factory()->create(['band_id' => $band->id]);
+
+        Event::fake([BandDataChanged::class]);
+        $booking->touch();
+
+        Event::assertNotDispatched(BandDataChanged::class);
+    }
+
     public function test_payout_adjustment_resolves_band_through_its_payout(): void
     {
         Event::fake([BandDataChanged::class]);
