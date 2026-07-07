@@ -8,8 +8,11 @@ use App\Models\Bookings;
 use App\Models\EventMember;
 use App\Models\Events;
 use App\Models\EventTypes;
+use App\Models\Payout;
+use App\Models\PayoutAdjustment;
 use App\Models\Rehearsal;
 use App\Models\Roster;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
@@ -130,6 +133,60 @@ class BroadcastsBandChangesTest extends TestCase
         Event::assertDispatched(
             BandDataChanged::class,
             fn (BandDataChanged $e) => $e->model === 'roster' && $e->id === $roster->id && $e->bandId === $band->id,
+        );
+    }
+
+    public function test_payment_on_a_booking_broadcasts_with_booking_parent(): void
+    {
+        Event::fake([BandDataChanged::class]);
+        $band = Bands::factory()->create();
+        $booking = Bookings::factory()->create(['band_id' => $band->id]);
+
+        $payment = $booking->payments()->create([
+            'name' => 'Deposit',
+            'amount' => 5000,
+            'date' => now(),
+            'band_id' => $band->id,
+        ]);
+
+        Event::assertDispatched(
+            BandDataChanged::class,
+            fn (BandDataChanged $e) => $e->model === 'payments'
+                && $e->id === $payment->id
+                && $e->bandId === $band->id
+                && $e->action === 'created'
+                && $e->parent === ['model' => 'bookings', 'id' => $booking->id],
+        );
+    }
+
+    public function test_payout_adjustment_resolves_band_through_its_payout(): void
+    {
+        Event::fake([BandDataChanged::class]);
+        $band = Bands::factory()->create();
+        $booking = Bookings::factory()->create(['band_id' => $band->id]);
+        $user = User::factory()->create();
+
+        $payout = Payout::create([
+            'payable_type' => Bookings::class,
+            'payable_id' => $booking->id,
+            'band_id' => $band->id,
+            'base_amount' => 10000,
+            'adjusted_amount' => 10000,
+        ]);
+
+        $adjustment = PayoutAdjustment::create([
+            'payout_id' => $payout->id,
+            'created_by' => $user->id,
+            'amount' => 500,
+            'description' => 'Bonus',
+        ]);
+
+        Event::assertDispatched(
+            BandDataChanged::class,
+            fn (BandDataChanged $e) => $e->model === 'payout_adjustment'
+                && $e->id === $adjustment->id
+                && $e->bandId === $band->id
+                && $e->parent === ['model' => 'bookings', 'id' => $booking->id],
         );
     }
 }

@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BroadcastsBandChanges;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BandPayoutConfig extends Model
 {
-    use HasFactory;
+    use HasFactory, BroadcastsBandChanges;
 
     protected $fillable = [
         'band_id',

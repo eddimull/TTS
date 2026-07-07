@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BroadcastsBandChanges;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +13,7 @@ use App\Casts\Price;
 
 class Payout extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, BroadcastsBandChanges;
 
     protected $fillable = [
         'payable_type',
@@ -50,6 +51,13 @@ class Payout extends Model
     public function adjustments(): HasMany
     {
         return $this->hasMany(PayoutAdjustment::class);
+    }
+
+    protected function broadcastParent(): ?array
+    {
+        return $this->payable_type === \App\Models\Bookings::class
+            ? ['model' => 'bookings', 'id' => (int) $this->payable_id]
+            : null;
     }
 
     /**
