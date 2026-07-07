@@ -148,6 +148,7 @@ import Container from '@/Components/Container.vue';
 import ActivityTimeline from '@/Components/ActivityTimeline.vue';
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue';
 import { DateTime } from 'luxon';
+import { useBandRealtime } from '@/composables/useBandRealtime';
 
 defineOptions({
     layout: BreezeAuthenticatedLayout,
@@ -167,6 +168,10 @@ const props = defineProps({
         required: true,
         default: () => [],
     },
+});
+
+useBandRealtime(props.band.id, {
+    bookings: { props: ['booking'], when: (p) => p.id === props.booking.id },
 });
 
 // Helper methods

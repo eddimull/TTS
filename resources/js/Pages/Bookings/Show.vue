@@ -22,6 +22,7 @@ import { usePage } from '@inertiajs/vue3'
 import BookingLayout from './Layout/BookingLayout.vue'
 import BookingDetails from './Components/BookingDetails.vue'
 import BookingForm from './Components/BookingForm.vue'
+import { useBandRealtime } from '@/composables/useBandRealtime'
 
 defineOptions({
   layout: BookingLayout,
@@ -56,6 +57,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+})
+
+useBandRealtime(props.band.id, {
+  bookings: { props: ['booking', 'recentActivities'], when: (p) => p.id === props.booking.id },
 })
 
 const page = usePage()

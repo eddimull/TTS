@@ -565,6 +565,7 @@ import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
 import Dropdown from 'primevue/dropdown'
+import { useBandRealtime } from '@/composables/useBandRealtime'
 
 defineOptions({
   layout: BookingLayout,
@@ -599,6 +600,12 @@ const props = defineProps({
     type: Array,
     default: () => []
   }
+})
+
+useBandRealtime(props.band.id, {
+  bookings: { props: ['booking', 'payoutResult', 'adjustedTotal'], when: (p) => p.id === props.booking.id },
+  events: ['payoutResult', 'adjustedTotal'],
+  event_member: ['payoutResult', 'adjustedTotal'],
 })
 
 const showAdjustmentDialog = ref(false)
