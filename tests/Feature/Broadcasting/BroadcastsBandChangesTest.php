@@ -180,6 +180,39 @@ class BroadcastsBandChangesTest extends TestCase
         Event::assertNotDispatched(BandDataChanged::class);
     }
 
+    public function test_switching_payout_configuration_broadcasts(): void
+    {
+        $band = Bands::factory()->create();
+        $booking = Bookings::factory()->create(['band_id' => $band->id]);
+        $config = \App\Models\BandPayoutConfig::create([
+            'band_id' => $band->id,
+            'name' => 'Realtime config',
+            'is_active' => true,
+        ]);
+        $payout = Payout::create([
+            'payable_type' => Bookings::class,
+            'payable_id' => $booking->id,
+            'band_id' => $band->id,
+            'base_amount' => 10000,
+            'adjusted_amount' => 10000,
+        ]);
+
+        // The config-switch POST writes payout_config_id + calculation_result
+        // together; the recomputed cache is ignored but the switch itself
+        // must reach other clients (regression: the first ignore list
+        // silenced this exact mutation).
+        Event::fake([BandDataChanged::class]);
+        $payout->update([
+            'payout_config_id' => $config->id,
+            'calculation_result' => ['total' => 1.0],
+        ]);
+
+        Event::assertDispatched(
+            BandDataChanged::class,
+            fn (BandDataChanged $e) => $e->model === 'payout' && $e->action === 'updated',
+        );
+    }
+
     public function test_meaningful_payout_change_still_broadcasts(): void
     {
         $band = Bands::factory()->create();
