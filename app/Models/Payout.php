@@ -107,7 +107,16 @@ class Payout extends Model
      */
     public function getPayoutAmountForUser(User $user): float
     {
-        $payouts = collect($this->calculation_result['member_payouts'] ?? []);
+        return static::amountForUserInResult($this->calculation_result, $user);
+    }
+
+    /**
+     * Same matching rules against an arbitrary (e.g. freshly computed)
+     * calculation result, so read surfaces don't depend on the stored cache.
+     */
+    public static function amountForUserInResult(?array $result, User $user): float
+    {
+        $payouts = collect($result['member_payouts'] ?? []);
 
         $match = $payouts->firstWhere('user_id', $user->id)
             ?? $payouts->first(fn($p) => $p['user_id'] === null && ($p['name'] ?? '') === $user->name);

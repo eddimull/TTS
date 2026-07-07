@@ -521,6 +521,13 @@ const props = defineProps({
 useBandRealtime(props.band.id, {
   events: { props: ['event', 'userPayout'], when: (p) => p.id === props.event.id },
   event_member: ['event', 'userPayout'],
+  // The user's pay derives from the parent booking's payout (config choice,
+  // adjustments) — refresh it on the payout family too. No `when`: the
+  // signals' parent is the BOOKING id, which this page doesn't reliably
+  // carry; a band-wide single-prop reload is cheap and debounced.
+  payout: ['userPayout'],
+  payout_adjustment: ['userPayout'],
+  band_payout_config: ['userPayout'],
 });
 
 // Computed properties

@@ -228,37 +228,16 @@ class BookingsController extends Controller
         $activityService = new \App\Services\BookingActivityService();
         $recentActivities = $activityService->getBookingTimeline($booking)->take(10);
         
-        // Payout estimate: mirror the Payout page's selection semantics so both
-        // views agree — the booking's stored config (fallback: the band's
-        // active one) over the adjusted total (fallback: summed event values).
-        // Strictly read-only: never save from here (the payout page's cache
-        // save is what fed the realtime reload loop).
+        // Payout estimate: shared read-only semantics (stored config, adjusted
+        // total) so every surface shows the same band cut — see
+        // App\Services\BookingPayoutEstimator.
         $payoutConfig = null;
         $payoutResult = null;
 
         if ($booking->price > 0) {
-            $payout = $booking->payout;
-
-            if ($payout?->payout_config_id) {
-                $payoutConfig = \App\Models\BandPayoutConfig::where('id', $payout->payout_config_id)
-                    ->where('band_id', $band->id)
-                    ->with(['band.paymentGroups.users'])
-                    ->first();
-            }
-
-            if (! $payoutConfig) {
-                $payoutConfig = \App\Models\BandPayoutConfig::where('band_id', $band->id)
-                    ->where('is_active', true)
-                    ->with(['band.paymentGroups.users'])
-                    ->first();
-            }
-
-            if ($payoutConfig) {
-                $amount = ($payout && $payout->adjusted_amount_float > 0)
-                    ? $payout->adjusted_amount_float
-                    : $booking->total_event_value;
-                $payoutResult = $payoutConfig->calculatePayouts($amount, null, $booking);
-            }
+            $estimate = app(\App\Services\BookingPayoutEstimator::class)->estimate($booking, $band->id);
+            $payoutConfig = $estimate['config'];
+            $payoutResult = $estimate['result'];
         }
         
         $questionnaireInstances = $booking->questionnaireInstances()
