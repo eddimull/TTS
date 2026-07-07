@@ -536,6 +536,8 @@ import Toast from "primevue/toast";
 import axios from "axios";
 import { mapState, mapActions } from "vuex";
 import { router } from "@inertiajs/vue3";
+import { subscribeBandSignals } from "@/realtime/bandChannel";
+import { createBellRefresher } from "@/realtime/bellRefresher";
 import { navigationGroups } from "@/config/navigation.js";
 
 export default {
@@ -610,12 +612,15 @@ export default {
     },
     mounted() {
         this.subscribeToUserChannel();
+        this.subscribeToBandSignals();
     },
     beforeUnmount() {
         const userId = this.$page.props.auth?.user?.id;
         if (userId && window.Echo) {
             window.Echo.leave(`App.Models.User.${userId}`);
         }
+        this._bandUnsubscribe?.();
+        this._bellRefresher?.dispose();
     },
     onUpdated() {
         this.toast();
@@ -663,6 +668,25 @@ export default {
                 });
 
             console.log('[Layout] Subscribed to App.Models.User.' + userId);
+        },
+
+        subscribeToBandSignals() {
+            const bandIds = this.$page.props.auth?.user?.band_ids;
+            if (!bandIds?.length || !window.Echo) return;
+
+            this._bellRefresher = createBellRefresher({
+                reloadAuth: (opts) => router.reload({
+                    ...opts,
+                    onSuccess: () => {
+                        this.fetchNotifications();
+                        opts.onSuccess?.();
+                    },
+                }),
+                getUnseenCount: () => this.unseenNotifications,
+                getLatest: () => this.notifications?.[0],
+                toast: (opts) => this.$toast?.add(opts),
+            });
+            this._bandUnsubscribe = subscribeBandSignals(bandIds, this._bellRefresher.onSignal);
         },
 
         onSetlistToastClose() {
