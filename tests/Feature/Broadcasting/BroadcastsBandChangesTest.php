@@ -180,6 +180,33 @@ class BroadcastsBandChangesTest extends TestCase
         Event::assertNotDispatched(BandDataChanged::class);
     }
 
+    public function test_payout_page_renders_are_silent_once_config_converged(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+        $booking = Bookings::factory()->create(['band_id' => $band->id, 'price' => 1000]);
+        \App\Models\BandPayoutConfig::create(['band_id' => $band->id, 'name' => 'Active', 'is_active' => true]);
+        Payout::create([
+            'payable_type' => Bookings::class,
+            'payable_id' => $booking->id,
+            'band_id' => $band->id,
+            'base_amount' => 100000,
+            'adjusted_amount' => 100000,
+        ]);
+
+        // First render adopts the active config — one settling signal is fine.
+        $this->actingAs($user)->get(route('Booking Payout', [$band, $booking]))->assertOk();
+
+        // Once converged, every further render must be broadcast-silent.
+        // This pins the exact cycle of the production reload-loop incident:
+        // signal -> client partial reload -> this GET re-saves its cache.
+        Event::fake([BandDataChanged::class]);
+        $this->actingAs($user)->get(route('Booking Payout', [$band, $booking]))->assertOk();
+
+        Event::assertNotDispatched(BandDataChanged::class);
+    }
+
     public function test_switching_payout_configuration_broadcasts(): void
     {
         $band = Bands::factory()->create();

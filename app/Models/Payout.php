@@ -41,8 +41,12 @@ class Payout extends Model
      *
      * payout_config_id is deliberately NOT ignored: switching a booking's
      * payout configuration is a user mutation other clients must see. The
-     * GET's one-time adoption of the active config emits a single harmless
-     * signal (the next render is clean), never a cycle.
+     * payout-page GET rewrites it every render, but once converged it
+     * reassigns the SAME id (no dirty diff, no signal) — loop safety rests
+     * on that idempotence, not on the write being one-time. A render only
+     * re-broadcasts when the resolved config genuinely changes (first
+     * adoption, or the stored config vanishing and the fallback adopting
+     * the active one) — a single settling signal, never a cycle.
      */
     protected function broadcastIgnoreDirty(): array
     {
