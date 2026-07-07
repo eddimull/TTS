@@ -368,7 +368,8 @@
     import RehearsalEditorModal from '../Components/Rehearsal/RehearsalEditorModal.vue'
     import Dialog from 'primevue/dialog';
     import { nextTick, onMounted, onUnmounted, ref } from 'vue';
-    import { router } from '@inertiajs/vue3';
+    import { router, usePage } from '@inertiajs/vue3';
+    import { useBandRealtime } from '@/composables/useBandRealtime';
 
     const props = defineProps({
       events: {
@@ -388,6 +389,13 @@
     defineOptions({
       layout: BreezeAuthenticatedLayout,
     })
+
+    useBandRealtime(usePage().props.auth?.user?.band_ids ?? [], {
+      events: ['events'],
+      event_member: ['events'],
+      roster: ['events'],
+      bookings: ['stats'],
+    });
 
     // Create a local reactive copy of events that we can mutate
     const localEvents = ref([...props.events]);

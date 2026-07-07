@@ -32,6 +32,7 @@ import AuthenticatedLayout from '@/Layouts/Authenticated.vue'
 import Toast from 'primevue/toast'
 import FlowCanvas from './Components/FlowEditor/FlowCanvas.vue'
 import ConfigurationManager from './Components/FlowEditor/ConfigurationManager.vue'
+import { useBandRealtime } from '@/composables/useBandRealtime'
 
 const props = defineProps({
   band: {
@@ -46,6 +47,10 @@ const props = defineProps({
     type: Array,
     default: () => []
   }
+})
+
+useBandRealtime(props.band.id, {
+  roster: ['previewRosterMembers'],
 })
 
 // Compute initial flow from existing config

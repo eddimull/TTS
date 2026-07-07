@@ -58,6 +58,7 @@
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated'
 import RosterManager from './Components/RosterManager.vue'
 import CallListsManager from './Components/CallListsManager.vue'
+import { useBandRealtime } from '@/composables/useBandRealtime'
 
 export default {
   components: {
@@ -66,6 +67,11 @@ export default {
   },
   layout: BreezeAuthenticatedLayout,
   pageTitle: 'Rosters',
+  setup(props) {
+    useBandRealtime(props.band.id, {
+      roster: ['rosters', 'rosterMembers'],
+    });
+  },
   props: {
     band: {
       type: Object,

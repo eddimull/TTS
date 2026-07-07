@@ -493,6 +493,7 @@ import RosterMember from './Show/RosterMember.vue';
 import Times from '@/Components/Event/Card/Components/Times.vue';
 import ImageLightbox from '@/Components/ImageLightbox.vue';
 import SectionHeader from './Show/SectionHeader.vue';
+import { useBandRealtime } from '@/composables/useBandRealtime';
 
 defineOptions({
   layout: BreezeAuthenticatedLayout,
@@ -515,6 +516,11 @@ const props = defineProps({
     type: Number,
     default: null
   }
+});
+
+useBandRealtime(props.band.id, {
+  events: { props: ['event', 'userPayout'], when: (p) => p.id === props.event.id },
+  event_member: ['event', 'userPayout'],
 });
 
 // Computed properties
