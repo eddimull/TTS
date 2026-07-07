@@ -67,4 +67,19 @@ describe('subscribeBandSignals', () => {
 		const off = subscribeBandSignals([1], () => {});
 		off(); // must not throw
 	});
+
+	it('same handler function subscribed twice delivers to both until each unsubscribes', () => {
+		const seen = [];
+		const shared = (p) => seen.push(p);
+		const offA = subscribeBandSignals(1, shared);
+		subscribeBandSignals(1, shared);
+
+		echo.fire('band.1', BAND_EVENT, { model: 'bookings', id: 1, action: 'updated' });
+		expect(seen).toHaveLength(2); // both subscriptions live
+
+		offA();
+		echo.fire('band.1', BAND_EVENT, { model: 'bookings', id: 2, action: 'updated' });
+		expect(seen).toHaveLength(3); // second subscription still delivers
+		expect(echo.leaveCalls).toEqual([]);
+	});
 });

@@ -4,6 +4,8 @@
 // overlapping lifecycles — an Inertia page transition where the incoming
 // page subscribes to band N before the outgoing page unmounts — can never
 // Echo.leave() a channel someone still listens to.
+// Each subscription wraps the handler in a unique closure, preventing
+// accidental deduplication if the same function reference is subscribed twice.
 
 export const BAND_EVENT = '.band.data-changed';
 
@@ -36,6 +38,8 @@ function ensureChannel(bandId) {
 /**
  * Subscribe onSignal to one or more band channels.
  * Returns an unsubscribe function (idempotent).
+ * Each subscription registers a unique wrapper closure, so handler identity
+ * can never collide even if the same function reference is subscribed twice.
  */
 export function subscribeBandSignals(bandIds, onSignal) {
 	const ids = (Array.isArray(bandIds) ? bandIds : [bandIds]).filter(
@@ -46,16 +50,17 @@ export function subscribeBandSignals(bandIds, onSignal) {
 	const entries = ids.map((id) => {
 		const entry = ensureChannel(id);
 		entry.count += 1;
-		entry.handlers.add(onSignal);
-		return { id, entry };
+		const handler = (payload) => onSignal(payload);
+		entry.handlers.add(handler);
+		return { id, entry, handler };
 	});
 
 	let done = false;
 	return () => {
 		if (done) return;
 		done = true;
-		entries.forEach(({ id, entry }) => {
-			entry.handlers.delete(onSignal);
+		entries.forEach(({ id, entry, handler }) => {
+			entry.handlers.delete(handler);
 			entry.count -= 1;
 			if (entry.count <= 0) {
 				channels.delete(id);
