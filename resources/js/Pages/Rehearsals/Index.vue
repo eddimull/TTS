@@ -199,6 +199,7 @@
 import { Link } from '@inertiajs/vue3';
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue';
 import Container from '@/Components/Container.vue';
+import { useBandRealtime } from '@/composables/useBandRealtime';
 
 const props = defineProps({
     band: {
@@ -217,5 +218,13 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+});
+
+// Single-band mode renders from `schedules`; the aggregated multi-band view
+// renders from `bands` (each band carries its own `rehearsal_schedules`).
+// Reload both so a rehearsal signal live-updates either layout — the unused
+// prop is an empty collection in each mode, so reloading it is harmless.
+useBandRealtime(props.band ? props.band.id : (props.bands ?? []).map((b) => b.id), {
+    rehearsal: ['schedules', 'bands'],
 });
 </script>

@@ -77,6 +77,7 @@ import { useForm } from '@inertiajs/vue3';
 import ContactCard from './Components/ContactCard.vue';
 import BookingLayout from './Layout/BookingLayout.vue';
 import NewContactForm from './Components/NewContactForm.vue';
+import { useBandRealtime } from '@/composables/useBandRealtime';
 
 const props = defineProps({
   booking: {
@@ -87,6 +88,10 @@ const props = defineProps({
     type: Object,
     required: true
   }
+});
+
+useBandRealtime(props.band.id, {
+  bookings: { props: ['booking'], when: (p) => p.id === props.booking.id },
 });
 
 const emit = defineEmits(['update:booking']);

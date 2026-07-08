@@ -228,21 +228,16 @@ class BookingsController extends Controller
         $activityService = new \App\Services\BookingActivityService();
         $recentActivities = $activityService->getBookingTimeline($booking)->take(10);
         
-        // Load active payout configuration and calculate payouts
+        // Payout estimate: shared read-only semantics (stored config, adjusted
+        // total) so every surface shows the same band cut — see
+        // App\Services\BookingPayoutEstimator.
         $payoutConfig = null;
         $payoutResult = null;
 
         if ($booking->price > 0) {
-            $payoutConfig = \App\Models\BandPayoutConfig::where('band_id', $band->id)
-                ->where('is_active', true)
-                ->with(['band.paymentGroups.users'])
-                ->first();
-
-            if ($payoutConfig) {
-                // Calculate payouts with attendance data from all events
-                // Use sum of event values instead of booking price
-                $payoutResult = $payoutConfig->calculatePayouts($booking->total_event_value, null, $booking);
-            }
+            $estimate = app(\App\Services\BookingPayoutEstimator::class)->estimate($booking, $band->id);
+            $payoutConfig = $estimate['config'];
+            $payoutResult = $estimate['result'];
         }
         
         $questionnaireInstances = $booking->questionnaireInstances()

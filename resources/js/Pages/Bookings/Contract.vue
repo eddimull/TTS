@@ -92,6 +92,7 @@ import ContractEditor from './Components/ContractEditor.vue'
 import ContractNone from './Components/ContractNone.vue';
 import ContractExternal from './Components/ContractExternal.vue';
 import ContractStatus from './Components/ContractStatus.vue';
+import { useBandRealtime } from '@/composables/useBandRealtime'
 
 defineOptions({
   layout: BookingLayout,
@@ -100,6 +101,10 @@ defineOptions({
 const props = defineProps({
   booking: Object,
   band: Object,
+})
+
+useBandRealtime(props.band.id, {
+  bookings: { props: ['booking'], when: (p) => p.id === props.booking.id },
 })
 
 const amendContract = () => {

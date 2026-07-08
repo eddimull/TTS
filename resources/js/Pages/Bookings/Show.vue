@@ -22,6 +22,7 @@ import { usePage } from '@inertiajs/vue3'
 import BookingLayout from './Layout/BookingLayout.vue'
 import BookingDetails from './Components/BookingDetails.vue'
 import BookingForm from './Components/BookingForm.vue'
+import { useBandRealtime } from '@/composables/useBandRealtime'
 
 defineOptions({
   layout: BookingLayout,
@@ -56,6 +57,18 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+})
+
+useBandRealtime(props.band.id, {
+  bookings: { props: ['booking', 'recentActivities'], when: (p) => p.id === props.booking.id },
+  // Event values feed the estimated payout total, so event-family changes
+  // refresh the estimate props alongside the nested booking data.
+  events: ['booking', 'payoutResult'],
+  event_member: ['booking', 'payoutResult'],
+  payments: { props: ['booking'], when: (p) => p.parent?.id === props.booking.id },
+  payout: { props: ['payoutResult', 'payoutConfig'], when: (p) => p.parent?.id === props.booking.id },
+  payout_adjustment: { props: ['payoutResult', 'payoutConfig'], when: (p) => p.parent?.id === props.booking.id },
+  band_payout_config: ['payoutResult', 'payoutConfig'],
 })
 
 const page = usePage()

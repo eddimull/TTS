@@ -554,7 +554,7 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, watch } from 'vue'
 import { Link, usePage, useForm, router } from '@inertiajs/vue3'
 import Container from '@/Components/Container.vue'
 import BookingLayout from './Layout/BookingLayout.vue'
@@ -565,6 +565,7 @@ import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Button from 'primevue/button'
 import Dropdown from 'primevue/dropdown'
+import { useBandRealtime } from '@/composables/useBandRealtime'
 
 defineOptions({
   layout: BookingLayout,
@@ -601,6 +602,16 @@ const props = defineProps({
   }
 })
 
+useBandRealtime(props.band.id, {
+  bookings: { props: ['booking', 'payoutResult', 'adjustedTotal'], when: (p) => p.id === props.booking.id },
+  events: ['booking', 'payoutResult', 'adjustedTotal'],
+  event_member: ['booking', 'payoutResult', 'adjustedTotal'],
+  payments: { props: ['adjustedTotal', 'payoutResult'], when: (p) => p.parent?.id === props.booking.id },
+  payout: { props: ['payoutConfig', 'adjustments', 'payoutResult', 'adjustedTotal'], when: (p) => p.parent?.id === props.booking.id },
+  payout_adjustment: { props: ['adjustments', 'payoutResult', 'adjustedTotal'], when: (p) => p.parent?.id === props.booking.id },
+  band_payout_config: ['payoutConfig', 'availableConfigs', 'payoutResult'],
+})
+
 const showAdjustmentDialog = ref(false)
 const adjustmentForm = useForm({
   amount: 0,
@@ -610,6 +621,13 @@ const adjustmentForm = useForm({
 
 // Configuration selector
 const selectedConfigId = ref(props.payoutConfig?.id || null)
+
+// Keep the selector in sync when a realtime partial reload refreshes
+// payoutConfig (e.g. someone else switched the configuration) — the local
+// ref only seeds at mount otherwise and the label would lie.
+watch(() => props.payoutConfig?.id, (id) => {
+  selectedConfigId.value = id ?? null
+})
 
 const page = usePage()
 

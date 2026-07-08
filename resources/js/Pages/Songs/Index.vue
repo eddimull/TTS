@@ -346,9 +346,16 @@
 </template>
 
 <script>
+import { useBandRealtime } from '@/composables/useBandRealtime';
 import { router } from '@inertiajs/vue3';
 
 export default {
+  setup(props) {
+    // Song catalog live-updates; page renders empty without a band.
+    useBandRealtime(props.band ? props.band.id : [], {
+      song: ['songs'],
+    });
+  },
   props: {
     band: { type: Object, default: null },
     songs: { type: Array, default: () => [] },

@@ -830,6 +830,7 @@ import MediaPreviewDialog from './Components/MediaPreviewDialog.vue';
 import DriveConnectionsPanel from './Components/DriveConnectionsPanel.vue';
 import FolderBreadcrumbs from './Components/FolderBreadcrumbs.vue';
 import { ChunkedUploadService } from '@/services/ChunkedUploadService';
+import { useBandRealtime } from '@/composables/useBandRealtime';
 import { useUploadQueue } from '@/composables/useUploadQueue';
 import { useMediaDragDrop } from '@/composables/useMediaDragDrop';
 import { usePage } from '@inertiajs/vue3';
@@ -917,6 +918,12 @@ export default {
   setup(props) {
     const { addFiles, uploadQueue } = useUploadQueue();
     const page = usePage();
+
+    // Library media + quota refresh when band media changes anywhere
+    // (uploads, deletes, renames — band-level signals, folder-agnostic).
+    useBandRealtime(props.currentBandId, {
+      media_file: ['media', 'quota'],
+    });
 
     // Store band_id globally for upload queue
     if (typeof window !== 'undefined') {
