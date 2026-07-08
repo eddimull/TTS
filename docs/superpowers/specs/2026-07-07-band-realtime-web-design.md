@@ -31,7 +31,7 @@ updates live and visibly.
 
 ### 1. Shared band context (backend, small)
 
-`HandleInertiaRequests::share` adds `auth.bandIds`: deduped ids of the
+`HandleInertiaRequests::share` adds `auth.user.band_ids`: deduped ids of the
 user's owned + member + sub bands (same audience the `band.{bandId}`
 channel authorizes). Absent when unauthenticated.
 
@@ -63,7 +63,7 @@ useBandRealtime(bandIdOrIds, reloadMap, options = {})
 
 ### 3. Live bell (Authenticated.vue)
 
-Layout subscribes to all `auth.bandIds` via the composable with an
+Layout subscribes to all `auth.user.band_ids` via the composable with an
 `onSignal` handler (no reloadMap): debounced refetch of the shared `auth`
 prop (`router.reload({ only: ['auth'] })`), which feeds the existing Vuex
 notification store → badge + dropdown update in realtime. When the unread
@@ -80,10 +80,10 @@ props come from the five models):
 
 | Page | band id source | models → props |
 |---|---|---|
-| Dashboard | `auth.bandIds` (all) | events, event_member, roster → `events` |
-| Bookings/Index | `auth.bandIds` (multi-band page) | bookings → `bookings` |
+| Dashboard | `auth.user.band_ids` (all) | events, event_member, roster → `events` |
+| Bookings/Index | `auth.user.band_ids` (multi-band page) | bookings → `bookings` |
 | Bookings/Show + sub-pages (Payout, Contract, Contacts, Media) | `booking.band_id` | bookings (when id matches) → `booking`, `recentActivities` (per page's props) |
-| Events/Index | page band or `auth.bandIds` | events, event_member, roster → `events` |
+| Events/Index | page band or `auth.user.band_ids` | events, event_member, roster → `events` |
 | Band rosters management | page band | roster → `rosters` |
 | Rehearsals pages (if Inertia-rendered) | page band | rehearsal → their props |
 
