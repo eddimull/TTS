@@ -97,11 +97,20 @@ jobs:
 
       - name: Build assets
         env:
+          # Pusher client config is PUBLIC — it ships in the browser bundle — so
+          # it lives in repository variables, not secrets. Secrets mask to '' in
+          # logs, which made an empty value indistinguishable from a set one and
+          # hid that the build was baking in an empty key. Vars are visible and
+          # are read by this environment-less build job. The sensitive Pusher app
+          # *secret* stays server-side and never becomes a VITE_ var.
+          # HOST/PORT are intentionally omitted (GitHub vars can't be empty);
+          # an absent var resolves to '' → bootstrap.js routes to Pusher Cloud.
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
-          VITE_PUSHER_APP_KEY: ${{ secrets.VITE_PUSHER_APP_KEY }}
-          VITE_PUSHER_HOST: ${{ secrets.VITE_PUSHER_HOST }}
-          VITE_PUSHER_PORT: ${{ secrets.VITE_PUSHER_PORT }}
-          VITE_PUSHER_SCHEME: ${{ secrets.VITE_PUSHER_SCHEME }}
+          VITE_PUSHER_APP_KEY: ${{ vars.VITE_PUSHER_APP_KEY }}
+          VITE_PUSHER_APP_CLUSTER: ${{ vars.VITE_PUSHER_APP_CLUSTER }}
+          VITE_PUSHER_HOST: ${{ vars.VITE_PUSHER_HOST }}
+          VITE_PUSHER_PORT: ${{ vars.VITE_PUSHER_PORT }}
+          VITE_PUSHER_SCHEME: ${{ vars.VITE_PUSHER_SCHEME }}
         run: npm run build
 
       - name: Archive production artifacts
