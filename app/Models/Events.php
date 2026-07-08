@@ -11,12 +11,20 @@ use App\Models\Interfaces\GoogleCalenderable;
 use App\Models\Traits\GoogleCalendarWritable;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Traits\BroadcastsBandChanges;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 
 class Events extends Model implements GoogleCalenderable
 {
-    use HasFactory, GoogleCalendarWritable, LogsActivity;
+    use HasFactory, GoogleCalendarWritable, LogsActivity, BroadcastsBandChanges;
+
+    protected function broadcastBandId(): ?int
+    {
+        $bandId = $this->eventable?->band_id;
+
+        return $bandId ? (int) $bandId : null;
+    }
 
     protected static function booted()
     {

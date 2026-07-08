@@ -225,7 +225,7 @@ class PlannerControllerTest extends TestCase
             $this->headers($band)
         )->assertStatus(422)->assertJsonValidationErrors('rehearsal_id');
 
-        Queue::assertNothingPushed();
+        Queue::assertNotPushed(RehearsalPlannerTurnJob::class);
     }
 
     public function test_start_rejects_rehearsal_id_from_another_band(): void
@@ -249,6 +249,6 @@ class PlannerControllerTest extends TestCase
             $this->headers($band)
         )->assertStatus(422)->assertJsonValidationErrors('rehearsal_id');
 
-        Queue::assertNothingPushed();
+        Queue::assertNotPushed(RehearsalPlannerTurnJob::class);
     }
 }

@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BroadcastsBandChanges;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Roster extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, BroadcastsBandChanges;
 
     protected $fillable = [
         'band_id',
