@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Casts\Price;
 use App\Enums\PaymentType;
+use App\Models\Traits\BroadcastsBandChanges;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -14,7 +15,7 @@ use Spatie\Activitylog\LogOptions;
 
 class Payments extends Model
 {
-    use HasFactory, LogsActivity;
+    use HasFactory, LogsActivity, BroadcastsBandChanges;
 
     protected $table = 'payments';
 
@@ -60,6 +61,13 @@ class Payments extends Model
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoices::class, 'invoices_id');
+    }
+
+    protected function broadcastParent(): ?array
+    {
+        return $this->payable_type === \App\Models\Bookings::class
+            ? ['model' => 'bookings', 'id' => (int) $this->payable_id]
+            : null;
     }
 
     /**

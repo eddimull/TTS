@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Storage;
 
 class MediaFile extends Model
 {
+    use \App\Models\Traits\BroadcastsBandChanges;
+
     use HasFactory, SoftDeletes;
 
     protected $fillable = [

@@ -244,6 +244,7 @@ import { Link } from '@inertiajs/vue3';
 import { DateTime } from 'luxon';
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue';
 import Container from '@/Components/Container.vue';
+import { useBandRealtime } from '@/composables/useBandRealtime';
 
 const props = defineProps({
     band: {
@@ -258,6 +259,10 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+});
+
+useBandRealtime(props.band.id, {
+    rehearsal: ['schedule'],
 });
 
 const sortedRehearsals = computed(() => {

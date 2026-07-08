@@ -25,6 +25,7 @@
 <script setup>
 import BookingLayout from './Layout/BookingLayout.vue';
 import RosterSection from './Components/EventEditor/RosterSection.vue';
+import { useBandRealtime } from '@/composables/useBandRealtime';
 
 defineOptions({ layout: BookingLayout });
 
@@ -32,6 +33,12 @@ const props = defineProps({
   booking: { type: Object, required: true },
   band: { type: Object, required: true },
   events: { type: Array, default: () => [] },
+});
+
+useBandRealtime(props.band.id, {
+  bookings: { props: ['booking'], when: (p) => p.id === props.booking.id },
+  events: ['events'],
+  event_member: ['events'],
 });
 
 const updateEvent = (eventId, updatedEvent) => {

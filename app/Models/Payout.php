@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BroadcastsBandChanges;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +13,7 @@ use App\Casts\Price;
 
 class Payout extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, BroadcastsBandChanges;
 
     protected $fillable = [
         'payable_type',
@@ -32,6 +33,26 @@ class Payout extends Model
 
     protected $with = ['adjustments'];
 
+    /**
+     * calculation_result is a derived cache rewritten by READ paths (the
+     * Payout page GET recomputes and stores it on every render). Broadcasting
+     * it creates an infinite loop: signal -> client partial reload ->
+     * controller recomputes + saves -> signal.
+     *
+     * payout_config_id is deliberately NOT ignored: switching a booking's
+     * payout configuration is a user mutation other clients must see. The
+     * payout-page GET rewrites it every render, but once converged it
+     * reassigns the SAME id (no dirty diff, no signal) — loop safety rests
+     * on that idempotence, not on the write being one-time. A render only
+     * re-broadcasts when the resolved config genuinely changes (first
+     * adoption, or the stored config vanishing and the fallback adopting
+     * the active one) — a single settling signal, never a cycle.
+     */
+    protected function broadcastIgnoreDirty(): array
+    {
+        return ['calculation_result'];
+    }
+
     public function payable(): MorphTo
     {
         return $this->morphTo();
@@ -50,6 +71,13 @@ class Payout extends Model
     public function adjustments(): HasMany
     {
         return $this->hasMany(PayoutAdjustment::class);
+    }
+
+    protected function broadcastParent(): ?array
+    {
+        return $this->payable_type === \App\Models\Bookings::class
+            ? ['model' => 'bookings', 'id' => (int) $this->payable_id]
+            : null;
     }
 
     /**
@@ -83,7 +111,16 @@ class Payout extends Model
      */
     public function getPayoutAmountForUser(User $user): float
     {
-        $payouts = collect($this->calculation_result['member_payouts'] ?? []);
+        return static::amountForUserInResult($this->calculation_result, $user);
+    }
+
+    /**
+     * Same matching rules against an arbitrary (e.g. freshly computed)
+     * calculation result, so read surfaces don't depend on the stored cache.
+     */
+    public static function amountForUserInResult(?array $result, User $user): float
+    {
+        $payouts = collect($result['member_payouts'] ?? []);
 
         $match = $payouts->firstWhere('user_id', $user->id)
             ?? $payouts->first(fn($p) => $p['user_id'] === null && ($p['name'] ?? '') === $user->name);

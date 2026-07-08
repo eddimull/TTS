@@ -197,6 +197,7 @@ import Dialog from 'primevue/dialog'
 import MediaUploadDialog from '@/Components/MediaUploadDialog.vue'
 import MediaGallery from '@/Components/MediaGallery.vue'
 import { useMediaDragDrop } from '@/composables/useMediaDragDrop'
+import { useBandRealtime } from '@/composables/useBandRealtime'
 
 defineOptions({
   layout: BookingLayout,
@@ -227,6 +228,13 @@ const props = defineProps({
     type: Boolean,
     default: true
   }
+})
+
+useBandRealtime(props.band.id, {
+  bookings: { props: ['booking'], when: (p) => p.id === props.booking.id },
+  // Media→event linkage is by folder path (no FK), so media signals are
+  // band-level; reloading this booking's file list is cheap and debounced.
+  media_file: ['mediaFiles'],
 })
 
 const page = usePage()

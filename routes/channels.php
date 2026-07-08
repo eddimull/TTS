@@ -2,8 +2,6 @@
 
 use Illuminate\Support\Facades\Broadcast;
 
-// Allow Sanctum token-authenticated requests (mobile app) to authorize private channels
-Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
 /*
 |--------------------------------------------------------------------------

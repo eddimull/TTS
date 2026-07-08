@@ -10,6 +10,7 @@ class Charts extends Model
 {
     protected $guarded = [];
     use HasFactory, Searchable;
+    use \App\Models\Traits\BroadcastsBandChanges;
 
     protected $with = ['uploads'];
 

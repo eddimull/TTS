@@ -58,6 +58,26 @@ class BandChannelAuthTest extends TestCase
         $this->assertIsString($response->json('auth'));
     }
 
+    public function test_web_session_user_can_subscribe_via_stateful_auth(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        // Browser flow: session auth, no Bearer token. Sanctum's guard falls
+        // back to the web guard, which the `web` middleware group's session
+        // makes available.
+        $response = $this->actingAs($user)
+            ->withHeader('Referer', config('app.url'))
+            ->postJson('/broadcasting/auth', [
+                'socket_id'    => '123.456',
+                'channel_name' => 'private-band.' . $band->id,
+            ]);
+
+        $response->assertOk();
+        $this->assertIsString($response->json('auth'));
+    }
+
     public function test_non_member_is_rejected(): void
     {
         $user = User::factory()->create();

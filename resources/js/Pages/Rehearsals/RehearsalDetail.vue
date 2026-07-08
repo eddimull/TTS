@@ -276,8 +276,9 @@ import { Link } from '@inertiajs/vue3';
 import { DateTime } from 'luxon';
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue';
 import Container from '@/Components/Container.vue';
+import { useBandRealtime } from '@/composables/useBandRealtime';
 
-defineProps({
+const props = defineProps({
     band: {
         type: Object,
         required: true,
@@ -294,6 +295,10 @@ defineProps({
         type: Boolean,
         default: false,
     },
+});
+
+useBandRealtime(props.band.id, {
+    rehearsal: { props: ['rehearsal'], when: (p) => p.id === props.rehearsal.id },
 });
 
 const formatDate = (date) => {

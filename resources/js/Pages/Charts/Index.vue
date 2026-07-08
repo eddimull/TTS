@@ -331,6 +331,8 @@
 </template>
 
 <script>
+import { usePage } from '@inertiajs/vue3';
+import { useBandRealtime } from '@/composables/useBandRealtime';
 import BreezeAuthenticatedLayout from "@/Layouts/Authenticated";
 import InputSwitch from "primevue/inputswitch";
 import IconField from "primevue/iconfield";
@@ -343,6 +345,14 @@ import Card from "primevue/card";
 import Tag from "primevue/tag";
 
 export default {
+    setup() {
+        // Charts page aggregates every band the user can read — subscribe
+        // to all of them; chart uploads roll up into the same charts prop.
+        useBandRealtime(usePage().props.auth?.user?.band_ids ?? [], {
+            charts: ['charts'],
+            chart_uploads: ['charts'],
+        });
+    },
     components: {
         BreezeAuthenticatedLayout,
         Toolbar,
@@ -389,6 +399,13 @@ export default {
             handler(newValue) {
                 this.filterCharts();
             },
+        },
+        // Realtime partial reloads refresh the `charts` prop; re-seed the
+        // local copies (data() only captures the mount-time value) and
+        // re-apply the active search filter.
+        charts(newCharts) {
+            this.chartsData = newCharts;
+            this.filterCharts();
         },
     },
     created() {

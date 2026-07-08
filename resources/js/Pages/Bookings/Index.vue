@@ -84,6 +84,8 @@ import BreezeAuthenticatedLayout from "@/Layouts/Authenticated.vue";
 import { DateTime } from "luxon";
 import BookingCard from "./Components/BookingCard.vue";
 import Input from "@/Components/Input.vue";
+import { usePage } from '@inertiajs/vue3';
+import { useBandRealtime } from '@/composables/useBandRealtime';
 
 export default {
     components: {
@@ -91,6 +93,11 @@ export default {
         Input,
     },
     layout: BreezeAuthenticatedLayout,
+    setup() {
+        useBandRealtime(usePage().props.auth?.user?.band_ids ?? [], {
+            bookings: ['bookings'],
+        });
+    },
     props: {
         bookings: Array,
         bands: Object,

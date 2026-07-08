@@ -208,11 +208,18 @@ class EventsController extends Controller
             ];
         })->sortBy('name')->values();
 
-        // Get user's payout if they're on the roster
+        // Get user's payout if they're on the roster. Compute a FRESH estimate
+        // (shared stored-config/adjusted-total semantics) instead of reading
+        // the payout's calculation_result cache, which only refreshes when
+        // the Payout page renders and goes stale under realtime updates.
         $userPayout = null;
-        if($event->eventable->payout)
+        if ($event->eventable instanceof \App\Models\Bookings && $event->eventable->payout)
         {
-            $userPayout = $event->eventable->payout->getPayoutAmountForUser(Auth::user());
+            $estimate = app(\App\Services\BookingPayoutEstimator::class)
+                ->estimate($event->eventable, (int) $event->eventable->band_id);
+            if ($estimate['result'] !== null) {
+                $userPayout = \App\Models\Payout::amountForUserInResult($estimate['result'], Auth::user());
+            }
         }
 
         // Fall back to event_subs payout for sub users
