@@ -347,6 +347,33 @@ class BroadcastsBandChangesTest extends TestCase
         Event::assertNotDispatched(BandDataChanged::class);
     }
 
+    public function test_broadcast_carries_the_originating_socket_id_so_the_sender_is_excluded(): void
+    {
+        Event::fake([BandDataChanged::class]);
+        $this->app['request']->headers->set('X-Socket-ID', '1234.5678');
+
+        $band = Bands::factory()->create();
+        Bookings::factory()->create(['band_id' => $band->id]);
+
+        Event::assertDispatched(
+            BandDataChanged::class,
+            fn (BandDataChanged $e) => $e->socket === '1234.5678',
+        );
+    }
+
+    public function test_broadcast_without_a_socket_header_reaches_everyone(): void
+    {
+        Event::fake([BandDataChanged::class]);
+
+        $band = Bands::factory()->create();
+        Bookings::factory()->create(['band_id' => $band->id]);
+
+        Event::assertDispatched(
+            BandDataChanged::class,
+            fn (BandDataChanged $e) => $e->socket === null,
+        );
+    }
+
     public function test_payout_adjustment_resolves_band_through_its_payout(): void
     {
         Event::fake([BandDataChanged::class]);
