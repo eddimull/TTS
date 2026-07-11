@@ -3,6 +3,7 @@ import { defineComponent, h } from 'vue';
 import { mount } from '@vue/test-utils';
 import { installEchoMock } from '../mocks/echo';
 import { BAND_EVENT, __resetBandChannelState } from '../../realtime/bandChannel';
+import { COALESCE_MS, queueReload, __resetReloadCoalescer } from '../../realtime/reloadCoalescer';
 import { useBandRealtime } from '../../composables/useBandRealtime';
 
 vi.mock('@inertiajs/vue3', () => ({
@@ -25,6 +26,7 @@ describe('useBandRealtime', () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
 		__resetBandChannelState();
+		__resetReloadCoalescer();
 		echo = installEchoMock();
 		router.reload.mockClear();
 	});
@@ -40,16 +42,27 @@ describe('useBandRealtime', () => {
 		echo.fire('band.1', BAND_EVENT, { model: 'events', id: 3, action: 'created' });
 		expect(router.reload).not.toHaveBeenCalled();
 
-		vi.advanceTimersByTime(300);
+		vi.advanceTimersByTime(COALESCE_MS);
 		expect(router.reload).toHaveBeenCalledTimes(1);
 		const only = router.reload.mock.calls[0][0].only;
 		expect([...only].sort()).toEqual(['bookings', 'events']);
 	});
 
+	it('shares one reload window with other consumers (the layout bell)', () => {
+		mountWith(1, { bookings: ['bookings'] });
+
+		echo.fire('band.1', BAND_EVENT, { model: 'bookings', id: 1, action: 'updated' });
+		queueReload(['auth']);
+
+		vi.advanceTimersByTime(COALESCE_MS);
+		expect(router.reload).toHaveBeenCalledTimes(1);
+		expect([...router.reload.mock.calls[0][0].only].sort()).toEqual(['auth', 'bookings']);
+	});
+
 	it('ignores models missing from the map', () => {
 		mountWith(1, { bookings: ['bookings'] });
 		echo.fire('band.1', BAND_EVENT, { model: 'roster', id: 1, action: 'updated' });
-		vi.advanceTimersByTime(300);
+		vi.advanceTimersByTime(COALESCE_MS);
 		expect(router.reload).not.toHaveBeenCalled();
 	});
 
@@ -59,11 +72,11 @@ describe('useBandRealtime', () => {
 		});
 
 		echo.fire('band.1', BAND_EVENT, { model: 'bookings', id: 7, action: 'updated' });
-		vi.advanceTimersByTime(300);
+		vi.advanceTimersByTime(COALESCE_MS);
 		expect(router.reload).not.toHaveBeenCalled();
 
 		echo.fire('band.1', BAND_EVENT, { model: 'bookings', id: 42, action: 'updated' });
-		vi.advanceTimersByTime(300);
+		vi.advanceTimersByTime(COALESCE_MS);
 		expect(router.reload).toHaveBeenCalledTimes(1);
 		expect(router.reload.mock.calls[0][0].only).toEqual(['booking']);
 	});
@@ -81,7 +94,7 @@ describe('useBandRealtime', () => {
 		echo.fire('band.1', BAND_EVENT, { model: 'bookings', id: 1, action: 'updated' });
 		wrapper.unmount();
 
-		vi.advanceTimersByTime(300);
+		vi.advanceTimersByTime(COALESCE_MS);
 		expect(router.reload).not.toHaveBeenCalled();
 		expect(echo.leaveCalls).toEqual(['band.1']);
 	});

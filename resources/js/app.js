@@ -3,7 +3,6 @@ import '@/bootstrap';
 // Import modules...
 import { createApp, h } from 'vue';
 import { createInertiaApp, Link } from '@inertiajs/vue3';
-import { InertiaProgress } from '@inertiajs/progress';
 import { createStore } from 'vuex'
 import VueSweetalert2 from 'vue-sweetalert2';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
@@ -68,6 +67,10 @@ const store = createStore({
 
 createInertiaApp({
     title: (title) => `${title} - ${import.meta.env.VITE_APP_NAME}`,
+    // Inertia's built-in progress bar skips async visits (router.reload from
+    // realtime signals) via showProgress; the legacy @inertiajs/progress
+    // package flashed the bar on every background reload.
+    progress: { color: '#4B5563' },
     resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
     setup({ el, App, props, plugin }) {
         const app = createApp({ render: () => h(App, props) });
@@ -159,5 +162,3 @@ createInertiaApp({
 
     }
 });
-
-InertiaProgress.init({ color: '#4B5563' });

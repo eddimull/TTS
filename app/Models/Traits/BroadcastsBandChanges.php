@@ -9,6 +9,10 @@ use Illuminate\Support\Str;
  * Opt-in realtime signal: any created/updated/deleted on the model dispatches
  * a thin BandDataChanged broadcast to the model's band channel.
  *
+ * Broadcast toOthers(): the writer's own client already sees the change via
+ * its Inertia response, so the originating socket (X-Socket-ID, attached to
+ * axios by Echo) is excluded to avoid an echo reload on the sender.
+ *
  * Models whose band is reached indirectly override broadcastBandId(); child
  * models whose client-side listing is keyed by a parent (comments, event
  * members) override broadcastParent().
@@ -38,13 +42,13 @@ trait BroadcastsBandChanges
                 return;
             }
 
-            BandDataChanged::dispatch(
+            broadcast(new BandDataChanged(
                 (int) $bandId,
                 Str::snake(class_basename($this)),
                 (int) $this->getKey(),
                 $action,
                 $this->broadcastParent(),
-            );
+            ))->toOthers();
         } catch (\Throwable $e) {
             // A realtime signal must never break the write that caused it.
             report($e);

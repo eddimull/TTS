@@ -535,8 +535,8 @@ import NavAccordion from "@/Components/NavAccordion.vue";
 import Toast from "primevue/toast";
 import axios from "axios";
 import { mapState, mapActions } from "vuex";
-import { router } from "@inertiajs/vue3";
 import { subscribeBandSignals } from "@/realtime/bandChannel";
+import { queueReload } from "@/realtime/reloadCoalescer";
 import { createBellRefresher } from "@/realtime/bellRefresher";
 import { navigationGroups } from "@/config/navigation.js";
 
@@ -675,12 +675,9 @@ export default {
             if (!bandIds?.length || !window.Echo) return;
 
             this._bellRefresher = createBellRefresher({
-                reloadAuth: (opts) => router.reload({
-                    ...opts,
-                    onSuccess: () => {
-                        this.fetchNotifications();
-                        opts.onSuccess?.();
-                    },
+                reloadAuth: (opts) => queueReload(opts.only, () => {
+                    this.fetchNotifications();
+                    opts.onSuccess?.();
                 }),
                 getUnseenCount: () => this.unseenNotifications,
                 getLatest: () => this.notifications?.[0],
