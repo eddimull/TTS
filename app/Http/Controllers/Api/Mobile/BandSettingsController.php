@@ -141,6 +141,7 @@ class BandSettingsController extends Controller
             'read:invoices', 'write:invoices',
             'read:proposals', 'write:proposals',
             'read:colors', 'write:colors',
+            'moderate:chat',
         ];
     }
 }
