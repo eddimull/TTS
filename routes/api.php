@@ -125,7 +125,7 @@ Route::prefix('mobile')->group(function () {
         Route::get('/conversations/{conversation}/messages', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'messages'])->name('mobile.conversations.messages.index');
         Route::post('/conversations/{conversation}/messages', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'storeMessage'])->name('mobile.conversations.messages.store');
         Route::post('/conversations/{conversation}/read', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'read'])->name('mobile.conversations.read');
-        Route::post('/conversations/{conversation}/typing', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'typing'])->name('mobile.conversations.typing');
+        Route::post('/conversations/{conversation}/typing', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'typing'])->middleware('throttle:chat-typing')->name('mobile.conversations.typing');
         Route::patch('/messages/{message}', [App\Http\Controllers\Api\Mobile\MessagesController::class, 'update'])->name('mobile.messages.update');
         Route::delete('/messages/{message}', [App\Http\Controllers\Api\Mobile\MessagesController::class, 'destroy'])->name('mobile.messages.destroy');
         Route::get('/messages/{message}/attachments/{attachment}', [App\Http\Controllers\Api\Mobile\MessagesController::class, 'attachment'])->name('mobile.messages.attachments.show');

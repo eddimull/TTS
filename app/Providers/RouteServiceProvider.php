@@ -88,5 +88,12 @@ class RouteServiceProvider extends ServiceProvider
         {
             return Limit::perMinute(60)->by(optional($request->user())->id ?: $request->ip());
         });
+
+        // Typing pings are frequent and ephemeral; keep them off the shared
+        // 'api' budget so a chatty typing indicator can't 429 message sends.
+        RateLimiter::for('chat-typing', function (Request $request)
+        {
+            return Limit::perMinute(30)->by(optional($request->user())->id ?: $request->ip());
+        });
     }
 }
