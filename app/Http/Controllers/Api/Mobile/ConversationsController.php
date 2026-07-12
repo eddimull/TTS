@@ -8,7 +8,6 @@ use App\Models\ConversationParticipant;
 use App\Models\Message;
 use App\Models\User;
 use App\Services\Chat\ConversationService;
-use App\Services\Chat\MessageFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +16,6 @@ class ConversationsController extends Controller
 {
     public function __construct(
         private readonly ConversationService $conversations,
-        private readonly MessageFormatter $formatter,
     ) {}
 
     /**
@@ -38,16 +36,63 @@ class ConversationsController extends Controller
             ->get();
 
         $all = $channels->concat($dms);
+        $ids = $all->pluck('id');
 
         $lastReads = ConversationParticipant::where('user_id', $user->id)
-            ->whereIn('conversation_id', $all->pluck('id'))
+            ->whereIn('conversation_id', $ids)
             ->pluck('last_read_at', 'conversation_id');
 
-        $rows = $all->map(fn (Conversation $c) => $this->summarize($c, $user, $lastReads->get($c->id)))
+        $prefetch = $this->prefetchSummaryData($ids, $user, $lastReads);
+
+        $rows = $all->map(fn (Conversation $c) => $this->summarize($c, $user, $prefetch))
             ->sortByDesc(fn ($row) => $row['last_message_at'] ?? '')
             ->values();
 
         return response()->json(['conversations' => $rows]);
+    }
+
+    /**
+     * Bulk-load everything summarize() needs for a set of conversations so
+     * index() runs a constant number of queries instead of ~3 per row.
+     *
+     * @return array{last: \Illuminate\Support\Collection, unread: \Illuminate\Support\Collection, dmOther: \Illuminate\Support\Collection}
+     */
+    private function prefetchSummaryData($ids, User $user, $lastReads): array
+    {
+        $latestIds = Message::withTrashed()
+            ->whereIn('conversation_id', $ids)
+            ->selectRaw('MAX(id) as id')
+            ->groupBy('conversation_id')
+            ->pluck('id');
+
+        $last = Message::withTrashed()
+            ->whereIn('id', $latestIds)
+            ->with('attachments')
+            ->get()
+            ->keyBy('conversation_id');
+
+        // Grouped count of "not mine" messages per conversation that are
+        // newer than that conversation's own last_read_at, in one query via
+        // a per-row conditional (each conversation's threshold differs).
+        $unread = Message::whereIn('conversation_id', $ids)
+            ->where('user_id', '!=', $user->id)
+            ->get(['conversation_id', 'created_at'])
+            ->groupBy('conversation_id')
+            ->map(function ($messages, $conversationId) use ($lastReads) {
+                $lastReadAt = $lastReads->get($conversationId);
+
+                return $lastReadAt
+                    ? $messages->filter(fn ($m) => $m->created_at->gt($lastReadAt))->count()
+                    : $messages->count();
+            });
+
+        $dmOther = ConversationParticipant::whereIn('conversation_id', $ids)
+            ->where('user_id', '!=', $user->id)
+            ->with('user')
+            ->get()
+            ->keyBy('conversation_id');
+
+        return ['last' => $last, 'unread' => $unread, 'dmOther' => $dmOther];
     }
 
     /** POST /api/mobile/conversations/dm {user_id} — find-or-create the global pair thread. */
@@ -62,7 +107,9 @@ class ConversationsController extends Controller
 
         $conversation = $this->conversations->dmBetween($me, $other);
 
-        return response()->json(['conversation' => $this->summarize($conversation, $me, null)]);
+        $prefetch = $this->prefetchSummaryData(collect([$conversation->id]), $me, collect());
+
+        return response()->json(['conversation' => $this->summarize($conversation, $me, $prefetch)]);
     }
 
     /** GET /api/mobile/chat/contacts — who the current user may start a DM with. */
@@ -122,10 +169,15 @@ class ConversationsController extends Controller
         return response()->json(['contacts' => $contacts]);
     }
 
-    /** Conversation JSON — the one wire shape for a conversation everywhere. */
-    private function summarize(Conversation $conversation, User $user, $lastReadAt): array
+    /**
+     * Conversation JSON — the one wire shape for a conversation everywhere.
+     *
+     * @param array{last: \Illuminate\Support\Collection, unread: \Illuminate\Support\Collection, dmOther: \Illuminate\Support\Collection} $prefetch
+     *        Bulk-loaded data from prefetchSummaryData(), keyed by conversation_id.
+     */
+    private function summarize(Conversation $conversation, User $user, array $prefetch): array
     {
-        $last = $conversation->messages()->withTrashed()->latest('id')->with('attachments')->first();
+        $last = $prefetch['last']->get($conversation->id);
 
         $preview = null;
         $lastAt  = null;
@@ -136,15 +188,11 @@ class ConversationsController extends Controller
                 : (($last->body !== null && $last->body !== '') ? $last->body : '📷 Photo');
         }
 
-        $unread = Message::where('conversation_id', $conversation->id)
-            ->where('user_id', '!=', $user->id)
-            ->when($lastReadAt, fn ($q) => $q->where('created_at', '>', $lastReadAt))
-            ->count();
+        $unread = $prefetch['unread']->get($conversation->id, 0);
 
         $title = match ($conversation->type) {
             Conversation::TYPE_BAND => $conversation->band?->name ?? 'Band',
-            Conversation::TYPE_DM   => $conversation->participants()
-                ->where('user_id', '!=', $user->id)->with('user')->first()?->user?->name ?? 'Direct message',
+            Conversation::TYPE_DM   => $prefetch['dmOther']->get($conversation->id)?->user?->name ?? 'Direct message',
             default => 'Conversation',
         };
 
