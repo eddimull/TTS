@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api\Mobile\Chat;
 
+use App\Models\Message;
 use App\Services\Chat\ConversationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -82,6 +83,30 @@ class TopicConversationTest extends TestCase
             ->getJson("/api/mobile/events/{$event->id}/conversation")->assertOk();
         $this->actingAs($unentitled)
             ->getJson("/api/mobile/events/{$event->id}/conversation")->assertStatus(403);
+    }
+
+    public function test_resolve_returns_real_last_message_preview_and_timestamp(): void
+    {
+        [$owner, $band] = $this->makeOwnerWithBand();
+        $event = $this->makeBookingEvent($band);
+
+        $conversation = app(ConversationService::class)->topicFor($event);
+        $message      = Message::factory()->create([
+            'conversation_id' => $conversation->id,
+            'user_id'         => $owner->id,
+            'body'            => 'Load in at 5pm',
+        ]);
+
+        $response = $this->actingAs($owner)
+            ->getJson("/api/mobile/events/{$event->id}/conversation")
+            ->assertOk();
+
+        $this->assertSame('Load in at 5pm', $response->json('conversation.last_message_preview'));
+        $this->assertSame(
+            $message->created_at->toIso8601String(),
+            $response->json('conversation.last_message_at'),
+        );
+        $this->assertSame('Thread', $response->json('conversation.title'));
     }
 
     public function test_sub_cannot_reach_a_booking_thread(): void

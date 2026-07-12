@@ -197,8 +197,9 @@ class ConversationsController extends Controller
         $unread = $prefetch['unread']->get($conversation->id, 0);
 
         $title = match ($conversation->type) {
-            Conversation::TYPE_BAND => $conversation->band?->name ?? 'Band',
-            Conversation::TYPE_DM   => $prefetch['dmOther']->get($conversation->id)?->user?->name ?? 'Direct message',
+            Conversation::TYPE_BAND  => $conversation->band?->name ?? 'Band',
+            Conversation::TYPE_DM    => $prefetch['dmOther']->get($conversation->id)?->user?->name ?? 'Direct message',
+            Conversation::TYPE_TOPIC => 'Thread',
             default => 'Conversation',
         };
 
@@ -269,20 +270,17 @@ class ConversationsController extends Controller
                 'last_read_at' => $p->last_read_at?->toIso8601String(),
             ])->values();
 
-        // Build conversation summary for topic thread (no last message preview needed for topic threads)
-        $conversationData = [
-            'id'                   => $conversation->id,
-            'type'                 => $conversation->type,
-            'band_id'              => $conversation->band_id ? (int) $conversation->band_id : null,
-            'title'                => $conversation->conversable_type ? 'Thread' : 'Conversation',
-            'last_message_preview' => null,
-            'last_message_at'      => null,
-            'unread_count'         => 0,
-            'can_moderate'         => $user->can('moderate', $conversation),
-        ];
+        // Reuse the one Conversation JSON shape via summarize(). touchParticipant()
+        // just ran, so unread_count is legitimately 0 — but the last-message
+        // preview and timestamp are real.
+        $ids       = collect([$conversation->id]);
+        $lastReads = ConversationParticipant::where('user_id', $user->id)
+            ->whereIn('conversation_id', $ids)
+            ->pluck('last_read_at', 'conversation_id');
+        $prefetch = $this->prefetchSummaryData($ids, $user, $lastReads);
 
         return response()->json([
-            'conversation' => $conversationData,
+            'conversation' => $this->summarize($conversation, $user, $prefetch),
             'messages'     => $messages,
             'participants' => $participants,
             'channel'      => 'private-conversation.' . $conversation->id,
