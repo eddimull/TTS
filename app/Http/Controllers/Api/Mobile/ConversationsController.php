@@ -387,14 +387,16 @@ class ConversationsController extends Controller
         ]);
 
         // Never move the marker backwards (out-of-order client calls).
+        // Broadcast only when the marker actually advances — duplicate or
+        // out-of-order read POSTs must not re-emit conversation.read.
         if (!$participant->last_read_at || $participant->last_read_at->lt($message->created_at)) {
             $participant->forceFill(['last_read_at' => $message->created_at])->save();
-        }
 
-        broadcast(new ConversationStreamEvent($conversation->id, 'conversation.read', [
-            'user_id'      => $request->user()->id,
-            'last_read_at' => $participant->last_read_at->toIso8601String(),
-        ]))->toOthers();
+            broadcast(new ConversationStreamEvent($conversation->id, 'conversation.read', [
+                'user_id'      => $request->user()->id,
+                'last_read_at' => $participant->last_read_at->toIso8601String(),
+            ]))->toOthers();
+        }
 
         return response()->json(null, 204);
     }
@@ -402,7 +404,7 @@ class ConversationsController extends Controller
     /** POST /api/mobile/conversations/{conversation}/typing — ephemeral, nothing stored. */
     public function typing(Request $request, Conversation $conversation): JsonResponse
     {
-        $this->authorize('view', $conversation);
+        $this->authorize('post', $conversation);
 
         broadcast(new ConversationStreamEvent($conversation->id, 'conversation.typing', [
             'user_id' => $request->user()->id,

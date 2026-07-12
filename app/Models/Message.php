@@ -18,9 +18,21 @@ class Message extends Model
 
     protected static function booted(): void
     {
-        // DM threads have no band — signal each participant's user channel
-        // instead. Band/topic threads are covered by BroadcastsBandChanges.
-        $signalDm = function (self $message, string $action) {
+        static::created(fn (self $m) => static::signalDmParticipants($m, 'created'));
+        static::updated(fn (self $m) => static::signalDmParticipants($m, 'updated'));
+        static::deleted(fn (self $m) => static::signalDmParticipants($m, 'deleted'));
+    }
+
+    /**
+     * DM threads have no band — signal each participant's user channel
+     * instead. Band/topic threads are covered by BroadcastsBandChanges.
+     *
+     * Mirrors BroadcastsBandChanges::broadcastBandChange(): a realtime
+     * signal must never break the write that caused it.
+     */
+    protected static function signalDmParticipants(self $message, string $action): void
+    {
+        try {
             $conversation = $message->conversation;
             if (!$conversation || $conversation->type !== Conversation::TYPE_DM) {
                 return;
@@ -29,11 +41,9 @@ class Message extends Model
                 broadcast(new ConversationChanged((int) $userId, $conversation->id, $message->id, $action))
                     ->toOthers();
             }
-        };
-
-        static::created(fn (self $m) => $signalDm($m, 'created'));
-        static::updated(fn (self $m) => $signalDm($m, 'updated'));
-        static::deleted(fn (self $m) => $signalDm($m, 'deleted'));
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     public function conversation()

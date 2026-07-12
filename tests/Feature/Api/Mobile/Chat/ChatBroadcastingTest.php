@@ -119,6 +119,27 @@ class ChatBroadcastingTest extends TestCase
         );
     }
 
+    public function test_duplicate_read_posts_broadcast_conversation_read_only_once(): void
+    {
+        Event::fake([ConversationStreamEvent::class]);
+        [$owner, $band] = $this->makeOwnerWithBand();
+        $channel = app(ConversationService::class)->bandChannelFor($band);
+        $message = $channel->messages()->create(['user_id' => $owner->id, 'body' => 'mark me']);
+
+        foreach (range(1, 2) as $attempt) {
+            $this->actingAs($owner)
+                ->postJson("/api/mobile/conversations/{$channel->id}/read", ['last_read_message_id' => $message->id])
+                ->assertStatus(204);
+        }
+
+        // The marker only advances on the first POST — the duplicate must
+        // not re-broadcast conversation.read.
+        $this->assertCount(1, Event::dispatched(
+            ConversationStreamEvent::class,
+            fn (ConversationStreamEvent $e) => $e->type === 'conversation.read',
+        ));
+    }
+
     public function test_stream_event_broadcasts_as_its_type_with_no_envelope(): void
     {
         $event = new ConversationStreamEvent(7, 'message.deleted', ['message_id' => 42]);
