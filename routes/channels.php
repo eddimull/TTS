@@ -45,3 +45,12 @@ Broadcast::channel('rehearsal-planner.{sessionId}', function ($user, $sessionId)
 Broadcast::channel('band.{bandId}', function ($user, $bandId) {
     return $user->canRead('events', (int) $bandId);
 });
+
+// Open-thread channel: full message payloads (append/edit/delete), read
+// receipts, and typing for whoever has the conversation on screen. Unlike
+// band.{id}, payloads carry data, so auth is the full ConversationPolicy.
+Broadcast::channel('conversation.{conversationId}', function ($user, $conversationId) {
+    $conversation = \App\Models\Conversation::find($conversationId);
+
+    return $conversation !== null && $user->can('view', $conversation);
+});

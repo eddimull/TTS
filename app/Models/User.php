@@ -224,6 +224,43 @@ class User extends Authenticatable
         return $result;
     }
 
+    /**
+     * Is this user assigned to the given event as a sub — via an accepted
+     * event_subs invitation or an event_members row filling a sub slot?
+     * Mirrors the entitlement join in UserEventsService/assignedChartIdsForBand.
+     */
+    public function isEntitledToEvent(int $eventId): bool
+    {
+        return \DB::table('event_subs')
+                ->where('user_id', $this->id)
+                ->where('pending', false)
+                ->where('event_id', $eventId)
+                ->exists()
+            || \DB::table('event_members')
+                ->where('user_id', $this->id)
+                ->whereNull('roster_member_id')
+                ->whereNull('deleted_at')
+                ->where('event_id', $eventId)
+                ->exists();
+    }
+
+    /**
+     * May this user delete OTHER people's messages in band/topic threads?
+     * Owners always; members via the team-scoped `moderate:chat` permission.
+     */
+    public function canModerateChat($bandId): bool
+    {
+        if ($this->ownsBand($bandId)) {
+            return true;
+        }
+
+        setPermissionsTeamId($bandId);
+        $result = $this->hasPermissionTo('moderate:chat');
+        setPermissionsTeamId(0);
+
+        return $result;
+    }
+
     public function charts()
     {
         // return $this->hasManyThrough(Charts::class,Bands::class,'band_members','user_id','band_id');

@@ -8,6 +8,8 @@ use App\Models\BandOwners;
 use App\Models\Bands;
 use App\Models\DeviceToken;
 use App\Models\User;
+use App\Services\AccountDeletionService;
+use App\Services\Chat\ConversationService;
 use App\Services\GoogleCalendarService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -133,5 +135,38 @@ class AccountDeletionTest extends TestCase
         // used to probe whether an account id exists (always 403, never 404).
         $this->post('/account/confirm-deletion/999999?signature=deadbeef&expires=9999999999')
             ->assertForbidden();
+    }
+
+    public function test_deleting_a_user_with_chat_messages_succeeds_and_leaves_a_tombstoned_message(): void
+    {
+        $mockCalendar = Mockery::mock(GoogleCalendarService::class);
+        $this->app->instance(GoogleCalendarService::class, $mockCalendar);
+
+        $author = User::factory()->create();
+        $band   = Bands::factory()->create();
+        BandOwners::factory()->create(['user_id' => $author->id, 'band_id' => $band->id]);
+        $other = User::factory()->create();
+        BandMembers::factory()->create(['user_id' => $other->id, 'band_id' => $band->id]);
+
+        $dm = app(ConversationService::class)->dmBetween($author, $other);
+        $message = $dm->messages()->create(['user_id' => $author->id, 'body' => 'hey before I go']);
+
+        // Hard-deletes the User row directly — messages.user_id must survive
+        // via nullOnDelete rather than 500ing the whole deletion.
+        app(AccountDeletionService::class)->deleteAccount($author);
+
+        $this->assertDatabaseMissing('users', ['id' => $author->id]);
+        $this->assertDatabaseHas('messages', ['id' => $message->id, 'user_id' => null]);
+
+        // Thread page renders the tombstoned author as "Deleted user" with a
+        // non-null, contract-safe user_id.
+        $response = $this->actingAs($other)
+            ->getJson("/api/mobile/conversations/{$dm->id}/messages")
+            ->assertOk();
+
+        $row = collect($response->json('messages'))->firstWhere('id', $message->id);
+        $this->assertSame('hey before I go', $row['body']);
+        $this->assertSame('Deleted user', $row['user_name']);
+        $this->assertSame(0, $row['user_id']);
     }
 }

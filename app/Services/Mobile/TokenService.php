@@ -11,7 +11,11 @@ class TokenService
 
     public function buildAbilities(User $user): array
     {
-        $abilities = ['mobile'];
+        // `chat` is structural, not permission-derived: every band role
+        // (owner/member/sub) can use SOME slice of chat, and
+        // ConversationPolicy is the per-conversation authority. A bare
+        // ability keeps the door open for coarse route gating later.
+        $abilities = ['mobile', 'chat'];
 
         // Delegate to User::canRead()/canWrite() rather than re-checking Spatie
         // permissions directly. Those methods already encode the owner shortcut
