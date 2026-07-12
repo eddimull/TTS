@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Events\ConversationStreamEvent;
 use App\Http\Controllers\Controller;
+use App\Jobs\ProcessChatMessagePush;
 use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\Conversation;
@@ -367,6 +368,8 @@ class ConversationsController extends Controller
         broadcast(new ConversationStreamEvent($conversation->id, 'message.created', [
             'message' => $this->formatter->format($message),
         ]))->toOthers();
+
+        ProcessChatMessagePush::dispatch($message->id);
 
         return response()->json(['message' => $this->formatter->format($message)], 201);
     }
