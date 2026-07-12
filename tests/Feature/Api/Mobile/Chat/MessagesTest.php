@@ -2,13 +2,22 @@
 
 namespace Tests\Feature\Api\Mobile\Chat;
 
+use App\Jobs\SendUserPush;
 use App\Services\Chat\ConversationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class MessagesTest extends TestCase
 {
     use RefreshDatabase, ChatTestHelpers;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Queue::fake([SendUserPush::class]);
+    }
 
     public function test_participant_can_send_and_list_messages(): void
     {

@@ -2,15 +2,24 @@
 
 namespace Tests\Feature\Api\Mobile\Chat;
 
+use App\Jobs\SendUserPush;
 use App\Services\Chat\ConversationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class MessageAttachmentsTest extends TestCase
 {
     use RefreshDatabase, ChatTestHelpers;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Queue::fake([SendUserPush::class]);
+    }
 
     public function test_message_with_images_stores_attachments_and_serves_them(): void
     {
