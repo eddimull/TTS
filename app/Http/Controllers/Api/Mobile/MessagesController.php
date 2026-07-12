@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Mobile;
 
+use App\Events\ConversationStreamEvent;
 use App\Http\Controllers\Controller;
 use App\Models\Message;
 use App\Models\MessageAttachment;
@@ -25,6 +26,10 @@ class MessagesController extends Controller
         $message->update(['body' => $validated['body'], 'edited_at' => now()]);
         $message->load(['user', 'attachments']);
 
+        broadcast(new ConversationStreamEvent($message->conversation_id, 'message.updated', [
+            'message' => $this->formatter->format($message),
+        ]))->toOthers();
+
         return response()->json(['message' => $this->formatter->format($message)]);
     }
 
@@ -38,6 +43,10 @@ class MessagesController extends Controller
         }
 
         $message->delete();
+
+        broadcast(new ConversationStreamEvent($message->conversation_id, 'message.deleted', [
+            'message_id' => $message->id,
+        ]))->toOthers();
 
         return response()->json(null, 204);
     }

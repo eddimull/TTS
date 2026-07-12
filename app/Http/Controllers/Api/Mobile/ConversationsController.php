@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Mobile;
 
+use App\Events\ConversationStreamEvent;
 use App\Http\Controllers\Controller;
 use App\Models\Bands;
 use App\Models\Bookings;
@@ -363,6 +364,10 @@ class ConversationsController extends Controller
 
         $message->load(['user', 'attachments']);
 
+        broadcast(new ConversationStreamEvent($conversation->id, 'message.created', [
+            'message' => $this->formatter->format($message),
+        ]))->toOthers();
+
         return response()->json(['message' => $this->formatter->format($message)], 201);
     }
 
@@ -385,6 +390,24 @@ class ConversationsController extends Controller
         if (!$participant->last_read_at || $participant->last_read_at->lt($message->created_at)) {
             $participant->forceFill(['last_read_at' => $message->created_at])->save();
         }
+
+        broadcast(new ConversationStreamEvent($conversation->id, 'conversation.read', [
+            'user_id'      => $request->user()->id,
+            'last_read_at' => $participant->last_read_at->toIso8601String(),
+        ]))->toOthers();
+
+        return response()->json(null, 204);
+    }
+
+    /** POST /api/mobile/conversations/{conversation}/typing — ephemeral, nothing stored. */
+    public function typing(Request $request, Conversation $conversation): JsonResponse
+    {
+        $this->authorize('view', $conversation);
+
+        broadcast(new ConversationStreamEvent($conversation->id, 'conversation.typing', [
+            'user_id' => $request->user()->id,
+            'name'    => $request->user()->name,
+        ]))->toOthers();
 
         return response()->json(null, 204);
     }
