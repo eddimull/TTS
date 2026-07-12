@@ -98,4 +98,28 @@ class MessageAttachmentsTest extends TestCase
 
         $this->actingAs($owner)->get($url)->assertStatus(404);
     }
+
+    public function test_failed_attachment_insert_rolls_back_message_and_removes_stored_files(): void
+    {
+        $disk = config('filesystems.default');
+        Storage::fake($disk);
+        [$owner, $band] = $this->makeOwnerWithBand();
+        $channel = app(ConversationService::class)->bandChannelFor($band);
+
+        // Force the attachment row insert to blow up inside the transaction.
+        \App\Models\MessageAttachment::creating(function () {
+            throw new \RuntimeException('simulated insert failure');
+        });
+
+        $this->actingAs($owner)->post(
+            "/api/mobile/conversations/{$channel->id}/messages",
+            ['body' => 'doomed', 'images' => [UploadedFile::fake()->image('boom.jpg')]],
+            ['Accept' => 'application/json'],
+        )->assertStatus(500);
+
+        // Message row rolled back and no orphan blobs remain on disk.
+        $this->assertDatabaseCount('messages', 0);
+        $this->assertDatabaseCount('message_attachments', 0);
+        $this->assertSame([], Storage::disk($disk)->allFiles());
+    }
 }

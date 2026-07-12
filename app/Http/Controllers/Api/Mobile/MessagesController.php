@@ -43,7 +43,7 @@ class MessagesController extends Controller
     }
 
     /** GET /api/mobile/messages/{message}/attachments/{attachment} — authenticated binary. */
-    public function attachment(Request $request, Message $message, MessageAttachment $attachment): StreamedResponse
+    public function attachment(Message $message, MessageAttachment $attachment): StreamedResponse
     {
         // Route binding excludes soft-deleted messages, so a deleted
         // message's attachments 404 without an explicit check.

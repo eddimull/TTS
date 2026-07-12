@@ -16,6 +16,7 @@ use App\Services\Chat\MessageFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class ConversationsController extends Controller
@@ -312,13 +313,12 @@ class ConversationsController extends Controller
             'images.*' => ['image', 'mimes:jpeg,jpg,png,webp,heic', 'max:10240'],
         ]);
 
-        $user    = $request->user();
-        $message = $conversation->messages()->create([
-            'user_id' => $user->id,
-            'body'    => $validated['body'] ?? null,
-        ]);
-
+        $user = $request->user();
         $disk = config('filesystems.default');
+
+        // Store binaries BEFORE opening the transaction so the DB writes
+        // (message + attachment rows) stay atomic; collect metadata first.
+        $stored = [];
         foreach ($request->file('images', []) as $file) {
             $path = $file->storeAs(
                 'chat/' . $conversation->id,
@@ -326,14 +326,36 @@ class ConversationsController extends Controller
                 $disk,
             );
             $dimensions = @getimagesize($file->getRealPath()) ?: [null, null];
-            $message->attachments()->create([
+            $stored[]   = [
                 'path'       => $path,
                 'disk'       => $disk,
                 'mime'       => $file->getMimeType(),
                 'width'      => $dimensions[0],
                 'height'     => $dimensions[1],
                 'size_bytes' => $file->getSize(),
-            ]);
+            ];
+        }
+
+        try {
+            $message = DB::transaction(function () use ($conversation, $user, $validated, $stored) {
+                $message = $conversation->messages()->create([
+                    'user_id' => $user->id,
+                    'body'    => $validated['body'] ?? null,
+                ]);
+
+                foreach ($stored as $attributes) {
+                    $message->attachments()->create($attributes);
+                }
+
+                return $message;
+            });
+        } catch (\Throwable $e) {
+            // Rows rolled back — remove the just-stored blobs so none orphan.
+            foreach ($stored as $attributes) {
+                Storage::disk($attributes['disk'])->delete($attributes['path']);
+            }
+
+            throw $e;
         }
 
         // Sending implies having read everything up to your own message.
