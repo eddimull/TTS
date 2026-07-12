@@ -3,11 +3,16 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Models\Bands;
+use App\Models\Bookings;
 use App\Models\Conversation;
 use App\Models\ConversationParticipant;
+use App\Models\Events;
 use App\Models\Message;
+use App\Models\Rehearsal;
 use App\Models\User;
 use App\Services\Chat\ConversationService;
+use App\Services\Chat\MessageFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +21,7 @@ class ConversationsController extends Controller
 {
     public function __construct(
         private readonly ConversationService $conversations,
+        private readonly MessageFormatter $formatter,
     ) {}
 
     /**
@@ -206,5 +212,81 @@ class ConversationsController extends Controller
             'unread_count'         => $unread,
             'can_moderate'         => $user->can('moderate', $conversation),
         ];
+    }
+
+    /** GET /api/mobile/events/{event}/conversation */
+    public function forEvent(Request $request, Events $event): JsonResponse
+    {
+        return $this->topicResponse($request, $this->conversations->topicFor($event));
+    }
+
+    /** GET /api/mobile/rehearsals/{rehearsal}/conversation */
+    public function forRehearsal(Request $request, Rehearsal $rehearsal): JsonResponse
+    {
+        return $this->topicResponse($request, $this->conversations->topicFor($rehearsal));
+    }
+
+    /** GET /api/mobile/bands/{band}/bookings/{booking}/conversation */
+    public function forBooking(Request $request, Bands $band, Bookings $booking): JsonResponse
+    {
+        return $this->topicResponse($request, $this->conversations->topicFor($booking));
+    }
+
+    private function topicResponse(Request $request, Conversation $conversation): JsonResponse
+    {
+        $this->authorize('view', $conversation);
+
+        // Opening a thread registers the viewer and marks it read.
+        $this->conversations->touchParticipant($conversation, $request->user());
+
+        return $this->threadPage($request, $conversation);
+    }
+
+    /**
+     * The shared ThreadPage shape: also returned by the messages index
+     * (Task 6). Messages come back oldest→newest; `channel` is what the
+     * client subscribes to for live updates.
+     */
+    private function threadPage(Request $request, Conversation $conversation, ?int $before = null): JsonResponse
+    {
+        $user  = $request->user();
+        $limit = 50;
+
+        $page = $conversation->messages()->withTrashed()
+            ->with(['user', 'attachments'])
+            ->when($before, fn ($q) => $q->where('id', '<', $before))
+            ->latest('id')->limit($limit + 1)->get();
+
+        $hasMore  = $page->count() > $limit;
+        $messages = $page->take($limit)->reverse()->values()
+            ->map(fn ($m) => $this->formatter->format($m));
+
+        $participants = $conversation->participants()->with('user')->get()
+            ->map(fn ($p) => [
+                'user_id'      => (int) $p->user_id,
+                'name'         => $p->user?->name,
+                'avatar_url'   => null,
+                'last_read_at' => $p->last_read_at?->toIso8601String(),
+            ])->values();
+
+        // Build conversation summary for topic thread (no last message preview needed for topic threads)
+        $conversationData = [
+            'id'                   => $conversation->id,
+            'type'                 => $conversation->type,
+            'band_id'              => $conversation->band_id ? (int) $conversation->band_id : null,
+            'title'                => $conversation->conversable_type ? 'Thread' : 'Conversation',
+            'last_message_preview' => null,
+            'last_message_at'      => null,
+            'unread_count'         => 0,
+            'can_moderate'         => $user->can('moderate', $conversation),
+        ];
+
+        return response()->json([
+            'conversation' => $conversationData,
+            'messages'     => $messages,
+            'participants' => $participants,
+            'channel'      => 'private-conversation.' . $conversation->id,
+            'has_more'     => $hasMore,
+        ]);
     }
 }

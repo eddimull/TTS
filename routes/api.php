@@ -120,6 +120,8 @@ Route::prefix('mobile')->group(function () {
         Route::get('/conversations', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'index'])->name('mobile.conversations.index');
         Route::post('/conversations/dm', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'storeDm'])->name('mobile.conversations.dm');
         Route::get('/chat/contacts', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'contacts'])->name('mobile.chat.contacts');
+        Route::get('/events/{event}/conversation', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'forEvent'])->name('mobile.events.conversation');
+        Route::get('/rehearsals/{rehearsal}/conversation', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'forRehearsal'])->name('mobile.rehearsals.conversation');
 
         // Events
         Route::get('/events/{event}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'show'])->name('mobile.events.show');
@@ -227,6 +229,7 @@ Route::prefix('mobile')->group(function () {
             Route::get('/bands/{band}/bookings/{booking}/contract/download', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'downloadContract'])->name('mobile.bookings.contract.download');
             Route::get('/bands/{band}/bookings/{booking}/history', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'showHistory'])->name('mobile.bookings.history');
             Route::get('/bands/{band}/bookings/{booking}/payout', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'payout'])->name('mobile.bookings.payout.show');
+            Route::get('/bands/{band}/bookings/{booking}/conversation', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'forBooking'])->name('mobile.bookings.conversation');
         });
 
         // ── Bookings (write) ───────────────────────────────────────────
