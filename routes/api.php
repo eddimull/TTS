@@ -116,6 +116,11 @@ Route::prefix('mobile')->group(function () {
         Route::post('/devices', [App\Http\Controllers\Api\Mobile\DevicesController::class, 'store'])->name('mobile.devices.store');
         Route::delete('/devices', [App\Http\Controllers\Api\Mobile\DevicesController::class, 'destroy'])->name('mobile.devices.destroy');
 
+        // ── Chat / comments (band-agnostic; ConversationPolicy is the gate) ──
+        Route::get('/conversations', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'index'])->name('mobile.conversations.index');
+        Route::post('/conversations/dm', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'storeDm'])->name('mobile.conversations.dm');
+        Route::get('/chat/contacts', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'contacts'])->name('mobile.chat.contacts');
+
         // Events
         Route::get('/events/{event}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'show'])->name('mobile.events.show');
         Route::patch('/events/{event}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'update'])->name('mobile.events.update');
