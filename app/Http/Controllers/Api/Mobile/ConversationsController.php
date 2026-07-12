@@ -82,19 +82,53 @@ class ConversationsController extends Controller
             ->keyBy('conversation_id');
 
         // Grouped count of "not mine" messages per conversation that are
-        // newer than that conversation's own last_read_at, in one query via
-        // a per-row conditional (each conversation's threshold differs).
-        $unread = Message::whereIn('conversation_id', $ids)
-            ->where('user_id', '!=', $user->id)
-            ->get(['conversation_id', 'created_at'])
-            ->groupBy('conversation_id')
-            ->map(function ($messages, $conversationId) use ($lastReads) {
-                $lastReadAt = $lastReads->get($conversationId);
+        // newer than that conversation's own last_read_at. Thresholds differ
+        // per conversation, so this is two aggregate queries instead of one:
+        // conversations where the user has a read marker (join + threshold
+        // filter) and conversations where they don't (no floor, count all).
+        // Either way it's O(1) queries, never O(messages) rows into PHP.
+        // A participant row can exist with a NULL last_read_at (registered
+        // but never marked anything read) — that must fall into the
+        // "no floor, count everything" bucket, same as having no row at all.
+        $withMarkerIds    = $lastReads->filter(fn ($v) => $v !== null)->keys();
+        $withoutMarkerIds = collect($ids)->diff($withMarkerIds);
 
-                return $lastReadAt
-                    ? $messages->filter(fn ($m) => $m->created_at->gt($lastReadAt))->count()
-                    : $messages->count();
-            });
+        // Both queries key their result by conversation_id, which pluck()
+        // returns as PHP integer keys — Collection::merge() re-indexes
+        // (appends) integer-keyed collections instead of merging by key, so
+        // union() is required here to preserve the conversation_id keying.
+        $unread = collect();
+
+        if ($withMarkerIds->isNotEmpty()) {
+            $unread = $unread->union(
+                Message::query()
+                    ->whereIn('messages.conversation_id', $withMarkerIds)
+                    ->where(fn ($q) => $q->where('messages.user_id', '!=', $user->id)
+                        ->orWhereNull('messages.user_id'))
+                    ->join('conversation_participants', function ($join) use ($user) {
+                        $join->on('conversation_participants.conversation_id', '=', 'messages.conversation_id')
+                            ->where('conversation_participants.user_id', '=', $user->id);
+                    })
+                    ->whereColumn('messages.created_at', '>', 'conversation_participants.last_read_at')
+                    ->selectRaw('messages.conversation_id as conversation_id, COUNT(*) as unread')
+                    ->groupBy('messages.conversation_id')
+                    ->pluck('unread', 'conversation_id')
+                    ->map(fn ($n) => (int) $n)
+            );
+        }
+
+        if ($withoutMarkerIds->isNotEmpty()) {
+            $unread = $unread->union(
+                Message::query()
+                    ->whereIn('conversation_id', $withoutMarkerIds->values())
+                    ->where(fn ($q) => $q->where('user_id', '!=', $user->id)
+                        ->orWhereNull('user_id'))
+                    ->selectRaw('conversation_id, COUNT(*) as unread')
+                    ->groupBy('conversation_id')
+                    ->pluck('unread', 'conversation_id')
+                    ->map(fn ($n) => (int) $n)
+            );
+        }
 
         $dmOther = ConversationParticipant::whereIn('conversation_id', $ids)
             ->where('user_id', '!=', $user->id)
