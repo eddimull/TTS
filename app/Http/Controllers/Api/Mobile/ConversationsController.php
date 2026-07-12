@@ -331,10 +331,12 @@ class ConversationsController extends Controller
     {
         $this->authorize('view', $conversation);
 
+        $validated = $request->validate(['before' => 'sometimes|integer|min:1']);
+
         return $this->threadPage(
             $request,
             $conversation,
-            $request->filled('before') ? (int) $request->input('before') : null,
+            $validated['before'] ?? null,
         );
     }
 
@@ -346,7 +348,12 @@ class ConversationsController extends Controller
         $validated = $request->validate([
             'body'     => ['nullable', 'string', 'max:4000', 'required_without:images'],
             'images'   => ['nullable', 'array', 'max:4'],
-            'images.*' => ['image', 'mimes:jpeg,jpg,png,webp,heic', 'max:10240'],
+            // heic/heif deliberately excluded: PHP's getimagesize() can't
+            // read HEIC, which would leave width/height null — but the
+            // Flutter ChatAttachment contract types those as non-nullable
+            // ints. The mobile client re-encodes camera images to jpeg
+            // before upload anyway.
+            'images.*' => ['image', 'mimes:jpeg,jpg,png,webp', 'max:10240'],
         ]);
 
         $user = $request->user();

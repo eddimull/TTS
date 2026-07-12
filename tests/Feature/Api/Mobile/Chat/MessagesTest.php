@@ -76,6 +76,23 @@ class MessagesTest extends TestCase
         $this->assertFalse($page2->json('has_more'));
     }
 
+    public function test_non_integer_before_cursor_is_rejected(): void
+    {
+        [$owner, $band] = $this->makeOwnerWithBand();
+        $channel = app(ConversationService::class)->bandChannelFor($band);
+        $channel->messages()->create(['user_id' => $owner->id, 'body' => 'm1']);
+
+        // A garbage cursor used to cast to 0 and silently return page one
+        // instead of erroring — must 422 instead of masking client bugs.
+        $this->actingAs($owner)
+            ->getJson("/api/mobile/conversations/{$channel->id}/messages?before=not-a-number")
+            ->assertStatus(422);
+
+        $this->actingAs($owner)
+            ->getJson("/api/mobile/conversations/{$channel->id}/messages?before=0")
+            ->assertStatus(422);
+    }
+
     public function test_author_can_edit_own_message_and_gets_edited_marker(): void
     {
         [$owner, $band] = $this->makeOwnerWithBand();
