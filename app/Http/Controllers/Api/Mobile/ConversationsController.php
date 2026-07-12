@@ -16,6 +16,7 @@ use App\Services\Chat\MessageFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class ConversationsController extends Controller
 {
@@ -286,5 +287,83 @@ class ConversationsController extends Controller
             'channel'      => 'private-conversation.' . $conversation->id,
             'has_more'     => $hasMore,
         ]);
+    }
+
+    /** GET /api/mobile/conversations/{conversation}/messages?before={messageId} — ThreadPage. */
+    public function messages(Request $request, Conversation $conversation): JsonResponse
+    {
+        $this->authorize('view', $conversation);
+
+        return $this->threadPage(
+            $request,
+            $conversation,
+            $request->filled('before') ? (int) $request->input('before') : null,
+        );
+    }
+
+    /** POST /api/mobile/conversations/{conversation}/messages — multipart body and/or images[]. */
+    public function storeMessage(Request $request, Conversation $conversation): JsonResponse
+    {
+        $this->authorize('post', $conversation);
+
+        $validated = $request->validate([
+            'body'     => ['nullable', 'string', 'max:4000', 'required_without:images'],
+            'images'   => ['nullable', 'array', 'max:4'],
+            'images.*' => ['image', 'mimes:jpeg,jpg,png,webp,heic', 'max:10240'],
+        ]);
+
+        $user    = $request->user();
+        $message = $conversation->messages()->create([
+            'user_id' => $user->id,
+            'body'    => $validated['body'] ?? null,
+        ]);
+
+        $disk = config('filesystems.default');
+        foreach ($request->file('images', []) as $file) {
+            $path = $file->storeAs(
+                'chat/' . $conversation->id,
+                Str::uuid() . '.' . $file->extension(),
+                $disk,
+            );
+            $dimensions = @getimagesize($file->getRealPath()) ?: [null, null];
+            $message->attachments()->create([
+                'path'       => $path,
+                'disk'       => $disk,
+                'mime'       => $file->getMimeType(),
+                'width'      => $dimensions[0],
+                'height'     => $dimensions[1],
+                'size_bytes' => $file->getSize(),
+            ]);
+        }
+
+        // Sending implies having read everything up to your own message.
+        $this->conversations->touchParticipant($conversation, $user);
+
+        $message->load(['user', 'attachments']);
+
+        return response()->json(['message' => $this->formatter->format($message)], 201);
+    }
+
+    /** POST /api/mobile/conversations/{conversation}/read {last_read_message_id} → 204. */
+    public function read(Request $request, Conversation $conversation): JsonResponse
+    {
+        $this->authorize('view', $conversation);
+
+        $validated = $request->validate(['last_read_message_id' => 'required|integer']);
+
+        $message = $conversation->messages()->withTrashed()
+            ->findOrFail($validated['last_read_message_id']);
+
+        $participant = ConversationParticipant::firstOrCreate([
+            'conversation_id' => $conversation->id,
+            'user_id'         => $request->user()->id,
+        ]);
+
+        // Never move the marker backwards (out-of-order client calls).
+        if (!$participant->last_read_at || $participant->last_read_at->lt($message->created_at)) {
+            $participant->forceFill(['last_read_at' => $message->created_at])->save();
+        }
+
+        return response()->json(null, 204);
     }
 }

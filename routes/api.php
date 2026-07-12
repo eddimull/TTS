@@ -122,6 +122,12 @@ Route::prefix('mobile')->group(function () {
         Route::get('/chat/contacts', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'contacts'])->name('mobile.chat.contacts');
         Route::get('/events/{event}/conversation', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'forEvent'])->name('mobile.events.conversation');
         Route::get('/rehearsals/{rehearsal}/conversation', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'forRehearsal'])->name('mobile.rehearsals.conversation');
+        Route::get('/conversations/{conversation}/messages', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'messages'])->name('mobile.conversations.messages.index');
+        Route::post('/conversations/{conversation}/messages', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'storeMessage'])->name('mobile.conversations.messages.store');
+        Route::post('/conversations/{conversation}/read', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'read'])->name('mobile.conversations.read');
+        Route::patch('/messages/{message}', [App\Http\Controllers\Api\Mobile\MessagesController::class, 'update'])->name('mobile.messages.update');
+        Route::delete('/messages/{message}', [App\Http\Controllers\Api\Mobile\MessagesController::class, 'destroy'])->name('mobile.messages.destroy');
+        Route::get('/messages/{message}/attachments/{attachment}', [App\Http\Controllers\Api\Mobile\MessagesController::class, 'attachment'])->name('mobile.messages.attachments.show');
 
         // Events
         Route::get('/events/{event}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'show'])->name('mobile.events.show');
