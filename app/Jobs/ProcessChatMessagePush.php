@@ -30,10 +30,11 @@ class ProcessChatMessagePush implements ShouldQueue
         }
 
         $conversation = $message->conversation;
-        $body  = $message->body !== null && $message->body !== '' ? $message->body : '📷 Photo';
-        $title = $conversation->type === Conversation::TYPE_DM
-            ? $message->user->name
-            : ($conversation->band?->name ?? 'Band') . ' — ' . $message->user->name;
+        $body       = $message->body !== null && $message->body !== '' ? $message->body : '📷 Photo';
+        $senderName = $message->user->name ?? 'Deleted user';
+        $title      = $conversation->type === Conversation::TYPE_DM
+            ? $senderName
+            : ($conversation->band?->name ?? 'Band') . ' — ' . $senderName;
 
         // FCM data messages carry strings only; conversationId is stringified.
         $data = [

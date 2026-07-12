@@ -26,7 +26,7 @@ return new class extends Migration
         Schema::create('conversation_participants', function (Blueprint $table) {
             $table->id();
             $table->foreignId('conversation_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete(); // participant row is meaningless without its user; the DM thread itself survives via the remaining participant
             $table->timestamp('last_read_at')->nullable();
             $table->timestamps();
             $table->unique(['conversation_id', 'user_id']);
@@ -36,7 +36,7 @@ return new class extends Migration
         Schema::create('messages', function (Blueprint $table) {
             $table->id();
             $table->foreignId('conversation_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained();
+            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->text('body')->nullable(); // nullable: image-only messages
             $table->timestamp('edited_at')->nullable();
             $table->softDeletes();

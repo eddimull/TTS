@@ -19,8 +19,10 @@ class MessageFormatter
         return [
             'id'              => $message->id,
             'conversation_id' => $message->conversation_id,
-            'user_id'         => $message->user_id,
-            'user_name'       => $message->user->name,
+            // The Flutter contract types user_id as a non-nullable int; a
+            // tombstoned author (account deleted, FK nulled) reports 0.
+            'user_id'         => $message->user_id ?? 0,
+            'user_name'       => $message->user->name ?? 'Deleted user',
             'user_avatar_url' => null,
             'body'            => $deleted ? null : $message->body,
             'attachments'     => $deleted ? [] : $message->attachments->map(fn ($a) => [
