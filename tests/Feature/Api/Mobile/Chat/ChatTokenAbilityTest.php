@@ -2,13 +2,31 @@
 
 namespace Tests\Feature\Api\Mobile\Chat;
 
+use App\Services\GoogleCalendarService;
+use App\Services\GoogleDriveOAuthService;
 use App\Services\Mobile\TokenService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Mockery;
 use Tests\TestCase;
 
 class ChatTokenAbilityTest extends TestCase
 {
     use RefreshDatabase, ChatTestHelpers;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // BandSettingsController injects BandMemberRemovalService, which depends on
+        // GoogleCalendarService and GoogleDriveOAuthService. Mock both so CI doesn't
+        // need real credentials or make network calls during removal.
+        $mock = Mockery::mock(GoogleCalendarService::class);
+        $this->app->instance(GoogleCalendarService::class, $mock);
+
+        $driveMock = Mockery::mock(GoogleDriveOAuthService::class);
+        $driveMock->shouldReceive('revokeToken')->andReturnTrue();
+        $this->app->instance(GoogleDriveOAuthService::class, $driveMock);
+    }
 
     public function test_every_token_carries_the_chat_ability(): void
     {
