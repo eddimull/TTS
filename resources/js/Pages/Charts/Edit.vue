@@ -194,6 +194,24 @@
               />
             </div>
 
+            <div class="space-y-2">
+              <label
+                for="linkedSong"
+                class="block text-sm font-medium"
+              >Linked Song</label>
+              <Dropdown
+                id="linkedSong"
+                v-model="chartData.song_id"
+                :options="songOptions"
+                option-value="id"
+                option-label="label"
+                filter
+                show-clear
+                placeholder="No linked song"
+                class="w-full"
+              />
+            </div>
+
             <div class="flex items-center space-x-2">
               <label
                 for="public"
@@ -371,6 +389,10 @@ export default {
                 return {};
             },
         },
+        songs: {
+            type: Array,
+            default: () => [],
+        },
     },
     data() {
         return {
@@ -389,6 +411,14 @@ export default {
             return this.chartData.uploads ? this.chartData.uploads.filter((upload) => {
                 return upload.upload_type_id === 1 || upload.upload_type_id === 2;
             }) : [];
+        },
+        songOptions() {
+            return this.songs.map((song) => {
+                return {
+                    ...song,
+                    label: song.artist ? `${song.title} — ${song.artist}` : song.title,
+                };
+            });
         },
     },
     created() {
@@ -463,6 +493,7 @@ export default {
                     composer: this.chartData.composer,
                     public: this.chartData.public,
                     description: this.chartData.description,
+                    song_id: this.chartData.song_id ?? null,
                 },
                 {
                     onSuccess: () => {

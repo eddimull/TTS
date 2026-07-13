@@ -12,6 +12,12 @@
             Charts
           </Link> ::
           {{ chartData.title }}
+          <span
+            v-if="chartData.song"
+            class="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400"
+          >
+            ♪ {{ chartData.song.title }}<template v-if="chartData.song.artist"> — {{ chartData.song.artist }}</template>
+          </span>
         </h2>
         <div
           v-if="canEdit"
