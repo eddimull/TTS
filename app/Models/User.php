@@ -134,6 +134,40 @@ class User extends Authenticatable
     }
 
     /**
+     * Does this user have a sub assignment (accepted event_subs invitation or
+     * an event_members row filling a sub slot) on one of this band's events
+     * that is upcoming or ended within the last 48 hours? Gates a sub's
+     * windowed access to the band's song list.
+     */
+    public function hasCurrentSubAssignmentForBand($bandId): bool
+    {
+        $assignedEventIds = array_values(array_unique(array_merge(
+            \DB::table('event_subs')
+                ->where('user_id', $this->id)
+                ->where('pending', false)
+                ->pluck('event_id')
+                ->toArray(),
+            \DB::table('event_members')
+                ->where('user_id', $this->id)
+                ->whereNull('roster_member_id')
+                ->whereNull('deleted_at')
+                ->pluck('event_id')
+                ->toArray(),
+        )));
+
+        if (empty($assignedEventIds)) {
+            return false;
+        }
+
+        return \App\Models\Events::whereIn('id', $assignedEventIds)
+            ->where('date', '>=', now()->subHours(48))
+            ->whereHasMorph('eventable', [\App\Models\Bookings::class, \App\Models\Rehearsal::class], function ($q) use ($bandId) {
+                $q->where('band_id', $bandId);
+            })
+            ->exists();
+    }
+
+    /**
      * Return this user's calendar feed token, minting one on first access.
      *
      * The token authenticates the unauthenticated ICS subscription URL
@@ -197,7 +231,13 @@ class User extends Authenticatable
         // (their assigned events / the charts on those events) — a sub does not
         // get the band's full library. Any other resource (bookings, finances,
         // media, rehearsals) is NOT readable by a sub without an explicit grant.
+        // Songs are readable by a sub only while they're scheduled on one of the
+        // band's events (48h grace after the event) — see hasCurrentSubAssignmentForBand().
         if (in_array($resource, ['events', 'charts'], true) && $this->isSubOfBand($bandId)) {
+            return true;
+        }
+
+        if ($resource === 'songs' && $this->isSubOfBand($bandId) && $this->hasCurrentSubAssignmentForBand($bandId)) {
             return true;
         }
 

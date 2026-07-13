@@ -33,7 +33,7 @@ class SongsController extends Controller
 
         $band = Bands::findOrFail($currentBandId);
 
-        if (!$band->everyone()->contains('user_id', $user->id) && !$user->isSubOfBand($band->id)) {
+        if (!$band->everyone()->contains('user_id', $user->id) && !$user->canRead('songs', $band->id)) {
             abort(403, 'Unauthorized');
         }
 
