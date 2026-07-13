@@ -7,6 +7,7 @@ use App\Models\Bands;
 use App\Models\Charts;
 use App\Models\Song;
 use App\Models\User;
+use App\Services\GetSongBpmService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -212,5 +213,30 @@ class MobileSongsTest extends TestCase
         $this->withHeaders($headers)->deleteJson("/api/mobile/bands/{$band->id}/songs/{$song->id}")
             ->assertForbidden();
         $this->assertDatabaseHas('songs', ['id' => $song->id]);
+    }
+
+    public function test_bpm_lookup_proxies_the_service(): void
+    {
+        ['headers' => $headers] = $this->makeOwner();
+
+        $this->mock(GetSongBpmService::class)
+            ->shouldReceive('lookup')
+            ->once()
+            ->with('Superstition', 'Stevie Wonder')
+            ->andReturn(['bpm' => 100, 'song_key' => 'E♭m']);
+
+        $this->withHeaders($headers)
+            ->getJson('/api/mobile/songs/lookup?title=Superstition&artist=Stevie%20Wonder')
+            ->assertOk()
+            ->assertJsonPath('bpm', 100);
+    }
+
+    public function test_bpm_lookup_requires_title(): void
+    {
+        ['headers' => $headers] = $this->makeOwner();
+
+        $this->withHeaders($headers)->getJson('/api/mobile/songs/lookup')
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['title']);
     }
 }

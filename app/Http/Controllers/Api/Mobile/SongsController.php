@@ -7,6 +7,7 @@ use App\Http\Requests\StoreSongRequest;
 use App\Http\Requests\UpdateSongRequest;
 use App\Models\Bands;
 use App\Models\Song;
+use App\Services\GetSongBpmService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -69,6 +70,21 @@ class SongsController extends Controller
         $song->delete();
 
         return response()->json(['message' => 'Song deleted.']);
+    }
+
+    public function lookup(Request $request): JsonResponse
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'artist' => 'nullable|string|max:255',
+        ]);
+
+        $result = resolve(GetSongBpmService::class)->lookup(
+            $request->input('title'),
+            $request->input('artist')
+        );
+
+        return response()->json($result);
     }
 
     /**

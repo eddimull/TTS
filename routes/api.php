@@ -102,6 +102,9 @@ Route::prefix('mobile')->group(function () {
         // Aggregating bookings across all of the user's bands (band-agnostic).
         Route::get('/me/bookings', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'indexForUser'])->name('mobile.me.bookings');
 
+        // BPM lookup (band-independent)
+        Route::get('/songs/lookup', [App\Http\Controllers\Api\Mobile\SongsController::class, 'lookup'])->name('mobile.songs.lookup');
+
         // Personal calendar subscription URLs (ICS feed for Google/Apple Calendar).
         Route::get('/me/calendar-feed', [App\Http\Controllers\Api\Mobile\CalendarFeedController::class, 'show'])->name('mobile.me.calendar-feed');
         Route::post('/me/calendar-feed/reset', [App\Http\Controllers\Api\Mobile\CalendarFeedController::class, 'reset'])->name('mobile.me.calendar-feed.reset');
