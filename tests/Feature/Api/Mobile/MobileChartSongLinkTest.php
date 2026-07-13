@@ -89,4 +89,31 @@ class MobileChartSongLinkTest extends TestCase
         $this->withHeaders($headers)->getJson("/api/mobile/bands/{$band->id}/charts")
             ->assertOk()->assertJsonPath('charts.0.song.title', 'My Girl');
     }
+
+    public function test_patch_clearing_composer_and_price_does_not_error(): void
+    {
+        ['band' => $band, 'headers' => $headers] = $this->makeOwner();
+        $chart = Charts::factory()->create(['band_id' => $band->id, 'composer' => 'Someone', 'price' => 25]);
+
+        $this->withHeaders($headers)->patchJson("/api/mobile/bands/{$band->id}/charts/{$chart->id}", [
+            'composer' => null,
+            'price' => null,
+        ])->assertOk()
+            ->assertJsonPath('chart.composer', '')
+            ->assertJsonPath('chart.price', 0);
+    }
+
+    public function test_patch_toggles_is_public(): void
+    {
+        ['band' => $band, 'headers' => $headers] = $this->makeOwner();
+        $chart = Charts::factory()->create(['band_id' => $band->id, 'public' => false]);
+
+        $this->withHeaders($headers)->patchJson("/api/mobile/bands/{$band->id}/charts/{$chart->id}", [
+            'is_public' => true,
+        ])->assertOk()->assertJsonPath('chart.public', true);
+
+        $this->withHeaders($headers)->patchJson("/api/mobile/bands/{$band->id}/charts/{$chart->id}", [
+            'is_public' => false,
+        ])->assertOk()->assertJsonPath('chart.public', false);
+    }
 }

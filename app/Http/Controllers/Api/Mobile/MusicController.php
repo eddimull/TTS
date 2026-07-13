@@ -193,9 +193,9 @@ class MusicController extends Controller
         $chart = Charts::create([
             'band_id'     => $band->id,
             'title'       => $request->validated('title'),
-            'composer'    => $request->validated('composer', ''),
+            'composer'    => $request->validated('composer') ?? '',
             'description' => $request->validated('description', ''),
-            'price'       => $request->validated('price', 0),
+            'price'       => $request->validated('price') ?? 0,
             'public'      => $request->boolean('is_public'),
             'song_id'     => $request->validated('song_id'),
         ]);
@@ -237,12 +237,18 @@ class MusicController extends Controller
 
         $validated = $request->validated();
 
-        foreach (['title', 'composer', 'description', 'price'] as $field) {
+        foreach (['title', 'description'] as $field) {
             if (array_key_exists($field, $validated)) {
                 $chart->{$field} = $validated[$field];
             }
         }
-        if (array_key_exists('is_public', $validated)) {
+        if (array_key_exists('composer', $validated)) {
+            $chart->composer = $validated['composer'] ?? '';
+        }
+        if (array_key_exists('price', $validated)) {
+            $chart->price = $validated['price'] ?? 0;
+        }
+        if (array_key_exists('is_public', $validated) && $validated['is_public'] !== null) {
             $chart->public = $request->boolean('is_public');
         }
         if (array_key_exists('song_id', $validated)) {
