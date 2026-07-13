@@ -13,6 +13,11 @@ class Song extends Model
 
     use HasFactory, Searchable;
 
+    public const GENRES = [
+        'Blues', 'Country', 'Funk', 'Hip Hop', 'Jazz', 'Latin',
+        'Pop', 'R&B', 'Rock', 'Soul',
+    ];
+
     protected $fillable = [
         'band_id',
         'title',
