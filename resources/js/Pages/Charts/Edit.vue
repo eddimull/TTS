@@ -241,7 +241,7 @@
           <div class="flex space-x-4">
             <div class="flex-1">
               <Button
-                label="Delete Chart"
+                label="Delete"
                 icon="pi pi-trash"
                 class="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
                 @click="deleteChart"
@@ -249,7 +249,7 @@
             </div>
             <div class="flex-1">
               <Button
-                label="Update Chart"
+                label="Update"
                 icon="pi pi-save"
                 class="w-full bg-blue-600 hover:bg-blue-700 text-white"
                 @click="updateChart"

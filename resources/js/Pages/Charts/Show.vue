@@ -9,7 +9,7 @@
             href="/charts"
             class="hover:text-blue-600"
           >
-            Charts
+            Sheet Music
           </Link> ::
           {{ chartData.title }}
           <span
@@ -24,7 +24,7 @@
           class="flex gap-2"
         >
           <Button
-            label="Edit Chart"
+            label="Edit"
             icon="pi pi-pencil"
             severity="secondary"
             @click="editChart"
@@ -398,7 +398,7 @@
               No files uploaded yet
             </p>
             <p class="text-gray-400 mb-4">
-              Click "Edit Chart" to add sheet music or recordings
+              Click "Edit" to add sheet music or recordings
             </p>
           </div>
         </div>

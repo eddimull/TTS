@@ -2,7 +2,7 @@
   <breeze-authenticated-layout>
     <template #header>
       <h2 class="font-semibold text-xl dark:text-gray-50 text-gray-800 leading-tight">
-        Band Charts
+        Sheet Music
       </h2>
     </template>
 
@@ -62,7 +62,7 @@
         >
           <i class="pi pi-book text-6xl text-gray-300 mb-4" />
           <p class="text-xl text-gray-500 mb-2">
-            No charts found
+            No Sheet Music found
           </p>
           <p class="text-gray-400 mb-4">
             {{ chartFilter ? 'Try a different search term' : 'Click "New Chart" to create one' }}
@@ -201,7 +201,7 @@
           <template #empty>
             <div class="text-center py-8">
               <p class="text-gray-500">
-                No charts found. Click 'New Chart' to create one.
+                No Sheet Music found. Click 'New Chart' to create one.
               </p>
             </div>
           </template>
