@@ -14,7 +14,7 @@
             class="mr-2"
             severity="secondary"
             text
-            label="New Chart"
+            label="New Sheet Music"
             @click="openNew"
           />
         </template>
@@ -65,7 +65,7 @@
             No Sheet Music found
           </p>
           <p class="text-gray-400 mb-4">
-            {{ chartFilter ? 'Try a different search term' : 'Click "New Chart" to create one' }}
+            {{ chartFilter ? 'Try a different search term' : 'Click "New Sheet Music" to create one' }}
           </p>
         </div>
                 
@@ -201,7 +201,7 @@
           <template #empty>
             <div class="text-center py-8">
               <p class="text-gray-500">
-                No Sheet Music found. Click 'New Chart' to create one.
+                No Sheet Music found. Click 'New Sheet Music' to create one.
               </p>
             </div>
           </template>
@@ -212,7 +212,7 @@
       <Dialog
         v-model:visible="chartDialog"
         :style="{ width: '450px' }"
-        header="New Chart"
+        header="New Sheet Music"
         :modal="true"
       >
         <div class="flex flex-col space-y-4">
