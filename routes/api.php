@@ -325,9 +325,13 @@ Route::prefix('mobile')->group(function () {
                 ->name('mobile.rehearsal-planner.show');
         });
 
+        // ── Songs (read) ───────────────────────────────────────────────
+        Route::middleware('mobile.band:read:songs')->group(function () {
+            Route::get('/bands/{band}/songs', [App\Http\Controllers\Api\Mobile\SongsController::class, 'index'])->name('mobile.songs.index');
+        });
+
         // ── Music / Charts (read) ──────────────────────────────────────
         Route::middleware('mobile.band:read:charts')->group(function () {
-            Route::get('/bands/{band}/songs', [App\Http\Controllers\Api\Mobile\MusicController::class, 'songs'])->name('mobile.songs.index');
             Route::get('/bands/{band}/charts', [App\Http\Controllers\Api\Mobile\MusicController::class, 'charts'])->name('mobile.charts.index');
             Route::get('/bands/{band}/charts/{chart}', [App\Http\Controllers\Api\Mobile\MusicController::class, 'chartDetail'])->name('mobile.charts.show');
             Route::get('/bands/{band}/charts/{chart}/uploads/{upload}/download', [App\Http\Controllers\Api\Mobile\MusicController::class, 'downloadChartUpload'])->name('mobile.charts.uploads.download');

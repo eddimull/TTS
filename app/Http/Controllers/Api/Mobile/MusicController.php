@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Mobile\StoreChartRequest;
 use App\Http\Requests\Mobile\StoreChartUploadRequest;
 use App\Models\Bands;
-use App\Models\Song;
 use App\Models\Charts;
 use App\Models\ChartUploads;
 use Illuminate\Http\JsonResponse;
@@ -26,29 +25,6 @@ class MusicController extends Controller
         return $user->isSubOfBand($bandId)
             && !$user->ownsBand($bandId)
             && !$user->isPartOfBand($bandId);
-    }
-
-    /**
-     * List all active songs for a band.
-     */
-    public function songs(Request $_request, Bands $band): JsonResponse
-    {
-        $songs = Song::where('band_id', $band->id)
-            ->where('active', true)
-            ->orderBy('title')
-            ->get(['id', 'band_id', 'title', 'artist', 'song_key', 'genre', 'bpm']);
-
-        return response()->json([
-            'songs' => $songs->map(fn ($s) => [
-                'id'       => $s->id,
-                'band_id'  => $s->band_id,
-                'title'    => $s->title ?? '',
-                'artist'   => $s->artist ?? '',
-                'song_key' => $s->song_key ?? '',
-                'genre'    => $s->genre ?? '',
-                'bpm'      => $s->bpm ?? 0,
-            ])->values(),
-        ]);
     }
 
     /**
