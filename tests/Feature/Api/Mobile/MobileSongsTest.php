@@ -107,4 +107,89 @@ class MobileSongsTest extends TestCase
         $this->withHeaders($headers)->getJson("/api/mobile/bands/{$band->id}/songs")
             ->assertOk();
     }
+
+    public function test_member_with_write_songs_can_create_a_song(): void
+    {
+        ['band' => $band] = $this->makeOwner();
+        ['headers' => $headers] = $this->makeMember($band, ['read:songs', 'write:songs'], ['read:songs', 'write:songs']);
+
+        $resp = $this->withHeaders($headers)->postJson("/api/mobile/bands/{$band->id}/songs", [
+            'title' => 'September',
+            'artist' => 'Earth, Wind & Fire',
+            'bpm' => 126,
+            'energy' => 10,
+            'active' => true,
+        ]);
+
+        $resp->assertCreated()
+            ->assertJsonPath('song.title', 'September')
+            ->assertJsonPath('song.energy', 10);
+        $this->assertDatabaseHas('songs', ['band_id' => $band->id, 'title' => 'September']);
+    }
+
+    public function test_member_without_write_songs_cannot_create(): void
+    {
+        ['band' => $band] = $this->makeOwner();
+        ['headers' => $headers] = $this->makeMember($band, ['read:songs'], ['read:songs']);
+
+        $this->withHeaders($headers)->postJson("/api/mobile/bands/{$band->id}/songs", [
+            'title' => 'Nope',
+        ])->assertForbidden();
+    }
+
+    public function test_create_requires_title(): void
+    {
+        ['band' => $band, 'headers' => $headers] = $this->makeOwner();
+
+        $this->withHeaders($headers)->postJson("/api/mobile/bands/{$band->id}/songs", [])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['title']);
+    }
+
+    public function test_update_edits_a_song(): void
+    {
+        ['band' => $band, 'headers' => $headers] = $this->makeOwner();
+        $song = Song::factory()->forBand($band)->active()->create(['title' => 'Old']);
+
+        $resp = $this->withHeaders($headers)->patchJson("/api/mobile/bands/{$band->id}/songs/{$song->id}", [
+            'title' => 'New Title',
+            'active' => false,
+        ]);
+
+        $resp->assertOk()
+            ->assertJsonPath('song.title', 'New Title')
+            ->assertJsonPath('song.active', false);
+    }
+
+    public function test_update_rejects_song_from_another_band(): void
+    {
+        ['band' => $band, 'headers' => $headers] = $this->makeOwner();
+        $otherBand = Bands::factory()->create();
+        $foreign = Song::factory()->forBand($otherBand)->create();
+
+        $this->withHeaders($headers)->patchJson("/api/mobile/bands/{$band->id}/songs/{$foreign->id}", [
+            'title' => 'Hijack',
+        ])->assertNotFound();
+    }
+
+    public function test_index_returns_populated_lead_singer_and_transition_song_shapes(): void
+    {
+        ['band' => $band, 'headers' => $headers] = $this->makeOwner();
+        $roster = \App\Models\Roster::factory()->create(['band_id' => $band->id]);
+        $member = \App\Models\RosterMember::factory()->create(['roster_id' => $roster->id]);
+        $target = Song::factory()->forBand($band)->active()->create(['title' => 'A Target', 'lead_singer_id' => null, 'transition_song_id' => null]);
+        Song::factory()->forBand($band)->active()->create([
+            'title' => 'B Song',
+            'lead_singer_id' => $member->id,
+            'transition_song_id' => $target->id,
+        ]);
+
+        $resp = $this->withHeaders($headers)->getJson("/api/mobile/bands/{$band->id}/songs");
+
+        $resp->assertOk()
+            ->assertJsonPath('songs.1.lead_singer.id', $member->id)
+            ->assertJsonPath('songs.1.transition_song.id', $target->id)
+            ->assertJsonPath('songs.1.transition_song.title', 'A Target')
+            ->assertJsonStructure(['songs' => ['1' => ['lead_singer' => ['id', 'display_name'], 'transition_song' => ['id', 'title', 'artist']]]]);
+    }
 }

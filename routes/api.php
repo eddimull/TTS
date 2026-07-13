@@ -330,6 +330,12 @@ Route::prefix('mobile')->group(function () {
             Route::get('/bands/{band}/songs', [App\Http\Controllers\Api\Mobile\SongsController::class, 'index'])->name('mobile.songs.index');
         });
 
+        // ── Songs (write) ──────────────────────────────────────────────
+        Route::middleware('mobile.band:write:songs')->group(function () {
+            Route::post('/bands/{band}/songs', [App\Http\Controllers\Api\Mobile\SongsController::class, 'store'])->name('mobile.songs.store');
+            Route::patch('/bands/{band}/songs/{song}', [App\Http\Controllers\Api\Mobile\SongsController::class, 'update'])->name('mobile.songs.update');
+        });
+
         // ── Music / Charts (read) ──────────────────────────────────────
         Route::middleware('mobile.band:read:charts')->group(function () {
             Route::get('/bands/{band}/charts', [App\Http\Controllers\Api\Mobile\MusicController::class, 'charts'])->name('mobile.charts.index');

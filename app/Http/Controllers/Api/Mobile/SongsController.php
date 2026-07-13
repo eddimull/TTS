@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreSongRequest;
+use App\Http\Requests\UpdateSongRequest;
 use App\Models\Bands;
 use App\Models\Song;
 use Illuminate\Http\JsonResponse;
@@ -32,6 +34,26 @@ class SongsController extends Controller
             'songs' => $query->get()->map(fn (Song $s) => $this->songPayload($s))->values(),
             'genres' => Song::GENRES,
         ]);
+    }
+
+    public function store(StoreSongRequest $request, Bands $band): JsonResponse
+    {
+        $song = $band->songs()->create($request->validated());
+        $song->load(['leadSinger.user', 'transitionSong:id,title,artist', 'charts' => fn ($q) => $q->select('id', 'song_id', 'title')->without('uploads')]);
+
+        return response()->json(['song' => $this->songPayload($song)], 201);
+    }
+
+    public function update(UpdateSongRequest $request, Bands $band, Song $song): JsonResponse
+    {
+        if ((int) $song->band_id !== (int) $band->id) {
+            return response()->json(['message' => 'Song not found.'], 404);
+        }
+
+        $song->update($request->validated());
+        $song->load(['leadSinger.user', 'transitionSong:id,title,artist', 'charts' => fn ($q) => $q->select('id', 'song_id', 'title')->without('uploads')]);
+
+        return response()->json(['song' => $this->songPayload($song)]);
     }
 
     /**
