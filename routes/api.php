@@ -334,6 +334,7 @@ Route::prefix('mobile')->group(function () {
         Route::middleware('mobile.band:write:songs')->group(function () {
             Route::post('/bands/{band}/songs', [App\Http\Controllers\Api\Mobile\SongsController::class, 'store'])->name('mobile.songs.store');
             Route::patch('/bands/{band}/songs/{song}', [App\Http\Controllers\Api\Mobile\SongsController::class, 'update'])->name('mobile.songs.update');
+            Route::delete('/bands/{band}/songs/{song}', [App\Http\Controllers\Api\Mobile\SongsController::class, 'destroy'])->name('mobile.songs.destroy');
         });
 
         // ── Music / Charts (read) ──────────────────────────────────────

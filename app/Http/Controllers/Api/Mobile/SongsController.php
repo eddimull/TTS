@@ -56,6 +56,21 @@ class SongsController extends Controller
         return response()->json(['song' => $this->songPayload($song)]);
     }
 
+    public function destroy(Request $request, Bands $band, Song $song): JsonResponse
+    {
+        if ((int) $song->band_id !== (int) $band->id) {
+            return response()->json(['message' => 'Song not found.'], 404);
+        }
+
+        if (!$request->user()->ownsBand($band->id)) {
+            return response()->json(['message' => 'Only band owners can delete songs.'], 403);
+        }
+
+        $song->delete();
+
+        return response()->json(['message' => 'Song deleted.']);
+    }
+
     /**
      * @return array<string, mixed>
      */

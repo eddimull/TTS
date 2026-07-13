@@ -192,4 +192,25 @@ class MobileSongsTest extends TestCase
             ->assertJsonPath('songs.1.transition_song.title', 'A Target')
             ->assertJsonStructure(['songs' => ['1' => ['lead_singer' => ['id', 'display_name'], 'transition_song' => ['id', 'title', 'artist']]]]);
     }
+
+    public function test_owner_can_delete_a_song(): void
+    {
+        ['band' => $band, 'headers' => $headers] = $this->makeOwner();
+        $song = Song::factory()->forBand($band)->create();
+
+        $this->withHeaders($headers)->deleteJson("/api/mobile/bands/{$band->id}/songs/{$song->id}")
+            ->assertOk();
+        $this->assertDatabaseMissing('songs', ['id' => $song->id]);
+    }
+
+    public function test_member_with_write_songs_cannot_delete(): void
+    {
+        ['band' => $band] = $this->makeOwner();
+        ['headers' => $headers] = $this->makeMember($band, ['read:songs', 'write:songs'], ['read:songs', 'write:songs']);
+        $song = Song::factory()->forBand($band)->create();
+
+        $this->withHeaders($headers)->deleteJson("/api/mobile/bands/{$band->id}/songs/{$song->id}")
+            ->assertForbidden();
+        $this->assertDatabaseHas('songs', ['id' => $song->id]);
+    }
 }
