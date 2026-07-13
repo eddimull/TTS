@@ -136,8 +136,9 @@ class User extends Authenticatable
     /**
      * Does this user have a sub assignment (accepted event_subs invitation or
      * an event_members row filling a sub slot) on one of this band's events
-     * that is upcoming or ended within the last 48 hours? Gates a sub's
-     * windowed access to the band's song list.
+     * that is upcoming or whose calendar day ended within the last 48 hours?
+     * (date-granular: access lasts through at least 48h after the event date)
+     * Gates a sub's windowed access to the band's song list.
      */
     public function hasCurrentSubAssignmentForBand($bandId): bool
     {
@@ -160,7 +161,7 @@ class User extends Authenticatable
         }
 
         return \App\Models\Events::whereIn('id', $assignedEventIds)
-            ->where('date', '>=', now()->subHours(48))
+            ->whereDate('date', '>=', now()->subHours(48)->toDateString())
             ->whereHasMorph('eventable', [\App\Models\Bookings::class, \App\Models\Rehearsal::class], function ($q) use ($bandId) {
                 $q->where('band_id', $bandId);
             })

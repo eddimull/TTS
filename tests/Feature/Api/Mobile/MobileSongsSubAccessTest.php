@@ -118,6 +118,21 @@ class MobileSongsSubAccessTest extends TestCase
             ->assertOk();
     }
 
+    public function test_sub_with_event_two_days_ago_is_still_within_grace(): void
+    {
+        $sub = $this->makeSub();
+        // Two days ago — cutoff is now()->subHours(48), so its date equals
+        // now()->subHours(48)->format('Y-m-d'), still passing >= check.
+        // Boundary test: proves the grace window is date-deterministic (before
+        // the fix, this could flap by time of day with a timestamp comparison).
+        $event = $this->makeBookingEvent(now()->subDays(2)->format('Y-m-d'));
+        $this->assignViaAcceptedInvitation($sub, $event);
+
+        $this->withHeaders($this->mobileHeaders($sub))
+            ->getJson("/api/mobile/bands/{$this->band->id}/songs")
+            ->assertOk();
+    }
+
     public function test_sub_with_only_old_event_cannot_read_songs(): void
     {
         $sub = $this->makeSub();

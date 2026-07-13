@@ -26,8 +26,9 @@ unifies them in the UX and adds the backend relationship.
 7. **Label charts as "Sheet Music" in all user-facing copy** (mobile and web). No backend renames: routes, tables, permission keys, API paths unchanged.
 8. **Sub access to the song list is windowed** — a sub can read a band's songs only
    while scheduled on one of that band's events (accepted invitation or sub slot),
-   including a 48-hour grace period after the event date. Applies to web and mobile
-   (enforced in `User::canRead('songs')`). Subs never get write.
+   including a grace period through at least 48 hours after the event's calendar day
+   (date-granular). Applies to web and mobile (enforced in `User::canRead('songs')`). 
+   Subs never get write.
 
 ## 1. Data model (Laravel)
 
