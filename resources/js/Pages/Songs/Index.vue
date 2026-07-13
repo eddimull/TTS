@@ -120,6 +120,23 @@
               <span v-else>—</span>
             </template>
           </Column>
+          <Column header="Sheet Music" style="width: 170px">
+            <template #body="{ data }">
+              <div class="flex flex-wrap gap-1">
+                <Link
+                  v-for="chart in data.charts || []"
+                  :key="chart.id"
+                  :href="route('charts.show', chart.id)"
+                >
+                  <Tag
+                    :value="chart.title"
+                    severity="info"
+                    class="cursor-pointer"
+                  />
+                </Link>
+              </div>
+            </template>
+          </Column>
           <Column header="Active" style="width: 80px">
             <template #body="{ data }">
               <Tag
@@ -347,9 +364,10 @@
 
 <script>
 import { useBandRealtime } from '@/composables/useBandRealtime';
-import { router } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
 
 export default {
+  components: { Link },
   setup(props) {
     // Song catalog live-updates; page renders empty without a band.
     useBandRealtime(props.band ? props.band.id : [], {

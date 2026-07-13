@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\BandMembers;
 use App\Models\Bands;
+use App\Models\Charts;
 use App\Models\Song;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class SongsWebTest extends TestCase
@@ -105,5 +107,18 @@ class SongsWebTest extends TestCase
         $band->owners()->create(['user_id' => $owner->id]);
         $this->actingAs($owner)->deleteJson("/songs/{$song->id}")->assertOk();
         $this->assertDatabaseMissing('songs', ['id' => $song->id]);
+    }
+
+    public function test_index_includes_linked_charts_for_songs(): void
+    {
+        [$user, $band] = $this->makeOwner();
+        $song = Song::factory()->forBand($band)->create();
+        Charts::factory()->create(['band_id' => $band->id, 'song_id' => $song->id, 'title' => 'Horn Chart']);
+
+        $this->actingAs($user)->get("/songs?band_id={$band->id}")
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Songs/Index')
+                ->where('songs.0.charts.0.title', 'Horn Chart'));
     }
 }
