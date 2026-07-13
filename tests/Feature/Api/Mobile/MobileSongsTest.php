@@ -239,4 +239,14 @@ class MobileSongsTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['title']);
     }
+
+    public function test_destroy_rejects_song_from_another_band(): void
+    {
+        ['band' => $band, 'headers' => $headers] = $this->makeOwner();
+        $foreign = Song::factory()->forBand(Bands::factory()->create())->create();
+
+        $this->withHeaders($headers)->deleteJson("/api/mobile/bands/{$band->id}/songs/{$foreign->id}")
+            ->assertNotFound();
+        $this->assertDatabaseHas('songs', ['id' => $foreign->id]);
+    }
 }
