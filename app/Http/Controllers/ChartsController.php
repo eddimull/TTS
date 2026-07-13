@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Charts;
+use App\Models\Song;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use App\Models\ChartUploads;
@@ -38,12 +40,22 @@ class ChartsController extends Controller
      */
     public function store(Request $request)
     {
-        // dd($request);
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'composer' => 'nullable|string|max:255',
+            'price' => 'nullable|numeric|min:0',
+            'band_id' => 'required|integer|exists:bands,id',
+            'song_id' => ['nullable', 'integer',
+                Rule::exists('songs', 'id')->where(fn ($q) => $q->where('band_id', $request->input('band_id'))),
+            ],
+        ]);
+
         $chart = Charts::create([
-            'title' => $request->name,
-            'composer' => $request->composer,
-            'price' => $request->price ? $request->price : 0,
-            'band_id' => $request->band_id
+            'title' => $validated['name'],
+            'composer' => $validated['composer'] ?? null,
+            'price' => $validated['price'] ?? 0,
+            'band_id' => $validated['band_id'],
+            'song_id' => $validated['song_id'] ?? null,
         ]);
 
         return redirect('/charts/' . $chart->id);
@@ -61,7 +73,7 @@ class ChartsController extends Controller
         $canEdit = $user->canWrite('charts', $chart->band_id);
         
         return Inertia::render('Charts/Show', [
-            'chart' => $chart,
+            'chart' => $chart->load('song:id,title,artist'),
             'canEdit' => $canEdit
         ]);
     }
@@ -77,7 +89,12 @@ class ChartsController extends Controller
         // Force fresh data by reloading the chart with uploads
         $chartData = $chart->fresh()->load('uploads.type');
 
-        return Inertia::render('Charts/Edit', ['chart' => $chartData]);
+        return Inertia::render('Charts/Edit', [
+            'chart' => $chartData,
+            'songs' => Song::where('band_id', $chart->band_id)
+                ->orderBy('title')
+                ->get(['id', 'title', 'artist']),
+        ]);
     }
 
     public function uploadChartData(Charts $chart, Request $request)
@@ -245,11 +262,17 @@ class ChartsController extends Controller
      */
     public function update(Charts $chart, Request $request)
     {
-        // dd($request->public === true);
+        $validated = $request->validate([
+            'song_id' => ['nullable', 'integer',
+                Rule::exists('songs', 'id')->where(fn ($q) => $q->where('band_id', $chart->band_id)),
+            ],
+        ]);
+
         $chart->title = $request->title;
         $chart->composer = $request->composer;
         $chart->description = $request->description;
         $chart->public = $request->public === true;
+        $chart->song_id = $validated['song_id'] ?? null;
         $chart->save();
 
         return back()->with('successMessage', 'Updated ' . $chart->title);
