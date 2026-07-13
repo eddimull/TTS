@@ -350,6 +350,7 @@ Route::prefix('mobile')->group(function () {
         // ── Music / Charts (write) ─────────────────────────────────────
         Route::middleware('mobile.band:write:charts')->group(function () {
             Route::post('/bands/{band}/charts', [App\Http\Controllers\Api\Mobile\MusicController::class, 'storeChart'])->name('mobile.charts.store');
+            Route::patch('/bands/{band}/charts/{chart}', [App\Http\Controllers\Api\Mobile\MusicController::class, 'updateChart'])->name('mobile.charts.update');
             Route::delete('/bands/{band}/charts/{chart}', [App\Http\Controllers\Api\Mobile\MusicController::class, 'destroyChart'])->name('mobile.charts.destroy');
             Route::post('/bands/{band}/charts/{chart}/uploads', [App\Http\Controllers\Api\Mobile\MusicController::class, 'storeChartUpload'])->name('mobile.charts.uploads.store');
             Route::delete('/bands/{band}/charts/{chart}/uploads/{upload}', [App\Http\Controllers\Api\Mobile\MusicController::class, 'destroyChartUpload'])->name('mobile.charts.uploads.destroy');
