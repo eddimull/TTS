@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Scout\Searchable;
 
 class Song extends Model
@@ -57,5 +58,10 @@ class Song extends Model
     public function queueEntries()
     {
         return $this->hasMany(LiveSetlistQueue::class, 'song_id');
+    }
+
+    public function charts(): HasMany
+    {
+        return $this->hasMany(Charts::class, 'song_id');
     }
 }
