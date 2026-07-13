@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreSongRequest extends FormRequest
 {
@@ -25,7 +26,7 @@ class StoreSongRequest extends FormRequest
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, mixed>
      */
     public function rules(): array
     {
@@ -40,7 +41,9 @@ class StoreSongRequest extends FormRequest
             'energy' => 'nullable|integer|min:1|max:10',
             'notes' => 'nullable|string',
             'lead_singer_id' => 'nullable|integer|exists:roster_members,id',
-            'transition_song_id' => 'nullable|integer|exists:songs,id',
+            'transition_song_id' => ['nullable', 'integer',
+                Rule::exists('songs', 'id')->where(fn ($q) => $q->where('band_id', $this->route('band')?->id ?? $this->input('band_id'))),
+            ],
             'active' => 'boolean',
         ];
     }

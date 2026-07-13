@@ -109,6 +109,30 @@ class SongsWebTest extends TestCase
         $this->assertDatabaseMissing('songs', ['id' => $song->id]);
     }
 
+    public function test_store_rejects_cross_band_transition_song(): void
+    {
+        [$user, $band] = $this->makeOwner();
+        $foreign = Song::factory()->forBand(Bands::factory()->create())->create();
+
+        $this->actingAs($user)->postJson('/songs', [
+            'band_id' => $band->id,
+            'title' => 'Has Bad Transition',
+            'transition_song_id' => $foreign->id,
+        ])->assertUnprocessable()->assertJsonValidationErrors(['transition_song_id']);
+    }
+
+    public function test_update_rejects_cross_band_transition_song(): void
+    {
+        [$user, $band] = $this->makeOwner();
+        $song = Song::factory()->forBand($band)->create();
+        $foreign = Song::factory()->forBand(Bands::factory()->create())->create();
+
+        $this->actingAs($user)->patchJson("/songs/{$song->id}", [
+            'title' => $song->title,
+            'transition_song_id' => $foreign->id,
+        ])->assertUnprocessable()->assertJsonValidationErrors(['transition_song_id']);
+    }
+
     public function test_index_includes_linked_charts_for_songs(): void
     {
         [$user, $band] = $this->makeOwner();

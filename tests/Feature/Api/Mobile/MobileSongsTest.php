@@ -240,6 +240,17 @@ class MobileSongsTest extends TestCase
             ->assertJsonValidationErrors(['title']);
     }
 
+    public function test_create_rejects_cross_band_transition_song(): void
+    {
+        ['band' => $band, 'headers' => $headers] = $this->makeOwner();
+        $foreign = Song::factory()->forBand(Bands::factory()->create())->create();
+
+        $this->withHeaders($headers)->postJson("/api/mobile/bands/{$band->id}/songs", [
+            'title' => 'Bad Transition',
+            'transition_song_id' => $foreign->id,
+        ])->assertUnprocessable()->assertJsonValidationErrors(['transition_song_id']);
+    }
+
     public function test_destroy_rejects_song_from_another_band(): void
     {
         ['band' => $band, 'headers' => $headers] = $this->makeOwner();
