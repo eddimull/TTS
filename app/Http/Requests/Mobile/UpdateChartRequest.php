@@ -5,7 +5,7 @@ namespace App\Http\Requests\Mobile;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class StoreChartRequest extends FormRequest
+class UpdateChartRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -15,12 +15,12 @@ class StoreChartRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title'       => 'required|string|max:255',
-            'composer'    => 'nullable|string|max:255',
-            'description' => 'nullable|string|max:2000',
-            'price'       => 'nullable|numeric|min:0',
-            'is_public'   => 'nullable|boolean',
-            'song_id' => ['nullable', 'integer',
+            'title'       => 'sometimes|required|string|max:255',
+            'composer'    => 'sometimes|nullable|string|max:255',
+            'description' => 'sometimes|nullable|string|max:2000',
+            'price'       => 'sometimes|nullable|numeric|min:0',
+            'is_public'   => 'sometimes|nullable|boolean',
+            'song_id'     => ['sometimes', 'nullable', 'integer',
                 Rule::exists('songs', 'id')->where(fn ($q) => $q->where('band_id', $this->route('band')?->id)),
             ],
         ];

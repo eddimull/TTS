@@ -82,7 +82,7 @@ export const navigationGroups = [
         activeMatch: (route) => route === 'media.index'
       },
       {
-        label: 'Chart Library',
+        label: 'Sheet Music',
         routeName: 'charts',
         permission: 'Charts',
         activeMatch: (route) => route === 'charts'

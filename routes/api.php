@@ -102,6 +102,9 @@ Route::prefix('mobile')->group(function () {
         // Aggregating bookings across all of the user's bands (band-agnostic).
         Route::get('/me/bookings', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'indexForUser'])->name('mobile.me.bookings');
 
+        // BPM lookup (band-independent)
+        Route::get('/songs/lookup', [App\Http\Controllers\Api\Mobile\SongsController::class, 'lookup'])->name('mobile.songs.lookup');
+
         // Personal calendar subscription URLs (ICS feed for Google/Apple Calendar).
         Route::get('/me/calendar-feed', [App\Http\Controllers\Api\Mobile\CalendarFeedController::class, 'show'])->name('mobile.me.calendar-feed');
         Route::post('/me/calendar-feed/reset', [App\Http\Controllers\Api\Mobile\CalendarFeedController::class, 'reset'])->name('mobile.me.calendar-feed.reset');
@@ -325,9 +328,20 @@ Route::prefix('mobile')->group(function () {
                 ->name('mobile.rehearsal-planner.show');
         });
 
+        // ── Songs (read) ───────────────────────────────────────────────
+        Route::middleware('mobile.band:read:songs')->group(function () {
+            Route::get('/bands/{band}/songs', [App\Http\Controllers\Api\Mobile\SongsController::class, 'index'])->name('mobile.songs.index');
+        });
+
+        // ── Songs (write) ──────────────────────────────────────────────
+        Route::middleware('mobile.band:write:songs')->group(function () {
+            Route::post('/bands/{band}/songs', [App\Http\Controllers\Api\Mobile\SongsController::class, 'store'])->name('mobile.songs.store');
+            Route::patch('/bands/{band}/songs/{song}', [App\Http\Controllers\Api\Mobile\SongsController::class, 'update'])->name('mobile.songs.update');
+            Route::delete('/bands/{band}/songs/{song}', [App\Http\Controllers\Api\Mobile\SongsController::class, 'destroy'])->name('mobile.songs.destroy');
+        });
+
         // ── Music / Charts (read) ──────────────────────────────────────
         Route::middleware('mobile.band:read:charts')->group(function () {
-            Route::get('/bands/{band}/songs', [App\Http\Controllers\Api\Mobile\MusicController::class, 'songs'])->name('mobile.songs.index');
             Route::get('/bands/{band}/charts', [App\Http\Controllers\Api\Mobile\MusicController::class, 'charts'])->name('mobile.charts.index');
             Route::get('/bands/{band}/charts/{chart}', [App\Http\Controllers\Api\Mobile\MusicController::class, 'chartDetail'])->name('mobile.charts.show');
             Route::get('/bands/{band}/charts/{chart}/uploads/{upload}/download', [App\Http\Controllers\Api\Mobile\MusicController::class, 'downloadChartUpload'])->name('mobile.charts.uploads.download');
@@ -336,6 +350,7 @@ Route::prefix('mobile')->group(function () {
         // ── Music / Charts (write) ─────────────────────────────────────
         Route::middleware('mobile.band:write:charts')->group(function () {
             Route::post('/bands/{band}/charts', [App\Http\Controllers\Api\Mobile\MusicController::class, 'storeChart'])->name('mobile.charts.store');
+            Route::patch('/bands/{band}/charts/{chart}', [App\Http\Controllers\Api\Mobile\MusicController::class, 'updateChart'])->name('mobile.charts.update');
             Route::delete('/bands/{band}/charts/{chart}', [App\Http\Controllers\Api\Mobile\MusicController::class, 'destroyChart'])->name('mobile.charts.destroy');
             Route::post('/bands/{band}/charts/{chart}/uploads', [App\Http\Controllers\Api\Mobile\MusicController::class, 'storeChartUpload'])->name('mobile.charts.uploads.store');
             Route::delete('/bands/{band}/charts/{chart}/uploads/{upload}', [App\Http\Controllers\Api\Mobile\MusicController::class, 'destroyChartUpload'])->name('mobile.charts.uploads.destroy');

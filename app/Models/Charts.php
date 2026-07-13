@@ -23,4 +23,9 @@ class Charts extends Model
     {
         return $this->hasMany(ChartUploads::class,'chart_id');
     }
+
+    public function song()
+    {
+        return $this->belongsTo(Song::class, 'song_id');
+    }
 }
