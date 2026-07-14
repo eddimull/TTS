@@ -5,10 +5,11 @@ namespace App\Http\Controllers\Api\Mobile;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Mobile\StoreChartRequest;
 use App\Http\Requests\Mobile\StoreChartUploadRequest;
+use App\Http\Requests\Mobile\UpdateChartRequest;
 use App\Models\Bands;
-use App\Models\Song;
 use App\Models\Charts;
 use App\Models\ChartUploads;
+use App\Models\Song;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Services\Mobile\TokenService;
@@ -29,26 +30,15 @@ class MusicController extends Controller
     }
 
     /**
-     * List all active songs for a band.
+     * @return array{id: int, title: string, artist: string}|null
      */
-    public function songs(Request $_request, Bands $band): JsonResponse
+    private function songBlock(?Song $song): ?array
     {
-        $songs = Song::where('band_id', $band->id)
-            ->where('active', true)
-            ->orderBy('title')
-            ->get(['id', 'band_id', 'title', 'artist', 'song_key', 'genre', 'bpm']);
-
-        return response()->json([
-            'songs' => $songs->map(fn ($s) => [
-                'id'       => $s->id,
-                'band_id'  => $s->band_id,
-                'title'    => $s->title ?? '',
-                'artist'   => $s->artist ?? '',
-                'song_key' => $s->song_key ?? '',
-                'genre'    => $s->genre ?? '',
-                'bpm'      => $s->bpm ?? 0,
-            ])->values(),
-        ]);
+        return $song ? [
+            'id' => $song->id,
+            'title' => $song->title ?? '',
+            'artist' => $song->artist ?? '',
+        ] : null;
     }
 
     /**
@@ -66,6 +56,7 @@ class MusicController extends Controller
 
         $charts = $query
             ->withCount('uploads')
+            ->with('song:id,title,artist')
             ->orderBy('title')
             ->get();
 
@@ -78,6 +69,7 @@ class MusicController extends Controller
                 'description'   => $ch->description ?? '',
                 'price'         => $ch->price ?? 0,
                 'public'        => (bool) $ch->public,
+                'song'          => $this->songBlock($ch->song),
                 'uploads_count' => $ch->uploads_count ?? 0,
             ])->values(),
         ]);
@@ -122,6 +114,7 @@ class MusicController extends Controller
                 }
             })
             ->withCount('uploads')
+            ->with('song:id,title,artist')
             ->orderBy('title')
             ->get();
 
@@ -136,6 +129,7 @@ class MusicController extends Controller
                     'description'   => $ch->description ?? '',
                     'price'         => $ch->price ?? 0,
                     'public'        => (bool) $ch->public,
+                    'song'          => $this->songBlock($ch->song),
                     'uploads_count' => $ch->uploads_count ?? 0,
                     'band'          => $band ? [
                         'id'          => $band->id,
@@ -165,7 +159,7 @@ class MusicController extends Controller
         }
 
         // Eager-load uploads with their type (already auto-loaded via $with, but explicit for clarity)
-        $chart->loadMissing('uploads.type');
+        $chart->loadMissing(['uploads.type', 'song']);
 
         return response()->json([
             'chart' => [
@@ -176,6 +170,7 @@ class MusicController extends Controller
                 'description'   => $chart->description ?? '',
                 'price'         => $chart->price ?? 0,
                 'public'        => (bool) $chart->public,
+                'song'          => $this->songBlock($chart->song),
                 'uploads_count' => $chart->uploads->count(),
                 'uploads'       => $chart->uploads->map(fn ($u) => [
                     'id'           => $u->id,
@@ -198,13 +193,14 @@ class MusicController extends Controller
         $chart = Charts::create([
             'band_id'     => $band->id,
             'title'       => $request->validated('title'),
-            'composer'    => $request->validated('composer', ''),
+            'composer'    => $request->validated('composer') ?? '',
             'description' => $request->validated('description', ''),
-            'price'       => $request->validated('price', 0),
+            'price'       => $request->validated('price') ?? 0,
             'public'      => $request->boolean('is_public'),
+            'song_id'     => $request->validated('song_id'),
         ]);
 
-        $chart->loadMissing('uploads.type');
+        $chart->loadMissing(['uploads.type', 'song']);
 
         return response()->json([
             'chart' => [
@@ -215,6 +211,7 @@ class MusicController extends Controller
                 'description'   => $chart->description ?? '',
                 'price'         => $chart->price ?? 0,
                 'public'        => (bool) $chart->public,
+                'song'          => $this->songBlock($chart->song),
                 'uploads_count' => $chart->uploads->count(),
                 'uploads'       => $chart->uploads->map(fn ($u) => [
                     'id'           => $u->id,
@@ -227,6 +224,53 @@ class MusicController extends Controller
                 ])->values(),
             ],
         ], 201);
+    }
+
+    /**
+     * Partially update a chart (title/composer/description/price/public/linked song).
+     */
+    public function updateChart(UpdateChartRequest $request, Bands $band, Charts $chart): JsonResponse
+    {
+        if ((int) $chart->band_id !== (int) $band->id) {
+            return response()->json(['message' => 'Chart not found.'], 404);
+        }
+
+        $validated = $request->validated();
+
+        foreach (['title', 'description'] as $field) {
+            if (array_key_exists($field, $validated)) {
+                $chart->{$field} = $validated[$field];
+            }
+        }
+        if (array_key_exists('composer', $validated)) {
+            $chart->composer = $validated['composer'] ?? '';
+        }
+        if (array_key_exists('price', $validated)) {
+            $chart->price = $validated['price'] ?? 0;
+        }
+        if (array_key_exists('is_public', $validated) && $validated['is_public'] !== null) {
+            $chart->public = $request->boolean('is_public');
+        }
+        if (array_key_exists('song_id', $validated)) {
+            $chart->song_id = $validated['song_id'];
+        }
+        $chart->save();
+
+        $chart->loadMissing(['uploads.type', 'song']);
+
+        return response()->json([
+            'chart' => [
+                'id'            => $chart->id,
+                'band_id'       => $chart->band_id,
+                'title'         => $chart->title ?? '',
+                'composer'      => $chart->composer ?? '',
+                'description'   => $chart->description ?? '',
+                'price'         => $chart->price ?? 0,
+                'public'        => (bool) $chart->public,
+                'song'          => $this->songBlock($chart->song),
+                'uploads_count' => $chart->uploads->count(),
+            ],
+        ]);
     }
 
     /**

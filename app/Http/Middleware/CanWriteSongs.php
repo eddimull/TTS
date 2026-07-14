@@ -12,6 +12,9 @@ class CanWriteSongs
     public function handle(Request $request, Closure $next)
     {
         if (!Auth::user()) {
+            if ($request->expectsJson()) {
+                abort(403, 'You must be logged in');
+            }
             return redirect(RouteServiceProvider::HOME)
                 ->with('errorMessage', 'You must be logged in');
         }
@@ -22,11 +25,17 @@ class CanWriteSongs
             ?? $request->input('band_id');
 
         if (!$band_id) {
+            if ($request->expectsJson()) {
+                abort(403, 'Band not found');
+            }
             return redirect(RouteServiceProvider::HOME)
                 ->with('errorMessage', 'Band not found');
         }
 
         if (!Auth::user()->canWrite('songs', $band_id)) {
+            if ($request->expectsJson()) {
+                abort(403, 'Permission denied');
+            }
             return redirect(RouteServiceProvider::HOME)
                 ->with('errorMessage', 'Permission denied');
         }

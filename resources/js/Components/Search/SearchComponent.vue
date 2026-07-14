@@ -321,7 +321,7 @@
         <!-- Charts Results -->
         <div v-if="results.charts?.length > 0">
           <div class="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide bg-gray-50 dark:bg-gray-700">
-            Charts
+            Sheet Music
           </div>
           <div
             v-for="(chart, index) in results.charts"

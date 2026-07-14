@@ -194,6 +194,24 @@
               />
             </div>
 
+            <div class="space-y-2">
+              <label
+                for="linkedSong"
+                class="block text-sm font-medium"
+              >Linked Song</label>
+              <Dropdown
+                id="linkedSong"
+                v-model="chartData.song_id"
+                :options="songOptions"
+                option-value="id"
+                option-label="label"
+                filter
+                show-clear
+                placeholder="No linked song"
+                class="w-full"
+              />
+            </div>
+
             <div class="flex items-center space-x-2">
               <label
                 for="public"
@@ -223,7 +241,7 @@
           <div class="flex space-x-4">
             <div class="flex-1">
               <Button
-                label="Delete Chart"
+                label="Delete"
                 icon="pi pi-trash"
                 class="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
                 @click="deleteChart"
@@ -231,7 +249,7 @@
             </div>
             <div class="flex-1">
               <Button
-                label="Update Chart"
+                label="Update"
                 icon="pi pi-save"
                 class="w-full bg-blue-600 hover:bg-blue-700 text-white"
                 @click="updateChart"
@@ -371,6 +389,10 @@ export default {
                 return {};
             },
         },
+        songs: {
+            type: Array,
+            default: () => [],
+        },
     },
     data() {
         return {
@@ -389,6 +411,14 @@ export default {
             return this.chartData.uploads ? this.chartData.uploads.filter((upload) => {
                 return upload.upload_type_id === 1 || upload.upload_type_id === 2;
             }) : [];
+        },
+        songOptions() {
+            return this.songs.map((song) => {
+                return {
+                    ...song,
+                    label: song.artist ? `${song.title} — ${song.artist}` : song.title,
+                };
+            });
         },
     },
     created() {
@@ -463,6 +493,7 @@ export default {
                     composer: this.chartData.composer,
                     public: this.chartData.public,
                     description: this.chartData.description,
+                    song_id: this.chartData.song_id ?? null,
                 },
                 {
                     onSuccess: () => {
