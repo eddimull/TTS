@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\ProcessRehearsalCancelled;
+use App\Jobs\ProcessEventUpdated;
 use App\Jobs\SendUserPush;
 use App\Models\Bands;
 use App\Models\DeviceToken;
@@ -125,5 +126,38 @@ class ProcessRehearsalCancelledTest extends TestCase
 
         // Sanity: unrelated member is unaffected by the overlap.
         Notification::assertSentTo($member, RehearsalCancelled::class);
+    }
+
+    public function test_dispatches_calendar_resync_for_backing_event(): void
+    {
+        Notification::fake();
+        Queue::fake();
+        ['rehearsal' => $rehearsal, 'actor' => $actor] = $this->setUpBandWithRehearsal();
+
+        (new ProcessRehearsalCancelled($rehearsal, $actor->id, true, 'key-cal-1'))->handle();
+
+        Queue::assertPushed(ProcessEventUpdated::class);
+    }
+
+    public function test_no_calendar_resync_when_rehearsal_has_no_backing_event(): void
+    {
+        Notification::fake();
+        Queue::fake();
+
+        $actor = User::factory()->create();
+        $band  = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $actor->id]);
+        $schedule = RehearsalSchedule::factory()->weekly()->create([
+            'band_id' => $band->id,
+            'name'    => 'No Event Practice',
+        ]);
+        $rehearsal = Rehearsal::factory()->create([
+            'rehearsal_schedule_id' => $schedule->id,
+            'band_id'               => $band->id,
+        ]);
+
+        (new ProcessRehearsalCancelled($rehearsal, $actor->id, true, 'key-cal-2'))->handle();
+
+        Queue::assertNotPushed(ProcessEventUpdated::class);
     }
 }
