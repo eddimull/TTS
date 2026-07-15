@@ -76,7 +76,7 @@ class RehearsalControllerToggleCancelledTest extends TestCase
         });
     }
 
-    public function test_toggle_dispatches_exactly_once_per_request_never_when_value_would_be_unchanged(): void
+    public function test_toggle_dispatches_exactly_once_per_request(): void
     {
         Queue::fake();
         ['band' => $band, 'owner' => $owner, 'schedule' => $schedule, 'rehearsal' => $rehearsal] =
@@ -86,9 +86,64 @@ class RehearsalControllerToggleCancelledTest extends TestCase
             route('rehearsals.toggle-cancelled', [$band, $schedule, $rehearsal])
         );
 
-        // Exactly one dispatch for the one state change that occurred; the
-        // controller's guard (mirroring the mobile setCancelled endpoint)
-        // must not fire a second, redundant dispatch for a no-op change.
+        // The single POST flips is_cancelled once, so exactly one dispatch
+        // is expected — no double-dispatch, no dedup logic to verify here.
         Queue::assertPushed(ProcessRehearsalCancelled::class, 1);
+    }
+
+    public function test_toggle_returns_404_when_schedule_does_not_belong_to_band(): void
+    {
+        Queue::fake();
+
+        // Attacker has write access on band A.
+        $bandA      = Bands::factory()->create();
+        $attacker   = User::factory()->create();
+        $bandA->owners()->create(['user_id' => $attacker->id]);
+
+        // The rehearsal + schedule under attack belong to band B.
+        [
+            'band'      => $bandB,
+            'schedule'  => $scheduleB,
+            'rehearsal' => $rehearsalB,
+        ] = $this->setUpBandWithRehearsal(startCancelled: false);
+
+        // Attacker crafts a URL using their own band A, but band B's schedule
+        // and rehearsal ids.
+        $response = $this->actingAs($attacker)->post(
+            route('rehearsals.toggle-cancelled', [$bandA, $scheduleB, $rehearsalB])
+        );
+
+        $response->assertNotFound();
+        $this->assertFalse($rehearsalB->fresh()->is_cancelled);
+        Queue::assertNotPushed(ProcessRehearsalCancelled::class);
+    }
+
+    public function test_toggle_returns_404_when_rehearsal_does_not_belong_to_schedule(): void
+    {
+        Queue::fake();
+
+        // Attacker has write access on band A, and band A does have its own
+        // schedule — but the rehearsal id in the URL belongs to band B's
+        // schedule, so the rehearsal/schedule pairing is incoherent.
+        $bandA      = Bands::factory()->create();
+        $attacker   = User::factory()->create();
+        $bandA->owners()->create(['user_id' => $attacker->id]);
+        $scheduleA  = RehearsalSchedule::factory()->weekly()->create([
+            'band_id' => $bandA->id,
+            'name'    => 'Attacker Schedule',
+        ]);
+
+        [
+            'band'      => $bandB,
+            'rehearsal' => $rehearsalB,
+        ] = $this->setUpBandWithRehearsal(startCancelled: false);
+
+        $response = $this->actingAs($attacker)->post(
+            route('rehearsals.toggle-cancelled', [$bandA, $scheduleA, $rehearsalB])
+        );
+
+        $response->assertNotFound();
+        $this->assertFalse($rehearsalB->fresh()->is_cancelled);
+        Queue::assertNotPushed(ProcessRehearsalCancelled::class);
     }
 }

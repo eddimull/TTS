@@ -352,6 +352,14 @@ class RehearsalController extends Controller
             abort(403, 'Unauthorized to cancel/uncancel rehearsal');
         }
 
+        // Nested bindings aren't scoped; verify the URL chain is coherent so a
+        // write grant on one band can't toggle another band's rehearsal.
+        abort_unless(
+            $rehearsalSchedule->band_id === $band->id
+                && $rehearsal->rehearsal_schedule_id === $rehearsalSchedule->id,
+            404
+        );
+
         $wasCancelled = $rehearsal->is_cancelled;
         $isCancelled = !$wasCancelled;
 
