@@ -4,6 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\Bands;
 use App\Models\Events;
+use App\Models\EventTypes;
+use App\Models\Rehearsal;
+use App\Models\RehearsalSchedule;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -148,5 +151,33 @@ class CalendarFeedTest extends TestCase
     public function test_mobile_endpoint_requires_authentication(): void
     {
         $this->getJson('/api/mobile/me/calendar-feed')->assertUnauthorized();
+    }
+
+    public function test_feed_marks_cancelled_rehearsals(): void
+    {
+        $schedule = RehearsalSchedule::factory()->weekly()->create([
+            'band_id' => $this->band->id,
+            'name'    => 'Tuesday Practice',
+        ]);
+        $rehearsal = Rehearsal::factory()->create([
+            'rehearsal_schedule_id' => $schedule->id,
+            'band_id'               => $this->band->id,
+            'is_cancelled'          => true,
+        ]);
+        Events::factory()->create([
+            'eventable_id'   => $rehearsal->id,
+            'eventable_type' => 'App\\Models\\Rehearsal',
+            'event_type_id'  => EventTypes::factory()->create()->id,
+            'title'          => 'Tuesday Practice',
+            'date'           => now()->addDays(4)->toDateString(),
+            'start_time'     => '19:00',
+            'end_time'       => '21:00',
+        ]);
+
+        $token = $this->owner->getCalendarToken();
+        $body  = $this->get('/calendar/' . $token . '.ics')->assertOk()->getContent();
+
+        $this->assertStringContainsString('STATUS:CANCELLED', $body);
+        $this->assertStringContainsString('Cancelled: Tuesday Practice', $body);
     }
 }
