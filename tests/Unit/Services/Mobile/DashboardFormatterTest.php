@@ -41,6 +41,7 @@ class DashboardFormatterTest extends TestCase
         $this->assertSame('rehearsal', $out[0]['event_source']);
         $this->assertSame(42, $out[0]['id'], 'Rehearsal id should be the rehearsals.id (eventable_id), not events.id');
         $this->assertSame('rehearsal-abc', $out[0]['key']);
+        $this->assertSame(0, $out[0]['unread_comment_count']);
     }
 
     /**
@@ -65,6 +66,7 @@ class DashboardFormatterTest extends TestCase
         $this->assertSame('rehearsal_schedule', $out[0]['event_source']);
         $this->assertNull($out[0]['id']);
         $this->assertSame('virtual-rehearsal-9-2026-06-27', $out[0]['key']);
+        $this->assertSame(0, $out[0]['unread_comment_count']);
     }
 
     /**
@@ -89,5 +91,6 @@ class DashboardFormatterTest extends TestCase
 
         $this->assertSame('booking', $out[0]['event_source']);
         $this->assertSame(555, $out[0]['id']);
+        $this->assertSame(0, $out[0]['unread_comment_count']);
     }
 }
