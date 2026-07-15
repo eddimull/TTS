@@ -49,9 +49,15 @@ class QuestionnaireTemplateService
     {
         $errors = [];
 
-        // Position-by-client_id map for forward-reference detection
+        // Position-by-client_id map for forward-reference detection.
+        // Duplicate client_ids would silently overwrite entries here and make
+        // the pass-two depends_on rewrite ambiguous, so reject them up front.
         $positionByClientId = [];
-        foreach ($fields as $f) {
+        foreach ($fields as $i => $f) {
+            if (array_key_exists($f['client_id'], $positionByClientId)) {
+                $errors["fields.{$i}.client_id"][] =
+                    "Duplicate client_id '{$f['client_id']}'.";
+            }
             $positionByClientId[$f['client_id']] = $f['position'] ?? PHP_INT_MAX;
         }
 

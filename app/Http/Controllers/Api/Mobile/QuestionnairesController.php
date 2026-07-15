@@ -137,7 +137,7 @@ class QuestionnairesController extends Controller
 
     private function ensureBelongsToBand(Bands $band, Questionnaires $questionnaire): void
     {
-        abort_if($questionnaire->band_id !== $band->id, 404, 'Questionnaire does not belong to this band');
+        abort_if($questionnaire->band_id !== $band->id, 404);
     }
 
     private function summary(Questionnaires $q): array

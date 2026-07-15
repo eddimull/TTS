@@ -253,6 +253,31 @@ class QuestionnaireMobileTest extends TestCase
             ->assertStatus(422);
     }
 
+    public function test_update_rejects_duplicate_client_ids(): void
+    {
+        $q = $this->makeQuestionnaire();
+
+        $this->withHeaders($this->asOwner())
+            ->putJson("/api/mobile/bands/{$this->band->id}/questionnaires/{$q->id}", [
+                'name' => $q->name,
+                'description' => null,
+                'fields' => [
+                    [
+                        'id' => null, 'client_id' => 'tmp-1', 'type' => 'short_text',
+                        'label' => 'First', 'help_text' => null, 'required' => false, 'position' => 10,
+                        'settings' => null, 'visibility_rule' => null, 'mapping_target' => null,
+                    ],
+                    [
+                        'id' => null, 'client_id' => 'tmp-1', 'type' => 'short_text',
+                        'label' => 'Second', 'help_text' => null, 'required' => false, 'position' => 20,
+                        'settings' => null, 'visibility_rule' => null, 'mapping_target' => null,
+                    ],
+                ],
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('fields.1.client_id');
+    }
+
     public function test_archive_and_restore(): void
     {
         $q = $this->makeQuestionnaire();

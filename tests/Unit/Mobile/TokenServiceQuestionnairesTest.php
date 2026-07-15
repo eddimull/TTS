@@ -13,7 +13,7 @@ class TokenServiceQuestionnairesTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_owner_token_includes_questionnaire_abilities(): void
+    public function test_owner_token_includes_questionnaires_abilities(): void
     {
         $user = User::factory()->create();
         $band = Bands::factory()->create();
