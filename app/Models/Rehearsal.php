@@ -112,7 +112,9 @@ class Rehearsal extends Model implements GoogleCalenderable
     {
         // Get the first event or use schedule name
         $event = $this->events()->first();
-        return $event ? $event->title : ($this->rehearsalSchedule->name ?? 'Rehearsal');
+        $title = $event ? $event->title : ($this->rehearsalSchedule->name ?? 'Rehearsal');
+
+        return $this->is_cancelled ? 'Cancelled: ' . $title : $title;
     }
 
     public function getGoogleCalendarDescription(): string|null
@@ -169,9 +171,8 @@ class Rehearsal extends Model implements GoogleCalenderable
 
     public function getGoogleCalendarColor(): string|null
     {
-        // You can customize the color for rehearsal events
-        // Google Calendar color IDs: 1-11
-        return '5'; // Yellow for rehearsals
+        // Google Calendar color IDs: 1-11. Red for cancelled, yellow otherwise.
+        return $this->is_cancelled ? '11' : '5';
     }
 
     /**

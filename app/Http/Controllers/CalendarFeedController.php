@@ -9,6 +9,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Spatie\IcalendarGenerator\Components\Calendar;
 use Spatie\IcalendarGenerator\Components\Event as CalendarEvent;
+use Spatie\IcalendarGenerator\Enums\EventStatus;
 use Symfony\Component\HttpFoundation\Response;
 
 class CalendarFeedController extends Controller
@@ -124,6 +125,12 @@ class CalendarFeedController extends Controller
         $calendarEvent = CalendarEvent::create()
             ->uniqueIdentifier('event-' . $event->id . '@thatstheticket')
             ->name($event->getGoogleCalendarSummary() ?? ($event->title ?: 'Event'));
+
+        // Cancelled rehearsals stay in the feed but flagged, so subscribed
+        // clients strike them through instead of silently dropping them.
+        if ($event->isCancelledRehearsal()) {
+            $calendarEvent->status(EventStatus::Cancelled);
+        }
 
         // Events with no explicit start time use a noon placeholder in
         // startDateTime; treat those as all-day so calendars don't show a

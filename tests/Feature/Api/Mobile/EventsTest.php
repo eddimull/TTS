@@ -309,4 +309,38 @@ class EventsTest extends TestCase
         $this->assertNotNull($eventData);
         $this->assertEquals('booking', $eventData['event_source']);
     }
+
+    public function test_events_index_includes_is_cancelled_for_rehearsals(): void
+    {
+        ['band' => $band, 'token' => $token] = $this->createUserWithBandAndEvent();
+
+        $schedule = RehearsalSchedule::factory()->weekly()->create(['band_id' => $band->id]);
+        $rehearsal = Rehearsal::factory()->create([
+            'rehearsal_schedule_id' => $schedule->id,
+            'band_id'               => $band->id,
+            'is_cancelled'          => true,
+        ]);
+        Events::factory()->create([
+            'eventable_id'   => $rehearsal->id,
+            'eventable_type' => 'App\\Models\\Rehearsal',
+            'event_type_id'  => EventTypes::factory()->create()->id,
+            'date'           => now()->addDays(3)->format('Y-m-d'),
+            'start_time'     => '19:00:00',
+        ]);
+
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson("/api/mobile/bands/{$band->id}/events")
+            ->assertOk();
+
+        $events = collect($response->json('events'));
+
+        $rehearsalRow = $events->firstWhere('event_source', 'rehearsal');
+        $this->assertNotNull($rehearsalRow, 'rehearsal event missing from index');
+        $this->assertTrue($rehearsalRow['is_cancelled']);
+
+        $bookingRow = $events->firstWhere('event_source', 'booking');
+        $this->assertNotNull($bookingRow);
+        $this->assertFalse($bookingRow['is_cancelled']);
+    }
 }

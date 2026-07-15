@@ -341,6 +341,10 @@ class Events extends Model implements GoogleCalenderable
 
     public function getGoogleCalendarSummary(BandCalendars $bandCalendar = null): string|null
     {
+        if ($this->isCancelledRehearsal()) {
+            return 'Cancelled: ' . $this->title;
+        }
+
         if ($bandCalendar?->type === 'public') {
             return $this->title;
         }
@@ -381,12 +385,22 @@ class Events extends Model implements GoogleCalenderable
 
     public function getGoogleCalendarColor(): string|null
     {
-        // Use yellow color for rehearsals
         if ($this->eventable_type === 'App\\Models\\Rehearsal') {
-            return '5'; // Yellow for rehearsals
+            // Red for cancelled rehearsals, yellow otherwise.
+            return $this->isCancelledRehearsal() ? '11' : '5';
         }
-        
+
         return null;
+    }
+
+    /**
+     * True when this event's eventable is a rehearsal that has been cancelled.
+     * Public: the ICS feed (CalendarFeedController) keys STATUS:CANCELLED off it.
+     */
+    public function isCancelledRehearsal(): bool
+    {
+        return $this->eventable_type === 'App\\Models\\Rehearsal'
+            && (bool) ($this->eventable?->is_cancelled ?? false);
     }
 
     /**
