@@ -32,8 +32,6 @@ class QuestionnaireMobileTest extends TestCase
         // Member needs the Spatie permission the middleware re-checks per band.
         setPermissionsTeamId($this->band->id);
         $this->member->assignRole('band-member');
-        // Fallback if the role isn't migrated in tests:
-        // $this->member->givePermissionTo('read:questionnaires');
 
         $this->ownerToken = $this->owner->createToken(
             'test-device', ['mobile', 'read:questionnaires', 'write:questionnaires']

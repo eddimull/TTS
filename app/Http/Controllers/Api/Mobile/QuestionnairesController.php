@@ -10,9 +10,11 @@ use App\Services\QuestionnaireFieldTypeRegistry;
 use App\Services\QuestionnaireMappingRegistry;
 use App\Services\QuestionnairePresetRegistry;
 use App\Services\QuestionnaireTemplateService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
+/** Authorization is handled at the route layer via the mobile.band middleware. */
 class QuestionnairesController extends Controller
 {
     public function __construct(
@@ -23,7 +25,7 @@ class QuestionnairesController extends Controller
     ) {
     }
 
-    public function index(Bands $band)
+    public function index(Bands $band): JsonResponse
     {
         $questionnaires = $band->questionnaires()
             ->withCount('instances')
@@ -34,7 +36,7 @@ class QuestionnairesController extends Controller
         return response()->json(['questionnaires' => $questionnaires]);
     }
 
-    public function catalog(Bands $band)
+    public function catalog(Bands $band): JsonResponse
     {
         return response()->json([
             'field_types' => $this->typeRegistry->catalog(),
@@ -43,7 +45,7 @@ class QuestionnairesController extends Controller
         ]);
     }
 
-    public function show(Bands $band, Questionnaires $questionnaire)
+    public function show(Bands $band, Questionnaires $questionnaire): JsonResponse
     {
         $this->ensureBelongsToBand($band, $questionnaire);
         $questionnaire->load('fields')->loadCount('instances');
@@ -51,7 +53,7 @@ class QuestionnairesController extends Controller
         return response()->json(['questionnaire' => $this->detail($questionnaire)]);
     }
 
-    public function store(Request $request, Bands $band)
+    public function store(Request $request, Bands $band): JsonResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:120',
@@ -78,7 +80,7 @@ class QuestionnairesController extends Controller
         return response()->json(['questionnaire' => $this->detail($questionnaire)], 201);
     }
 
-    public function update(UpdateQuestionnaireRequest $request, Bands $band, Questionnaires $questionnaire)
+    public function update(UpdateQuestionnaireRequest $request, Bands $band, Questionnaires $questionnaire): JsonResponse
     {
         $this->ensureBelongsToBand($band, $questionnaire);
         $validated = $request->validated();
@@ -98,7 +100,7 @@ class QuestionnairesController extends Controller
         return response()->json(['questionnaire' => $this->detail($questionnaire)]);
     }
 
-    public function archive(Bands $band, Questionnaires $questionnaire)
+    public function archive(Bands $band, Questionnaires $questionnaire): JsonResponse
     {
         $this->ensureBelongsToBand($band, $questionnaire);
         $questionnaire->archived_at = now();
@@ -108,7 +110,7 @@ class QuestionnairesController extends Controller
         return response()->json(['questionnaire' => $this->detail($questionnaire)]);
     }
 
-    public function restore(Bands $band, Questionnaires $questionnaire)
+    public function restore(Bands $band, Questionnaires $questionnaire): JsonResponse
     {
         $this->ensureBelongsToBand($band, $questionnaire);
         $questionnaire->archived_at = null;
@@ -118,7 +120,7 @@ class QuestionnairesController extends Controller
         return response()->json(['questionnaire' => $this->detail($questionnaire)]);
     }
 
-    public function destroy(Bands $band, Questionnaires $questionnaire)
+    public function destroy(Bands $band, Questionnaires $questionnaire): JsonResponse
     {
         $this->ensureBelongsToBand($band, $questionnaire);
 
