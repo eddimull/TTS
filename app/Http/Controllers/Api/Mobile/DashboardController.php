@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Services\Chat\TopicUnreadService;
 use App\Services\Mobile\DashboardFormatter;
 use App\Services\UserEventsService;
 use Illuminate\Http\JsonResponse;
@@ -15,7 +16,10 @@ class DashboardController extends Controller
     /** Days of past events to include in the initial dashboard payload. */
     private const INITIAL_PAST_WINDOW_DAYS = 30;
 
-    public function __construct(private readonly DashboardFormatter $formatter) {}
+    public function __construct(
+        private readonly DashboardFormatter $formatter,
+        private readonly TopicUnreadService $topicUnread,
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -37,7 +41,12 @@ class DashboardController extends Controller
             ? $events
             : collect($events);
 
-        $normalized = $this->formatter->formatEvents($collection);
+        $unreadByKey = $this->topicUnread->unreadCountsForConversables(
+            $request->user(),
+            $this->formatter->conversablePairs($collection),
+        );
+
+        $normalized = $this->formatter->formatEvents($collection, $unreadByKey);
 
         return response()->json([
             'events'          => $normalized,
@@ -70,8 +79,13 @@ class DashboardController extends Controller
             ? $events
             : collect($events);
 
+        $unreadByKey = $this->topicUnread->unreadCountsForConversables(
+            $request->user(),
+            $this->formatter->conversablePairs($collection),
+        );
+
         return response()->json([
-            'events' => $this->formatter->formatEvents($collection),
+            'events' => $this->formatter->formatEvents($collection, $unreadByKey),
         ]);
     }
 }
