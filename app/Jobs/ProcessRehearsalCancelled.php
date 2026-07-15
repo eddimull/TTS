@@ -35,6 +35,14 @@ class ProcessRehearsalCancelled implements ShouldQueue
             ? (is_string($event->date) ? $event->date : $event->date->format('Y-m-d'))
             : null;
 
+        // Re-render the Google Calendar entry so the cancelled (or restored)
+        // state shows up: red + "Cancelled: " prefix comes from the model's
+        // calendar representation methods. Current status is passed as the
+        // original so the job's status-change notification stays quiet.
+        if ($event) {
+            ProcessEventUpdated::dispatch($event, ['status' => $event->status]);
+        }
+
         $name = $this->rehearsal->rehearsalSchedule?->name ?? 'Rehearsal';
         $whenText = $date ? Carbon::parse($date)->format('D, M j') : 'upcoming';
 
