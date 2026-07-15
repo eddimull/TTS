@@ -86,6 +86,14 @@ class SubCrossBandPermissionTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_sub_cannot_read_questionnaires_of_band_they_only_sub_for(): void
+    {
+        $this->withToken($this->token)
+            ->withHeaders(['X-Band-ID' => $this->subBand->id])
+            ->getJson("/api/mobile/bands/{$this->subBand->id}/questionnaires")
+            ->assertStatus(403);
+    }
+
     public function test_sub_sees_only_assigned_gig_charts_not_whole_library(): void
     {
         // Subs may reach the per-band charts route (like events), but must only
