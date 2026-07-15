@@ -67,6 +67,13 @@ class TopicUnreadService
                 ->pluck('unread', 'conversation_id');
         }
         if ($withoutMarker->isNotEmpty()) {
+            // Both queries key their result by conversation_id, which pluck()
+            // returns as PHP integer keys — Collection::merge() re-indexes
+            // (appends) integer-keyed collections instead of merging by key,
+            // so union() is required here to preserve the conversation_id
+            // keying. Safe because $withMarker and $withoutMarker are
+            // disjoint by construction (partitioned above), so there's no
+            // conversation_id collision between the two buckets to resolve.
             $unread = $unread->union(
                 Message::query()
                     ->whereIn('messages.conversation_id', $withoutMarker)

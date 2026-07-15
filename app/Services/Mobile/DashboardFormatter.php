@@ -92,6 +92,8 @@ class DashboardFormatter
             }
         }
 
+        // Dedupes identical [class, id] morph pairs; SORT_REGULAR compares
+        // nested arrays element-wise.
         return array_values(array_unique($pairs, SORT_REGULAR));
     }
 
