@@ -3,10 +3,13 @@
 namespace Tests\Feature\Api\Mobile;
 
 use App\Models\Bands;
+use App\Models\BandSubs;
+use App\Models\EventMember;
 use App\Models\Message;
 use App\Models\User;
 use App\Services\Chat\ConversationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Tests\Feature\Api\Mobile\Chat\ChatTestHelpers;
 use Tests\TestCase;
 
@@ -130,5 +133,59 @@ class DashboardUnreadCommentTest extends TestCase
         $this->assertNotNull($row, 'expected the rehearsal in the dashboard payload');
         $this->assertSame($rehearsal->id, $row['id'], 'dashboard rehearsal id must be rehearsals.id');
         $this->assertSame(1, $row['unread_comment_count']);
+    }
+
+    /**
+     * Regression (Copilot review, PR #527): a sub-only user's events come back
+     * from UserEventsService::getSubEvents() as raw Eloquent `Events` models,
+     * never converted to arrays before DashboardController hands the
+     * collection to DashboardFormatter::conversablePairs(). That method used
+     * to cast each row with `(array) $e`, which — for an Eloquent model —
+     * yields PHP's internal property-storage keys (e.g. "\0*\0attributes")
+     * instead of attribute names, so conversableFor() always saw a null `id`
+     * and every sub-only dashboard row silently reported
+     * unread_comment_count = 0 even with unread messages.
+     */
+    public function test_sub_only_user_sees_unread_comment_count_on_dashboard(): void
+    {
+        setPermissionsTeamId(0);
+        Role::firstOrCreate(['name' => 'sub', 'guard_name' => 'web']);
+
+        $sub = User::factory()->create();
+        $sub->assignRole('sub');
+        BandSubs::firstOrCreate(['user_id' => $sub->id, 'band_id' => $this->band->id]);
+
+        EventMember::create([
+            'event_id'         => $this->event->id,
+            'band_id'          => $this->band->id,
+            'user_id'          => $sub->id,
+            'roster_member_id' => null,
+            'name'             => $sub->name,
+        ]);
+
+        $author = User::factory()->create();
+        $conversation = app(ConversationService::class)->topicFor($this->event);
+        Message::create([
+            'conversation_id' => $conversation->id,
+            'user_id' => $author->id,
+            'body' => 'load in at 5?',
+        ]);
+
+        $token = $sub->createToken('test-device')->plainTextToken;
+
+        // Simulate a fresh request: no permissions team set, exactly as the
+        // mobile DashboardController leaves it (and as UserEventsService
+        // requires to correctly resolve hasRole('sub')).
+        setPermissionsTeamId(0);
+        app(\Spatie\Permission\PermissionRegistrar::class)->setPermissionsTeamId(null);
+
+        $response = $this->withToken($token)->getJson('/api/mobile/dashboard');
+
+        $response->assertOk();
+        $row = collect($response->json('events'))
+            ->firstWhere('id', $this->event->id);
+
+        $this->assertNotNull($row, 'expected the sub-assigned event in the dashboard payload');
+        $this->assertSame(1, $row['unread_comment_count'], 'sub-only user must see the unread comment count, not silently 0');
     }
 }

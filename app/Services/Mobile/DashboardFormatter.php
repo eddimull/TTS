@@ -86,7 +86,7 @@ class DashboardFormatter
     {
         $pairs = [];
         foreach ($events as $e) {
-            $pair = $this->conversableFor((array) $e);
+            $pair = $this->conversableFor($this->toRowArray($e));
             if ($pair !== null) {
                 $pairs[] = $pair;
             }
@@ -121,9 +121,24 @@ class DashboardFormatter
             ->all();
     }
 
+    /**
+     * Normalize a dashboard row (array, Eloquent model, or plain object) into a
+     * plain array keyed by attribute name.
+     *
+     * Eloquent models must go through toArray() rather than a raw (array) cast
+     * — casting an object directly exposes PHP's internal property-storage
+     * keys (e.g. "\0*\0attributes") instead of the model's attributes, which
+     * silently breaks any code reading $row['id'] / $row['eventable_type'] /
+     * etc. (e.g. conversableFor()).
+     */
+    private function toRowArray(mixed $e): array
+    {
+        return is_object($e) && method_exists($e, 'toArray') ? $e->toArray() : (array) $e;
+    }
+
     private function normalizeEvent(mixed $e, array $unreadByKey = []): array
     {
-        $e = is_object($e) && method_exists($e, 'toArray') ? $e->toArray() : (array) $e;
+        $e = $this->toRowArray($e);
 
         $source = $this->resolveSource($e);
 

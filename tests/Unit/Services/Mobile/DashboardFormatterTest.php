@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Services\Mobile;
 
+use App\Models\Events;
 use App\Services\Mobile\DashboardFormatter;
 use PHPUnit\Framework\TestCase;
 
@@ -92,5 +93,38 @@ class DashboardFormatterTest extends TestCase
         $this->assertSame('booking', $out[0]['event_source']);
         $this->assertSame(555, $out[0]['id']);
         $this->assertSame(0, $out[0]['unread_comment_count']);
+    }
+
+    /**
+     * Regression (Copilot review, PR #527): UserEventsService::getSubEvents()
+     * (the sub-only dashboard path) hands DashboardController a collection of
+     * raw Eloquent `Events` models — never arrays. conversablePairs() used to
+     * cast each row with `(array) $e`, which for an Eloquent model yields
+     * PHP's internal property-storage keys (e.g. "\0*\0attributes") instead
+     * of attribute names, so `id` / `eventable_type` were never found and no
+     * pair was ever produced for a sub's dashboard rows.
+     *
+     * This exercises conversablePairs() directly against real (unsaved)
+     * Eloquent model instances to prove it normalizes them the same way
+     * normalizeEvent() does (via toArray()), independent of any HTTP/DB path.
+     */
+    public function test_conversable_pairs_handles_eloquent_model_rows(): void
+    {
+        $bookingEvent = new Events();
+        $bookingEvent->forceFill([
+            'id'             => 555,
+            'eventable_id'   => 7,
+            'eventable_type' => 'App\\Models\\Bookings',
+        ]);
+        // Emulate a persisted model without hitting the database.
+        $bookingEvent->exists = true;
+
+        $pairs = $this->formatter->conversablePairs([$bookingEvent]);
+
+        $this->assertSame(
+            [[\App\Models\Events::class, 555]],
+            $pairs,
+            'conversablePairs() must resolve a real pair for an Eloquent model row, not silently drop it'
+        );
     }
 }
