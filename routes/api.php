@@ -400,6 +400,14 @@ Route::prefix('mobile')->group(function () {
             Route::delete('/bands/{band}/setlist-prompt-templates/{template}', [App\Http\Controllers\Api\Mobile\SetlistPromptTemplateController::class, 'destroy'])->name('mobile.setlist.prompt-templates.destroy');
         });
 
+        // Questionnaires (band-scoped templates)
+        Route::middleware('mobile.band:read:questionnaires')->group(function () {
+            Route::get('/bands/{band}/questionnaires', [App\Http\Controllers\Api\Mobile\QuestionnairesController::class, 'index'])->name('mobile.questionnaires.index');
+            // Literal segment before {questionnaire} to avoid ambiguity
+            Route::get('/bands/{band}/questionnaires/catalog', [App\Http\Controllers\Api\Mobile\QuestionnairesController::class, 'catalog'])->name('mobile.questionnaires.catalog');
+            Route::get('/bands/{band}/questionnaires/{questionnaire}', [App\Http\Controllers\Api\Mobile\QuestionnairesController::class, 'show'])->name('mobile.questionnaires.show');
+        });
+
         // Setlist / live session
         Route::prefix('setlist')->name('mobile.setlist.')->group(function () {
             Route::get('/events/{event}/session', [App\Http\Controllers\Api\Mobile\SetlistController::class, 'show'])->name('show');
