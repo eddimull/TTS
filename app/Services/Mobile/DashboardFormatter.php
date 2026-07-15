@@ -82,7 +82,7 @@ class DashboardFormatter
      *
      * @return array<int, array{0: class-string, 1: int}>
      */
-    public function conversablePairs($events): array
+    public function conversablePairs(iterable $events): array
     {
         $pairs = [];
         foreach ($events as $e) {
