@@ -407,6 +407,13 @@ Route::prefix('mobile')->group(function () {
             Route::get('/bands/{band}/questionnaires/catalog', [App\Http\Controllers\Api\Mobile\QuestionnairesController::class, 'catalog'])->name('mobile.questionnaires.catalog');
             Route::get('/bands/{band}/questionnaires/{questionnaire}', [App\Http\Controllers\Api\Mobile\QuestionnairesController::class, 'show'])->name('mobile.questionnaires.show');
         });
+        Route::middleware('mobile.band:write:questionnaires')->group(function () {
+            Route::post('/bands/{band}/questionnaires', [App\Http\Controllers\Api\Mobile\QuestionnairesController::class, 'store'])->name('mobile.questionnaires.store');
+            Route::put('/bands/{band}/questionnaires/{questionnaire}', [App\Http\Controllers\Api\Mobile\QuestionnairesController::class, 'update'])->name('mobile.questionnaires.update');
+            Route::post('/bands/{band}/questionnaires/{questionnaire}/archive', [App\Http\Controllers\Api\Mobile\QuestionnairesController::class, 'archive'])->name('mobile.questionnaires.archive');
+            Route::post('/bands/{band}/questionnaires/{questionnaire}/restore', [App\Http\Controllers\Api\Mobile\QuestionnairesController::class, 'restore'])->name('mobile.questionnaires.restore');
+            Route::delete('/bands/{band}/questionnaires/{questionnaire}', [App\Http\Controllers\Api\Mobile\QuestionnairesController::class, 'destroy'])->name('mobile.questionnaires.destroy');
+        });
 
         // Setlist / live session
         Route::prefix('setlist')->name('mobile.setlist.')->group(function () {

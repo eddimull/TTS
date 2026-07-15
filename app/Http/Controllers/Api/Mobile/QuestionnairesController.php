@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\UpdateQuestionnaireRequest;
 use App\Models\Bands;
 use App\Models\Questionnaires;
 use App\Services\QuestionnaireFieldTypeRegistry;
 use App\Services\QuestionnaireMappingRegistry;
 use App\Services\QuestionnairePresetRegistry;
 use App\Services\QuestionnaireTemplateService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class QuestionnairesController extends Controller
 {
@@ -46,6 +49,88 @@ class QuestionnairesController extends Controller
         $questionnaire->load('fields')->loadCount('instances');
 
         return response()->json(['questionnaire' => $this->detail($questionnaire)]);
+    }
+
+    public function store(Request $request, Bands $band)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:120',
+            'description' => 'nullable|string',
+            'preset_key' => 'nullable|string|max:60',
+        ]);
+
+        $questionnaire = DB::transaction(function () use ($band, $validated) {
+            $q = new Questionnaires();
+            $q->band_id = $band->id; // must be set before name: slug de-dupes per band
+            $q->name = $validated['name'];
+            $q->description = $validated['description'] ?? null;
+            $q->save();
+
+            if (! empty($validated['preset_key'])) {
+                $this->templateService->applyPreset($q, $validated['preset_key']);
+            }
+
+            return $q;
+        });
+
+        $questionnaire->load('fields')->loadCount('instances');
+
+        return response()->json(['questionnaire' => $this->detail($questionnaire)], 201);
+    }
+
+    public function update(UpdateQuestionnaireRequest $request, Bands $band, Questionnaires $questionnaire)
+    {
+        $this->ensureBelongsToBand($band, $questionnaire);
+        $validated = $request->validated();
+
+        $this->templateService->validateFieldsPayload($validated['fields']);
+
+        DB::transaction(function () use ($questionnaire, $validated) {
+            $questionnaire->update([
+                'name' => $validated['name'],
+                'description' => $validated['description'] ?? null,
+            ]);
+            $this->templateService->upsertFields($questionnaire, $validated['fields']);
+        });
+
+        $questionnaire->refresh()->load('fields')->loadCount('instances');
+
+        return response()->json(['questionnaire' => $this->detail($questionnaire)]);
+    }
+
+    public function archive(Bands $band, Questionnaires $questionnaire)
+    {
+        $this->ensureBelongsToBand($band, $questionnaire);
+        $questionnaire->archived_at = now();
+        $questionnaire->save();
+        $questionnaire->load('fields')->loadCount('instances');
+
+        return response()->json(['questionnaire' => $this->detail($questionnaire)]);
+    }
+
+    public function restore(Bands $band, Questionnaires $questionnaire)
+    {
+        $this->ensureBelongsToBand($band, $questionnaire);
+        $questionnaire->archived_at = null;
+        $questionnaire->save();
+        $questionnaire->load('fields')->loadCount('instances');
+
+        return response()->json(['questionnaire' => $this->detail($questionnaire)]);
+    }
+
+    public function destroy(Bands $band, Questionnaires $questionnaire)
+    {
+        $this->ensureBelongsToBand($band, $questionnaire);
+
+        if ($questionnaire->instances()->exists()) {
+            return response()->json([
+                'message' => 'This questionnaire has been sent and cannot be deleted. Archive it instead.',
+            ], 409);
+        }
+
+        $questionnaire->delete();
+
+        return response()->json(['message' => 'Questionnaire deleted']);
     }
 
     private function ensureBelongsToBand(Bands $band, Questionnaires $questionnaire): void
