@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ProcessRehearsalCancelled;
 use App\Models\Bands;
 use App\Models\Events;
 use App\Models\Rehearsal;
@@ -343,21 +344,39 @@ class RehearsalController extends Controller
     /**
      * Toggle the cancelled status of a rehearsal
      */
-    public function toggleCancelled(Bands $band, RehearsalSchedule $rehearsalSchedule, Rehearsal $rehearsal)
+    public function toggleCancelled(Request $request, Bands $band, RehearsalSchedule $rehearsalSchedule, Rehearsal $rehearsal)
     {
         $userCan = Auth::user()->canWrite('rehearsals', $band->id);
-        
+
         if (!$userCan) {
             abort(403, 'Unauthorized to cancel/uncancel rehearsal');
         }
 
-        $rehearsal->is_cancelled = !$rehearsal->is_cancelled;
+        $wasCancelled = $rehearsal->is_cancelled;
+        $isCancelled = !$wasCancelled;
+
+        $rehearsal->is_cancelled = $isCancelled;
         $rehearsal->save();
 
-        // Google Calendar sync is handled automatically by EventObserver when event is updated
+        // Dispatching ProcessRehearsalCancelled is what triggers the Google
+        // Calendar re-sync (via ProcessEventUpdated inside the job) and
+        // notifies the band; it does not happen automatically otherwise.
+        if ($wasCancelled !== $isCancelled) {
+            ProcessRehearsalCancelled::dispatch(
+                $rehearsal,
+                $request->user()->id,
+                $isCancelled,
+                sprintf(
+                    'rehearsal:%d:%s:%s',
+                    $rehearsal->id,
+                    $isCancelled ? 'cancelled' : 'restored',
+                    now()->getPreciseTimestamp(3),
+                ),
+            );
+        }
 
         $status = $rehearsal->is_cancelled ? 'cancelled' : 'reactivated';
-        
+
         return back()->with('success', "Rehearsal {$status} successfully");
     }
 

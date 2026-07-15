@@ -36,9 +36,10 @@ class ProcessRehearsalCancelled implements ShouldQueue
             : null;
 
         // Re-render the Google Calendar entry so the cancelled (or restored)
-        // state shows up: red + "Cancelled: " prefix comes from the model's
-        // calendar representation methods. Current status is passed as the
-        // original so the job's status-change notification stays quiet.
+        // state shows up: red + "Cancelled: " prefix come from the model's
+        // calendar representation methods. Events has no status attribute,
+        // so originalData keeps the job's status-change notification a
+        // guaranteed no-op.
         if ($event) {
             ProcessEventUpdated::dispatch($event, ['status' => $event->status]);
         }

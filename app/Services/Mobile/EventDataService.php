@@ -295,8 +295,7 @@ class EventDataService
             'venue_name'      => $event->resolved_venue_name,
             'venue_address'   => $event->resolved_venue_address,
             'status'          => $event->eventable?->status ?? null,
-            'is_cancelled'    => $event->eventable_type === 'App\\Models\\Rehearsal'
-                && (bool) ($event->eventable?->is_cancelled ?? false),
+            'is_cancelled'    => $event->isCancelledRehearsal(),
             'roster_status'   => $this->rosterStatusFromRaw($members),
             'live_session_id' => $liveSession?->id,
         ];
