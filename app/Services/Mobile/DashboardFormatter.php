@@ -5,6 +5,8 @@ namespace App\Services\Mobile;
 use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\BandEvents;
+use App\Models\Events;
+use App\Models\Rehearsal;
 
 class DashboardFormatter
 {
@@ -23,7 +25,7 @@ class DashboardFormatter
      *
      * @return array<int, array<string, mixed>>
      */
-    public function formatEvents(iterable $events): array
+    public function formatEvents(iterable $events, array $unreadByKey = []): array
     {
         $eventsArray = is_array($events) ? $events : iterator_to_array($events, false);
 
@@ -31,9 +33,68 @@ class DashboardFormatter
 
         $normalized = [];
         foreach ($eventsArray as $e) {
-            $normalized[] = $this->normalizeEvent($e);
+            $normalized[] = $this->normalizeEvent($e, $unreadByKey);
         }
         return $normalized;
+    }
+
+    /**
+     * The same event_source resolution normalizeEvent() uses: prefer an
+     * explicit event_source (e.g. virtual "rehearsal_schedule" rows), else
+     * derive from eventable_type.
+     */
+    private function resolveSource(array $e): string
+    {
+        return $e['event_source'] ?? match (true) {
+            str_contains($e['eventable_type'] ?? '', 'Rehearsal') => 'rehearsal',
+            str_contains($e['eventable_type'] ?? '', 'Booking')   => 'booking',
+            default                                                => 'band_event',
+        };
+    }
+
+    /**
+     * The topic-conversation morph target for a dashboard row, or null when
+     * the row can't have one (virtual rehearsal_schedule rows have no model).
+     *
+     * Mirrors ConversationService::canonicalTarget(): rehearsal-backed events
+     * collapse to the Rehearsal; everything else keys on the Events row.
+     *
+     * @return array{0: class-string, 1: int}|null
+     */
+    private function conversableFor(array $e): ?array
+    {
+        $source = $this->resolveSource($e);
+        if ($source === 'rehearsal_schedule') {
+            return null;
+        }
+        if ($source === 'rehearsal') {
+            $id = $e['eventable_id'] ?? $e['id'] ?? null; // same field normalizeEvent emits as `id`
+
+            return $id ? [Rehearsal::class, (int) $id] : null;
+        }
+        $id = $e['id'] ?? null;
+
+        return $id ? [Events::class, (int) $id] : null;
+    }
+
+    /**
+     * All conversable pairs for a dashboard page, for TopicUnreadService.
+     *
+     * @return array<int, array{0: class-string, 1: int}>
+     */
+    public function conversablePairs(iterable $events): array
+    {
+        $pairs = [];
+        foreach ($events as $e) {
+            $pair = $this->conversableFor($this->toRowArray($e));
+            if ($pair !== null) {
+                $pairs[] = $pair;
+            }
+        }
+
+        // Dedupes identical [class, id] morph pairs; SORT_REGULAR compares
+        // nested arrays element-wise.
+        return array_values(array_unique($pairs, SORT_REGULAR));
     }
 
     /**
@@ -60,15 +121,26 @@ class DashboardFormatter
             ->all();
     }
 
-    private function normalizeEvent(mixed $e): array
+    /**
+     * Normalize a dashboard row (array, Eloquent model, or plain object) into a
+     * plain array keyed by attribute name.
+     *
+     * Eloquent models must go through toArray() rather than a raw (array) cast
+     * — casting an object directly exposes PHP's internal property-storage
+     * keys (e.g. "\0*\0attributes") instead of the model's attributes, which
+     * silently breaks any code reading $row['id'] / $row['eventable_type'] /
+     * etc. (e.g. conversableFor()).
+     */
+    private function toRowArray(mixed $e): array
     {
-        $e = is_object($e) && method_exists($e, 'toArray') ? $e->toArray() : (array) $e;
+        return is_object($e) && method_exists($e, 'toArray') ? $e->toArray() : (array) $e;
+    }
 
-        $source = $e['event_source'] ?? match (true) {
-            str_contains($e['eventable_type'] ?? '', 'Rehearsal') => 'rehearsal',
-            str_contains($e['eventable_type'] ?? '', 'Booking')   => 'booking',
-            default                                                => 'band_event',
-        };
+    private function normalizeEvent(mixed $e, array $unreadByKey = []): array
+    {
+        $e = $this->toRowArray($e);
+
+        $source = $this->resolveSource($e);
 
         $date = $e['date'] ?? null;
         if ($date && !is_string($date)) {
@@ -109,6 +181,9 @@ class DashboardFormatter
             'status'          => $e['status'] ?? null,
             'live_session_id' => $e['live_session_id'] ?? null,
             'band'            => $this->formatBand($e['band_id'] ?? null),
+            'unread_comment_count' => ($pair = $this->conversableFor($e)) !== null
+                ? ($unreadByKey["{$pair[0]}:{$pair[1]}"] ?? 0)
+                : 0,
         ];
     }
 
