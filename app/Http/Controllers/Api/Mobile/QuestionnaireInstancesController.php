@@ -3,18 +3,24 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\SendQuestionnaireRequest;
 use App\Models\Bands;
 use App\Models\Bookings;
+use App\Models\Contacts;
 use App\Models\QuestionnaireInstances;
 use App\Models\Questionnaires;
+use App\Notifications\QuestionnaireSent;
 use App\Services\QuestionnaireResponsePresenter;
+use App\Services\QuestionnaireSnapshotService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 
 /** Authorization is handled at the route layer via the mobile.band middleware. */
 class QuestionnaireInstancesController extends Controller
 {
     public function __construct(
         private QuestionnaireResponsePresenter $presenter,
+        private QuestionnaireSnapshotService $snapshotService,
     ) {
     }
 
@@ -90,6 +96,70 @@ class QuestionnaireInstancesController extends Controller
         ]);
 
         return response()->json(['instance' => $this->detail($instance, $band)]);
+    }
+
+    public function send(SendQuestionnaireRequest $request, Bands $band, Bookings $booking): JsonResponse
+    {
+        abort_if($booking->band_id !== $band->id, 404);
+
+        $template = Questionnaires::findOrFail($request->input('questionnaire_id'));
+        $contact = Contacts::findOrFail($request->input('recipient_contact_id'));
+
+        $instance = $this->snapshotService->snapshot($template, $booking, $contact, Auth::user());
+        $contact->notify(new QuestionnaireSent($instance));
+
+        $instance->load(['recipientContact:id,name', 'booking:id,name,band_id']);
+
+        return response()->json(['instance' => $this->summary($instance)], 201);
+    }
+
+    public function resend(Bands $band, QuestionnaireInstances $instance): JsonResponse
+    {
+        $this->ensureBelongsToBand($band, $instance);
+
+        $instance->recipientContact->notify(new QuestionnaireSent($instance));
+        $instance->load(['recipientContact:id,name', 'booking:id,name,band_id']);
+
+        return response()->json(['instance' => $this->summary($instance)]);
+    }
+
+    public function lock(Bands $band, QuestionnaireInstances $instance): JsonResponse
+    {
+        $this->ensureBelongsToBand($band, $instance);
+
+        $instance->update([
+            'status' => QuestionnaireInstances::STATUS_LOCKED,
+            'locked_at' => now(),
+            'locked_by_user_id' => Auth::id(),
+        ]);
+        $instance->load(['recipientContact:id,name', 'booking:id,name,band_id']);
+
+        return response()->json(['instance' => $this->summary($instance)]);
+    }
+
+    public function unlock(Bands $band, QuestionnaireInstances $instance): JsonResponse
+    {
+        $this->ensureBelongsToBand($band, $instance);
+
+        $hasResponses = $instance->responses()->exists();
+        $instance->update([
+            'status' => $instance->submitted_at
+                ? QuestionnaireInstances::STATUS_SUBMITTED
+                : ($hasResponses ? QuestionnaireInstances::STATUS_IN_PROGRESS : QuestionnaireInstances::STATUS_SENT),
+            'locked_at' => null,
+            'locked_by_user_id' => null,
+        ]);
+        $instance->load(['recipientContact:id,name', 'booking:id,name,band_id']);
+
+        return response()->json(['instance' => $this->summary($instance)]);
+    }
+
+    public function destroy(Bands $band, QuestionnaireInstances $instance): JsonResponse
+    {
+        $this->ensureBelongsToBand($band, $instance);
+        $instance->delete();
+
+        return response()->json(['message' => 'Questionnaire instance deleted']);
     }
 
     private function ensureBelongsToBand(Bands $band, QuestionnaireInstances $instance): void

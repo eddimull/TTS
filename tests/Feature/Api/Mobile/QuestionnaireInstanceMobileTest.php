@@ -205,4 +205,131 @@ class QuestionnaireInstanceMobileTest extends TestCase
             ->getJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$foreign->id}")
             ->assertStatus(404);
     }
+
+    public function test_owner_can_send_questionnaire(): void
+    {
+        \Illuminate\Support\Facades\Notification::fake();
+
+        $this->withHeaders($this->asOwner())
+            ->postJson("/api/mobile/bands/{$this->band->id}/bookings/{$this->booking->id}/questionnaires", [
+                'questionnaire_id' => $this->template->id,
+                'recipient_contact_id' => $this->contact->id,
+            ])
+            ->assertStatus(201)
+            ->assertJsonPath('instance.status', 'sent')
+            ->assertJsonPath('instance.recipient_name', $this->contact->name);
+
+        $this->assertDatabaseHas('questionnaire_instances', [
+            'questionnaire_id' => $this->template->id,
+            'booking_id' => $this->booking->id,
+            'status' => 'sent',
+        ]);
+
+        \Illuminate\Support\Facades\Notification::assertSentTo(
+            $this->contact, \App\Notifications\QuestionnaireSent::class);
+    }
+
+    public function test_send_rejects_contact_without_portal_access(): void
+    {
+        $noPortal = Contacts::factory()->create(['band_id' => $this->band->id, 'can_login' => false]);
+        $this->booking->contacts()->attach($noPortal, ['is_primary' => false]);
+
+        $this->withHeaders($this->asOwner())
+            ->postJson("/api/mobile/bands/{$this->band->id}/bookings/{$this->booking->id}/questionnaires", [
+                'questionnaire_id' => $this->template->id,
+                'recipient_contact_id' => $noPortal->id,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('recipient_contact_id');
+    }
+
+    public function test_send_rejects_archived_template(): void
+    {
+        $this->template->update(['archived_at' => now()]);
+
+        $this->withHeaders($this->asOwner())
+            ->postJson("/api/mobile/bands/{$this->band->id}/bookings/{$this->booking->id}/questionnaires", [
+                'questionnaire_id' => $this->template->id,
+                'recipient_contact_id' => $this->contact->id,
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('questionnaire_id');
+    }
+
+    public function test_member_cannot_send(): void
+    {
+        $this->withHeaders($this->asMember())
+            ->postJson("/api/mobile/bands/{$this->band->id}/bookings/{$this->booking->id}/questionnaires", [
+                'questionnaire_id' => $this->template->id,
+                'recipient_contact_id' => $this->contact->id,
+            ])
+            ->assertStatus(403);
+    }
+
+    public function test_resend_renotifies_without_new_instance(): void
+    {
+        $instance = $this->makeInstance();
+        \Illuminate\Support\Facades\Notification::fake();
+
+        $this->withHeaders($this->asOwner())
+            ->postJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$instance->id}/resend")
+            ->assertOk();
+
+        $this->assertSame(1, QuestionnaireInstances::count());
+        \Illuminate\Support\Facades\Notification::assertSentTo(
+            $this->contact, \App\Notifications\QuestionnaireSent::class);
+    }
+
+    public function test_lock_and_unlock_recompute_status(): void
+    {
+        $instance = $this->makeInstance();
+
+        $this->withHeaders($this->asOwner())
+            ->postJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$instance->id}/lock")
+            ->assertOk()
+            ->assertJsonPath('instance.status', 'locked');
+        $this->assertNotNull($instance->fresh()->locked_at);
+
+        // Unlock with no responses reverts to sent.
+        $this->withHeaders($this->asOwner())
+            ->postJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$instance->id}/unlock")
+            ->assertOk()
+            ->assertJsonPath('instance.status', 'sent');
+        $this->assertNull($instance->fresh()->locked_at);
+
+        // With a response present, unlock resolves to in_progress.
+        $field = $instance->fields()->create([
+            'type' => 'short_text', 'label' => 'Q', 'position' => 10,
+            'required' => false, 'source_field_id' => 0,
+        ]);
+        $instance->responses()->create(['instance_field_id' => $field->id, 'value' => 'x']);
+        $this->withHeaders($this->asOwner())
+            ->postJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$instance->id}/lock");
+        $this->withHeaders($this->asOwner())
+            ->postJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$instance->id}/unlock")
+            ->assertOk()
+            ->assertJsonPath('instance.status', 'in_progress');
+    }
+
+    public function test_destroy_soft_deletes_instance(): void
+    {
+        $instance = $this->makeInstance();
+
+        $this->withHeaders($this->asOwner())
+            ->deleteJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$instance->id}")
+            ->assertOk();
+
+        $this->assertSoftDeleted('questionnaire_instances', ['id' => $instance->id]);
+    }
+
+    public function test_cross_band_instance_write_is_404(): void
+    {
+        $otherBand = Bands::factory()->create();
+        $otherBooking = Bookings::factory()->create(['band_id' => $otherBand->id]);
+        $foreign = $this->makeInstance(['booking_id' => $otherBooking->id]);
+
+        $this->withHeaders($this->asOwner())
+            ->postJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$foreign->id}/lock")
+            ->assertStatus(404);
+    }
 }

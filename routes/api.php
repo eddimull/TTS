@@ -422,6 +422,13 @@ Route::prefix('mobile')->group(function () {
             Route::get('/bands/{band}/bookings/{booking}/questionnaire-instances', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'forBooking'])->name('mobile.bookings.questionnaire-instances');
             Route::get('/bands/{band}/questionnaire-instances/{instance}', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'show'])->name('mobile.questionnaire-instances.show');
         });
+        Route::middleware('mobile.band:write:questionnaires')->group(function () {
+            Route::post('/bands/{band}/bookings/{booking}/questionnaires', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'send'])->name('mobile.bookings.questionnaires.send');
+            Route::post('/bands/{band}/questionnaire-instances/{instance}/resend', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'resend'])->name('mobile.questionnaire-instances.resend');
+            Route::post('/bands/{band}/questionnaire-instances/{instance}/lock', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'lock'])->name('mobile.questionnaire-instances.lock');
+            Route::post('/bands/{band}/questionnaire-instances/{instance}/unlock', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'unlock'])->name('mobile.questionnaire-instances.unlock');
+            Route::delete('/bands/{band}/questionnaire-instances/{instance}', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'destroy'])->name('mobile.questionnaire-instances.destroy');
+        });
 
         // Setlist / live session
         Route::prefix('setlist')->name('mobile.setlist.')->group(function () {
