@@ -182,6 +182,19 @@ class QuestionnaireInstanceMobileTest extends TestCase
             ->assertJsonPath("instance.song_lookup.{$song->id}.title", $song->title);
     }
 
+    public function test_instance_detail_empty_responses_serialize_as_object(): void
+    {
+        $instance = $this->makeInstance();
+
+        $response = $this->withHeaders($this->asMember())
+            ->getJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$instance->id}")
+            ->assertOk();
+
+        // PHP arrays would encode {} as [] — the raw JSON must carry objects.
+        $this->assertStringContainsString('"responses":{}', $response->getContent());
+        $this->assertStringContainsString('"song_lookup":{}', $response->getContent());
+    }
+
     public function test_cross_band_instance_is_404(): void
     {
         $otherBand = Bands::factory()->create();

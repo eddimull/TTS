@@ -130,10 +130,10 @@ class QuestionnaireInstancesController extends Controller
                 'settings' => $f->settings,
                 'visibility_rule' => $f->visibility_rule,
             ])->values()->all(),
-            'responses' => $i->responses->mapWithKeys(fn ($r) => [
+            'responses' => (object) $i->responses->mapWithKeys(fn ($r) => [
                 $r->instance_field_id => $this->presenter->decode($r->value),
-            ]),
-            'song_lookup' => $this->presenter->songLookup([$i], $band->id),
+            ])->all(),
+            'song_lookup' => (object) $this->presenter->songLookup([$i], $band->id),
         ];
     }
 }
