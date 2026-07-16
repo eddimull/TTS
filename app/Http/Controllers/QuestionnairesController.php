@@ -9,6 +9,7 @@ use App\Models\Questionnaires;
 use App\Services\QuestionnaireFieldTypeRegistry;
 use App\Services\QuestionnaireMappingRegistry;
 use App\Services\QuestionnairePresetRegistry;
+use App\Services\QuestionnaireResponsePresenter;
 use App\Services\QuestionnaireTemplateService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,6 +25,7 @@ class QuestionnairesController extends Controller
         private QuestionnaireMappingRegistry $mappingRegistry,
         private QuestionnairePresetRegistry $presetRegistry,
         private QuestionnaireTemplateService $templateService,
+        private QuestionnaireResponsePresenter $presenter,
     ) {
     }
 
@@ -116,7 +118,7 @@ class QuestionnairesController extends Controller
             ->orderByDesc('sent_at')
             ->get();
 
-        $songLookup = $this->buildSongLookupForInstances($rawInstances, $band->id);
+        $songLookup = $this->presenter->songLookup($rawInstances, $band->id);
 
         $instances = $rawInstances->map(fn ($i) => [
             'id' => $i->id,
@@ -237,52 +239,5 @@ class QuestionnairesController extends Controller
         $questionnaire->delete();
 
         return redirect()->route('questionnaires.index', ['band_id' => $band->id])->with('success', 'Deleted.');
-    }
-
-    /**
-     * Build a song-id => {title, artist} lookup for any song_picker
-     * responses across the given instances. Removed songs appear with a
-     * "(removed song #N)" placeholder title.
-     *
-     * @param  \Illuminate\Support\Collection<int, \App\Models\QuestionnaireInstances>  $instances
-     */
-    private function buildSongLookupForInstances($instances, int $bandId): array
-    {
-        $songIds = collect();
-        foreach ($instances as $instance) {
-            $songPickerFieldIds = $instance->fields
-                ->where('type', 'song_picker')
-                ->pluck('id');
-
-            foreach ($instance->responses as $response) {
-                if (!$songPickerFieldIds->contains($response->instance_field_id)) {
-                    continue;
-                }
-                $decoded = json_decode((string) $response->value, true);
-                if (is_array($decoded)) {
-                    $songIds = $songIds->merge($decoded);
-                }
-            }
-        }
-        $songIds = $songIds->unique()->filter(fn ($id) => is_numeric($id))->values();
-
-        if ($songIds->isEmpty()) {
-            return [];
-        }
-
-        $songs = \App\Models\Song::where('band_id', $bandId)
-            ->whereIn('id', $songIds)
-            ->get(['id', 'title', 'artist']);
-
-        $lookup = [];
-        foreach ($songs as $song) {
-            $lookup[$song->id] = ['title' => $song->title, 'artist' => $song->artist];
-        }
-        foreach ($songIds as $id) {
-            if (!isset($lookup[$id])) {
-                $lookup[$id] = ['title' => "(removed song #{$id})", 'artist' => null];
-            }
-        }
-        return $lookup;
     }
 }

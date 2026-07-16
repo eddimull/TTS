@@ -26,10 +26,15 @@ use App\Http\Requests\UploadBookingContractRequest;
 use App\Http\Requests\BookingContact as BookingContactRequest;
 use App\Services\BookingActivityService;
 use App\Services\ContactPortalService;
+use App\Services\QuestionnaireResponsePresenter;
 use App\Notifications\ContactPortalAccessGranted;
 
 class BookingsController extends Controller
 {
+    public function __construct(private QuestionnaireResponsePresenter $presenter)
+    {
+    }
+
     public function index(Bands $band = null)
     {
         if (app()->environment('local'))
@@ -250,7 +255,7 @@ class BookingsController extends Controller
             ->orderByDesc('sent_at')
             ->get();
 
-        $songLookup = $this->buildSongLookupForInstances($questionnaireInstances, $band->id);
+        $songLookup = $this->presenter->songLookup($questionnaireInstances, $band->id);
 
         $questionnaireInstances = $questionnaireInstances->map(fn ($i) => [
             'id' => $i->id,
@@ -1140,53 +1145,5 @@ class BookingsController extends Controller
             'base_amount' => $baseAmount,
             'adjusted_amount' => $baseAmount,
         ]);
-    }
-
-    /**
-     * Build a song-id => {title, artist, removed} lookup for any song_picker
-     * responses across the given instances. Songs that have been removed from
-     * the band's catalog still appear with removed=true.
-     *
-     * @param  \Illuminate\Support\Collection<int, \App\Models\QuestionnaireInstances>  $instances
-     */
-    private function buildSongLookupForInstances($instances, int $bandId): array
-    {
-        $songIds = collect();
-        foreach ($instances as $instance) {
-            $songPickerFieldIds = $instance->fields
-                ->where('type', 'song_picker')
-                ->pluck('id');
-
-            foreach ($instance->responses as $response) {
-                if (!$songPickerFieldIds->contains($response->instance_field_id)) {
-                    continue;
-                }
-                $decoded = json_decode((string) $response->value, true);
-                if (is_array($decoded)) {
-                    $songIds = $songIds->merge($decoded);
-                }
-            }
-        }
-        $songIds = $songIds->unique()->filter(fn ($id) => is_numeric($id))->values();
-
-        if ($songIds->isEmpty()) {
-            return [];
-        }
-
-        $songs = \App\Models\Song::where('band_id', $bandId)
-            ->whereIn('id', $songIds)
-            ->get(['id', 'title', 'artist']);
-
-        $lookup = [];
-        foreach ($songs as $song) {
-            $lookup[$song->id] = ['title' => $song->title, 'artist' => $song->artist];
-        }
-        // Mark removed songs (referenced but not found)
-        foreach ($songIds as $id) {
-            if (!isset($lookup[$id])) {
-                $lookup[$id] = ['title' => "(removed song #{$id})", 'artist' => null];
-            }
-        }
-        return $lookup;
     }
 }
