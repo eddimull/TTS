@@ -415,6 +415,14 @@ Route::prefix('mobile')->group(function () {
             Route::delete('/bands/{band}/questionnaires/{questionnaire}', [App\Http\Controllers\Api\Mobile\QuestionnairesController::class, 'destroy'])->name('mobile.questionnaires.destroy');
         });
 
+        // Questionnaire instances (sending/logs)
+        Route::middleware('mobile.band:read:questionnaires')->group(function () {
+            Route::get('/bands/{band}/questionnaires/{questionnaire}/instances', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'instancesForQuestionnaire'])->name('mobile.questionnaires.instances');
+            Route::get('/bands/{band}/questionnaires/{questionnaire}/eligible-bookings', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'eligibleBookings'])->name('mobile.questionnaires.eligible-bookings');
+            Route::get('/bands/{band}/bookings/{booking}/questionnaire-instances', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'forBooking'])->name('mobile.bookings.questionnaire-instances');
+            Route::get('/bands/{band}/questionnaire-instances/{instance}', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'show'])->name('mobile.questionnaire-instances.show');
+        });
+
         // Setlist / live session
         Route::prefix('setlist')->name('mobile.setlist.')->group(function () {
             Route::get('/events/{event}/session', [App\Http\Controllers\Api\Mobile\SetlistController::class, 'show'])->name('show');
