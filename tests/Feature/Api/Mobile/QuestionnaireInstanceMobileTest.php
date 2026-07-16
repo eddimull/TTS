@@ -266,6 +266,27 @@ class QuestionnaireInstanceMobileTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_send_to_cross_band_booking_is_rejected(): void
+    {
+        $otherBand = Bands::factory()->create();
+        $otherBooking = Bookings::factory()->create(['band_id' => $otherBand->id]);
+
+        \Illuminate\Support\Facades\Notification::fake();
+
+        // recipient_contact_id is scoped to the OTHER booking's contacts, so this
+        // fails validation (422) before the controller's abort_if(404) is reached.
+        // Either status is equally safe — no write, no notification.
+        $this->withHeaders($this->asOwner())
+            ->postJson("/api/mobile/bands/{$this->band->id}/bookings/{$otherBooking->id}/questionnaires", [
+                'questionnaire_id' => $this->template->id,
+                'recipient_contact_id' => $this->contact->id,
+            ])
+            ->assertStatus(422);
+
+        $this->assertSame(0, QuestionnaireInstances::count());
+        \Illuminate\Support\Facades\Notification::assertNothingSent();
+    }
+
     public function test_resend_renotifies_without_new_instance(): void
     {
         $instance = $this->makeInstance();
