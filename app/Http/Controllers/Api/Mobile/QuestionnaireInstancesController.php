@@ -175,7 +175,7 @@ class QuestionnaireInstancesController extends Controller
     public function applyResponse(Bands $band, QuestionnaireInstances $instance, QuestionnaireResponses $response): JsonResponse
     {
         $this->ensureBelongsToBand($band, $instance);
-        abort_unless(Auth::user()->canRead('questionnaires', $band->id), 403);
+        $this->authorizeQuestionnaireRead($band);
         abort_if($response->instance_id !== $instance->id, 404);
 
         try {
@@ -198,7 +198,7 @@ class QuestionnaireInstancesController extends Controller
     public function applyAll(Bands $band, QuestionnaireInstances $instance): JsonResponse
     {
         $this->ensureBelongsToBand($band, $instance);
-        abort_unless(Auth::user()->canRead('questionnaires', $band->id), 403);
+        $this->authorizeQuestionnaireRead($band);
 
         $pending = $instance->responses()
             ->whereHas('instanceField', fn ($q) => $q->whereNotNull('mapping_target'))
@@ -222,7 +222,7 @@ class QuestionnaireInstancesController extends Controller
     public function appendToNotes(Bands $band, QuestionnaireInstances $instance): JsonResponse
     {
         $this->ensureBelongsToBand($band, $instance);
-        abort_unless(Auth::user()->canRead('questionnaires', $band->id), 403);
+        $this->authorizeQuestionnaireRead($band);
 
         try {
             $this->mappingService->appendAllToNotes($instance, Auth::user());
@@ -231,6 +231,17 @@ class QuestionnaireInstancesController extends Controller
         }
 
         return response()->json(['message' => 'Answers appended to event notes.']);
+    }
+
+    /**
+     * The apply routes' middleware only carries write:events; keep the token
+     * ability layer meaningful by also requiring the read:questionnaires
+     * ability alongside the per-band permission (mirrors web's authorizeAccess).
+     */
+    private function authorizeQuestionnaireRead(Bands $band): void
+    {
+        abort_unless(Auth::user()->tokenCan('read:questionnaires'), 403);
+        abort_unless(Auth::user()->canRead('questionnaires', $band->id), 403);
     }
 
     private function ensureBelongsToBand(Bands $band, QuestionnaireInstances $instance): void

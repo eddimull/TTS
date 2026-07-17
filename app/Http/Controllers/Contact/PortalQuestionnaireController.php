@@ -177,11 +177,12 @@ class PortalQuestionnaireController extends Controller
         if ($instance->questionnaire_id) {
             $push['questionnaireId'] = (string) $instance->questionnaire_id;
         }
-        // One logical send per submission: submitted_at was just stamped by
-        // submit(), so each re-submit gets a fresh key. Note SendUserPush logs
-        // after delivery (no pre-check), so the key identifies the logical
-        // send in push_notification_log rather than suppressing duplicates.
-        $dedupeKey = "questionnaire_submitted:{$instance->id}:{$instance->submitted_at->getTimestamp()}";
+        // One logical send per submission: the microsecond timestamp is taken
+        // once here, so each re-submit gets a fresh key while queued retries of
+        // the same job share it. Note SendUserPush logs after delivery (no
+        // pre-check), so the key identifies the logical send in
+        // push_notification_log rather than suppressing duplicates.
+        $dedupeKey = "questionnaire_submitted:{$instance->id}:" . now()->getPreciseTimestamp(6);
 
         $notifiedUserIds = [];
         $owners = $band->owners()->with('user.deviceTokens')->get();

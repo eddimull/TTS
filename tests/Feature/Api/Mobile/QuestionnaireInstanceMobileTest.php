@@ -495,6 +495,28 @@ class QuestionnaireInstanceMobileTest extends TestCase
             ->assertStatus(403);
     }
 
+    public function test_apply_requires_read_questionnaires_token_ability(): void
+    {
+        $instance = $this->makeInstance();
+        $response = $this->makeMappedResponse($instance);
+
+        // Token scoped to write:events only — passes the route middleware but
+        // must fail the in-controller read:questionnaires ability check even
+        // though the underlying user permission would allow it.
+        $token = $this->owner->createToken(
+            'events-only-device', ['mobile', 'write:events']
+        )->plainTextToken;
+
+        $this->withHeaders([
+            'Authorization' => "Bearer {$token}",
+            'X-Band-ID' => $this->band->id,
+            'Accept' => 'application/json',
+        ])->postJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$instance->id}/responses/{$response->id}/apply")
+            ->assertStatus(403);
+
+        $this->assertNull($response->fresh()->applied_to_event_at);
+    }
+
     public function test_apply_cross_band_instance_is_404(): void
     {
         $otherBand = Bands::factory()->create();
