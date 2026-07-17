@@ -430,6 +430,15 @@ Route::prefix('mobile')->group(function () {
             Route::delete('/bands/{band}/questionnaire-instances/{instance}', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'destroy'])->name('mobile.questionnaire-instances.destroy');
         });
 
+        // Applying answers to events additionally requires event write (mirrors web:
+        // canRead questionnaires + canWrite events; the questionnaires read check is
+        // in-controller).
+        Route::middleware('mobile.band:write:events')->group(function () {
+            Route::post('/bands/{band}/questionnaire-instances/{instance}/responses/{response}/apply', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'applyResponse'])->name('mobile.questionnaire-instances.apply-response');
+            Route::post('/bands/{band}/questionnaire-instances/{instance}/apply-all', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'applyAll'])->name('mobile.questionnaire-instances.apply-all');
+            Route::post('/bands/{band}/questionnaire-instances/{instance}/append-to-notes', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'appendToNotes'])->name('mobile.questionnaire-instances.append-to-notes');
+        });
+
         // Setlist / live session
         Route::prefix('setlist')->name('mobile.setlist.')->group(function () {
             Route::get('/events/{event}/session', [App\Http\Controllers\Api\Mobile\SetlistController::class, 'show'])->name('show');
