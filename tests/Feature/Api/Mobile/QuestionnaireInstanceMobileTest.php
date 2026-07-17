@@ -353,4 +353,179 @@ class QuestionnaireInstanceMobileTest extends TestCase
             ->postJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$foreign->id}/lock")
             ->assertStatus(404);
     }
+
+    public function test_instance_detail_includes_response_meta_and_mapping_labels(): void
+    {
+        $instance = $this->makeInstance();
+        $mapped = $instance->fields()->create([
+            'type' => 'yes_no', 'label' => 'Onsite?', 'position' => 10,
+            'required' => false, 'source_field_id' => 0,
+            'mapping_target' => 'wedding.onsite',
+        ]);
+        $plain = $instance->fields()->create([
+            'type' => 'short_text', 'label' => 'Notes', 'position' => 20,
+            'required' => false, 'source_field_id' => 0,
+        ]);
+        $response = $instance->responses()->create([
+            'instance_field_id' => $mapped->id,
+            'value' => 'yes',
+        ]);
+
+        $json = $this->withHeaders($this->asMember())
+            ->getJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$instance->id}")
+            ->assertOk()
+            ->assertJsonPath('instance.fields.0.mapping_target', 'wedding.onsite')
+            ->assertJsonPath('instance.fields.0.mapping_label', 'Wedding · Onsite Ceremony')
+            ->assertJsonPath('instance.fields.1.mapping_label', null)
+            ->assertJsonPath("instance.response_meta.{$mapped->id}.response_id", $response->id)
+            ->assertJsonPath("instance.response_meta.{$mapped->id}.applied_to_event_at", null);
+
+        $this->assertNotNull($json->json("instance.response_meta.{$mapped->id}.updated_at"));
+    }
+
+    public function test_instance_detail_empty_response_meta_serializes_as_object(): void
+    {
+        $instance = $this->makeInstance();
+
+        $response = $this->withHeaders($this->asMember())
+            ->getJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$instance->id}")
+            ->assertOk();
+
+        $this->assertStringContainsString('"response_meta":{}', $response->getContent());
+    }
+
+    private function makeMappedResponse(QuestionnaireInstances $instance, string $target = 'wedding.onsite', string $value = 'yes'): \App\Models\QuestionnaireResponses
+    {
+        $field = $instance->fields()->create([
+            'type' => $target === 'wedding.onsite' ? 'yes_no' : 'short_text',
+            'label' => 'Mapped', 'position' => 10,
+            'required' => false, 'source_field_id' => 0,
+            'mapping_target' => $target,
+        ]);
+
+        return $instance->responses()->create([
+            'instance_field_id' => $field->id,
+            'value' => $value,
+        ]);
+    }
+
+    private function ownerWithEventsToken(): array
+    {
+        $token = $this->owner->createToken(
+            'apply-device', ['mobile', 'read:questionnaires', 'write:questionnaires', 'write:events']
+        )->plainTextToken;
+
+        return [
+            'Authorization' => "Bearer {$token}",
+            'X-Band-ID' => $this->band->id,
+            'Accept' => 'application/json',
+        ];
+    }
+
+    public function test_apply_response_writes_event_data_and_stamps(): void
+    {
+        $instance = $this->makeInstance();
+        $response = $this->makeMappedResponse($instance);
+
+        $this->withHeaders($this->ownerWithEventsToken())
+            ->postJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$instance->id}/responses/{$response->id}/apply")
+            ->assertOk()
+            ->assertJsonPath('response.response_id', $response->id);
+
+        $response->refresh();
+        $this->assertNotNull($response->applied_to_event_at);
+        $this->assertSame($this->owner->id, $response->applied_by_user_id);
+
+        $event = $this->booking->events()->orderBy('id')->first();
+        $this->assertSame(true, data_get(json_decode(json_encode($event->fresh()->additional_data), true), 'wedding.onsite'));
+    }
+
+    public function test_apply_response_without_mapping_target_is_422(): void
+    {
+        $instance = $this->makeInstance();
+        $field = $instance->fields()->create([
+            'type' => 'short_text', 'label' => 'Plain', 'position' => 10,
+            'required' => false, 'source_field_id' => 0,
+        ]);
+        $response = $instance->responses()->create([
+            'instance_field_id' => $field->id, 'value' => 'x',
+        ]);
+
+        $this->withHeaders($this->ownerWithEventsToken())
+            ->postJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$instance->id}/responses/{$response->id}/apply")
+            ->assertStatus(422);
+    }
+
+    public function test_apply_all_applies_only_pending_mapped(): void
+    {
+        $instance = $this->makeInstance();
+        $pending = $this->makeMappedResponse($instance);
+        $already = $this->makeMappedResponse($instance, 'wedding.dance.first', 'Song X');
+        $already->update(['applied_to_event_at' => now()->subDay(), 'applied_by_user_id' => $this->owner->id]);
+
+        $this->withHeaders($this->ownerWithEventsToken())
+            ->postJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$instance->id}/apply-all")
+            ->assertOk()
+            ->assertJsonPath('applied_count', 1);
+
+        $this->assertNotNull($pending->fresh()->applied_to_event_at);
+    }
+
+    public function test_append_to_notes_appends_block(): void
+    {
+        $instance = $this->makeInstance();
+        $this->makeMappedResponse($instance);
+
+        $this->withHeaders($this->ownerWithEventsToken())
+            ->postJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$instance->id}/append-to-notes")
+            ->assertOk();
+
+        $event = $this->booking->events()->orderBy('id')->first()->fresh();
+        $this->assertStringContainsString('Customer submitted', (string) $event->notes);
+    }
+
+    public function test_apply_requires_write_events_ability(): void
+    {
+        $instance = $this->makeInstance();
+        $response = $this->makeMappedResponse($instance);
+
+        // Owner token WITHOUT write:events ability → middleware 403.
+        $this->withHeaders($this->asOwner())
+            ->postJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$instance->id}/responses/{$response->id}/apply")
+            ->assertStatus(403);
+    }
+
+    public function test_apply_requires_read_questionnaires_token_ability(): void
+    {
+        $instance = $this->makeInstance();
+        $response = $this->makeMappedResponse($instance);
+
+        // Token scoped to write:events only — passes the route middleware but
+        // must fail the in-controller read:questionnaires ability check even
+        // though the underlying user permission would allow it.
+        $token = $this->owner->createToken(
+            'events-only-device', ['mobile', 'write:events']
+        )->plainTextToken;
+
+        $this->withHeaders([
+            'Authorization' => "Bearer {$token}",
+            'X-Band-ID' => $this->band->id,
+            'Accept' => 'application/json',
+        ])->postJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$instance->id}/responses/{$response->id}/apply")
+            ->assertStatus(403);
+
+        $this->assertNull($response->fresh()->applied_to_event_at);
+    }
+
+    public function test_apply_cross_band_instance_is_404(): void
+    {
+        $otherBand = Bands::factory()->create();
+        $otherBooking = Bookings::factory()->create(['band_id' => $otherBand->id]);
+        $foreign = $this->makeInstance(['booking_id' => $otherBooking->id]);
+        $response = $this->makeMappedResponse($foreign);
+
+        $this->withHeaders($this->ownerWithEventsToken())
+            ->postJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$foreign->id}/responses/{$response->id}/apply")
+            ->assertStatus(404);
+    }
 }

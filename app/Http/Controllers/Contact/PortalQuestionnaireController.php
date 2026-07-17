@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Contact;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SaveResponseRequest;
+use App\Jobs\SendUserPush;
 use App\Models\Bookings;
 use App\Models\QuestionnaireInstanceFields;
 use App\Models\QuestionnaireInstances;
@@ -155,19 +156,47 @@ class PortalQuestionnaireController extends Controller
             'submitted_at' => now(),
         ]);
 
-        $this->notifyBandOwner($instance, $wasAlreadySubmitted);
+        $this->notifyBandOwners($instance, $wasAlreadySubmitted);
 
         return redirect()->route('portal.dashboard')
             ->with('success', 'Thanks! Your answers have been saved.');
     }
 
-    private function notifyBandOwner(QuestionnaireInstances $instance, bool $isUpdate): void
+    private function notifyBandOwners(QuestionnaireInstances $instance, bool $isUpdate): void
     {
-        $owner = $instance->booking->band->owners()->orderBy('created_at')->first();
-        if ($owner && $owner->user_id) {
-            $user = \App\Models\User::find($owner->user_id);
-            if ($user) {
-                $user->notify(new QuestionnaireSubmitted($instance, $isUpdate));
+        $band = $instance->booking->band;
+        $clientName = $instance->recipientContact->name ?? 'A client';
+        $verb = $isUpdate ? 'updated' : 'submitted';
+
+        $push = [
+            'type' => 'questionnaire_submitted',
+            'title' => "{$clientName} {$verb} the {$instance->name}",
+            'body' => "Booking: {$instance->booking->name}",
+            'instanceId' => (string) $instance->id,
+        ];
+        if ($instance->questionnaire_id) {
+            $push['questionnaireId'] = (string) $instance->questionnaire_id;
+        }
+        // One logical send per submission: the microsecond timestamp is taken
+        // once here, so each re-submit gets a fresh key while queued retries of
+        // the same job share it. Note SendUserPush logs after delivery (no
+        // pre-check), so the key identifies the logical send in
+        // push_notification_log rather than suppressing duplicates.
+        $dedupeKey = "questionnaire_submitted:{$instance->id}:" . now()->getPreciseTimestamp(6);
+
+        $notifiedUserIds = [];
+        $owners = $band->owners()->with('user.deviceTokens')->get();
+        foreach ($owners as $ownerRow) {
+            $user = $ownerRow->user;
+            if (!$user || in_array($user->id, $notifiedUserIds, true)) {
+                continue;
+            }
+            $notifiedUserIds[] = $user->id;
+
+            $user->notify(new QuestionnaireSubmitted($instance, $isUpdate));
+
+            if ($user->deviceTokens->isNotEmpty()) {
+                SendUserPush::dispatch($user->id, $push, $dedupeKey, false);
             }
         }
     }
