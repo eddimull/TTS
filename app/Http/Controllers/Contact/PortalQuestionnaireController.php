@@ -184,7 +184,8 @@ class PortalQuestionnaireController extends Controller
         $dedupeKey = "questionnaire_submitted:{$instance->id}:{$instance->submitted_at->getTimestamp()}";
 
         $notifiedUserIds = [];
-        foreach ($band->owners as $ownerRow) {
+        $owners = $band->owners()->with('user.deviceTokens')->get();
+        foreach ($owners as $ownerRow) {
             $user = $ownerRow->user;
             if (!$user || in_array($user->id, $notifiedUserIds, true)) {
                 continue;
@@ -193,7 +194,7 @@ class PortalQuestionnaireController extends Controller
 
             $user->notify(new QuestionnaireSubmitted($instance, $isUpdate));
 
-            if ($user->deviceTokens()->exists()) {
+            if ($user->deviceTokens->isNotEmpty()) {
                 SendUserPush::dispatch($user->id, $push, $dedupeKey, false);
             }
         }

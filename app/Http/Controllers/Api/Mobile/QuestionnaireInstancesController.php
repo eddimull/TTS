@@ -203,6 +203,7 @@ class QuestionnaireInstancesController extends Controller
         $pending = $instance->responses()
             ->whereHas('instanceField', fn ($q) => $q->whereNotNull('mapping_target'))
             ->whereNull('applied_to_event_at')
+            ->with(['instanceField', 'instance.booking'])
             ->get();
 
         $applied = 0;
