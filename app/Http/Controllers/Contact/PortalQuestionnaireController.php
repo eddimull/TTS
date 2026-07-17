@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Contact;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\SaveResponseRequest;
+use App\Jobs\SendUserPush;
 use App\Models\Bookings;
 use App\Models\QuestionnaireInstanceFields;
 use App\Models\QuestionnaireInstances;
@@ -155,19 +156,44 @@ class PortalQuestionnaireController extends Controller
             'submitted_at' => now(),
         ]);
 
-        $this->notifyBandOwner($instance, $wasAlreadySubmitted);
+        $this->notifyBandOwners($instance, $wasAlreadySubmitted);
 
         return redirect()->route('portal.dashboard')
             ->with('success', 'Thanks! Your answers have been saved.');
     }
 
-    private function notifyBandOwner(QuestionnaireInstances $instance, bool $isUpdate): void
+    private function notifyBandOwners(QuestionnaireInstances $instance, bool $isUpdate): void
     {
-        $owner = $instance->booking->band->owners()->orderBy('created_at')->first();
-        if ($owner && $owner->user_id) {
-            $user = \App\Models\User::find($owner->user_id);
-            if ($user) {
-                $user->notify(new QuestionnaireSubmitted($instance, $isUpdate));
+        $band = $instance->booking->band;
+        $clientName = $instance->recipientContact->name ?? 'A client';
+        $verb = $isUpdate ? 'updated' : 'submitted';
+
+        $push = [
+            'type' => 'questionnaire_submitted',
+            'title' => "{$clientName} {$verb} the {$instance->name}",
+            'body' => "Booking: {$instance->booking->name}",
+            'instanceId' => (string) $instance->id,
+        ];
+        if ($instance->questionnaire_id) {
+            $push['questionnaireId'] = (string) $instance->questionnaire_id;
+        }
+        // One logical send per submission: submitted_at was just stamped by
+        // submit(), so re-submits produce a fresh dedupe key while queued
+        // retries of the same submission share it.
+        $dedupeKey = "questionnaire_submitted:{$instance->id}:{$instance->submitted_at->getTimestamp()}";
+
+        $notifiedUserIds = [];
+        foreach ($band->owners as $ownerRow) {
+            $user = $ownerRow->user;
+            if (!$user || in_array($user->id, $notifiedUserIds, true)) {
+                continue;
+            }
+            $notifiedUserIds[] = $user->id;
+
+            $user->notify(new QuestionnaireSubmitted($instance, $isUpdate));
+
+            if ($user->deviceTokens()->exists()) {
+                SendUserPush::dispatch($user->id, $push, $dedupeKey, false);
             }
         }
     }
