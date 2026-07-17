@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Models\Traits\BroadcastsBandChanges;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -16,6 +17,7 @@ class Questionnaires extends Model
     use HasFactory;
     use SoftDeletes;
     use LogsActivity;
+    use BroadcastsBandChanges;
 
     protected $table = 'questionnaires';
 

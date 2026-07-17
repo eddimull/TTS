@@ -81,8 +81,8 @@ class BookingPriceUpdateRecalculatesPayoutTest extends TestCase
         
         $booking->update(['price' => 4000]);
 
-        
-        $controller = new \App\Http\Controllers\BookingsController();
+
+        $controller = app(\App\Http\Controllers\BookingsController::class);
         $reflection = new \ReflectionClass($controller);
         $method = $reflection->getMethod('redistributeEventValues');
         $method->setAccessible(true);
@@ -137,7 +137,7 @@ class BookingPriceUpdateRecalculatesPayoutTest extends TestCase
 
         $booking->update(['price' => 3300]);
 
-        $controller = new \App\Http\Controllers\BookingsController();
+        $controller = app(\App\Http\Controllers\BookingsController::class);
         $reflection = new \ReflectionClass($controller);
         $method = $reflection->getMethod('redistributeEventValues');
         $method->setAccessible(true);
@@ -192,7 +192,7 @@ class BookingPriceUpdateRecalculatesPayoutTest extends TestCase
         
         $booking->update(['price' => 2500]);
 
-        $controller = new \App\Http\Controllers\BookingsController();
+        $controller = app(\App\Http\Controllers\BookingsController::class);
         $reflection = new \ReflectionClass($controller);
         $method = $reflection->getMethod('redistributeEventValues');
         $method->setAccessible(true);
