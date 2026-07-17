@@ -26,6 +26,7 @@ class ChatPushTest extends TestCase
         Queue::assertPushed(SendUserPush::class, 1);
         Queue::assertPushed(SendUserPush::class, fn (SendUserPush $job) =>
             $job->userId === $member->id
+            && $job->alert === true
             && $job->data['type'] === 'chat_message'
             && $job->data['conversationId'] === (string) $dm->id
             && $job->data['title'] === $owner->name
