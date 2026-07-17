@@ -116,6 +116,7 @@ class BookingFormatter
             'phone'      => $c->phone,
             'role'       => $c->pivot->role ?? null,
             'is_primary' => (bool) ($c->pivot->is_primary ?? false),
+            'can_login'  => (bool) $c->can_login,
         ])->values()->all();
     }
 

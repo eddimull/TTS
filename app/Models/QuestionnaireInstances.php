@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Traits\BroadcastsBandChanges;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -15,6 +16,7 @@ class QuestionnaireInstances extends Model
     use HasFactory;
     use SoftDeletes;
     use LogsActivity;
+    use BroadcastsBandChanges;
 
     public const STATUS_SENT = 'sent';
     public const STATUS_IN_PROGRESS = 'in_progress';
@@ -83,6 +85,13 @@ class QuestionnaireInstances extends Model
     public function isLocked(): bool
     {
         return $this->status === self::STATUS_LOCKED;
+    }
+
+    protected function broadcastBandId(): ?int
+    {
+        $bandId = $this->booking?->band_id;
+
+        return $bandId ? (int) $bandId : null;
     }
 
     public function getActivitylogOptions(): LogOptions

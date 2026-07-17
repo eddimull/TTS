@@ -9,6 +9,7 @@ use App\Models\QuestionnaireInstanceFields;
 use App\Models\QuestionnaireInstances;
 use App\Models\QuestionnaireResponses;
 use App\Notifications\QuestionnaireSubmitted;
+use App\Services\QuestionnaireResponsePresenter;
 use App\Services\QuestionnaireVisibilityEvaluator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,7 +19,7 @@ use Inertia\Response;
 
 class PortalQuestionnaireController extends Controller
 {
-    public function __construct()
+    public function __construct(private QuestionnaireResponsePresenter $presenter)
     {
         $this->middleware('auth:contact');
     }
@@ -33,7 +34,7 @@ class PortalQuestionnaireController extends Controller
 
         $fields = $instance->fields()->orderBy('position')->get();
         $responses = $instance->responses()->get()->mapWithKeys(
-            fn ($r) => [$r->instance_field_id => $this->decodeValue($r->value)]
+            fn ($r) => [$r->instance_field_id => $this->presenter->decode($r->value)]
         );
 
         $bandSongs = $fields->contains('type', 'song_picker')
@@ -70,7 +71,7 @@ class PortalQuestionnaireController extends Controller
         abort_if($instance->isLocked(), 403, 'This questionnaire is locked.');
 
         $field = QuestionnaireInstanceFields::findOrFail($request->input('instance_field_id'));
-        $value = $this->encodeValue($request->input('value'), $field->type);
+        $value = $this->presenter->encode($request->input('value'), $field->type);
 
         QuestionnaireResponses::updateOrCreate(
             [
@@ -97,33 +98,6 @@ class PortalQuestionnaireController extends Controller
         abort_unless($booking->contacts->contains('id', $contact->id), 403);
     }
 
-    /**
-     * Multi-value responses are JSON-encoded arrays. Decode for Vue.
-     */
-    private function decodeValue(?string $value): mixed
-    {
-        if ($value === null || $value === '') {
-            return null;
-        }
-        $decoded = json_decode($value, true);
-        return is_array($decoded) ? $decoded : $value;
-    }
-
-    /**
-     * Multi-value field types (multi_select, checkbox_group) JSON-encode their array.
-     * Other types coerce to string.
-     */
-    private function encodeValue(mixed $value, string $type): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-        if (in_array($type, ['multi_select', 'checkbox_group', 'song_picker'], true)) {
-            return is_array($value) ? json_encode(array_values($value)) : json_encode([$value]);
-        }
-        return is_array($value) ? implode(',', $value) : (string) $value;
-    }
-
     public function submit(Request $request, Bookings $booking, QuestionnaireInstances $instance, QuestionnaireVisibilityEvaluator $evaluator): RedirectResponse
     {
         $this->authorizeAccess($booking, $instance);
@@ -136,7 +110,7 @@ class PortalQuestionnaireController extends Controller
             'id' => $f->id,
             'visibility_rule' => $f->visibility_rule,
         ])->all();
-        $responsesArray = $responses->map(fn ($r) => $this->decodeValue($r->value))->all();
+        $responsesArray = $responses->map(fn ($r) => $this->presenter->decode($r->value))->all();
 
         // Wipe responses for hidden fields
         foreach ($fields as $f) {

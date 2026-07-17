@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\Traits\BroadcastsBandChanges;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -12,6 +13,7 @@ class QuestionnaireResponses extends Model
 {
     use HasFactory;
     use LogsActivity;
+    use BroadcastsBandChanges;
 
     protected $table = 'questionnaire_responses';
 
@@ -40,6 +42,13 @@ class QuestionnaireResponses extends Model
     public function appliedByUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'applied_by_user_id');
+    }
+
+    protected function broadcastBandId(): ?int
+    {
+        $bandId = $this->instance?->booking?->band_id;
+
+        return $bandId ? (int) $bandId : null;
     }
 
     public function getActivitylogOptions(): LogOptions
