@@ -353,4 +353,44 @@ class QuestionnaireInstanceMobileTest extends TestCase
             ->postJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$foreign->id}/lock")
             ->assertStatus(404);
     }
+
+    public function test_instance_detail_includes_response_meta_and_mapping_labels(): void
+    {
+        $instance = $this->makeInstance();
+        $mapped = $instance->fields()->create([
+            'type' => 'yes_no', 'label' => 'Onsite?', 'position' => 10,
+            'required' => false, 'source_field_id' => 0,
+            'mapping_target' => 'wedding.onsite',
+        ]);
+        $plain = $instance->fields()->create([
+            'type' => 'short_text', 'label' => 'Notes', 'position' => 20,
+            'required' => false, 'source_field_id' => 0,
+        ]);
+        $response = $instance->responses()->create([
+            'instance_field_id' => $mapped->id,
+            'value' => 'yes',
+        ]);
+
+        $json = $this->withHeaders($this->asMember())
+            ->getJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$instance->id}")
+            ->assertOk()
+            ->assertJsonPath('instance.fields.0.mapping_target', 'wedding.onsite')
+            ->assertJsonPath('instance.fields.0.mapping_label', 'Wedding · Onsite Ceremony')
+            ->assertJsonPath('instance.fields.1.mapping_label', null)
+            ->assertJsonPath("instance.response_meta.{$mapped->id}.response_id", $response->id)
+            ->assertJsonPath("instance.response_meta.{$mapped->id}.applied_to_event_at", null);
+
+        $this->assertNotNull($json->json("instance.response_meta.{$mapped->id}.updated_at"));
+    }
+
+    public function test_instance_detail_empty_response_meta_serializes_as_object(): void
+    {
+        $instance = $this->makeInstance();
+
+        $response = $this->withHeaders($this->asMember())
+            ->getJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$instance->id}")
+            ->assertOk();
+
+        $this->assertStringContainsString('"response_meta":{}', $response->getContent());
+    }
 }

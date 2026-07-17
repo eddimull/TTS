@@ -10,6 +10,7 @@ use App\Models\Contacts;
 use App\Models\QuestionnaireInstances;
 use App\Models\Questionnaires;
 use App\Notifications\QuestionnaireSent;
+use App\Services\QuestionnaireMappingRegistry;
 use App\Services\QuestionnaireResponsePresenter;
 use App\Services\QuestionnaireSnapshotService;
 use Illuminate\Http\JsonResponse;
@@ -21,6 +22,7 @@ class QuestionnaireInstancesController extends Controller
     public function __construct(
         private QuestionnaireResponsePresenter $presenter,
         private QuestionnaireSnapshotService $snapshotService,
+        private QuestionnaireMappingRegistry $mappingRegistry,
     ) {
     }
 
@@ -199,9 +201,20 @@ class QuestionnaireInstancesController extends Controller
                 'position' => $f->position,
                 'settings' => $f->settings,
                 'visibility_rule' => $f->visibility_rule,
+                'mapping_target' => $f->mapping_target,
+                'mapping_label' => $f->mapping_target && $this->mappingRegistry->targetExists($f->mapping_target)
+                    ? $this->mappingRegistry->label($f->mapping_target)
+                    : null,
             ])->values()->all(),
             'responses' => (object) $i->responses->mapWithKeys(fn ($r) => [
                 $r->instance_field_id => $this->presenter->decode($r->value),
+            ])->all(),
+            'response_meta' => (object) $i->responses->mapWithKeys(fn ($r) => [
+                $r->instance_field_id => [
+                    'response_id' => $r->id,
+                    'applied_to_event_at' => $r->applied_to_event_at?->toIso8601String(),
+                    'updated_at' => $r->updated_at?->toIso8601String(),
+                ],
             ])->all(),
             'song_lookup' => (object) $this->presenter->songLookup([$i], $band->id),
         ];
