@@ -19,7 +19,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use RuntimeException;
 
-/** Authorization is handled at the route layer via the mobile.band middleware. */
+/**
+ * Authorization is handled at the route layer via the mobile.band middleware.
+ * The apply endpoints additionally enforce read:questionnaires in-controller —
+ * their route group only carries write:events (mirrors web's authorizeAccess).
+ */
 class QuestionnaireInstancesController extends Controller
 {
     public function __construct(

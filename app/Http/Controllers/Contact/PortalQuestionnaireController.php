@@ -178,8 +178,9 @@ class PortalQuestionnaireController extends Controller
             $push['questionnaireId'] = (string) $instance->questionnaire_id;
         }
         // One logical send per submission: submitted_at was just stamped by
-        // submit(), so re-submits produce a fresh dedupe key while queued
-        // retries of the same submission share it.
+        // submit(), so each re-submit gets a fresh key. Note SendUserPush logs
+        // after delivery (no pre-check), so the key identifies the logical
+        // send in push_notification_log rather than suppressing duplicates.
         $dedupeKey = "questionnaire_submitted:{$instance->id}:{$instance->submitted_at->getTimestamp()}";
 
         $notifiedUserIds = [];
