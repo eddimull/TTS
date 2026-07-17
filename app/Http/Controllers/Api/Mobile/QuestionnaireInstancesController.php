@@ -8,13 +8,16 @@ use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\QuestionnaireInstances;
+use App\Models\QuestionnaireResponses;
 use App\Models\Questionnaires;
 use App\Notifications\QuestionnaireSent;
 use App\Services\QuestionnaireMappingRegistry;
+use App\Services\QuestionnaireMappingService;
 use App\Services\QuestionnaireResponsePresenter;
 use App\Services\QuestionnaireSnapshotService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use RuntimeException;
 
 /** Authorization is handled at the route layer via the mobile.band middleware. */
 class QuestionnaireInstancesController extends Controller
@@ -23,6 +26,7 @@ class QuestionnaireInstancesController extends Controller
         private QuestionnaireResponsePresenter $presenter,
         private QuestionnaireSnapshotService $snapshotService,
         private QuestionnaireMappingRegistry $mappingRegistry,
+        private QuestionnaireMappingService $mappingService,
     ) {
     }
 
@@ -162,6 +166,66 @@ class QuestionnaireInstancesController extends Controller
         $instance->delete();
 
         return response()->json(['message' => 'Questionnaire instance deleted']);
+    }
+
+    public function applyResponse(Bands $band, QuestionnaireInstances $instance, QuestionnaireResponses $response): JsonResponse
+    {
+        $this->ensureBelongsToBand($band, $instance);
+        abort_unless(Auth::user()->canRead('questionnaires', $band->id), 403);
+        abort_if($response->instance_id !== $instance->id, 404);
+
+        try {
+            $this->mappingService->applyResponse($response, Auth::user());
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        $response->refresh();
+
+        return response()->json([
+            'response' => [
+                'response_id' => $response->id,
+                'applied_to_event_at' => $response->applied_to_event_at?->toIso8601String(),
+                'updated_at' => $response->updated_at?->toIso8601String(),
+            ],
+        ]);
+    }
+
+    public function applyAll(Bands $band, QuestionnaireInstances $instance): JsonResponse
+    {
+        $this->ensureBelongsToBand($band, $instance);
+        abort_unless(Auth::user()->canRead('questionnaires', $band->id), 403);
+
+        $pending = $instance->responses()
+            ->whereHas('instanceField', fn ($q) => $q->whereNotNull('mapping_target'))
+            ->whereNull('applied_to_event_at')
+            ->get();
+
+        $applied = 0;
+        try {
+            foreach ($pending as $pendingResponse) {
+                $this->mappingService->applyResponse($pendingResponse, Auth::user());
+                $applied++;
+            }
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage(), 'applied_count' => $applied], 422);
+        }
+
+        return response()->json(['applied_count' => $applied]);
+    }
+
+    public function appendToNotes(Bands $band, QuestionnaireInstances $instance): JsonResponse
+    {
+        $this->ensureBelongsToBand($band, $instance);
+        abort_unless(Auth::user()->canRead('questionnaires', $band->id), 403);
+
+        try {
+            $this->mappingService->appendAllToNotes($instance, Auth::user());
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['message' => 'Answers appended to event notes.']);
     }
 
     private function ensureBelongsToBand(Bands $band, QuestionnaireInstances $instance): void
