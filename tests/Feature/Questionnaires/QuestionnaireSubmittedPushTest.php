@@ -77,7 +77,7 @@ class QuestionnaireSubmittedPushTest extends TestCase
 
         Bus::assertDispatched(SendUserPush::class, function (SendUserPush $job) {
             return $job->userId === $this->owner1->id
-                && $job->alert === false
+                && $job->alert === true
                 && $job->data['type'] === 'questionnaire_submitted'
                 && $job->data['instanceId'] === (string) $this->instance->id
                 && $job->data['questionnaireId'] === (string) $this->instance->questionnaire_id

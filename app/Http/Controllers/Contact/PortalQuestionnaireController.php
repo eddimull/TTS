@@ -196,7 +196,10 @@ class PortalQuestionnaireController extends Controller
             $user->notify(new QuestionnaireSubmitted($instance, $isUpdate));
 
             if ($user->deviceTokens->isNotEmpty()) {
-                SendUserPush::dispatch($user->id, $push, $dedupeKey, false);
+                // alert: true routes through FcmSender::sendAlert() so a real APNs
+                // notification block is sent. iOS never delivers data-only pushes to
+                // a backgrounded app; the data map still rides along for tap routing.
+                SendUserPush::dispatch($user->id, $push, $dedupeKey, true);
             }
         }
     }

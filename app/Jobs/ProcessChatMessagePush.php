@@ -48,7 +48,10 @@ class ProcessChatMessagePush implements ShouldQueue
             if ((int) $userId === (int) $message->user_id) {
                 continue;
             }
-            SendUserPush::dispatch((int) $userId, $data, 'chat_message:' . $message->id);
+            // alert: true routes through FcmSender::sendAlert() so a real APNs
+            // notification block is sent. iOS never delivers data-only pushes to
+            // a backgrounded app; the data map still rides along for tap routing.
+            SendUserPush::dispatch((int) $userId, $data, 'chat_message:' . $message->id, true);
         }
     }
 
