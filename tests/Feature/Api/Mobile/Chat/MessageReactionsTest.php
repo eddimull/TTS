@@ -2,11 +2,13 @@
 
 namespace Tests\Feature\Api\Mobile\Chat;
 
+use App\Events\ConversationStreamEvent;
 use App\Models\Message;
 use App\Models\MessageReaction;
 use App\Services\Chat\ConversationService;
 use App\Services\Chat\MessageFormatter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -76,5 +78,105 @@ class MessageReactionsTest extends TestCase
         $message->forceDelete();
 
         $this->assertDatabaseCount('message_reactions', 0);
+    }
+
+    public function test_participant_can_add_and_remove_reaction(): void
+    {
+        [$owner, $band] = $this->makeOwnerWithBand();
+        $member = $this->makeMember($band);
+        $dm = app(ConversationService::class)->dmBetween($owner, $member);
+        $message = $dm->messages()->create(['user_id' => $owner->id, 'body' => 'hi']);
+
+        $this->actingAs($member)
+            ->postJson("/api/mobile/messages/{$message->id}/reactions", ['emoji' => '👍'])
+            ->assertOk()
+            ->assertJson(['reactions' => [['emoji' => '👍', 'count' => 1, 'user_ids' => [$member->id]]]]);
+
+        $this->actingAs($member)
+            ->deleteJson("/api/mobile/messages/{$message->id}/reactions/" . rawurlencode('👍'))
+            ->assertOk()
+            ->assertJsonCount(0, 'reactions');
+
+        $this->assertDatabaseCount('message_reactions', 0);
+    }
+
+    public function test_add_is_idempotent_and_remove_of_absent_is_ok(): void
+    {
+        [$owner, $band] = $this->makeOwnerWithBand();
+        $member = $this->makeMember($band);
+        $dm = app(ConversationService::class)->dmBetween($owner, $member);
+        $message = $dm->messages()->create(['user_id' => $owner->id, 'body' => 'hi']);
+
+        $this->actingAs($member)->postJson("/api/mobile/messages/{$message->id}/reactions", ['emoji' => '👍'])->assertOk();
+        $this->actingAs($member)->postJson("/api/mobile/messages/{$message->id}/reactions", ['emoji' => '👍'])->assertOk();
+        $this->assertDatabaseCount('message_reactions', 1);
+
+        $this->actingAs($member)
+            ->deleteJson("/api/mobile/messages/{$message->id}/reactions/" . rawurlencode('😂'))
+            ->assertOk();
+        $this->assertDatabaseCount('message_reactions', 1);
+    }
+
+    public function test_non_participant_cannot_react(): void
+    {
+        [$owner, $band] = $this->makeOwnerWithBand();
+        $member = $this->makeMember($band);
+        [$outsider] = $this->makeOwnerWithBand();
+        $dm = app(ConversationService::class)->dmBetween($owner, $member);
+        $message = $dm->messages()->create(['user_id' => $owner->id, 'body' => 'hi']);
+
+        $this->actingAs($outsider)
+            ->postJson("/api/mobile/messages/{$message->id}/reactions", ['emoji' => '👍'])
+            ->assertForbidden();
+    }
+
+    public function test_reacting_to_soft_deleted_message_is_404(): void
+    {
+        [$owner, $band] = $this->makeOwnerWithBand();
+        $member = $this->makeMember($band);
+        $dm = app(ConversationService::class)->dmBetween($owner, $member);
+        $message = $dm->messages()->create(['user_id' => $owner->id, 'body' => 'hi']);
+        $message->delete();
+
+        $this->actingAs($member)
+            ->postJson("/api/mobile/messages/{$message->id}/reactions", ['emoji' => '👍'])
+            ->assertNotFound();
+    }
+
+    public function test_emoji_is_required_and_bounded(): void
+    {
+        [$owner, $band] = $this->makeOwnerWithBand();
+        $member = $this->makeMember($band);
+        $dm = app(ConversationService::class)->dmBetween($owner, $member);
+        $message = $dm->messages()->create(['user_id' => $owner->id, 'body' => 'hi']);
+
+        $this->actingAs($member)
+            ->postJson("/api/mobile/messages/{$message->id}/reactions", [])
+            ->assertUnprocessable();
+        $this->actingAs($member)
+            ->postJson("/api/mobile/messages/{$message->id}/reactions", ['emoji' => str_repeat('x', 17)])
+            ->assertUnprocessable();
+    }
+
+    public function test_reaction_changes_broadcast_message_updated(): void
+    {
+        Event::fake([ConversationStreamEvent::class]);
+
+        [$owner, $band] = $this->makeOwnerWithBand();
+        $member = $this->makeMember($band);
+        $dm = app(ConversationService::class)->dmBetween($owner, $member);
+        $message = $dm->messages()->create(['user_id' => $owner->id, 'body' => 'hi']);
+
+        $this->actingAs($member)->postJson("/api/mobile/messages/{$message->id}/reactions", ['emoji' => '👍'])->assertOk();
+
+        // broadcastOn() returns an array here (see ConversationStreamEvent), so
+        // we follow ChatBroadcastingTest's idiom and assert on the event's
+        // public properties instead of $event->broadcastOn()->name.
+        Event::assertDispatched(ConversationStreamEvent::class, function ($event) use ($dm, $message) {
+            return $event->broadcastAs() === 'message.updated'
+                && $event->conversationId === $dm->id
+                && $event->broadcastWith()['message']['id'] === $message->id
+                && $event->broadcastWith()['message']['reactions'][0]['emoji'] === '👍';
+        });
     }
 }
