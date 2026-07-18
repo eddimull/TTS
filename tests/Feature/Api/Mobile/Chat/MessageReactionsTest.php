@@ -158,6 +158,22 @@ class MessageReactionsTest extends TestCase
             ->assertUnprocessable();
     }
 
+    public function test_formatter_empties_reactions_on_tombstoned_message(): void
+    {
+        [$owner, $band] = $this->makeOwnerWithBand();
+        $member = $this->makeMember($band);
+        $dm = app(ConversationService::class)->dmBetween($owner, $member);
+        $message = $dm->messages()->create(['user_id' => $owner->id, 'body' => 'hi']);
+
+        MessageReaction::create(['message_id' => $message->id, 'user_id' => $owner->id, 'emoji' => '👍']);
+
+        $message->delete();
+
+        $formatted = app(MessageFormatter::class)->format($message->fresh(['user', 'attachments', 'reactions']));
+
+        $this->assertSame([], $formatted['reactions']);
+    }
+
     public function test_reaction_changes_broadcast_message_updated(): void
     {
         Event::fake([ConversationStreamEvent::class]);

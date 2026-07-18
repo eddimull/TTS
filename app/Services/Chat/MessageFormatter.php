@@ -30,7 +30,7 @@ class MessageFormatter
                 'width'  => $a->width,
                 'height' => $a->height,
             ])->values()->all(),
-            'reactions' => $message->reactions
+            'reactions' => $deleted ? [] : $message->reactions
                 ->groupBy('emoji')
                 ->map(fn ($group, $emoji) => [
                     'emoji' => (string) $emoji,
