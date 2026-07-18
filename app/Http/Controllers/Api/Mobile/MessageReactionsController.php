@@ -27,12 +27,12 @@ class MessageReactionsController extends Controller
         $this->authorize('view', $message->conversation);
         $data = $request->validate(['emoji' => ['required', 'string', 'max:16']]);
 
-        $message->reactions()->firstOrCreate([
+        $reaction = $message->reactions()->firstOrCreate([
             'user_id' => $request->user()->id,
             'emoji' => $data['emoji'],
         ]);
 
-        return $this->respondWithReactions($message);
+        return $this->respondWithReactions($message, $reaction->wasRecentlyCreated);
     }
 
     /** DELETE /api/mobile/messages/{message}/reactions/{emoji} */
@@ -40,25 +40,31 @@ class MessageReactionsController extends Controller
     {
         $this->authorize('view', $message->conversation);
 
-        $message->reactions()
+        $deleted = $message->reactions()
             ->where('user_id', $request->user()->id)
             ->where('emoji', $emoji)
             ->delete();
 
-        return $this->respondWithReactions($message);
+        return $this->respondWithReactions($message, $deleted > 0);
     }
 
-    /** Re-format, stream the change to other open clients, return the aggregate. */
-    private function respondWithReactions(Message $message): JsonResponse
+    /**
+     * Re-format and return the aggregate; only stream to other open clients
+     * when the reaction set actually changed (skip duplicate POSTs / deletes
+     * of an absent reaction so we don't broadcast a no-op message.updated).
+     */
+    private function respondWithReactions(Message $message, bool $changed): JsonResponse
     {
         $message->load(['user', 'attachments', 'reactions']);
         $formatted = $this->formatter->format($message);
 
-        broadcast(new ConversationStreamEvent(
-            $message->conversation_id,
-            'message.updated',
-            ['message' => $formatted],
-        ))->toOthers();
+        if ($changed) {
+            broadcast(new ConversationStreamEvent(
+                $message->conversation_id,
+                'message.updated',
+                ['message' => $formatted],
+            ))->toOthers();
+        }
 
         return response()->json(['reactions' => $formatted['reactions']]);
     }

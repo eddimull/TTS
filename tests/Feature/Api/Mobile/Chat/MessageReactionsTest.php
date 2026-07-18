@@ -195,4 +195,35 @@ class MessageReactionsTest extends TestCase
                 && $event->broadcastWith()['message']['reactions'][0]['emoji'] === '👍';
         });
     }
+
+    public function test_duplicate_reaction_post_does_not_rebroadcast(): void
+    {
+        Event::fake([ConversationStreamEvent::class]);
+
+        [$owner, $band] = $this->makeOwnerWithBand();
+        $member = $this->makeMember($band);
+        $dm = app(ConversationService::class)->dmBetween($owner, $member);
+        $message = $dm->messages()->create(['user_id' => $owner->id, 'body' => 'hi']);
+
+        $this->actingAs($member)->postJson("/api/mobile/messages/{$message->id}/reactions", ['emoji' => '👍'])->assertOk();
+        $this->actingAs($member)->postJson("/api/mobile/messages/{$message->id}/reactions", ['emoji' => '👍'])->assertOk();
+
+        Event::assertDispatchedTimes(ConversationStreamEvent::class, 1);
+    }
+
+    public function test_deleting_absent_reaction_does_not_broadcast(): void
+    {
+        Event::fake([ConversationStreamEvent::class]);
+
+        [$owner, $band] = $this->makeOwnerWithBand();
+        $member = $this->makeMember($band);
+        $dm = app(ConversationService::class)->dmBetween($owner, $member);
+        $message = $dm->messages()->create(['user_id' => $owner->id, 'body' => 'hi']);
+
+        $this->actingAs($member)
+            ->deleteJson("/api/mobile/messages/{$message->id}/reactions/" . rawurlencode('😂'))
+            ->assertOk();
+
+        Event::assertNotDispatched(ConversationStreamEvent::class);
+    }
 }
