@@ -61,6 +61,11 @@ class Message extends Model
         return $this->hasMany(MessageAttachment::class);
     }
 
+    public function reactions()
+    {
+        return $this->hasMany(MessageReaction::class);
+    }
+
     protected function broadcastBandId(): ?int
     {
         // Null for DMs → the band-channel trait skips them silently.

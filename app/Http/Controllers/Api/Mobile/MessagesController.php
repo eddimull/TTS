@@ -24,7 +24,7 @@ class MessagesController extends Controller
         $validated = $request->validate(['body' => 'required|string|max:4000']);
 
         $message->update(['body' => $validated['body'], 'edited_at' => now()]);
-        $message->load(['user', 'attachments']);
+        $message->load(['user', 'attachments', 'reactions']);
 
         broadcast(new ConversationStreamEvent($message->conversation_id, 'message.updated', [
             'message' => $this->formatter->format($message),
