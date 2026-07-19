@@ -30,6 +30,15 @@ class MessageFormatter
                 'width'  => $a->width,
                 'height' => $a->height,
             ])->values()->all(),
+            'reactions' => $deleted ? [] : $message->reactions
+                ->groupBy('emoji')
+                ->map(fn ($group, $emoji) => [
+                    'emoji' => (string) $emoji,
+                    'count' => $group->count(),
+                    'user_ids' => $group->pluck('user_id')->values()->all(),
+                ])
+                ->values()
+                ->all(),
             'edited_at'  => $message->edited_at?->toIso8601String(),
             'is_deleted' => $deleted,
             'created_at' => $message->created_at->toIso8601String(),

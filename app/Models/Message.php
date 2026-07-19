@@ -6,6 +6,7 @@ use App\Events\ConversationChanged;
 use App\Models\Traits\BroadcastsBandChanges;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Message extends Model
@@ -59,6 +60,13 @@ class Message extends Model
     public function attachments()
     {
         return $this->hasMany(MessageAttachment::class);
+    }
+
+    public function reactions(): HasMany
+    {
+        // Ordered by id so both the emoji-group order (first-reacted group
+        // first) and each group's user_ids order are deterministic.
+        return $this->hasMany(MessageReaction::class)->orderBy('id');
     }
 
     protected function broadcastBandId(): ?int
