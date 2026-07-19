@@ -286,4 +286,63 @@ class DashboardTest extends TestCase
             ->getJson("/api/mobile/rehearsals/{$rehearsalItem['id']}")
             ->assertOk();
     }
+
+    /**
+     * Regression: a materialized scheduled (cancelled) rehearsal must carry
+     * `is_cancelled === true` on the dashboard so the Flutter app renders the
+     * cancelled styling instead of a normal blue marker/card. The dashboard
+     * formatter previously dropped the flag entirely (PR #529 fixed the events
+     * index but missed the dashboard). A booking row in the same payload must
+     * carry `is_cancelled === false` (never null).
+     */
+    public function test_dashboard_marks_cancelled_rehearsal_and_leaves_booking_uncancelled(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        $eventType = EventTypes::factory()->create();
+
+        // A normal booking event — must report is_cancelled === false (not null).
+        $booking = Bookings::factory()->create(['band_id' => $band->id]);
+        Events::factory()->create([
+            'eventable_id'   => $booking->id,
+            'eventable_type' => 'App\\Models\\Bookings',
+            'event_type_id'  => $eventType->id,
+            'date'           => now()->addDays(3)->format('Y-m-d'),
+        ]);
+
+        // A materialized, cancelled rehearsal — must report is_cancelled === true.
+        $schedule = \App\Models\RehearsalSchedule::factory()->weekly()->create(['band_id' => $band->id]);
+        $rehearsal = \App\Models\Rehearsal::factory()->cancelled()->create([
+            'rehearsal_schedule_id' => $schedule->id,
+            'band_id'               => $band->id,
+        ]);
+        Events::factory()->create([
+            'eventable_id'   => $rehearsal->id,
+            'eventable_type' => 'App\\Models\\Rehearsal',
+            'event_type_id'  => $eventType->id,
+            'date'           => now()->addDays(7)->format('Y-m-d'),
+            'start_time'     => '19:00:00',
+        ]);
+
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        $dashboard = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson('/api/mobile/dashboard');
+        $dashboard->assertOk();
+
+        $rehearsalItem = collect($dashboard->json('events'))
+            ->firstWhere('event_source', 'rehearsal');
+        $bookingItem = collect($dashboard->json('events'))
+            ->firstWhere('event_source', 'booking');
+
+        $this->assertNotNull($rehearsalItem, 'expected the rehearsal in the dashboard payload');
+        $this->assertNotNull($bookingItem, 'expected the booking in the dashboard payload');
+
+        $this->assertArrayHasKey('is_cancelled', $rehearsalItem);
+        $this->assertSame(true, $rehearsalItem['is_cancelled'], 'cancelled rehearsal must report is_cancelled === true');
+        $this->assertSame(false, $bookingItem['is_cancelled'], 'booking must report is_cancelled === false, not null');
+    }
 }
