@@ -446,6 +446,44 @@ class ConversationsController extends Controller
         return response()->json(null, 204);
     }
 
+    /**
+     * POST /api/mobile/conversations/delivered — bulk delivery ack.
+     * "My app has received everything up to now": stamps last_delivered_at
+     * on the caller's participant rows, but only for conversations holding a
+     * message from someone else newer than the current stamp — routine
+     * app-opens with nothing new write nothing and broadcast nothing.
+     */
+    public function delivered(Request $request): \Illuminate\Http\Response
+    {
+        $user = $request->user();
+        $now = now();
+
+        $rows = ConversationParticipant::query()
+            ->where('user_id', $user->id)
+            ->whereExists(function ($query) use ($user) {
+                $query->selectRaw('1')
+                    ->from('messages')
+                    ->whereColumn('messages.conversation_id', 'conversation_participants.conversation_id')
+                    ->where('messages.user_id', '!=', $user->id)
+                    ->whereNull('messages.deleted_at')
+                    ->where(function ($q) {
+                        $q->whereNull('conversation_participants.last_delivered_at')
+                            ->orWhereColumn('messages.created_at', '>', 'conversation_participants.last_delivered_at');
+                    });
+            })
+            ->get();
+
+        foreach ($rows as $participant) {
+            $participant->forceFill(['last_delivered_at' => $now])->save();
+            broadcast(new ConversationStreamEvent($participant->conversation_id, 'conversation.delivered', [
+                'user_id' => $user->id,
+                'last_delivered_at' => $now->toIso8601String(),
+            ]))->toOthers();
+        }
+
+        return response()->noContent();
+    }
+
     /** POST /api/mobile/conversations/{conversation}/typing — ephemeral, nothing stored. */
     public function typing(Request $request, Conversation $conversation): JsonResponse
     {
