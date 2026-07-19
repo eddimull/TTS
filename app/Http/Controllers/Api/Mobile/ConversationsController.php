@@ -17,6 +17,7 @@ use App\Services\Chat\ConversationService;
 use App\Services\Chat\MessageFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -306,6 +307,7 @@ class ConversationsController extends Controller
                 'name'         => $p->user?->name,
                 'avatar_url'   => null,
                 'last_read_at' => $p->last_read_at?->toIso8601String(),
+                'last_delivered_at' => $p->last_delivered_at?->toIso8601String(),
             ])->values();
 
         // Reuse the one Conversation JSON shape via summarize(). touchParticipant()
@@ -443,6 +445,53 @@ class ConversationsController extends Controller
         }
 
         return response()->json(null, 204);
+    }
+
+    /**
+     * POST /api/mobile/conversations/delivered — bulk delivery ack.
+     * "My app has received everything up to now": stamps last_delivered_at
+     * on the caller's participant rows, but only for conversations holding a
+     * message from someone else newer than the current stamp — routine
+     * app-opens with nothing new write nothing and broadcast nothing.
+     */
+    public function delivered(Request $request): Response
+    {
+        $user = $request->user();
+        $now = now();
+
+        $rows = ConversationParticipant::query()
+            ->where('user_id', $user->id)
+            ->with('conversation')
+            ->whereExists(function ($query) use ($user) {
+                $query->selectRaw('1')
+                    ->from('messages')
+                    ->whereColumn('messages.conversation_id', 'conversation_participants.conversation_id')
+                    ->where('messages.user_id', '!=', $user->id)
+                    ->whereNull('messages.deleted_at')
+                    ->where(function ($q) {
+                        $q->whereNull('conversation_participants.last_delivered_at')
+                            ->orWhereColumn('messages.created_at', '>', 'conversation_participants.last_delivered_at');
+                    });
+            })
+            ->get();
+
+        foreach ($rows as $participant) {
+            // A participant row is not an access-control list (see
+            // ConversationService::touchParticipant). A stale row — e.g. the
+            // user was removed from the band owning the channel — must not be
+            // stamped or broadcast for a conversation they can no longer view.
+            if ($user->cannot('view', $participant->conversation)) {
+                continue;
+            }
+
+            $participant->forceFill(['last_delivered_at' => $now])->save();
+            broadcast(new ConversationStreamEvent($participant->conversation_id, 'conversation.delivered', [
+                'user_id' => $user->id,
+                'last_delivered_at' => $now->toIso8601String(),
+            ]))->toOthers();
+        }
+
+        return response()->noContent();
     }
 
     /** POST /api/mobile/conversations/{conversation}/typing — ephemeral, nothing stored. */

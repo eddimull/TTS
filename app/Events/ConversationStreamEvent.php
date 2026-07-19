@@ -13,11 +13,12 @@ use Illuminate\Queue\SerializesModels;
  * append/edit/delete, read receipts, and typing — no refetch round-trip.
  * ShouldBroadcastNow: latency matters more than queue smoothing here.
  *
- * One class, FIVE wire events — broadcastAs() returns the type itself, so
- * clients bind to five distinct event names with no envelope:
+ * One class, SIX wire events — broadcastAs() returns the type itself, so
+ * clients bind to six distinct event names with no envelope:
  *   message.created {message} | message.updated {message}
  *   message.deleted {message_id} | conversation.read {user_id, last_read_at}
  *   conversation.typing {user_id, name}
+ *   conversation.delivered {user_id, last_delivered_at}
  */
 class ConversationStreamEvent implements ShouldBroadcastNow
 {
