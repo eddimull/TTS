@@ -4,6 +4,7 @@ namespace Tests\Feature\Api\Mobile\Chat;
 
 use App\Events\ConversationStreamEvent;
 use App\Models\ConversationParticipant;
+use App\Models\User;
 use App\Services\Chat\ConversationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -105,6 +106,37 @@ class DeliveredReceiptTest extends TestCase
         $this->actingAs($member)->postJson('/api/mobile/conversations/delivered')->assertStatus(204);
 
         Event::assertDispatchedTimes(ConversationStreamEvent::class, 1);
+    }
+
+    public function test_bulk_ack_skips_conversations_the_user_can_no_longer_view(): void
+    {
+        Event::fake([ConversationStreamEvent::class]);
+
+        [$owner, $band] = $this->makeOwnerWithBand();
+        // A band channel the outsider is NOT a member of — per ConversationPolicy
+        // they cannot 'view' it, even though a stale participant row exists.
+        $channel = app(ConversationService::class)->bandChannelFor($band);
+        $channel->messages()->create(['user_id' => $owner->id, 'body' => 'members only']);
+
+        // Simulate a stale participant row: a user who was removed from the band
+        // after the row was created (participant rows are not an access list).
+        $outsider = User::factory()->create();
+        ConversationParticipant::create([
+            'conversation_id' => $channel->id,
+            'user_id'         => $outsider->id,
+        ]);
+
+        $this->actingAs($outsider)
+            ->postJson('/api/mobile/conversations/delivered')
+            ->assertStatus(204);
+
+        // The stale row must NOT be stamped...
+        $row = ConversationParticipant::where('conversation_id', $channel->id)
+            ->where('user_id', $outsider->id)->first();
+        $this->assertNull($row->last_delivered_at);
+
+        // ...and NO delivered broadcast may fire for a non-viewable conversation.
+        Event::assertNotDispatched(ConversationStreamEvent::class);
     }
 
     public function test_own_messages_do_not_require_delivery(): void

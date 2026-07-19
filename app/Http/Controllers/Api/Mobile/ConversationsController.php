@@ -461,6 +461,7 @@ class ConversationsController extends Controller
 
         $rows = ConversationParticipant::query()
             ->where('user_id', $user->id)
+            ->with('conversation')
             ->whereExists(function ($query) use ($user) {
                 $query->selectRaw('1')
                     ->from('messages')
@@ -475,6 +476,14 @@ class ConversationsController extends Controller
             ->get();
 
         foreach ($rows as $participant) {
+            // A participant row is not an access-control list (see
+            // ConversationService::touchParticipant). A stale row — e.g. the
+            // user was removed from the band owning the channel — must not be
+            // stamped or broadcast for a conversation they can no longer view.
+            if ($user->cannot('view', $participant->conversation)) {
+                continue;
+            }
+
             $participant->forceFill(['last_delivered_at' => $now])->save();
             broadcast(new ConversationStreamEvent($participant->conversation_id, 'conversation.delivered', [
                 'user_id' => $user->id,
