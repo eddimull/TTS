@@ -96,6 +96,98 @@ class DashboardFormatterTest extends TestCase
     }
 
     /**
+     * A materialized scheduled (cancelled) rehearsal carries is_cancelled from a
+     * raw select, so the value arrives as int 1 (or "1"). The dashboard payload
+     * must emit a real JSON boolean `true` so the Flutter app renders the
+     * cancelled styling instead of a normal blue marker/card.
+     */
+    public function test_cancelled_rehearsal_emits_is_cancelled_true(): void
+    {
+        $rehearsalEvent = [
+            'id'             => 100,
+            'eventable_id'   => 31,
+            'eventable_type' => 'App\\Models\\Rehearsal',
+            'key'            => 'rehearsal-cancelled',
+            'title'          => 'Cancelled Rehearsal',
+            'date'           => '2026-07-22',
+            'event_source'   => 'rehearsal',
+            'is_cancelled'   => 1, // raw select yields int, not bool
+            'band_id'        => null,
+        ];
+
+        $out = $this->formatter->formatEvents([$rehearsalEvent]);
+
+        $this->assertArrayHasKey('is_cancelled', $out[0]);
+        $this->assertSame(true, $out[0]['is_cancelled'], 'is_cancelled must be a real JSON boolean, not int 1');
+    }
+
+    /**
+     * A booking row has NULL is_cancelled (bookings can't be cancelled
+     * rehearsals). It must coalesce to boolean false, never null.
+     */
+    public function test_booking_emits_is_cancelled_false(): void
+    {
+        $booking = [
+            'id'             => 555,
+            'eventable_id'   => 7,
+            'eventable_type' => 'App\\Models\\Bookings',
+            'key'            => 'booking-xyz',
+            'title'          => 'Bar Gig',
+            'date'           => '2026-07-01',
+            'event_source'   => 'booking',
+            'is_cancelled'   => null,
+            'band_id'        => null,
+        ];
+
+        $out = $this->formatter->formatEvents([$booking]);
+
+        $this->assertSame(false, $out[0]['is_cancelled'], 'booking rows must emit boolean false, not null');
+    }
+
+    /**
+     * A virtual rehearsal_schedule row sets is_cancelled => false already; it
+     * must pass through as boolean false.
+     */
+    public function test_virtual_rehearsal_emits_is_cancelled_false(): void
+    {
+        $virtual = [
+            'id'           => null,
+            'key'          => 'virtual-rehearsal-9-2026-06-27',
+            'title'        => 'Weekly Rehearsal',
+            'date'         => '2026-06-27',
+            'event_source' => 'rehearsal_schedule',
+            'is_cancelled' => false,
+            'band_id'      => null,
+        ];
+
+        $out = $this->formatter->formatEvents([$virtual]);
+
+        $this->assertSame(false, $out[0]['is_cancelled']);
+    }
+
+    /**
+     * When a row omits is_cancelled entirely, the payload must still carry the
+     * key with a boolean false default (the Flutter EventSummary defaults false
+     * when absent, but the wire contract should be explicit).
+     */
+    public function test_missing_is_cancelled_defaults_to_false(): void
+    {
+        $row = [
+            'id'           => 1,
+            'key'          => 'no-flag',
+            'title'        => 'Some Event',
+            'date'         => '2026-07-01',
+            'event_source' => 'band_event',
+            'band_id'      => null,
+        ];
+
+        $out = $this->formatter->formatEvents([$row]);
+
+        $this->assertArrayHasKey('is_cancelled', $out[0]);
+        $this->assertSame(false, $out[0]['is_cancelled']);
+    }
+
+    /**
      * Regression (Copilot review, PR #527): UserEventsService::getSubEvents()
      * (the sub-only dashboard path) hands DashboardController a collection of
      * raw Eloquent `Events` models — never arrays. conversablePairs() used to

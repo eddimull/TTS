@@ -179,6 +179,7 @@ class DashboardFormatter
             'venue_name'      => $e['venue_name'] ?? null,
             'venue_address'   => $e['venue_address'] ?? null,
             'status'          => $e['status'] ?? null,
+            'is_cancelled'    => (bool) ($e['is_cancelled'] ?? false),
             'live_session_id' => $e['live_session_id'] ?? null,
             'band'            => $this->formatBand($e['band_id'] ?? null),
             'unread_comment_count' => ($pair = $this->conversableFor($e)) !== null
