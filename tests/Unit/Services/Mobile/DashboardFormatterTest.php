@@ -118,7 +118,6 @@ class DashboardFormatterTest extends TestCase
         $out = $this->formatter->formatEvents([$rehearsalEvent]);
 
         $this->assertArrayHasKey('is_cancelled', $out[0]);
-        $this->assertTrue($out[0]['is_cancelled']);
         $this->assertSame(true, $out[0]['is_cancelled'], 'is_cancelled must be a real JSON boolean, not int 1');
     }
 
