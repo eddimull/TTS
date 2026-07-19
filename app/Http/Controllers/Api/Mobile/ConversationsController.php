@@ -17,6 +17,7 @@ use App\Services\Chat\ConversationService;
 use App\Services\Chat\MessageFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -453,7 +454,7 @@ class ConversationsController extends Controller
      * message from someone else newer than the current stamp — routine
      * app-opens with nothing new write nothing and broadcast nothing.
      */
-    public function delivered(Request $request): \Illuminate\Http\Response
+    public function delivered(Request $request): Response
     {
         $user = $request->user();
         $now = now();
