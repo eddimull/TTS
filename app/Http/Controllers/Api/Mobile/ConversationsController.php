@@ -306,6 +306,7 @@ class ConversationsController extends Controller
                 'name'         => $p->user?->name,
                 'avatar_url'   => null,
                 'last_read_at' => $p->last_read_at?->toIso8601String(),
+                'last_delivered_at' => $p->last_delivered_at?->toIso8601String(),
             ])->values();
 
         // Reuse the one Conversation JSON shape via summarize(). touchParticipant()

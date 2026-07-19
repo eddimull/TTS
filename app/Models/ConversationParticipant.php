@@ -6,9 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class ConversationParticipant extends Model
 {
-    protected $fillable = ['conversation_id', 'user_id', 'last_read_at'];
+    protected $fillable = ['conversation_id', 'user_id', 'last_read_at', 'last_delivered_at'];
 
-    protected $casts = ['last_read_at' => 'datetime'];
+    protected $casts = ['last_read_at' => 'datetime', 'last_delivered_at' => 'datetime'];
 
     public function conversation()
     {
