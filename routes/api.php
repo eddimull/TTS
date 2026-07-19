@@ -132,6 +132,8 @@ Route::prefix('mobile')->group(function () {
         Route::patch('/messages/{message}', [App\Http\Controllers\Api\Mobile\MessagesController::class, 'update'])->name('mobile.messages.update');
         Route::delete('/messages/{message}', [App\Http\Controllers\Api\Mobile\MessagesController::class, 'destroy'])->name('mobile.messages.destroy');
         Route::get('/messages/{message}/attachments/{attachment}', [App\Http\Controllers\Api\Mobile\MessagesController::class, 'attachment'])->name('mobile.messages.attachments.show');
+        Route::post('/messages/{message}/reactions', [App\Http\Controllers\Api\Mobile\MessageReactionsController::class, 'store'])->name('mobile.messages.reactions.store');
+        Route::delete('/messages/{message}/reactions/{emoji}', [App\Http\Controllers\Api\Mobile\MessageReactionsController::class, 'destroy'])->name('mobile.messages.reactions.destroy');
 
         // Events
         Route::get('/events/{event}', [App\Http\Controllers\Api\Mobile\EventsController::class, 'show'])->name('mobile.events.show');

@@ -292,7 +292,7 @@ class ConversationsController extends Controller
         $limit = 50;
 
         $page = $conversation->messages()->withTrashed()
-            ->with(['user', 'attachments'])
+            ->with(['user', 'attachments', 'reactions'])
             ->when($before, fn ($q) => $q->where('id', '<', $before))
             ->latest('id')->limit($limit + 1)->get();
 
@@ -404,7 +404,7 @@ class ConversationsController extends Controller
         // Sending implies having read everything up to your own message.
         $this->conversations->touchParticipant($conversation, $user);
 
-        $message->load(['user', 'attachments']);
+        $message->load(['user', 'attachments', 'reactions']);
 
         broadcast(new ConversationStreamEvent($conversation->id, 'message.created', [
             'message' => $this->formatter->format($message),
