@@ -110,9 +110,10 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
 
         if ($this->relationLoaded('events')) {
             $primary = $this->events
+                ->sortBy(fn ($e) => [$e->date?->timestamp ?? PHP_INT_MAX, $e->id])
                 ->first();
         } else {
-            $primary = $this->events()->first();
+            $primary = $this->events()->orderBy('date')->orderBy('id')->first();
         }
 
         $this->cachedPrimaryEvent = $primary;
@@ -135,10 +136,10 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
 
         if ($this->relationLoaded('events')) {
             $last = $this->events
-                // ->sortBy([['date', 'asc'], ['id', 'asc']])
+                ->sortBy(fn ($e) => [$e->date?->timestamp ?? PHP_INT_MIN, $e->id])
                 ->last();
         } else {
-            $last = $this->events()->first();
+            $last = $this->events()->orderBy('date', 'desc')->orderBy('id', 'desc')->first();
         }
 
         $this->cachedLastEvent = $last;
@@ -516,7 +517,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
             ])
             ->addSelect(['start_date' => static::primaryEventDateSubquery()])
             ->whereRaw('COALESCE(payments_sum.total_paid, 0) < bookings.price')
-            ->with(['payout', 'events' => fn ($q) => $q->select(static::EVENT_FINANCE_COLUMNS)])
+            ->with(['payout', 'events' => fn ($q) => $q->select(static::EVENT_FINANCE_COLUMNS)->orderBy('date')->orderBy('id')])
             ->get();
     }
 
@@ -526,7 +527,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
             ->selectRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id AND status = "paid") as amount_paid', [Bookings::class])
             ->addSelect(['start_date' => static::primaryEventDateSubquery()])
             ->whereRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id AND status = "paid") >= bookings.price', [Bookings::class])
-            ->with(['payout', 'events' => fn ($q) => $q->select(static::EVENT_FINANCE_COLUMNS)])
+            ->with(['payout', 'events' => fn ($q) => $q->select(static::EVENT_FINANCE_COLUMNS)->orderBy('date')->orderBy('id')])
             ->get();
     }
 
@@ -557,8 +558,8 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
             ->select('date')
             ->whereColumn('events.eventable_id', 'bookings.id')
             ->where('events.eventable_type', Bookings::class)
-            // ->orderBy('date')
-            // ->orderBy('id')
+            ->orderBy('date')
+            ->orderBy('id')
             ->limit(1);
     }
 
