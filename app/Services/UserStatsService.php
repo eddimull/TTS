@@ -104,6 +104,9 @@ class UserStatsService
             // event they were assigned to (mirrors getTravelStats scoping).
             $allowedEventIds = $this->getAllowedEventIds($band->id);
 
+            // No ORDER BY: the loop below iterates every row and the results
+            // are later grouped/sorted by year — the DESC created_at just
+            // forces a filesort over the whole band's booking set.
             $bookingsQuery = \App\Models\Bookings::where('band_id', $band->id)
                 ->whereIn('status', ['confirmed', 'pending'])
                 ->with([
@@ -111,8 +114,7 @@ class UserStatsService
                     'events.eventMembers.bandRole',
                     'events.eventMembers.rosterMember.bandRole',
                     'events.eventMembers.rosterMember.user',
-                ])
-                ->orderBy('created_at', 'desc');
+                ]);
 
             if ($allowedEventIds !== null) {
                 // Sub: their per-event assignment list already defines the exact
@@ -668,35 +670,27 @@ class UserStatsService
                 },
             ];
 
-            // Get events from bookings for this band. Subs are scoped by their
-            // assigned events (no join-date gate — see getPaymentStats);
-            // owners/members are gated to events on or after they joined.
-            $bookingEventsQuery = Events::whereHasMorph('eventable', [\App\Models\Bookings::class], function ($query) use ($band) {
-                $query->where('band_id', $band->id);
-            })
+            // Single query covering both morph types (Bookings + BandEvents)
+            // instead of two separate whereHasMorph fetches. Push the sort +
+            // limit down to SQL so users with thousands of events don't
+            // hydrate them all just to keep 100 at the end.
+            $bandEventsQuery = Events::whereHasMorph(
+                'eventable',
+                [\App\Models\Bookings::class, \App\Models\BandEvents::class],
+                fn ($query) => $query->where('band_id', $band->id),
+            )
             ->with($withClause)
-            ->where('date', '<=', Carbon::now());
+            ->where('date', '<=', Carbon::now())
+            ->orderBy('date', 'desc')
+            ->limit(100);
 
             if ($allowedEventIds !== null) {
-                $bookingEventsQuery->whereIn('events.id', $allowedEventIds);
+                $bandEventsQuery->whereIn('events.id', $allowedEventIds);
             } else {
-                $bookingEventsQuery->where('date', '>=', $joinDate);
+                $bandEventsQuery->where('date', '>=', $joinDate);
             }
 
-            // Get events from legacy band_events for this band (same scoping rules).
-            $bandEventEventsQuery = Events::whereHasMorph('eventable', [\App\Models\BandEvents::class], function ($query) use ($band) {
-                $query->where('band_id', $band->id);
-            })
-            ->with($withClause)
-            ->where('date', '<=', Carbon::now());
-
-            if ($allowedEventIds !== null) {
-                $bandEventEventsQuery->whereIn('events.id', $allowedEventIds);
-            } else {
-                $bandEventEventsQuery->where('date', '>=', $joinDate);
-            }
-
-            $bandEvents = $bookingEventsQuery->get()->concat($bandEventEventsQuery->get())
+            $bandEvents = $bandEventsQuery->get()
                 ->filter(function ($event) {
                     $member = $event->eventMembers->first();
                     return $member === null || in_array($member->attendance_status, ['confirmed', 'attended']);
