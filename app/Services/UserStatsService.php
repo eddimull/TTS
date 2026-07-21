@@ -363,6 +363,7 @@ class UserStatsService
             if ($payoutConfig->flow_diagram && is_array($payoutConfig->flow_diagram) && isset($payoutConfig->flow_diagram['nodes'])) {
                 // Flow-based calculation - need to calculate on the fly
                 $distribution = $payoutConfig->calculatePayouts($bookingPrice, null, $booking);
+                $this->freezeIfPastEvent($booking, $band, $bookingPrice, $distribution, $payoutConfig->id);
 
                 if (isset($distribution['member_payouts'])) {
                     $userTotal = 0;
@@ -397,6 +398,8 @@ class UserStatsService
 
             if ($hasUserIds) {
                 // Payment groups: Find this user's share by user_id
+                $this->freezeIfPastEvent($booking, $band, $bookingPrice, $distribution, $payoutConfig->id);
+
                 $userTotal = 0;
                 foreach ($distribution['member_payouts'] as $memberPayout) {
                     if (isset($memberPayout['user_id']) && $memberPayout['user_id'] == $this->user->id) {
@@ -458,6 +461,78 @@ class UserStatsService
 
             return 0;
         }
+    }
+
+    /**
+     * Freeze the computed distribution onto the booking's Payout row once the
+     * event is fully past. Historical payouts don't change, so subsequent
+     * /stats loads can hit the fast path in calculateUserShareFromBooking
+     * instead of re-running calculatePayouts. Only freezes distributions
+     * that carry user_ids — the fast path relies on them, and legacy
+     * by-type distributions need the runtime member-count summation.
+     *
+     * Matches the model's stated design: calculation_result is a derived
+     * cache written by read paths (BandPayoutConfig doc for the field).
+     */
+    protected function freezeIfPastEvent(
+        $booking,
+        $band,
+        float $bookingPrice,
+        array $distribution,
+        ?int $payoutConfigId,
+    ): void {
+        if (!$this->isBookingFullyPast($booking)) {
+            return;
+        }
+
+        $hasUserIds = !empty($distribution['member_payouts'])
+            && isset($distribution['member_payouts'][0]['user_id']);
+        if (!$hasUserIds) {
+            return;
+        }
+
+        $payout = $booking->payout;
+        if ($payout) {
+            // Skip the write if the same distribution is already cached — avoids
+            // an update per row when /stats is loaded repeatedly.
+            if ($payout->calculation_result == $distribution) {
+                return;
+            }
+            $payout->calculation_result = $distribution;
+            $payout->payout_config_id = $payoutConfigId;
+            $payout->save();
+            return;
+        }
+
+        \App\Models\Payout::create([
+            'payable_type' => \App\Models\Bookings::class,
+            'payable_id' => $booking->id,
+            'band_id' => $band->id,
+            'payout_config_id' => $payoutConfigId,
+            'base_amount' => $bookingPrice,
+            'adjusted_amount' => $bookingPrice,
+            'calculation_result' => $distribution,
+        ]);
+
+        // Attach so subsequent reads on this in-memory booking see the row.
+        $booking->setRelation('payout', \App\Models\Payout::where('payable_type', \App\Models\Bookings::class)
+            ->where('payable_id', $booking->id)
+            ->first());
+    }
+
+    /**
+     * A booking is "fully past" once every one of its events has a date
+     * strictly before today. Bookings with no events (no known date) are
+     * never treated as past — freezing them would cache a distribution we'd
+     * want to recompute when a date shows up.
+     */
+    protected function isBookingFullyPast($booking): bool
+    {
+        $endDate = $booking->end_date;
+        if ($endDate === null) {
+            return false;
+        }
+        return $endDate->lt(Carbon::now()->startOfDay());
     }
 
     /**
