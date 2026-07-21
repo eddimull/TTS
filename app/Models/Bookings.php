@@ -516,7 +516,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
             ])
             ->addSelect(['start_date' => static::primaryEventDateSubquery()])
             ->whereRaw('COALESCE(payments_sum.total_paid, 0) < bookings.price')
-            ->with('payout')
+            ->with(['payout', 'events' => fn ($q) => $q->select(static::EVENT_FINANCE_COLUMNS)])
             ->get();
     }
 
@@ -526,9 +526,25 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
             ->selectRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id AND status = "paid") as amount_paid', [Bookings::class])
             ->addSelect(['start_date' => static::primaryEventDateSubquery()])
             ->whereRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id AND status = "paid") >= bookings.price', [Bookings::class])
-            ->with('payout')
+            ->with(['payout', 'events' => fn ($q) => $q->select(static::EVENT_FINANCE_COLUMNS)])
             ->get();
     }
+
+    /**
+     * Columns pulled when eager-loading events from finance scopes. Skips the
+     * `additional_data` JSON blob (large) and other unused fields; keeps just
+     * what the end_date / event_count / venue_summary / total_duration
+     * accessors need. eventable_* is required for the morph match.
+     */
+    private const EVENT_FINANCE_COLUMNS = [
+        'id',
+        'eventable_id',
+        'eventable_type',
+        'date',
+        'start_time',
+        'end_time',
+        'venue_name',
+    ];
 
     /**
      * Correlated subquery that returns the earliest event date for the current
