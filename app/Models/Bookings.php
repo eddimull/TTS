@@ -110,7 +110,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
 
         if ($this->relationLoaded('events')) {
             $primary = $this->events
-                ->sortBy([['date', 'asc'], ['id', 'asc']])
+                ->sortBy(fn ($e) => [$e->date?->timestamp ?? PHP_INT_MAX, $e->id])
                 ->first();
         } else {
             $primary = $this->events()->orderBy('date')->orderBy('id')->first();
@@ -136,7 +136,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
 
         if ($this->relationLoaded('events')) {
             $last = $this->events
-                ->sortBy([['date', 'asc'], ['id', 'asc']])
+                ->sortBy(fn ($e) => [$e->date?->timestamp ?? PHP_INT_MIN, $e->id])
                 ->last();
         } else {
             $last = $this->events()->orderBy('date', 'desc')->orderBy('id', 'desc')->first();
@@ -182,11 +182,21 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
 
     public function getStartDateAttribute(): ?\Carbon\Carbon
     {
+        // scopePaid/scopeUnpaid pre-select the primary event's date to avoid an
+        // N+1 across a band's bookings. Prefer that raw value when present.
+        if (array_key_exists('start_date', $this->attributes)) {
+            $raw = $this->attributes['start_date'];
+            return $raw ? \Carbon\Carbon::parse($raw) : null;
+        }
         return $this->primaryEvent()?->date;
     }
 
     public function getEndDateAttribute(): ?\Carbon\Carbon
     {
+        if (array_key_exists('end_date', $this->attributes)) {
+            $raw = $this->attributes['end_date'];
+            return $raw ? \Carbon\Carbon::parse($raw) : null;
+        }
         return $this->lastEvent()?->date;
     }
 
@@ -325,20 +335,20 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
     public function getAdjustedPayoutTotalAttribute(): float
     {
         $basePrice = is_string($this->price) ? floatval($this->price) : $this->price;
-        
+
         // If payout exists with adjustments, use adjusted_amount
         if ($this->relationLoaded('payout') && $this->payout) {
             return $this->payout->adjusted_amount_float;
         }
-        
+
         // If payout exists in DB but not loaded
         $payout = $this->payout()->first();
         if ($payout) {
-            return is_string($payout->adjusted_amount) 
-                ? floatval($payout->adjusted_amount) 
+            return is_string($payout->adjusted_amount)
+                ? floatval($payout->adjusted_amount)
                 : $payout->adjusted_amount;
         }
-        
+
         // No payout record, return base price
         return $basePrice;
     }
@@ -481,7 +491,10 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
 
     public function scopeUnpaid($query)
     {
-        return $query->leftJoinSub(
+        // Bands::bookings() adds ORDER BY created_at DESC on every query using
+        // the relation — that forces a filesort across the whole result set.
+        // Finance callers only aggregate, so drop the inherited order.
+        return $query->reorder()->leftJoinSub(
             function ($query)
             {
                 $query->from('payments')
@@ -502,18 +515,52 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
                     ->where('status', 'paid')
 
             ])
+            ->addSelect(['start_date' => static::primaryEventDateSubquery()])
             ->whereRaw('COALESCE(payments_sum.total_paid, 0) < bookings.price')
-            ->with('payout')
+            ->with(['payout', 'events' => fn ($q) => $q->select(static::EVENT_FINANCE_COLUMNS)->orderBy('date')->orderBy('id')])
             ->get();
     }
 
     public function scopePaid($query)
     {
-        return $query->select('bookings.*')
+        return $query->reorder()->select('bookings.*')
             ->selectRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id AND status = "paid") as amount_paid', [Bookings::class])
+            ->addSelect(['start_date' => static::primaryEventDateSubquery()])
             ->whereRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id AND status = "paid") >= bookings.price', [Bookings::class])
-            ->with('payout')
+            ->with(['payout', 'events' => fn ($q) => $q->select(static::EVENT_FINANCE_COLUMNS)->orderBy('date')->orderBy('id')])
             ->get();
+    }
+
+    /**
+     * Columns pulled when eager-loading events from finance scopes. Skips the
+     * `additional_data` JSON blob (large) and other unused fields; keeps just
+     * what the end_date / event_count / venue_summary / total_duration
+     * accessors need. eventable_* is required for the morph match.
+     */
+    private const EVENT_FINANCE_COLUMNS = [
+        'id',
+        'eventable_id',
+        'eventable_type',
+        'date',
+        'start_time',
+        'end_time',
+        'venue_name',
+    ];
+
+    /**
+     * Correlated subquery that returns the earliest event date for the current
+     * booking row. Used by scopePaid/scopeUnpaid to hydrate start_date without
+     * an N+1 across the collection.
+     */
+    protected static function primaryEventDateSubquery()
+    {
+        return Events::query()
+            ->select('date')
+            ->whereColumn('events.eventable_id', 'bookings.id')
+            ->where('events.eventable_type', Bookings::class)
+            ->orderBy('date')
+            ->orderBy('id')
+            ->limit(1);
     }
 
     public function getContractRecipients(): array
