@@ -46,7 +46,7 @@ class SendUserPushTest extends TestCase
         $sender = Mockery::mock(FcmSender::class);
         $sender->shouldReceive('sendAlert')
             ->once()
-            ->with('tok-1', 'Rehearsal cancelled', 'Tuesday practice', Mockery::type('array'))
+            ->with('tok-1', 'Rehearsal cancelled', 'Tuesday practice', Mockery::type('array'), null)
             ->andReturn(FcmSender::DELIVERED);
 
         $data = ['type' => 'rehearsal_cancelled', 'title' => 'Rehearsal cancelled', 'body' => 'Tuesday practice'];
@@ -86,5 +86,20 @@ class SendUserPushTest extends TestCase
         (new SendUserPush($user->id, $data, 'dup-key'))->handle($this->fakeSender(FcmSender::DELIVERED));
 
         $this->assertSame(1, PushNotificationLog::where('dedupe_key', 'dup-key')->count());
+    }
+
+    public function test_android_tag_is_forwarded_to_send_alert(): void
+    {
+        $user = User::factory()->create();
+        DeviceToken::create(['user_id' => $user->id, 'token' => 'tok-1', 'platform' => 'android']);
+
+        $sender = Mockery::mock(FcmSender::class);
+        $sender->shouldReceive('sendAlert')
+            ->once()
+            ->with('tok-1', 'T', 'B', Mockery::type('array'), 'chat_9')
+            ->andReturn(FcmSender::DELIVERED);
+
+        $data = ['type' => 'chat_message', 'title' => 'T', 'body' => 'B'];
+        (new SendUserPush($user->id, $data, 'k-tag', alert: true, androidTag: 'chat_9'))->handle($sender);
     }
 }
