@@ -44,17 +44,26 @@ class FcmSender
      * Send a notification+data (hybrid) message to one token. The OS renders
      * the notification when the app is backgrounded/terminated; the data map
      * still carries the full payload contract for in-app routing.
+     *
+     * $androidTag, when given, becomes the Android notification tag: pushes
+     * sharing a tag REPLACE each other in the tray (one slot per entity, e.g.
+     * per chat conversation) instead of stacking one notification per send,
+     * and the app can clear the slot by tag once the entity is viewed.
      * @param array<string,string> $data
      */
-    public function sendAlert(string $token, string $title, string $body, array $data = []): string
+    public function sendAlert(string $token, string $title, string $body, array $data = [], ?string $androidTag = null): string
     {
         try {
+            $androidNotification = ['channel_id' => 'band_updates'];
+            if ($androidTag !== null) {
+                $androidNotification['tag'] = $androidTag;
+            }
             $message = CloudMessage::new()
                 ->withToken($token)
                 ->withNotification(Notification::create($title, $body))
                 ->withData($data)
                 ->withAndroidConfig(AndroidConfig::fromArray([
-                    'notification' => ['channel_id' => 'band_updates'],
+                    'notification' => $androidNotification,
                 ]));
             $this->messaging->send($message);
             return self::DELIVERED;

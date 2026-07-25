@@ -51,7 +51,12 @@ class ProcessChatMessagePush implements ShouldQueue
             // alert: true routes through FcmSender::sendAlert() so a real APNs
             // notification block is sent. iOS never delivers data-only pushes to
             // a backgrounded app; the data map still rides along for tap routing.
-            SendUserPush::dispatch((int) $userId, $data, 'chat_message:' . $message->id, true);
+            // The per-conversation Android tag keeps one tray slot per thread
+            // (new messages replace, the app clears the slot on thread open) —
+            // unbounded stacking also breaks tap deep-linking, because Android
+            // auto-groups 4+ notifications and a group-summary tap carries no
+            // message data to route on.
+            SendUserPush::dispatch((int) $userId, $data, 'chat_message:' . $message->id, true, 'chat_' . $conversation->id);
         }
     }
 

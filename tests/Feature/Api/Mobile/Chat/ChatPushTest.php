@@ -91,4 +91,19 @@ class ChatPushTest extends TestCase
 
         Queue::assertPushed(SendUserPush::class, fn (SendUserPush $job) => $job->data['body'] === '📷 Photo');
     }
+
+    public function test_chat_push_carries_per_conversation_android_tag(): void
+    {
+        Queue::fake([SendUserPush::class]);
+        [$owner, $band] = $this->makeOwnerWithBand();
+        $member = $this->makeMember($band);
+        $dm = app(ConversationService::class)->dmBetween($owner, $member);
+
+        $this->actingAs($owner)
+            ->postJson("/api/mobile/conversations/{$dm->id}/messages", ['body' => 'tag me'])
+            ->assertStatus(201);
+
+        Queue::assertPushed(SendUserPush::class, fn (SendUserPush $job) =>
+            $job->androidTag === 'chat_' . $dm->id);
+    }
 }

@@ -29,6 +29,7 @@ class SendUserPush implements ShouldQueue
         public array $data,
         public string $dedupeKey,
         public bool $alert = false,
+        public ?string $androidTag = null,
     ) {}
 
     public function handle(FcmSender $fcm): void
@@ -43,6 +44,7 @@ class SendUserPush implements ShouldQueue
                     (string) ($this->data['title'] ?? ''),
                     (string) ($this->data['body'] ?? ''),
                     $this->data,
+                    $this->androidTag,
                 )
                 : $fcm->sendData($deviceToken->token, $this->data);
 
