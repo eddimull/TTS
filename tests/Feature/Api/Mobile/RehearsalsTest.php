@@ -331,6 +331,62 @@ class RehearsalsTest extends TestCase
         $virtuals->each(fn ($v) => $this->assertLessThanOrEqual($until, $v['date']));
     }
 
+    public static function garbageDateProvider(): array
+    {
+        return [
+            'not a date'      => ['not-a-date'],
+            'partial'         => ['2026-13'],
+            'wrong format'    => ['07/25/2026'],
+            'impossible date' => ['2026-02-31'],
+            'injection-ish'   => ['0000-00-00'],
+        ];
+    }
+
+    /**
+     * @dataProvider garbageDateProvider
+     */
+    public function test_schedules_garbage_until_behaves_as_absent(string $garbage): void
+    {
+        ['band' => $band, 'token' => $token] = $this->createUserWithBandAndRehearsal();
+
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson("/api/mobile/bands/{$band->id}/rehearsal-schedules?include_virtual=1&until={$garbage}");
+
+        $response->assertOk();
+        $virtuals = collect($response->json('schedules.0.upcoming_rehearsals'))
+            ->where('is_virtual', true);
+
+        // Falls back to the default +60d window: virtuals exist, none beyond it.
+        $this->assertGreaterThanOrEqual(6, $virtuals->count(),
+            "garbage until={$garbage} must fall back to the default 60-day window");
+        $defaultCutoff = now()->addDays(60)->toDateString();
+        $virtuals->each(fn ($v) => $this->assertLessThanOrEqual($defaultCutoff, $v['date']));
+    }
+
+    public function test_schedules_until_is_clamped_to_the_forward_horizon(): void
+    {
+        ['band' => $band, 'token' => $token] = $this->createUserWithBandAndRehearsal();
+
+        $until = now()->addYears(20)->toDateString();
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson("/api/mobile/bands/{$band->id}/rehearsal-schedules?include_virtual=1&until={$until}");
+
+        $response->assertOk();
+        $virtuals = collect($response->json('schedules.0.upcoming_rehearsals'))
+            ->where('is_virtual', true);
+
+        $horizon = now()->addYears(6)->toDateString();
+        $beyondHorizon = $virtuals->filter(fn ($v) => $v['date'] > $horizon);
+        $this->assertCount(0, $beyondHorizon,
+            'a 20-year `until` must clamp to the +6-year forward horizon');
+
+        // Sanity: the clamp still leaves a large, useful window.
+        $this->assertGreaterThan(50, $virtuals->count(),
+            'clamping must not collapse the window to the default');
+    }
+
     public function test_schedules_inactive_schedule_gets_no_virtuals(): void
     {
         $user = User::factory()->create();

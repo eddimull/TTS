@@ -16,6 +16,38 @@ class DashboardController extends Controller
     /** Days of past events to include in the initial dashboard payload. */
     private const INITIAL_PAST_WINDOW_DAYS = 30;
 
+    /** Furthest forward a client may ask the calendar to reach. */
+    private const MAX_FORWARD_YEARS = 6;
+
+    /**
+     * Parse a client-supplied date, accepting only strict Y-m-d.
+     *
+     * Carbon::parse() is deliberately avoided here: it throws on true garbage
+     * (a 500) and silently rolls over garbage-adjacent input like 2026-02-31.
+     *
+     * @return Carbon|null null when absent or malformed — callers decide the fallback
+     */
+    private static function parseDateParam(?string $value): ?Carbon
+    {
+        if (! is_string($value) || $value === '' || ! Carbon::hasFormat($value, 'Y-m-d')) {
+            return null;
+        }
+
+        $date = Carbon::createFromFormat('Y-m-d', $value)->startOfDay();
+
+        // hasFormat() validates the pattern, not the calendar: 2026-02-31 passes
+        // and then silently rolls over to 2026-03-03. Require a round-trip.
+        return $date->toDateString() === $value ? $date : null;
+    }
+
+    /** Cap a forward-looking bound at the horizon so clients cannot request decades. */
+    private static function clampForward(Carbon $date): Carbon
+    {
+        $horizon = Carbon::now()->addYears(self::MAX_FORWARD_YEARS);
+
+        return $date->greaterThan($horizon) ? $horizon : $date;
+    }
+
     public function __construct(
         private readonly DashboardFormatter $formatter,
         private readonly TopicUnreadService $topicUnread,
@@ -35,10 +67,13 @@ class DashboardController extends Controller
         $afterDate = Carbon::now()->subDays(self::INITIAL_PAST_WINDOW_DAYS);
 
         // Opt-in forward bound: new app versions send ?to= and lazy-fetch
-        // beyond it via load-newer. Absent `to` preserves old-client behavior.
-        $beforeDate = $request->filled('to')
-            ? Carbon::parse($request->input('to'))
-            : null;
+        // beyond it via load-newer. An absent — or malformed — `to` preserves
+        // old-client behavior (no upper bound).
+        $beforeDate = self::parseDateParam($request->input('to'));
+
+        if ($beforeDate) {
+            $beforeDate = self::clampForward($beforeDate);
+        }
 
         $events         = (new UserEventsService())->getEvents($afterDate, $beforeDate);
         $upcomingCharts = (new UserEventsService())->getUpcomingCharts();
@@ -68,16 +103,18 @@ class DashboardController extends Controller
      */
     public function loadOlder(Request $request): JsonResponse
     {
-        $beforeDateInput = $request->input('before_date');
+        // A missing or malformed bound is treated leniently: an empty window,
+        // not an error. The calendar simply back-fetches nothing.
+        $beforeDate = self::parseDateParam($request->input('before_date'));
 
-        if (! $beforeDateInput) {
+        if (! $beforeDate) {
             return response()->json(['events' => []]);
         }
 
         Auth::setUser($request->user());
 
-        $beforeDate = Carbon::parse($beforeDateInput);
-        $afterDate  = $beforeDate->copy()->subDays(30);
+        // No forward clamp here: this bound walks backwards, it is not a horizon.
+        $afterDate = $beforeDate->copy()->subDays(30);
 
         $events = (new UserEventsService())->getEvents($afterDate, $beforeDate);
 
@@ -103,17 +140,23 @@ class DashboardController extends Controller
      */
     public function loadNewer(Request $request): JsonResponse
     {
-        $afterDateInput  = $request->input('after_date');
-        $beforeDateInput = $request->input('before_date');
+        $afterDate  = self::parseDateParam($request->input('after_date'));
+        $beforeDate = self::parseDateParam($request->input('before_date'));
 
-        if (! $afterDateInput || ! $beforeDateInput) {
+        // Missing or malformed bounds yield an empty window rather than an error.
+        if (! $afterDate || ! $beforeDate) {
+            return response()->json(['events' => []]);
+        }
+
+        // Forward horizon applies to the leading edge only.
+        $beforeDate = self::clampForward($beforeDate);
+
+        // An inverted (or empty) window can never contain events.
+        if ($beforeDate->lessThanOrEqualTo($afterDate)) {
             return response()->json(['events' => []]);
         }
 
         Auth::setUser($request->user());
-
-        $afterDate  = Carbon::parse($afterDateInput);
-        $beforeDate = Carbon::parse($beforeDateInput);
 
         $events = (new UserEventsService())->getEvents($afterDate, $beforeDate);
 

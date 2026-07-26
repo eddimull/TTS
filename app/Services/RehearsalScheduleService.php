@@ -220,7 +220,9 @@ class RehearsalScheduleService
                 $monthDate = $this->findPatternDayInMonth($currentDate, $pattern, $targetDayOfWeek);
             }
 
-            if ($monthDate && $monthDate->gte($startDate) && $monthDate->lte($endDate)) {
+            // End-exclusive [start, end), matching the daily/weekday/weekly loops.
+            // Callers wanting an inclusive `until` date pass endOfDay().
+            if ($monthDate && $monthDate->gte($startDate) && $monthDate->lt($endDate)) {
                 $dateString = $monthDate->toDateString();
                 
                 if (!in_array($dateString, $existingDates)) {

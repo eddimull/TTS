@@ -17,7 +17,41 @@ use Illuminate\Support\Carbon;
 
 class RehearsalsController extends Controller
 {
+    /** Furthest forward a client may ask the schedule window to reach. */
+    private const MAX_FORWARD_YEARS = 6;
+
+    /** Default schedule window when `until` is absent or malformed. */
+    private const DEFAULT_WINDOW_DAYS = 60;
+
     public function __construct(private readonly RehearsalService $rehearsalService) {}
+
+    /**
+     * Parse a client-supplied date, accepting only strict Y-m-d, and cap it at
+     * the forward horizon.
+     *
+     * Carbon::parse() is deliberately avoided: it throws on true garbage (a
+     * 500) and silently rolls over garbage-adjacent input like 2026-02-31.
+     *
+     * @return Carbon|null null when absent or malformed — caller falls back to the default
+     */
+    private static function parseForwardBound(?string $value): ?Carbon
+    {
+        if (! is_string($value) || $value === '' || ! Carbon::hasFormat($value, 'Y-m-d')) {
+            return null;
+        }
+
+        $date = Carbon::createFromFormat('Y-m-d', $value)->startOfDay();
+
+        // hasFormat() validates the pattern, not the calendar: 2026-02-31 passes
+        // and then silently rolls over to 2026-03-03. Require a round-trip.
+        if ($date->toDateString() !== $value) {
+            return null;
+        }
+
+        $horizon = Carbon::now()->addYears(self::MAX_FORWARD_YEARS);
+
+        return $date->greaterThan($horizon) ? $horizon : $date;
+    }
 
     /**
      * GET /api/mobile/bands/{band}/rehearsal-schedules
@@ -33,9 +67,9 @@ class RehearsalsController extends Controller
     {
         $band           = $request->input('mobile_band');
         $includeVirtual = $request->boolean('include_virtual');
-        $cutoff         = $request->filled('until')
-            ? Carbon::parse($request->input('until'))->toDateString()
-            : now()->addDays(60)->toDateString();
+        // A malformed `until` falls back to the default window rather than 500ing.
+        $cutoff = (self::parseForwardBound($request->input('until'))
+            ?? now()->addDays(self::DEFAULT_WINDOW_DAYS))->toDateString();
 
         $schedules = RehearsalSchedule::where('band_id', $band->id)
             ->with(['rehearsals' => function ($query) use ($cutoff) {
