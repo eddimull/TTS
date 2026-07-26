@@ -8,9 +8,12 @@ use App\Http\Requests\Mobile\UpdateRehearsalNotesRequest;
 use App\Jobs\ProcessRehearsalCancelled;
 use App\Models\Rehearsal;
 use App\Models\RehearsalSchedule;
+use App\Services\Mobile\RecurrenceLabelService;
 use App\Services\Mobile\RehearsalService;
+use App\Services\RehearsalScheduleService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class RehearsalsController extends Controller
 {
@@ -19,12 +22,20 @@ class RehearsalsController extends Controller
     /**
      * GET /api/mobile/bands/{band}/rehearsal-schedules
      *
-     * List all rehearsal schedules for a band with upcoming rehearsals (next 60 days).
+     * List all rehearsal schedules for a band with upcoming rehearsals.
+     * Window: today .. `until` (inclusive, default +60 days). With
+     * `include_virtual=1`, un-materialized occurrences generated from the
+     * schedule's recurrence rule are merged in (id: null, event_key:
+     * "virtual-rehearsal-{scheduleId}-{date}"). Both params are opt-in so the
+     * default response stays byte-compatible for old clients.
      */
     public function schedules(Request $request): JsonResponse
     {
-        $band   = $request->input('mobile_band');
-        $cutoff = now()->addDays(60)->toDateString();
+        $band           = $request->input('mobile_band');
+        $includeVirtual = $request->boolean('include_virtual');
+        $cutoff         = $request->filled('until')
+            ? Carbon::parse($request->input('until'))->toDateString()
+            : now()->addDays(60)->toDateString();
 
         $schedules = RehearsalSchedule::where('band_id', $band->id)
             ->with(['rehearsals' => function ($query) use ($cutoff) {
@@ -35,18 +46,49 @@ class RehearsalsController extends Controller
             }])
             ->get();
 
-        $mapped = $schedules->map(fn ($schedule) => [
-            'id'               => $schedule->id,
-            'name'             => $schedule->name,
-            'description'      => $schedule->description,
-            'frequency'        => $schedule->frequency,
-            'location_name'    => $schedule->location_name,
-            'location_address' => $schedule->location_address,
-            'active'           => $schedule->active,
-            'upcoming_rehearsals' => $schedule->rehearsals
-                ->map(fn ($r) => $this->rehearsalService->formatSummary($r))
-                ->values()->all(),
-        ]);
+        $virtualBySchedule = collect();
+        if ($includeVirtual) {
+            // endOfDay so the inclusive `until` date survives the generators'
+            // exclusive `lt($endDate)` loops.
+            $virtualBySchedule = (new RehearsalScheduleService())
+                ->generateUpcomingRehearsals([$band->id], now(), Carbon::parse($cutoff)->endOfDay())
+                ->groupBy('rehearsal_schedule_id');
+        }
+
+        $labels = new RecurrenceLabelService();
+
+        $mapped = $schedules->map(function ($schedule) use ($labels, $includeVirtual, $virtualBySchedule) {
+            $upcoming = $schedule->rehearsals
+                ->map(fn ($r) => $this->rehearsalService->formatSummary($r)
+                    + ($includeVirtual ? ['is_virtual' => false] : []));
+
+            if ($includeVirtual) {
+                $virtuals = ($virtualBySchedule[$schedule->id] ?? collect())->map(fn ($v) => [
+                    'id'            => null,
+                    'date'          => $v['date'],
+                    'time'          => substr((string) $v['time'], 0, 5),
+                    'venue_name'    => $v['venue_name'],
+                    'venue_address' => $v['venue_address'],
+                    'is_cancelled'  => false,
+                    'notes'         => null,
+                    'event_key'     => $v['key'],
+                    'is_virtual'    => true,
+                ]);
+                $upcoming = $upcoming->concat($virtuals)->sortBy('date')->values();
+            }
+
+            return [
+                'id'                  => $schedule->id,
+                'name'                => $schedule->name,
+                'description'         => $schedule->description,
+                'frequency'           => $schedule->frequency,
+                'recurrence_label'    => $labels->format($schedule),
+                'location_name'       => $schedule->location_name,
+                'location_address'    => $schedule->location_address,
+                'active'              => $schedule->active,
+                'upcoming_rehearsals' => $upcoming->values()->all(),
+            ];
+        });
 
         return response()->json(['schedules' => $mapped->values()]);
     }
