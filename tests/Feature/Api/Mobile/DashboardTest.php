@@ -426,4 +426,59 @@ class DashboardTest extends TestCase
         $this->getJson('/api/mobile/dashboard/load-newer?after_date=2026-01-01&before_date=2026-02-01')
             ->assertUnauthorized();
     }
+
+    public function test_dashboard_without_to_still_returns_far_future_events(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        $eventType = EventTypes::factory()->create();
+        $booking = Bookings::factory()->create(['band_id' => $band->id]);
+        Events::factory()->create([
+            'eventable_id'   => $booking->id,
+            'eventable_type' => 'App\\Models\\Bookings',
+            'event_type_id'  => $eventType->id,
+            'date'           => now()->addYears(3)->format('Y-m-d'),
+        ]);
+
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        // Old-client behavior preserved: no `to` → far-future booking included.
+        $response = $this->withToken($token)->getJson('/api/mobile/dashboard');
+        $response->assertOk();
+        $this->assertCount(1, $response->json('events'));
+    }
+
+    public function test_dashboard_with_to_bounds_the_payload(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        $eventType = EventTypes::factory()->create();
+        $booking = Bookings::factory()->create(['band_id' => $band->id]);
+        Events::factory()->create([
+            'eventable_id'   => $booking->id,
+            'eventable_type' => 'App\\Models\\Bookings',
+            'event_type_id'  => $eventType->id,
+            'date'           => now()->addYears(3)->format('Y-m-d'),
+        ]);
+        // And one inside the bound.
+        $near = Bookings::factory()->create(['band_id' => $band->id]);
+        Events::factory()->create([
+            'eventable_id'   => $near->id,
+            'eventable_type' => 'App\\Models\\Bookings',
+            'event_type_id'  => $eventType->id,
+            'date'           => now()->addDays(10)->format('Y-m-d'),
+        ]);
+
+        $token = $user->createToken('test-device')->plainTextToken;
+        $to = now()->addDays(90)->toDateString();
+
+        $response = $this->withToken($token)->getJson("/api/mobile/dashboard?to={$to}");
+        $response->assertOk();
+        $this->assertCount(1, $response->json('events'),
+            'only the near booking should survive the to= bound');
+    }
 }

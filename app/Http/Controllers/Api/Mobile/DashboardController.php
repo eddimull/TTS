@@ -34,7 +34,13 @@ class DashboardController extends Controller
         // Mobile shows a calendar (not the web feed), so include the recent past.
         $afterDate = Carbon::now()->subDays(self::INITIAL_PAST_WINDOW_DAYS);
 
-        $events         = (new UserEventsService())->getEvents($afterDate);
+        // Opt-in forward bound: new app versions send ?to= and lazy-fetch
+        // beyond it via load-newer. Absent `to` preserves old-client behavior.
+        $beforeDate = $request->filled('to')
+            ? Carbon::parse($request->input('to'))
+            : null;
+
+        $events         = (new UserEventsService())->getEvents($afterDate, $beforeDate);
         $upcomingCharts = (new UserEventsService())->getUpcomingCharts();
 
         $collection = $events instanceof \Illuminate\Support\Collection
