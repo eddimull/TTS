@@ -92,6 +92,7 @@ Route::prefix('mobile')->group(function () {
         // Dashboard
         Route::get('/dashboard', [App\Http\Controllers\Api\Mobile\DashboardController::class, 'index'])->name('mobile.dashboard');
         Route::get('/dashboard/load-older', [App\Http\Controllers\Api\Mobile\DashboardController::class, 'loadOlder'])->name('mobile.dashboard.load-older');
+        Route::get('/dashboard/load-newer', [App\Http\Controllers\Api\Mobile\DashboardController::class, 'loadNewer'])->name('mobile.dashboard.load-newer');
 
         // Aggregating charts across all of the user's bands (band-agnostic).
         Route::get('/charts', [App\Http\Controllers\Api\Mobile\MusicController::class, 'chartsForUser'])->name('mobile.charts.for-user');

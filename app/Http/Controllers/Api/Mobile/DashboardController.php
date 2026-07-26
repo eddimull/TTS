@@ -88,4 +88,40 @@ class DashboardController extends Controller
             'events' => $this->formatter->formatEvents($collection, $unreadByKey),
         ]);
     }
+
+    /**
+     * Load a future window of events for the calendar's lazy forward-fetch.
+     * Window: [after_date, before_date). Virtual rehearsals are generated for
+     * the window by UserEventsService. There is deliberately no "reached end"
+     * signal — an empty window proves nothing about later events.
+     */
+    public function loadNewer(Request $request): JsonResponse
+    {
+        $afterDateInput  = $request->input('after_date');
+        $beforeDateInput = $request->input('before_date');
+
+        if (! $afterDateInput || ! $beforeDateInput) {
+            return response()->json(['events' => []]);
+        }
+
+        Auth::setUser($request->user());
+
+        $afterDate  = Carbon::parse($afterDateInput);
+        $beforeDate = Carbon::parse($beforeDateInput);
+
+        $events = (new UserEventsService())->getEvents($afterDate, $beforeDate);
+
+        $collection = $events instanceof \Illuminate\Support\Collection
+            ? $events
+            : collect($events);
+
+        $unreadByKey = $this->topicUnread->unreadCountsForConversables(
+            $request->user(),
+            $this->formatter->conversablePairs($collection),
+        );
+
+        return response()->json([
+            'events' => $this->formatter->formatEvents($collection, $unreadByKey),
+        ]);
+    }
 }
