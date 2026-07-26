@@ -9,6 +9,7 @@ use App\Models\Bookings;
 use App\Models\EventMember;
 use App\Models\Events;
 use App\Models\EventTypes;
+use App\Models\RehearsalSchedule;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -344,5 +345,302 @@ class DashboardTest extends TestCase
         $this->assertArrayHasKey('is_cancelled', $rehearsalItem);
         $this->assertSame(true, $rehearsalItem['is_cancelled'], 'cancelled rehearsal must report is_cancelled === true');
         $this->assertSame(false, $bookingItem['is_cancelled'], 'booking must report is_cancelled === false, not null');
+    }
+
+    public function test_load_newer_returns_virtual_rehearsals_inside_the_window(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        // Weekly schedule (factory pins day_of_week = wednesday, active = true).
+        RehearsalSchedule::factory()->weekly()->create(['band_id' => $band->id]);
+
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        $after  = now()->addDays(120)->toDateString();
+        $before = now()->addDays(150)->toDateString();
+
+        $response = $this->withToken($token)
+            ->getJson("/api/mobile/dashboard/load-newer?after_date={$after}&before_date={$before}");
+
+        $response->assertOk()->assertJsonStructure(['events']);
+
+        $events = collect($response->json('events'));
+        $this->assertGreaterThanOrEqual(4, $events->count(),
+            'a weekly schedule must produce ~4 virtual rehearsals in a 30-day window');
+        $events->each(function ($e) use ($after, $before) {
+            $this->assertGreaterThanOrEqual($after, $e['date']);
+            $this->assertLessThan($before, $e['date']);
+        });
+    }
+
+    public function test_load_newer_excludes_events_outside_the_window(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        $eventType = EventTypes::factory()->create();
+        $booking = Bookings::factory()->create(['band_id' => $band->id]);
+        // 3 years out — far beyond the requested window.
+        Events::factory()->create([
+            'eventable_id'   => $booking->id,
+            'eventable_type' => 'App\\Models\\Bookings',
+            'event_type_id'  => $eventType->id,
+            'date'           => now()->addYears(3)->format('Y-m-d'),
+        ]);
+
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        $after  = now()->addDays(90)->toDateString();
+        $before = now()->addDays(120)->toDateString();
+
+        $response = $this->withToken($token)
+            ->getJson("/api/mobile/dashboard/load-newer?after_date={$after}&before_date={$before}");
+
+        $response->assertOk();
+        $this->assertCount(0, $response->json('events'));
+
+        // The same booking IS returned when the window reaches it.
+        $after2  = now()->addYears(3)->subDays(15)->toDateString();
+        $before2 = now()->addYears(3)->addDays(15)->toDateString();
+        $reach = $this->withToken($token)
+            ->getJson("/api/mobile/dashboard/load-newer?after_date={$after2}&before_date={$before2}");
+        $this->assertCount(1, $reach->json('events'));
+    }
+
+    public function test_load_newer_returns_empty_when_params_missing(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        $response = $this->withToken($token)->getJson('/api/mobile/dashboard/load-newer');
+
+        $response->assertOk();
+        $this->assertSame([], $response->json('events'));
+    }
+
+    public function test_load_newer_requires_authentication(): void
+    {
+        $this->getJson('/api/mobile/dashboard/load-newer?after_date=2026-01-01&before_date=2026-02-01')
+            ->assertUnauthorized();
+    }
+
+    public function test_dashboard_without_to_still_returns_far_future_events(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        $eventType = EventTypes::factory()->create();
+        $booking = Bookings::factory()->create(['band_id' => $band->id]);
+        Events::factory()->create([
+            'eventable_id'   => $booking->id,
+            'eventable_type' => 'App\\Models\\Bookings',
+            'event_type_id'  => $eventType->id,
+            'date'           => now()->addYears(3)->format('Y-m-d'),
+        ]);
+
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        // Old-client behavior preserved: no `to` → far-future booking included.
+        $response = $this->withToken($token)->getJson('/api/mobile/dashboard');
+        $response->assertOk();
+        $this->assertCount(1, $response->json('events'));
+    }
+
+    public function test_dashboard_with_to_bounds_the_payload(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        $eventType = EventTypes::factory()->create();
+        $booking = Bookings::factory()->create(['band_id' => $band->id]);
+        Events::factory()->create([
+            'eventable_id'   => $booking->id,
+            'eventable_type' => 'App\\Models\\Bookings',
+            'event_type_id'  => $eventType->id,
+            'date'           => now()->addYears(3)->format('Y-m-d'),
+        ]);
+        // And one inside the bound.
+        $near = Bookings::factory()->create(['band_id' => $band->id]);
+        Events::factory()->create([
+            'eventable_id'   => $near->id,
+            'eventable_type' => 'App\\Models\\Bookings',
+            'event_type_id'  => $eventType->id,
+            'date'           => now()->addDays(10)->format('Y-m-d'),
+        ]);
+
+        $token = $user->createToken('test-device')->plainTextToken;
+        $to = now()->addDays(90)->toDateString();
+
+        $response = $this->withToken($token)->getJson("/api/mobile/dashboard?to={$to}");
+        $response->assertOk();
+        $this->assertCount(1, $response->json('events'),
+            'only the near booking should survive the to= bound');
+    }
+
+    // -------------------------------------------------------------------------
+    // Date-param hardening
+    // -------------------------------------------------------------------------
+
+    /**
+     * Create a band owned by a fresh user plus a booking event on $date.
+     *
+     * @return array{band: Bands, token: string}
+     */
+    private function bandWithBookingOn(string $date): array
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        $eventType = EventTypes::factory()->create();
+        $booking = Bookings::factory()->create(['band_id' => $band->id]);
+        Events::factory()->create([
+            'eventable_id'   => $booking->id,
+            'eventable_type' => 'App\\Models\\Bookings',
+            'event_type_id'  => $eventType->id,
+            'date'           => $date,
+        ]);
+
+        return [
+            'band'  => $band,
+            'token' => $user->createToken('test-device')->plainTextToken,
+        ];
+    }
+
+    public static function garbageDateProvider(): array
+    {
+        return [
+            'not a date'      => ['not-a-date'],
+            'empty-ish'       => ['%20'],
+            'partial'         => ['2026-13'],
+            'wrong format'    => ['07/25/2026'],
+            'impossible date' => ['2026-02-31'],
+            'injection-ish'   => ['0000-00-00'],
+        ];
+    }
+
+    /**
+     * @dataProvider garbageDateProvider
+     */
+    public function test_dashboard_garbage_to_behaves_as_absent(string $garbage): void
+    {
+        // Booking 3 years out: returned under old-client (no `to`) behavior.
+        ['token' => $token] = $this->bandWithBookingOn(now()->addYears(3)->format('Y-m-d'));
+
+        $response = $this->withToken($token)->getJson("/api/mobile/dashboard?to={$garbage}");
+
+        $response->assertOk();
+        $this->assertCount(1, $response->json('events'),
+            "garbage to={$garbage} must be ignored, falling back to unbounded default");
+    }
+
+    public function test_dashboard_to_is_clamped_to_the_forward_horizon(): void
+    {
+        // 7 years out: inside a naive 20-year horizon, beyond the 6-year clamp.
+        ['token' => $token] = $this->bandWithBookingOn(now()->addYears(7)->format('Y-m-d'));
+
+        $to = now()->addYears(20)->toDateString();
+        $response = $this->withToken($token)->getJson("/api/mobile/dashboard?to={$to}");
+
+        $response->assertOk();
+        $this->assertCount(0, $response->json('events'),
+            'a 20-year `to` must clamp to +6 years, excluding the 7-year-out booking');
+    }
+
+    /**
+     * @dataProvider garbageDateProvider
+     */
+    public function test_load_older_returns_empty_for_garbage_before_date(string $garbage): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->getJson("/api/mobile/dashboard/load-older?before_date={$garbage}");
+
+        $response->assertOk();
+        $this->assertSame([], $response->json('events'));
+    }
+
+    /**
+     * @dataProvider garbageDateProvider
+     */
+    public function test_load_newer_returns_empty_for_garbage_after_date(string $garbage): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('test-device')->plainTextToken;
+        $before = now()->addDays(30)->toDateString();
+
+        $response = $this->withToken($token)
+            ->getJson("/api/mobile/dashboard/load-newer?after_date={$garbage}&before_date={$before}");
+
+        $response->assertOk();
+        $this->assertSame([], $response->json('events'));
+    }
+
+    /**
+     * @dataProvider garbageDateProvider
+     */
+    public function test_load_newer_returns_empty_for_garbage_before_date(string $garbage): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('test-device')->plainTextToken;
+        $after = now()->toDateString();
+
+        $response = $this->withToken($token)
+            ->getJson("/api/mobile/dashboard/load-newer?after_date={$after}&before_date={$garbage}");
+
+        $response->assertOk();
+        $this->assertSame([], $response->json('events'));
+    }
+
+    public function test_load_newer_returns_empty_for_inverted_window(): void
+    {
+        // A real event sits inside the (reversed) span, so a non-empty result
+        // would mean the inversion check is missing rather than the data.
+        ['token' => $token] = $this->bandWithBookingOn(now()->addDays(15)->format('Y-m-d'));
+
+        $after  = now()->addDays(30)->toDateString();
+        $before = now()->addDays(10)->toDateString();
+
+        $response = $this->withToken($token)
+            ->getJson("/api/mobile/dashboard/load-newer?after_date={$after}&before_date={$before}");
+
+        $response->assertOk();
+        $this->assertSame([], $response->json('events'), 'before_date < after_date must yield no events');
+    }
+
+    public function test_load_newer_returns_empty_for_equal_bounds(): void
+    {
+        ['token' => $token] = $this->bandWithBookingOn(now()->addDays(20)->format('Y-m-d'));
+
+        $same = now()->addDays(20)->toDateString();
+
+        $response = $this->withToken($token)
+            ->getJson("/api/mobile/dashboard/load-newer?after_date={$same}&before_date={$same}");
+
+        $response->assertOk();
+        $this->assertSame([], $response->json('events'), 'before_date == after_date is an empty window');
+    }
+
+    public function test_load_newer_before_date_is_clamped_to_the_forward_horizon(): void
+    {
+        // 7 years out: beyond the 6-year clamp, inside a naive 20-year window.
+        ['token' => $token] = $this->bandWithBookingOn(now()->addYears(7)->format('Y-m-d'));
+
+        $after  = now()->addYears(6)->subDays(30)->toDateString();
+        $before = now()->addYears(20)->toDateString();
+
+        $response = $this->withToken($token)
+            ->getJson("/api/mobile/dashboard/load-newer?after_date={$after}&before_date={$before}");
+
+        $response->assertOk();
+        $this->assertCount(0, $response->json('events'),
+            'a 20-year before_date must clamp to +6 years, excluding the 7-year-out booking');
     }
 }

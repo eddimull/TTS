@@ -233,4 +233,174 @@ class RehearsalsTest extends TestCase
         $this->patchJson("/api/mobile/rehearsals/{$rehearsal->id}/cancelled", ['is_cancelled' => true])
             ->assertUnauthorized();
     }
+
+    public function test_schedules_includes_recurrence_label(): void
+    {
+        ['band' => $band, 'token' => $token] = $this->createUserWithBandAndRehearsal();
+
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson("/api/mobile/bands/{$band->id}/rehearsal-schedules");
+
+        $response->assertOk();
+        // Factory weekly() state: day_of_week=wednesday, default_time=19:00:00.
+        $this->assertSame(
+            'Every Wednesday at 7:00 PM',
+            $response->json('schedules.0.recurrence_label')
+        );
+    }
+
+    public function test_schedules_default_response_has_no_virtuals(): void
+    {
+        ['band' => $band, 'token' => $token] = $this->createUserWithBandAndRehearsal();
+
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson("/api/mobile/bands/{$band->id}/rehearsal-schedules");
+
+        $response->assertOk();
+        foreach ($response->json('schedules.0.upcoming_rehearsals') as $item) {
+            $this->assertArrayNotHasKey('is_virtual', $item,
+                'default response must stay byte-compatible for old clients');
+            $this->assertNotNull($item['id']);
+        }
+    }
+
+    public function test_schedules_include_virtual_merges_virtual_occurrences(): void
+    {
+        [
+            'band'      => $band,
+            'schedule'  => $schedule,
+            'rehearsal' => $rehearsal,
+            'event'     => $event,
+            'token'     => $token,
+        ] = $this->createUserWithBandAndRehearsal();
+
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson("/api/mobile/bands/{$band->id}/rehearsal-schedules?include_virtual=1");
+
+        $response->assertOk();
+        $upcoming = collect($response->json('schedules.0.upcoming_rehearsals'));
+
+        // The materialized rehearsal is present exactly once, flagged real.
+        $real = $upcoming->where('id', $rehearsal->id);
+        $this->assertCount(1, $real);
+        $this->assertFalse($real->first()['is_virtual']);
+
+        // Virtual occurrences exist, have null ids and parseable keys.
+        $virtuals = $upcoming->where('is_virtual', true);
+        $this->assertGreaterThanOrEqual(6, $virtuals->count(),
+            'weekly schedule over 60 days should yield ~8 virtual occurrences');
+        $virtuals->each(function ($v) use ($schedule) {
+            $this->assertNull($v['id']);
+            $this->assertStringStartsWith("virtual-rehearsal-{$schedule->id}-", $v['event_key']);
+        });
+
+        // No virtual duplicates the materialized rehearsal's date.
+        $materializedDate = $event->date instanceof \Carbon\Carbon
+            ? $event->date->toDateString()
+            : \Carbon\Carbon::parse($event->date)->toDateString();
+        $this->assertCount(0, $virtuals->where('date', $materializedDate));
+
+        // Sorted ascending by date.
+        $dates = $upcoming->pluck('date')->all();
+        $sorted = $dates;
+        sort($sorted);
+        $this->assertSame($sorted, $dates);
+    }
+
+    public function test_schedules_until_extends_the_window(): void
+    {
+        ['band' => $band, 'token' => $token] = $this->createUserWithBandAndRehearsal();
+
+        $until = now()->addDays(180)->toDateString();
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson("/api/mobile/bands/{$band->id}/rehearsal-schedules?include_virtual=1&until={$until}");
+
+        $response->assertOk();
+        $virtuals = collect($response->json('schedules.0.upcoming_rehearsals'))
+            ->where('is_virtual', true);
+
+        $beyondSixty = $virtuals->filter(
+            fn ($v) => $v['date'] > now()->addDays(60)->toDateString()
+        );
+        $this->assertGreaterThanOrEqual(10, $beyondSixty->count(),
+            'weekly virtuals must extend past the default 60-day cutoff');
+        $virtuals->each(fn ($v) => $this->assertLessThanOrEqual($until, $v['date']));
+    }
+
+    public static function garbageDateProvider(): array
+    {
+        return [
+            'not a date'      => ['not-a-date'],
+            'partial'         => ['2026-13'],
+            'wrong format'    => ['07/25/2026'],
+            'impossible date' => ['2026-02-31'],
+            'injection-ish'   => ['0000-00-00'],
+        ];
+    }
+
+    /**
+     * @dataProvider garbageDateProvider
+     */
+    public function test_schedules_garbage_until_behaves_as_absent(string $garbage): void
+    {
+        ['band' => $band, 'token' => $token] = $this->createUserWithBandAndRehearsal();
+
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson("/api/mobile/bands/{$band->id}/rehearsal-schedules?include_virtual=1&until={$garbage}");
+
+        $response->assertOk();
+        $virtuals = collect($response->json('schedules.0.upcoming_rehearsals'))
+            ->where('is_virtual', true);
+
+        // Falls back to the default +60d window: virtuals exist, none beyond it.
+        $this->assertGreaterThanOrEqual(6, $virtuals->count(),
+            "garbage until={$garbage} must fall back to the default 60-day window");
+        $defaultCutoff = now()->addDays(60)->toDateString();
+        $virtuals->each(fn ($v) => $this->assertLessThanOrEqual($defaultCutoff, $v['date']));
+    }
+
+    public function test_schedules_until_is_clamped_to_the_forward_horizon(): void
+    {
+        ['band' => $band, 'token' => $token] = $this->createUserWithBandAndRehearsal();
+
+        $until = now()->addYears(20)->toDateString();
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson("/api/mobile/bands/{$band->id}/rehearsal-schedules?include_virtual=1&until={$until}");
+
+        $response->assertOk();
+        $virtuals = collect($response->json('schedules.0.upcoming_rehearsals'))
+            ->where('is_virtual', true);
+
+        $horizon = now()->addYears(6)->toDateString();
+        $beyondHorizon = $virtuals->filter(fn ($v) => $v['date'] > $horizon);
+        $this->assertCount(0, $beyondHorizon,
+            'a 20-year `until` must clamp to the +6-year forward horizon');
+
+        // Sanity: the clamp still leaves a large, useful window.
+        $this->assertGreaterThan(50, $virtuals->count(),
+            'clamping must not collapse the window to the default');
+    }
+
+    public function test_schedules_inactive_schedule_gets_no_virtuals(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+        RehearsalSchedule::factory()->weekly()->inactive()->create(['band_id' => $band->id]);
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson("/api/mobile/bands/{$band->id}/rehearsal-schedules?include_virtual=1");
+
+        $response->assertOk();
+        $this->assertSame([], $response->json('schedules.0.upcoming_rehearsals'));
+        $this->assertNotNull($response->json('schedules.0.recurrence_label'));
+    }
 }
