@@ -246,4 +246,124 @@ class FinanceTrendsTest extends TestCase
             ->getJson("/api/mobile/bands/{$this->band->id}/finances/trends?year=2026")
             ->assertForbidden();
     }
+
+    public function test_unearned_sums_payments_on_strictly_future_bookings(): void
+    {
+        $future = now()->addMonths(2)->format('Y-m-d');
+        $nextYear = now()->addYear()->format('Y-m-d');
+        $today = now()->format('Y-m-d');
+        $past = now()->subMonths(2)->format('Y-m-d');
+
+        // Partial deposit on a future booking → contributes amount_paid only.
+        $this->booking($this->band, 2000, $future, paidDollars: 500);
+        // Fully-paid booking in a future YEAR → contributes in full (all-years scope).
+        $this->booking($this->band, 1000, $nextYear, paidDollars: 1000);
+        // Event today counts as executed → excluded (strictly-after rule).
+        $this->booking($this->band, 800, $today, paidDollars: 800);
+        // Past booking → excluded even though fully paid.
+        $this->booking($this->band, 3000, $past, paidDollars: 3000);
+        // Cancelled future booking → excluded.
+        $this->booking($this->band, 4000, $future, paidDollars: 4000, status: 'cancelled');
+
+        $res = $this->withHeaders($this->headers($this->memberToken))
+            ->getJson("/api/mobile/bands/{$this->band->id}/finances/trends?year=" . now()->year);
+
+        $res->assertOk();
+        // $500 + $1000 → 150000 cents.
+        $res->assertJsonPath('unearned', 150000);
+
+        // Per-year breakdown: ascending years, only nonzero years, cents.
+        $futureYear = (int) now()->addMonths(2)->year;
+        $nextYearValue = (int) now()->addYear()->year;
+        if ($futureYear === $nextYearValue) {
+            // Rare window (Nov/Dec): both bookings share a year bucket.
+            $this->assertSame(
+                [['year' => $futureYear, 'amount' => 150000]],
+                $res->json('unearned_by_year'),
+            );
+        } else {
+            $this->assertSame(
+                [
+                    ['year' => $futureYear, 'amount' => 50000],
+                    ['year' => $nextYearValue, 'amount' => 100000],
+                ],
+                $res->json('unearned_by_year'),
+            );
+        }
+    }
+
+    public function test_unearned_ignores_year_and_snapshot_params(): void
+    {
+        $future = now()->addMonths(3)->format('Y-m-d');
+        $this->booking(
+            $this->band,
+            1000,
+            $future,
+            paidDollars: 250,
+            createdAt: now()->format('Y-m-d H:i:s'),
+        );
+
+        // Request A: snapshot far in the past filters the months series but unearned
+        // ignores it (because the booking was created NOW, after the snapshot date).
+        $snapshot = now()->subYears(2)->format('Y-m-d');
+        $currentYear = now()->year;
+        $resA = $this->withHeaders($this->headers($this->memberToken))
+            ->getJson("/api/mobile/bands/{$this->band->id}/finances/trends?year={$currentYear}&snapshot_date={$snapshot}");
+
+        $resA->assertOk();
+        $resA->assertJsonPath('unearned', 25000);
+        // Snapshot filter empties the months series (booking created after snapshot).
+        $this->assertSame(0, collect($resA->json('months'))->sum('count'));
+        $this->assertSame(
+            [['year' => (int) now()->addMonths(3)->year, 'amount' => 25000]],
+            $resA->json('unearned_by_year'),
+        );
+
+        // Request B: query a past year (no bookings that year) but unearned still
+        // reflects the future booking created in the present.
+        $lastYear = now()->subYear()->year;
+        $resB = $this->withHeaders($this->headers($this->memberToken))
+            ->getJson("/api/mobile/bands/{$this->band->id}/finances/trends?year={$lastYear}");
+
+        $resB->assertOk();
+        $resB->assertJsonPath('unearned', 25000);
+        $this->assertSame(
+            [['year' => (int) now()->addMonths(3)->year, 'amount' => 25000]],
+            $resB->json('unearned_by_year'),
+        );
+    }
+
+    public function test_unearned_keeps_negative_year_buckets(): void
+    {
+        // Positive deposit ~2 months out.
+        $this->booking($this->band, 2000, now()->addMonths(2)->format('Y-m-d'), paidDollars: 500);
+
+        // Net-negative future booking in a different year bucket: a refund larger
+        // than what was collected. Create the booking via the helper, then add a
+        // negative payment row directly.
+        $refunded = $this->booking($this->band, 1000, now()->addYears(2)->format('Y-m-d'), paidDollars: 100);
+        Payments::factory()->create([
+            'band_id' => $this->band->id,
+            'payable_type' => Bookings::class,
+            'payable_id' => $refunded->id,
+            'amount' => -250,
+            'status' => 'paid',
+            'date' => now()->addYears(2)->format('Y-m-d'),
+        ]);
+
+        $res = $this->withHeaders($this->headers($this->memberToken))
+            ->getJson("/api/mobile/bands/{$this->band->id}/finances/trends?year=" . now()->year);
+
+        $res->assertOk();
+        // Positive bucket 50000; negative bucket 100 - 250 dollars = -15000 cents.
+        $this->assertSame(
+            [
+                ['year' => (int) now()->addMonths(2)->year, 'amount' => 50000],
+                ['year' => (int) now()->addYears(2)->year, 'amount' => -15000],
+            ],
+            $res->json('unearned_by_year'),
+        );
+        // Derived total includes the negative bucket: 50000 - 15000.
+        $res->assertJsonPath('unearned', 35000);
+    }
 }

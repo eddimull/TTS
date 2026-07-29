@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Mobile\FinanceYearRequest;
+use App\Models\Bands;
 use App\Services\FinanceServices;
 use App\Services\Mobile\BookingFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class FinancesController extends Controller
 {
@@ -111,6 +113,10 @@ class FinancesController extends Controller
      * band. Optional ?snapshot_date=Y-m-d limits the primary series to bookings
      * created on/before that date; ?compare_with_current=1 (only with a snapshot)
      * additionally returns the current (unfiltered) series as current_months.
+     * Always includes `unearned` (cents collected on not-yet-executed bookings,
+     * all years, as of today) and `unearned_by_year` (the same figure bucketed by
+     * event-date year, ascending, nonzero years only) — both independent of
+     * year/snapshot params.
      */
     public function trends(Request $request): JsonResponse
     {
@@ -120,11 +126,16 @@ class FinancesController extends Controller
         $compare = $request->boolean('compare_with_current');
 
         $months = $this->bucketByMonth($band, $year, $snapshotDate);
+        $allBookings = $this->allBookings($band);
+
+        $unearnedByYear = $this->unearnedByYearCents($allBookings);
 
         $payload = [
             'year' => $year,
             'snapshot_date' => $snapshotDate,
-            'available_years' => $this->availableYears($band),
+            'available_years' => $this->availableYears($allBookings),
+            'unearned' => array_sum(array_column($unearnedByYear, 'amount')),
+            'unearned_by_year' => $unearnedByYear,
             'months' => $months,
         ];
 
@@ -172,14 +183,45 @@ class FinancesController extends Controller
         ], $rows));
     }
 
-    private function availableYears($band): array
+    /** All non-snapshot-filtered paid+unpaid bookings for the band. */
+    private function allBookings(Bands $band): Collection
     {
         $bands = $this->financeServices->getPaidUnpaid([$band], null);
         $b = $bands->first();
-        $bookings = collect($b->paidBookings)->concat(collect($b->unpaidBookings));
+
+        return collect($b->paidBookings)->concat(collect($b->unpaidBookings));
+    }
+
+    private function availableYears(Collection $bookings): array
+    {
         return $bookings
             ->filter(fn ($bk) => ($bk->status ?? null) !== 'cancelled' && !empty($bk->start_date))
             ->map(fn ($bk) => (int) \Carbon\Carbon::parse($bk->start_date)->year)
             ->unique()->sortDesc()->values()->all();
+    }
+
+    /**
+     * Deposits held for performances that haven't happened yet, bucketed by the
+     * booking's event-date year: amount_paid on non-cancelled bookings dated
+     * strictly after today, in cents. Ascending years, nonzero amounts only.
+     * Per-booking rounding ensures exact cent-level precision.
+     */
+    private function unearnedByYearCents(Collection $bookings): array
+    {
+        $today = \Carbon\Carbon::today();
+
+        return $bookings
+            ->filter(fn ($bk) => ($bk->status ?? null) !== 'cancelled'
+                && !empty($bk->start_date)
+                && \Carbon\Carbon::parse($bk->start_date)->startOfDay()->gt($today))
+            ->groupBy(fn ($bk) => (int) \Carbon\Carbon::parse($bk->start_date)->year)
+            ->map(fn ($group, $year) => [
+                'year' => (int) $year,
+                'amount' => (int) $group->sum(fn ($bk) => (int) round(((float) $bk->amount_paid) * 100)),
+            ])
+            ->filter(fn ($row) => $row['amount'] !== 0)
+            ->sortBy('year')
+            ->values()
+            ->all();
     }
 }
