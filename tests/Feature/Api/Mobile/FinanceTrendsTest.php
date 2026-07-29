@@ -246,4 +246,54 @@ class FinanceTrendsTest extends TestCase
             ->getJson("/api/mobile/bands/{$this->band->id}/finances/trends?year=2026")
             ->assertForbidden();
     }
+
+    public function test_unearned_sums_payments_on_strictly_future_bookings(): void
+    {
+        $future = now()->addMonths(2)->format('Y-m-d');
+        $nextYear = now()->addYear()->format('Y-m-d');
+        $today = now()->format('Y-m-d');
+        $past = now()->subMonths(2)->format('Y-m-d');
+
+        // Partial deposit on a future booking → contributes amount_paid only.
+        $this->booking($this->band, 2000, $future, paidDollars: 500);
+        // Fully-paid booking in a future YEAR → contributes in full (all-years scope).
+        $this->booking($this->band, 1000, $nextYear, paidDollars: 1000);
+        // Event today counts as executed → excluded (strictly-after rule).
+        $this->booking($this->band, 800, $today, paidDollars: 800);
+        // Past booking → excluded even though fully paid.
+        $this->booking($this->band, 3000, $past, paidDollars: 3000);
+        // Cancelled future booking → excluded.
+        $this->booking($this->band, 4000, $future, paidDollars: 4000, status: 'cancelled');
+
+        $res = $this->withHeaders($this->headers($this->memberToken))
+            ->getJson("/api/mobile/bands/{$this->band->id}/finances/trends?year=" . now()->year);
+
+        $res->assertOk();
+        // $500 + $1000 → 150000 cents.
+        $res->assertJsonPath('unearned', 150000);
+    }
+
+    public function test_unearned_ignores_year_and_snapshot_params(): void
+    {
+        $future = now()->addMonths(3)->format('Y-m-d');
+        $this->booking(
+            $this->band,
+            1000,
+            $future,
+            paidDollars: 250,
+            createdAt: now()->format('Y-m-d H:i:s'),
+        );
+
+        // Snapshot far in the past excludes the booking from the months series, and
+        // the queried year has no bookings — unearned must be unaffected by both.
+        $snapshot = now()->subYears(2)->format('Y-m-d');
+        $lastYear = now()->subYear()->year;
+        $res = $this->withHeaders($this->headers($this->memberToken))
+            ->getJson("/api/mobile/bands/{$this->band->id}/finances/trends?year={$lastYear}&snapshot_date={$snapshot}");
+
+        $res->assertOk();
+        $res->assertJsonPath('unearned', 25000);
+        // Sanity: the snapshot did filter the months series.
+        $res->assertJsonPath('months.0.count', 0);
+    }
 }
