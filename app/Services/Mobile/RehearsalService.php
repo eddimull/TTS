@@ -2,6 +2,7 @@
 
 namespace App\Services\Mobile;
 
+use App\Formatters\NoteText;
 use App\Models\EventTypes;
 use App\Models\Rehearsal;
 use App\Models\RehearsalSchedule;
@@ -23,7 +24,7 @@ class RehearsalService
             'venue_name'    => $rehearsal->venue_name,
             'venue_address' => $rehearsal->venue_address,
             'is_cancelled'  => $rehearsal->is_cancelled,
-            'notes'         => $rehearsal->notes,
+            'notes'         => NoteText::toPlainText($rehearsal->notes),
             'event_key'     => $event?->key,
         ];
     }
@@ -54,7 +55,7 @@ class RehearsalService
             'venue_name'    => $rehearsal->venue_name,
             'venue_address' => $rehearsal->venue_address,
             'is_cancelled'  => $rehearsal->is_cancelled,
-            'notes'         => $rehearsal->notes,
+            'notes'         => NoteText::toPlainText($rehearsal->notes),
             'event_key'     => $event?->key,
             'schedule'      => $schedule ? [
                 'id'            => $schedule->id,

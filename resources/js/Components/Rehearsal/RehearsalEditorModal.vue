@@ -160,11 +160,12 @@
           for="notes"
           class="block text-sm font-medium mb-1"
         >Rehearsal Notes</label>
-        <Editor
+        <Textarea
           id="notes"
           v-model="form.notes"
-          editor-style="height: 200px"
+          rows="8"
           class="w-full"
+          placeholder="Setlist, focus areas, reminders..."
         />
         <small
           v-if="form.errors.notes"
@@ -479,7 +480,7 @@
                 v-if="event.notes"
                 class="text-xs text-gray-500 dark:text-gray-500 mt-1 truncate"
               >
-                Notes: {{ stripHtml(event.notes) }}
+                Notes: {{ noteToPlainText(event.notes) }}
               </div>
             </label>
           </div>
@@ -544,7 +545,7 @@ import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
 import DatePicker from 'primevue/datepicker';
 import Checkbox from 'primevue/checkbox';
-import Editor from 'primevue/editor';
+import { noteToPlainText } from '@/utils/noteText';
 
 const props = defineProps({
     visible: {
@@ -649,7 +650,7 @@ const initializeSongsAndCharts = () => {
 const form = useForm({
     venue_name: props.rehearsal?.venue_name || '',
     venue_address: props.rehearsal?.venue_address || '',
-    notes: props.rehearsal?.notes || '',
+    notes: noteToPlainText(props.rehearsal?.notes),
     additional_data: props.rehearsal?.additional_data || { songs: [], charts: [] },
     is_cancelled: props.rehearsal?.is_cancelled || false,
     ...getEventData(),
@@ -682,7 +683,7 @@ watch(() => props.rehearsal, (newRehearsal) => {
         const eventData = getEventData();
         form.venue_name = newRehearsal.venue_name || '';
         form.venue_address = newRehearsal.venue_address || '';
-        form.notes = newRehearsal.notes || '';
+        form.notes = noteToPlainText(newRehearsal.notes);
         form.additional_data = newRehearsal.additional_data || { songs: [], charts: [] };
         form.is_cancelled = newRehearsal.is_cancelled || false;
         form.event_title = eventData.event_title;
@@ -698,12 +699,6 @@ watch(() => props.rehearsal, (newRehearsal) => {
         selectedCharts.value = [];
     }
 }, { deep: true });
-
-const stripHtml = (html) => {
-    const tmp = document.createElement('DIV');
-    tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || '';
-};
 
 const submit = () => {
     // Check if this is an edit or create operation
