@@ -271,6 +271,25 @@ class FinanceTrendsTest extends TestCase
         $res->assertOk();
         // $500 + $1000 → 150000 cents.
         $res->assertJsonPath('unearned', 150000);
+
+        // Per-year breakdown: ascending years, only nonzero years, cents.
+        $futureYear = (int) now()->addMonths(2)->year;
+        $nextYearValue = (int) now()->addYear()->year;
+        if ($futureYear === $nextYearValue) {
+            // Rare window (Nov/Dec): both bookings share a year bucket.
+            $this->assertSame(
+                [['year' => $futureYear, 'amount' => 150000]],
+                $res->json('unearned_by_year'),
+            );
+        } else {
+            $this->assertSame(
+                [
+                    ['year' => $futureYear, 'amount' => 50000],
+                    ['year' => $nextYearValue, 'amount' => 100000],
+                ],
+                $res->json('unearned_by_year'),
+            );
+        }
     }
 
     public function test_unearned_ignores_year_and_snapshot_params(): void
@@ -295,6 +314,10 @@ class FinanceTrendsTest extends TestCase
         $resA->assertJsonPath('unearned', 25000);
         // Snapshot filter empties the months series (booking created after snapshot).
         $this->assertSame(0, collect($resA->json('months'))->sum('count'));
+        $this->assertSame(
+            [['year' => (int) now()->addMonths(3)->year, 'amount' => 25000]],
+            $resA->json('unearned_by_year'),
+        );
 
         // Request B: query a past year (no bookings that year) but unearned still
         // reflects the future booking created in the present.
@@ -304,5 +327,9 @@ class FinanceTrendsTest extends TestCase
 
         $resB->assertOk();
         $resB->assertJsonPath('unearned', 25000);
+        $this->assertSame(
+            [['year' => (int) now()->addMonths(3)->year, 'amount' => 25000]],
+            $resB->json('unearned_by_year'),
+        );
     }
 }
