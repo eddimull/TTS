@@ -83,7 +83,7 @@
         @toggle="toggleSection('notes')"
       >
         <div
-          class="prose dark:prose-invert max-w-none"
+          class="prose dark:prose-invert max-w-none whitespace-pre-wrap"
           v-html="event.notes"
         />
       </SectionCard>
@@ -132,7 +132,7 @@
         @toggle="toggleSection('attire')"
       >
         <div
-          class="prose dark:prose-invert max-w-none"
+          class="prose dark:prose-invert max-w-none whitespace-pre-wrap"
           v-html="event.additional_data.attire"
         />
       </SectionCard>
@@ -234,7 +234,7 @@
           <!-- Performance Notes -->
           <div
             v-if="event.additional_data.performance?.notes"
-            class="prose dark:prose-invert max-w-none"
+            class="prose dark:prose-invert max-w-none whitespace-pre-wrap"
             v-html="event.additional_data.performance.notes"
           />
 

@@ -179,7 +179,7 @@
                   Rehearsal Notes
                 </h3>
                 <p class="text-gray-900 dark:text-white whitespace-pre-wrap">
-                  {{ rehearsal.notes }}
+                  {{ noteToPlainText(rehearsal.notes) }}
                 </p>
               </div>
 
@@ -227,9 +227,9 @@
                         </div>
                         <div
                           v-if="association.notes"
-                          class="text-sm text-gray-500 dark:text-gray-500 mt-1"
+                          class="text-sm text-gray-500 dark:text-gray-500 mt-1 whitespace-pre-wrap"
                         >
-                          {{ association.notes }}
+                          {{ noteToPlainText(association.notes) }}
                         </div>
                       </div>
                       <Link
@@ -277,6 +277,7 @@ import { DateTime } from 'luxon';
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue';
 import Container from '@/Components/Container.vue';
 import { useBandRealtime } from '@/composables/useBandRealtime';
+import { noteToPlainText } from '@/utils/noteText';
 
 const props = defineProps({
     band: {
