@@ -219,7 +219,7 @@ class FinancesController extends Controller
                 'year' => (int) $year,
                 'amount' => (int) $group->sum(fn ($bk) => (int) round(((float) $bk->amount_paid) * 100)),
             ])
-            ->filter(fn ($row) => $row['amount'] > 0)
+            ->filter(fn ($row) => $row['amount'] !== 0)
             ->sortBy('year')
             ->values()
             ->all();
