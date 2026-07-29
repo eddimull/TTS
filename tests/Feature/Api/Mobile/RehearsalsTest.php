@@ -149,6 +149,36 @@ class RehearsalsTest extends TestCase
         $this->assertEquals($schedule->id, $response->json('rehearsal.schedule.id'));
     }
 
+    public function test_rehearsal_show_preserves_line_breaks_in_plain_text_notes(): void
+    {
+        [
+            'rehearsal' => $rehearsal,
+            'token'     => $token,
+        ] = $this->createUserWithBandAndRehearsal();
+
+        $rehearsal->update(['notes' => "Setlist:\nSong A\nSong B"]);
+
+        $this->withToken($token)
+            ->getJson("/api/mobile/rehearsals/{$rehearsal->id}")
+            ->assertOk()
+            ->assertJsonPath('rehearsal.notes', "Setlist:\nSong A\nSong B");
+    }
+
+    public function test_rehearsal_show_converts_legacy_html_notes_to_plain_text(): void
+    {
+        [
+            'rehearsal' => $rehearsal,
+            'token'     => $token,
+        ] = $this->createUserWithBandAndRehearsal();
+
+        $rehearsal->update(['notes' => '<p>Setlist:</p><p>Song A</p><p>Song B</p>']);
+
+        $this->withToken($token)
+            ->getJson("/api/mobile/rehearsals/{$rehearsal->id}")
+            ->assertOk()
+            ->assertJsonPath('rehearsal.notes', "Setlist:\nSong A\nSong B");
+    }
+
     public function test_rehearsal_show_returns_403_for_user_without_access(): void
     {
         ['rehearsal' => $rehearsal] = $this->createUserWithBandAndRehearsal();

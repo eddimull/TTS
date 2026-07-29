@@ -10,8 +10,19 @@
         <div
           ref="rehearsalNotesRef"
           class="ml-3 p-3 shadow-lg rounded break-normal content-container bg-gray-100 dark:bg-slate-700"
-          v-html="rehearsalNotes"
-        />
+        >
+          <!-- Display notes as plain text or HTML (backward compatibility) -->
+          <div
+            v-if="isHtmlContent(rehearsalNotes)"
+            v-html="rehearsalNotes"
+          />
+          <div
+            v-else
+            class="whitespace-pre-wrap"
+          >
+            {{ rehearsalNotes }}
+          </div>
+        </div>
       </li>
       <li
         v-else
@@ -200,10 +211,18 @@
                   <div class="font-semibold text-gray-700 dark:text-gray-300 mb-2">
                     Performance Notes:
                   </div>
-                  <div
-                    class="p-3 bg-white dark:bg-slate-800 rounded border border-gray-200 dark:border-gray-600 associated-event-notes"
-                    v-html="association.associable.additional_data.performance.notes"
-                  />
+                  <div class="p-3 bg-white dark:bg-slate-800 rounded border border-gray-200 dark:border-gray-600 associated-event-notes">
+                    <div
+                      v-if="isHtmlContent(association.associable.additional_data.performance.notes)"
+                      v-html="association.associable.additional_data.performance.notes"
+                    />
+                    <div
+                      v-else
+                      class="whitespace-pre-wrap"
+                    >
+                      {{ association.associable.additional_data.performance.notes }}
+                    </div>
+                  </div>
                 </div>
 
                 <!-- Requested Songs -->
@@ -488,8 +507,18 @@
             <div
               ref="performanceNotesRef"
               class="p-3 shadow-lg rounded break-normal content-container bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 overflow-auto"
-              v-html="event.additional_data.performance.notes"
-            />
+            >
+              <div
+                v-if="isHtmlContent(event.additional_data.performance.notes)"
+                v-html="event.additional_data.performance.notes"
+              />
+              <div
+                v-else
+                class="whitespace-pre-wrap"
+              >
+                {{ event.additional_data.performance.notes }}
+              </div>
+            </div>
           </div>
 
           <!-- Requested Songs -->
@@ -686,8 +715,18 @@
         <div
           ref="attireRef"
           class="p-3 shadow-lg rounded break-normal bg-gray-100 dark:bg-slate-700 overflow-auto"
-          v-html="event.additional_data?.attire"
-        />
+        >
+          <div
+            v-if="isHtmlContent(event.additional_data.attire)"
+            v-html="event.additional_data.attire"
+          />
+          <div
+            v-else
+            class="whitespace-pre-wrap"
+          >
+            {{ event.additional_data.attire }}
+          </div>
+        </div>
       </li>
       <Contacts :contacts="event.contacts || []" />
     </ul>
@@ -709,6 +748,7 @@ import Wedding from "./Components/Wedding.vue";
 import Contacts from "./Components/Contacts.vue";
 import ImageLightbox from "@/Components/ImageLightbox.vue";
 import { useImageThumbnails } from "@/Composables/useImageThumbnails";
+import { isHtmlContent } from "@/utils/noteText";
 
 const props = defineProps(["event", "type"]);
 
@@ -846,12 +886,6 @@ const getSpotifyEmbedUrl = (url) => {
 };
 
 // Attachment helpers
-const isHtmlContent = (text) => {
-  if (!text) return false;
-  // Check for common HTML tags (backward compatibility for old rich text)
-  return /<\/?[a-z][\s\S]*>/i.test(text);
-};
-
 const getAttachmentIconClass = (mimeType) => {
   if (mimeType.startsWith('image/')) return 'pi pi-image';
   if (mimeType === 'application/pdf') return 'pi pi-file-pdf';

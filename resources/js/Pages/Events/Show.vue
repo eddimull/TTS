@@ -294,7 +294,7 @@
           <div class="space-y-4">
           <div
             v-if="event.additional_data.performance?.notes"
-            class="prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-gray-300"
+            class="prose prose-sm dark:prose-invert max-w-none text-gray-700 dark:text-gray-300 whitespace-pre-wrap"
             v-html="event.additional_data.performance.notes"
           />
 

@@ -197,9 +197,9 @@
 
                         <div
                           v-if="rehearsal.notes"
-                          class="mt-3 text-sm text-gray-600 dark:text-gray-400"
+                          class="mt-3 text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap"
                         >
-                          <strong>Notes:</strong> {{ rehearsal.notes }}
+                          <strong>Notes:</strong> {{ noteToPlainText(rehearsal.notes) }}
                         </div>
                       </div>
 
@@ -245,6 +245,7 @@ import { DateTime } from 'luxon';
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue';
 import Container from '@/Components/Container.vue';
 import { useBandRealtime } from '@/composables/useBandRealtime';
+import { noteToPlainText } from '@/utils/noteText';
 
 const props = defineProps({
     band: {

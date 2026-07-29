@@ -224,8 +224,8 @@
             <td class="border border-black border-2 px-4 py-2 w-1/6 bg-gray-200">
               Notes:
             </td>
-            <td class="border border-black border-2 px-4 py-2">
-              {{ event.notes }}
+            <td class="border border-black border-2 px-4 py-2 whitespace-pre-wrap">
+              {{ noteToPlainText(event.notes) }}
             </td>                                                    
           </tr>       
           <tr v-if="(event.lodging)">
@@ -259,6 +259,7 @@
 <script>
     import BreezeUnAuthenticatedLayout from '@/Layouts/Guest'
     import { DateTime } from 'luxon';
+    import { noteToPlainText } from '@/utils/noteText';
     export default {
         components: {
             BreezeUnAuthenticatedLayout,
@@ -272,6 +273,7 @@
             }
         },
         methods:{
+            noteToPlainText,
             formatDate(date){
                 return DateTime.fromISO(String(date)).toFormat('MM/dd/yyyy')
             },
