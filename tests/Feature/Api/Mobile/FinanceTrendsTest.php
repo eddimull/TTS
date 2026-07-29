@@ -332,4 +332,38 @@ class FinanceTrendsTest extends TestCase
             $resB->json('unearned_by_year'),
         );
     }
+
+    public function test_unearned_keeps_negative_year_buckets(): void
+    {
+        // Positive deposit ~2 months out.
+        $this->booking($this->band, 2000, now()->addMonths(2)->format('Y-m-d'), paidDollars: 500);
+
+        // Net-negative future booking in a different year bucket: a refund larger
+        // than what was collected. Create the booking via the helper, then add a
+        // negative payment row directly.
+        $refunded = $this->booking($this->band, 1000, now()->addYears(2)->format('Y-m-d'), paidDollars: 100);
+        Payments::factory()->create([
+            'band_id' => $this->band->id,
+            'payable_type' => Bookings::class,
+            'payable_id' => $refunded->id,
+            'amount' => -250,
+            'status' => 'paid',
+            'date' => now()->addYears(2)->format('Y-m-d'),
+        ]);
+
+        $res = $this->withHeaders($this->headers($this->memberToken))
+            ->getJson("/api/mobile/bands/{$this->band->id}/finances/trends?year=" . now()->year);
+
+        $res->assertOk();
+        // Positive bucket 50000; negative bucket 100 - 250 dollars = -15000 cents.
+        $this->assertSame(
+            [
+                ['year' => (int) now()->addMonths(2)->year, 'amount' => 50000],
+                ['year' => (int) now()->addYears(2)->year, 'amount' => -15000],
+            ],
+            $res->json('unearned_by_year'),
+        );
+        // Derived total includes the negative bucket: 50000 - 15000.
+        $res->assertJsonPath('unearned', 35000);
+    }
 }
