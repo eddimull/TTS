@@ -111,6 +111,8 @@ class FinancesController extends Controller
      * band. Optional ?snapshot_date=Y-m-d limits the primary series to bookings
      * created on/before that date; ?compare_with_current=1 (only with a snapshot)
      * additionally returns the current (unfiltered) series as current_months.
+     * Always includes `unearned`: cents collected on not-yet-executed bookings
+     * (all years, as of today), independent of year/snapshot params.
      */
     public function trends(Request $request): JsonResponse
     {
@@ -120,11 +122,13 @@ class FinancesController extends Controller
         $compare = $request->boolean('compare_with_current');
 
         $months = $this->bucketByMonth($band, $year, $snapshotDate);
+        $allBookings = $this->allBookings($band);
 
         $payload = [
             'year' => $year,
             'snapshot_date' => $snapshotDate,
-            'available_years' => $this->availableYears($band),
+            'available_years' => $this->availableYears($allBookings),
+            'unearned' => $this->unearnedCents($allBookings),
             'months' => $months,
         ];
 
@@ -172,14 +176,37 @@ class FinancesController extends Controller
         ], $rows));
     }
 
-    private function availableYears($band): array
+    /** All non-snapshot-filtered paid+unpaid bookings for the band. */
+    private function allBookings($band): \Illuminate\Support\Collection
     {
         $bands = $this->financeServices->getPaidUnpaid([$band], null);
         $b = $bands->first();
-        $bookings = collect($b->paidBookings)->concat(collect($b->unpaidBookings));
+
+        return collect($b->paidBookings)->concat(collect($b->unpaidBookings));
+    }
+
+    private function availableYears($bookings): array
+    {
         return $bookings
             ->filter(fn ($bk) => ($bk->status ?? null) !== 'cancelled' && !empty($bk->start_date))
             ->map(fn ($bk) => (int) \Carbon\Carbon::parse($bk->start_date)->year)
             ->unique()->sortDesc()->values()->all();
+    }
+
+    /**
+     * Deposits held for performances that haven't happened yet: amount_paid on
+     * non-cancelled bookings dated strictly after today, all years, in cents.
+     */
+    private function unearnedCents($bookings): int
+    {
+        $today = \Carbon\Carbon::today();
+
+        $total = $bookings
+            ->filter(fn ($bk) => ($bk->status ?? null) !== 'cancelled'
+                && !empty($bk->start_date)
+                && \Carbon\Carbon::parse($bk->start_date)->startOfDay()->gt($today))
+            ->sum(fn ($bk) => (float) $bk->amount_paid);
+
+        return (int) round($total * 100);
     }
 }
