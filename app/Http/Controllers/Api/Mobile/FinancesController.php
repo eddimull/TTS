@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Mobile\FinanceYearRequest;
+use App\Models\Bands;
 use App\Services\FinanceServices;
 use App\Services\Mobile\BookingFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class FinancesController extends Controller
 {
@@ -177,7 +179,7 @@ class FinancesController extends Controller
     }
 
     /** All non-snapshot-filtered paid+unpaid bookings for the band. */
-    private function allBookings($band): \Illuminate\Support\Collection
+    private function allBookings(Bands $band): Collection
     {
         $bands = $this->financeServices->getPaidUnpaid([$band], null);
         $b = $bands->first();
@@ -185,7 +187,7 @@ class FinancesController extends Controller
         return collect($b->paidBookings)->concat(collect($b->unpaidBookings));
     }
 
-    private function availableYears($bookings): array
+    private function availableYears(Collection $bookings): array
     {
         return $bookings
             ->filter(fn ($bk) => ($bk->status ?? null) !== 'cancelled' && !empty($bk->start_date))
@@ -196,8 +198,9 @@ class FinancesController extends Controller
     /**
      * Deposits held for performances that haven't happened yet: amount_paid on
      * non-cancelled bookings dated strictly after today, all years, in cents.
+     * Per-booking rounding ensures exact cent-level precision.
      */
-    private function unearnedCents($bookings): int
+    private function unearnedCents(Collection $bookings): int
     {
         $today = \Carbon\Carbon::today();
 
@@ -205,8 +208,8 @@ class FinancesController extends Controller
             ->filter(fn ($bk) => ($bk->status ?? null) !== 'cancelled'
                 && !empty($bk->start_date)
                 && \Carbon\Carbon::parse($bk->start_date)->startOfDay()->gt($today))
-            ->sum(fn ($bk) => (float) $bk->amount_paid);
+            ->sum(fn ($bk) => (int) round(((float) $bk->amount_paid) * 100));
 
-        return (int) round($total * 100);
+        return (int) $total;
     }
 }

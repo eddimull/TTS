@@ -284,16 +284,25 @@ class FinanceTrendsTest extends TestCase
             createdAt: now()->format('Y-m-d H:i:s'),
         );
 
-        // Snapshot far in the past excludes the booking from the months series, and
-        // the queried year has no bookings — unearned must be unaffected by both.
+        // Request A: snapshot far in the past filters the months series but unearned
+        // ignores it (because the booking was created NOW, after the snapshot date).
         $snapshot = now()->subYears(2)->format('Y-m-d');
-        $lastYear = now()->subYear()->year;
-        $res = $this->withHeaders($this->headers($this->memberToken))
-            ->getJson("/api/mobile/bands/{$this->band->id}/finances/trends?year={$lastYear}&snapshot_date={$snapshot}");
+        $currentYear = now()->year;
+        $resA = $this->withHeaders($this->headers($this->memberToken))
+            ->getJson("/api/mobile/bands/{$this->band->id}/finances/trends?year={$currentYear}&snapshot_date={$snapshot}");
 
-        $res->assertOk();
-        $res->assertJsonPath('unearned', 25000);
-        // Sanity: the snapshot did filter the months series.
-        $res->assertJsonPath('months.0.count', 0);
+        $resA->assertOk();
+        $resA->assertJsonPath('unearned', 25000);
+        // Snapshot filter empties the months series (booking created after snapshot).
+        $this->assertSame(0, collect($resA->json('months'))->sum('count'));
+
+        // Request B: query a past year (no bookings that year) but unearned still
+        // reflects the future booking created in the present.
+        $lastYear = now()->subYear()->year;
+        $resB = $this->withHeaders($this->headers($this->memberToken))
+            ->getJson("/api/mobile/bands/{$this->band->id}/finances/trends?year={$lastYear}");
+
+        $resB->assertOk();
+        $resB->assertJsonPath('unearned', 25000);
     }
 }
