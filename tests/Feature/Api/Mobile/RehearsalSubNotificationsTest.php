@@ -184,4 +184,18 @@ class RehearsalSubNotificationsTest extends TestCase
         $this->assertStringContainsString('The Testing Band', $text);
         $this->assertStringContainsString('Your substitute spot for Friday has been cancelled.', $text);
     }
+
+    public function test_removed_job_sends_notice_email(): void
+    {
+        Mail::fake();
+        Queue::fake();
+
+        ['sub' => $sub, 'owner' => $owner] = $this->createRehearsalWithSub();
+        $sub->delete();
+
+        (new \App\Jobs\ProcessRehearsalSubRemoved($sub, $owner->id, 'test-dedupe'))->handle();
+
+        Mail::assertSent(\App\Mail\RehearsalSubNotice::class,
+            fn ($mail) => $mail->hasTo('adhoc@example.com'));
+    }
 }

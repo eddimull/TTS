@@ -33,6 +33,20 @@ class RehearsalSubsController extends Controller
     }
 
     /**
+     * DELETE /api/mobile/rehearsals/{rehearsal}/subs/{sub}
+     */
+    public function destroy(Request $request, int $rehearsal, int $sub): JsonResponse
+    {
+        [$rehearsalModel] = $this->resolveWritable($request, $rehearsal);
+
+        $this->subService->remove($rehearsalModel, $sub, $request->user());
+
+        return response()->json([
+            'subs' => $this->rehearsalService->formatSubs($rehearsalModel),
+        ]);
+    }
+
+    /**
      * Resolve the rehearsal + band and enforce canWrite('rehearsals').
      *
      * @return array{0: Rehearsal, 1: \App\Models\Bands}

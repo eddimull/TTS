@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Jobs\ProcessRehearsalSubAdded;
+use App\Jobs\ProcessRehearsalSubRemoved;
 use App\Models\BandSubs;
 use App\Models\Rehearsal;
 use App\Models\RehearsalSub;
@@ -122,5 +123,22 @@ class RehearsalSubService
         );
 
         return $sub;
+    }
+
+    /**
+     * Remove a sub from a rehearsal (soft delete) and notify them.
+     * 404s when the sub does not belong to this rehearsal.
+     */
+    public function remove(Rehearsal $rehearsal, int $subId, User $actor): void
+    {
+        $sub = $rehearsal->subs()->findOrFail($subId);
+
+        $sub->delete();
+
+        ProcessRehearsalSubRemoved::dispatch(
+            $sub,
+            $actor->id,
+            sprintf('rehearsal-sub:%d:removed:%s', $sub->id, now()->getPreciseTimestamp(3)),
+        );
     }
 }

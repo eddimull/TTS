@@ -254,4 +254,46 @@ class RehearsalSubsTest extends TestCase
                 'user_id', 'is_registered',
             ]]]]);
     }
+
+    public function test_remove_sub_soft_deletes_and_returns_remaining(): void
+    {
+        $ctx = $this->createOwnerWithRehearsal();
+
+        $keep = RehearsalSub::factory()->create([
+            'rehearsal_id' => $ctx['rehearsal']->id,
+            'band_id'      => $ctx['band']->id,
+            'name'         => 'Keeper',
+        ]);
+        $remove = RehearsalSub::factory()->create([
+            'rehearsal_id' => $ctx['rehearsal']->id,
+            'band_id'      => $ctx['band']->id,
+            'name'         => 'Removed',
+        ]);
+
+        $this->withToken($ctx['token'])
+            ->withHeaders(['X-Band-ID' => $ctx['band']->id])
+            ->deleteJson("/api/mobile/rehearsals/{$ctx['rehearsal']->id}/subs/{$remove->id}")
+            ->assertOk()
+            ->assertJsonCount(1, 'subs')
+            ->assertJsonPath('subs.0.name', 'Keeper');
+
+        $this->assertSoftDeleted('rehearsal_subs', ['id' => $remove->id]);
+        $this->assertNull($keep->fresh()->deleted_at);
+    }
+
+    public function test_remove_sub_from_wrong_rehearsal_404s(): void
+    {
+        $ctx = $this->createOwnerWithRehearsal();
+        $otherCtx = $this->createOwnerWithRehearsal();
+
+        $foreignSub = RehearsalSub::factory()->create([
+            'rehearsal_id' => $otherCtx['rehearsal']->id,
+            'band_id'      => $otherCtx['band']->id,
+        ]);
+
+        $this->withToken($ctx['token'])
+            ->withHeaders(['X-Band-ID' => $ctx['band']->id])
+            ->deleteJson("/api/mobile/rehearsals/{$ctx['rehearsal']->id}/subs/{$foreignSub->id}")
+            ->assertNotFound();
+    }
 }
