@@ -5,8 +5,11 @@ namespace App\Services;
 use App\Models\BandMembers;
 use App\Models\BandOwners;
 use App\Models\BandSubInvitation;
+use App\Models\BandSubs;
+use App\Models\EventMember;
 use App\Models\EventSubs;
 use App\Models\Invitations;
+use App\Models\RehearsalSub;
 use App\Models\User;
 
 class PendingInvitationService
@@ -66,6 +69,73 @@ class PendingInvitationService
             }
             $invitation->pending = false;
             $invitation->save();
+        }
+
+        $this->linkOrphanedAssignments($user);
+    }
+
+    /**
+     * Event slot assignments (event_members) and rehearsal invites
+     * (rehearsal_subs) created before this account existed reference the
+     * person only by email, with user_id NULL. Calendar and rehearsal
+     * visibility key on user_id, so link those rows to the new account now.
+     *
+     * Rows are skipped when the user already holds a row for the same
+     * event/rehearsal — the unique indexes on (event_id, user_id) and
+     * (rehearsal_id, user_id) still contain soft-deleted rows.
+     */
+    protected function linkOrphanedAssignments(User $user): void
+    {
+        $linked = false;
+
+        $orphanedMembers = EventMember::whereNull('user_id')
+            ->where('email', $user->email)
+            ->get();
+
+        foreach ($orphanedMembers as $member) {
+            $conflict = EventMember::withTrashed()
+                ->where('event_id', $member->event_id)
+                ->where('user_id', $user->id)
+                ->exists();
+
+            if (!$conflict) {
+                // Saving through the model lets the EventMember hook create
+                // the band_subs row the mobile band-access middleware needs.
+                $member->update(['user_id' => $user->id]);
+                $linked = true;
+            }
+        }
+
+        $orphanedRehearsalSubs = RehearsalSub::whereNull('user_id')
+            ->where('email', $user->email)
+            ->get();
+
+        foreach ($orphanedRehearsalSubs as $rehearsalSub) {
+            $conflict = RehearsalSub::withTrashed()
+                ->where('rehearsal_id', $rehearsalSub->rehearsal_id)
+                ->where('user_id', $user->id)
+                ->exists();
+
+            if (!$conflict) {
+                $rehearsalSub->update(['user_id' => $user->id]);
+                BandSubs::firstOrCreate([
+                    'user_id' => $user->id,
+                    'band_id' => $rehearsalSub->band_id,
+                ]);
+                $linked = true;
+            }
+        }
+
+        if ($linked) {
+            // The sub-only calendar path requires the global `sub` role
+            // (UserEventsService pins team 0 before hasRole('sub')).
+            $previousTeam = getPermissionsTeamId();
+            setPermissionsTeamId(0);
+            $user->unsetRelation('roles');
+            if (!$user->hasRole('sub')) {
+                $user->assignRole('sub');
+            }
+            setPermissionsTeamId($previousTeam);
         }
     }
 }

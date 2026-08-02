@@ -9,6 +9,7 @@ use App\Models\EventMember;
 use App\Models\Events;
 use App\Models\MediaFile;
 use App\Models\RosterSlot;
+use App\Models\User;
 use App\Services\MediaLibraryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -148,8 +149,9 @@ class EventDataService
             $data['name']             = $rosterMember->displayName;
             $data['email']            = $rosterMember->displayEmail;
         } elseif ($request->filled('name')) {
-            $data['name']  = $request->input('name');
-            $data['email'] = $request->input('email');
+            $data['name']    = $request->input('name');
+            $data['email']   = $request->input('email');
+            $data['user_id'] = $this->resolveRegisteredSub($request->input('email'), $event->id);
         } else {
             abort(422, 'Provide roster_member_id or name for new slot assignment.');
         }
@@ -182,7 +184,7 @@ class EventDataService
         } elseif ($request->filled('name')) {
             $member->update([
                 'roster_member_id'  => null,
-                'user_id'           => null,
+                'user_id'           => $this->resolveRegisteredSub($request->input('email'), $member->event_id, $member->id),
                 'name'              => $request->input('name'),
                 'email'             => $request->input('email'),
                 'attendance_status' => 'confirmed',
@@ -190,6 +192,51 @@ class EventDataService
         } else {
             abort(422, 'Provide roster_member_id, name, or clear=true.');
         }
+    }
+
+    /**
+     * Link a custom (name/email) sub assignment to a registered account.
+     * Calendar visibility for sub-only users keys on event_members.user_id
+     * (UserEventsService::getSubEvents), so leaving it NULL hides the gig
+     * from the sub even though they have an account.
+     *
+     * Returns null when there is no account with that email, or when the user
+     * already holds a row on this event — the (event_id, user_id) unique index
+     * still contains soft-deleted rows, so linking would throw.
+     */
+    private function resolveRegisteredSub(?string $email, int $eventId, ?int $exceptMemberId = null): ?int
+    {
+        if (!$email) {
+            return null;
+        }
+
+        $user = User::where('email', $email)->first();
+        if (!$user) {
+            return null;
+        }
+
+        $conflict = EventMember::withTrashed()
+            ->where('event_id', $eventId)
+            ->where('user_id', $user->id)
+            ->when($exceptMemberId, fn ($q) => $q->where('id', '!=', $exceptMemberId))
+            ->exists();
+        if ($conflict) {
+            return null;
+        }
+
+        // The sub-only calendar path additionally requires the global `sub`
+        // role (UserEventsService pins team 0 before hasRole('sub')). Mirrors
+        // the side effect SubInvitationService::inviteSubToEvent() applies for
+        // registered subs; band_subs is handled by the EventMember model hook.
+        $previousTeam = getPermissionsTeamId();
+        setPermissionsTeamId(0);
+        $user->unsetRelation('roles');
+        if (!$user->hasRole('sub')) {
+            $user->assignRole('sub');
+        }
+        setPermissionsTeamId($previousTeam);
+
+        return $user->id;
     }
 
     /**

@@ -149,6 +149,33 @@ class EventMemberStoreTest extends TestCase
     }
 
     /**
+     * The addSubstitute endpoint (POST /events/{event}/members/substitutes)
+     * must also link registered users by email — calendar visibility for subs
+     * keys on event_members.user_id.
+     */
+    public function test_add_substitute_by_email_links_registered_user(): void
+    {
+        $existingUser = User::factory()->create([
+            'name'  => 'Registered Sub',
+            'email' => 'registered.sub@example.com',
+        ]);
+
+        $response = $this->actingAs($this->owner)
+            ->postJson(route('events.members.addSubstitute', $this->event), [
+                'name'  => 'Registered Sub',
+                'email' => 'registered.sub@example.com',
+            ]);
+
+        $response->assertStatus(201);
+
+        $this->assertDatabaseHas('event_members', [
+            'event_id' => $this->event->id,
+            'user_id'  => $existingUser->id,
+            'email'    => 'registered.sub@example.com',
+        ]);
+    }
+
+    /**
      * Re-adding a registered user who was previously soft-deleted from the event
      * must restore the record rather than crash with a unique-key violation.
      * This mirrors the restore logic already in EventMemberController (singular).
