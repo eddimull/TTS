@@ -212,6 +212,20 @@ class EventMembersController extends Controller
 
         $band = $event->eventable->band;
 
+        // Resolve user_id from email so the substitute links to their account —
+        // calendar visibility for subs keys on event_members.user_id. Guarded
+        // against the (event_id, user_id) unique index, which still contains
+        // soft-deleted rows.
+        if (empty($validated['user_id']) && !empty($validated['email'])) {
+            $resolvedId = User::where('email', $validated['email'])->value('id');
+            if ($resolvedId && !EventMember::withTrashed()
+                    ->where('event_id', $event->id)
+                    ->where('user_id', $resolvedId)
+                    ->exists()) {
+                $validated['user_id'] = $resolvedId;
+            }
+        }
+
         // If user_id is provided, check if they're already a band member
         $isBandMember = false;
         if (isset($validated['user_id'])) {
@@ -222,6 +236,10 @@ class EventMembersController extends Controller
                     'message' => 'This user is already a band member. Use the band members list instead.'
                 ], 422);
             }
+
+            // The sub-only calendar path requires the global (team 0) `sub`
+            // role in addition to the event_members link.
+            User::find($validated['user_id'])?->ensureGlobalSubRole();
         }
 
         $eventMember = EventMember::create([

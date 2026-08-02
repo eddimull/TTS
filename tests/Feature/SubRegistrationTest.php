@@ -163,6 +163,33 @@ class SubRegistrationTest extends TestCase
         $this->assertNotNull($eventSub2->accepted_at);
     }
 
+    public function test_registering_links_orphaned_event_member_rows_by_email()
+    {
+        // A slot assignment made before the sub had an account — user_id NULL.
+        $orphan = \App\Models\EventMember::create([
+            'event_id' => $this->event->id,
+            'band_id'  => $this->band->id,
+            'user_id'  => null,
+            'name'     => 'John Substitute',
+            'email'    => 'newsubstitute@example.com',
+        ]);
+
+        $this->post('/register', [
+            'name' => 'John Substitute',
+            'email' => 'newsubstitute@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
+
+        $user = User::where('email', 'newsubstitute@example.com')->first();
+
+        $this->assertEquals($user->id, $orphan->fresh()->user_id);
+        $this->assertDatabaseHas('band_subs', [
+            'user_id' => $user->id,
+            'band_id' => $this->band->id,
+        ]);
+    }
+
     public function test_register_page_without_invitation_has_null_values()
     {
         // Visit register page without invitation key

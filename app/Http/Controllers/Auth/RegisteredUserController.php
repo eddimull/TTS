@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\BandMembers;
-use App\Models\BandOwners;
 use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use Illuminate\Auth\Events\Registered;
@@ -15,13 +13,10 @@ use Inertia\Inertia;
 use App\Models\Invitations;
 use App\Models\EventSubs;
 use App\Models\BandSubInvitation;
-use App\Services\SubInvitationService;
+use App\Services\PendingInvitationService;
 
 class RegisteredUserController extends Controller
 {
-    const OWNER_INVITE_TYPE = 1;
-    const MEMBER_INVITE_TYPE = 2;
-
     /**
      * Display the registration view.
      *
@@ -103,60 +98,11 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        // Handle sub invitations (event_subs)
-        $subInvitations = EventSubs::where('email', $user->email)
-            ->where('pending', true)
-            ->get();
+        // Consume pending invitations (sub, band-level sub, owner/member) and
+        // link any pre-registration assignments — shared with the mobile and
+        // social sign-up paths so the three cannot drift.
+        app(PendingInvitationService::class)->applyFor($user);
 
-        if ($subInvitations->isNotEmpty()) {
-            $subInvitationService = new SubInvitationService();
-
-            foreach ($subInvitations as $eventSub) {
-                // Accept each sub invitation
-                $subInvitationService->acceptInvitation($eventSub->invitation_key, $user);
-            }
-        }
-
-        // Handle band-level sub invitations (band_sub_invitations)
-        $bandSubInvitations = BandSubInvitation::where('email', $user->email)
-            ->where('pending', true)
-            ->get();
-
-        if ($bandSubInvitations->isNotEmpty()) {
-            $subInvitationService = $subInvitationService ?? new SubInvitationService();
-
-            foreach ($bandSubInvitations as $bandInvitation) {
-                $subInvitationService->acceptBandInvitation($bandInvitation->invitation_key, $user);
-            }
-        }
-
-        // Handle legacy band owner/member invitations
-        $invitations = Invitations::where('email', $user->email)->where('pending', true)->get();
-
-        foreach ($invitations as $invitation)
-        {
-            if ($invitation->invite_type_id === static::OWNER_INVITE_TYPE)
-            {
-                BandOwners::create([
-                    'user_id' => $user->id,
-                    'band_id' => $invitation->band_id
-                ]);
-                setPermissionsTeamId($invitation->band_id);
-                $user->assignRole('band-owner');
-                setPermissionsTeamId(null);
-            }
-            if ($invitation->invite_type_id === static::MEMBER_INVITE_TYPE)
-            {
-                BandMembers::create([
-                    'user_id' => $user->id,
-                    'band_id' => $invitation->band_id
-                ]);
-                $user->assignBandMemberDefaults($invitation->band_id);
-            }
-
-            $invitation->pending = false;
-            $invitation->save();
-        }
         event(new Registered($user));
 
         Auth::login($user);

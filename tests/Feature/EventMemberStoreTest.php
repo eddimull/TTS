@@ -31,6 +31,10 @@ class EventMemberStoreTest extends TestCase
     {
         parent::setUp();
 
+        // ensureGlobalSubRole() on the addSubstitute path needs the sub role.
+        $this->artisan('db:seed', ['--class' => 'SubRolesPermissionsSeeder']);
+        \setPermissionsTeamId(0);
+
         $this->owner = User::factory()->create();
         $this->band = Bands::factory()->create();
 
@@ -146,6 +150,39 @@ class EventMemberStoreTest extends TestCase
             'user_id'  => $existingUser->id,
             'email'    => 'registered@example.com',
         ]);
+    }
+
+    /**
+     * The addSubstitute endpoint (POST /events/{event}/members/substitutes)
+     * must also link registered users by email — calendar visibility for subs
+     * keys on event_members.user_id.
+     */
+    public function test_add_substitute_by_email_links_registered_user(): void
+    {
+        $existingUser = User::factory()->create([
+            'name'  => 'Registered Sub',
+            'email' => 'registered.sub@example.com',
+        ]);
+
+        $response = $this->actingAs($this->owner)
+            ->postJson(route('events.members.addSubstitute', $this->event), [
+                'name'  => 'Registered Sub',
+                'email' => 'registered.sub@example.com',
+            ]);
+
+        $response->assertStatus(201);
+
+        $this->assertDatabaseHas('event_members', [
+            'event_id' => $this->event->id,
+            'user_id'  => $existingUser->id,
+            'email'    => 'registered.sub@example.com',
+        ]);
+
+        // The sub-only calendar path requires the `sub` role at team 0.
+        \setPermissionsTeamId(0);
+        $existingUser = $existingUser->fresh();
+        $existingUser->unsetRelation('roles');
+        $this->assertTrue($existingUser->hasRole('sub'));
     }
 
     /**

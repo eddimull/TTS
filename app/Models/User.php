@@ -81,6 +81,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Grant the `sub` role at team 0 — the team UserEventsService pins before
+     * hasRole('sub'), so a band-scoped (or ambient-team) assignment does not
+     * satisfy the sub-only calendar path. Safe to call repeatedly.
+     */
+    public function ensureGlobalSubRole(): void
+    {
+        $previousTeam = getPermissionsTeamId();
+        setPermissionsTeamId(0);
+        $this->unsetRelation('roles');
+        if (!$this->hasRole('sub')) {
+            $this->assignRole('sub');
+        }
+        setPermissionsTeamId($previousTeam);
+    }
+
+    /**
      * Chart IDs a sub is entitled to see for a given band: the charts referenced
      * in the additional_data of events the user is assigned to (accepted
      * event_subs, or event_members rows filling a sub slot). A sub does NOT get
