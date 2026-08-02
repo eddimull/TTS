@@ -198,6 +198,19 @@ class EventsController extends Controller
             'additional_data' => $ad,
         ]);
 
+        // Mirror venue writes (including null-clears) onto eventables that
+        // still carry their own venue columns (e.g. rehearsals). Otherwise
+        // rehearsal screens keep showing the old venue, and resolved_venue_*
+        // resurrects it whenever the event row is null.
+        $venueData = $request->only(['venue_name', 'venue_address']);
+        $eventable = $event->eventable;
+        if ($venueData && $eventable) {
+            $mirror = array_filter($venueData, fn ($k) => $eventable->isFillable($k), ARRAY_FILTER_USE_KEY);
+            if ($mirror) {
+                $eventable->update($mirror);
+            }
+        }
+
         return response()->json(['message' => 'Event updated successfully.']);
     }
 

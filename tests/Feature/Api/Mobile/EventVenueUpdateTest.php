@@ -105,6 +105,72 @@ class EventVenueUpdateTest extends TestCase
         $this->assertNull($fresh->venue_address);
     }
 
+    public function test_update_syncs_venue_to_rehearsal_eventable(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        $rehearsal = \App\Models\Rehearsal::factory()->create([
+            'band_id'       => $band->id,
+            'venue_name'    => 'Old Studio',
+            'venue_address' => '1 Old Rd',
+        ]);
+        $event = Events::factory()->create([
+            'eventable_id'   => $rehearsal->id,
+            'eventable_type' => \App\Models\Rehearsal::class,
+            'date'           => now()->addDays(7)->format('Y-m-d'),
+            'venue_name'     => null,
+            'venue_address'  => null,
+        ]);
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        $this->patchEvent($token, $band, $event, [
+            'venue_name'    => 'New Studio',
+            'venue_address' => '2 New Ave',
+        ])->assertOk();
+
+        // Both the event row and the rehearsal row must agree, or rehearsal
+        // screens (reading Rehearsal.venue_*) diverge from event views.
+        $this->assertSame('New Studio', $event->fresh()->venue_name);
+        $this->assertSame('New Studio', $rehearsal->fresh()->venue_name);
+        $this->assertSame('2 New Ave', $rehearsal->fresh()->venue_address);
+    }
+
+    public function test_null_clear_does_not_resurrect_rehearsal_venue(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        $rehearsal = \App\Models\Rehearsal::factory()->create([
+            'band_id'       => $band->id,
+            'venue_name'    => 'Stale Studio',
+            'venue_address' => '3 Stale St',
+        ]);
+        $event = Events::factory()->create([
+            'eventable_id'   => $rehearsal->id,
+            'eventable_type' => \App\Models\Rehearsal::class,
+            'date'           => now()->addDays(7)->format('Y-m-d'),
+            'venue_name'     => 'Current Studio',
+            'venue_address'  => '4 Current Ct',
+        ]);
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        $this->patchEvent($token, $band, $event, [
+            'venue_name'    => null,
+            'venue_address' => null,
+        ])->assertOk();
+
+        // resolved_venue_* falls back to the eventable when the event row is
+        // null; the clear must reach the rehearsal too or the old venue
+        // resurfaces in every read path.
+        $fresh = $event->fresh();
+        $this->assertNull($fresh->venue_name);
+        $this->assertNull($fresh->resolved_venue_name);
+        $this->assertNull($fresh->resolved_venue_address);
+    }
+
     public function test_update_without_venue_fields_leaves_them_unchanged(): void
     {
         ['band' => $band, 'event' => $event, 'token' => $token] = $this->makeOwnedEvent([

@@ -70,6 +70,19 @@ class EventPriceUpdateTest extends TestCase
             ->assertJsonValidationErrors('price');
     }
 
+    public function test_update_rejects_price_with_more_than_two_decimals(): void
+    {
+        ['band' => $band, 'event' => $event, 'token' => $token] = $this->makeOwnedEvent();
+
+        // Price is stored as integer cents; sub-cent precision must be rejected
+        // rather than silently truncated by the *100 cast.
+        $this->patchEvent($token, $band, $event, [
+            'price' => '10.999',
+        ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('price');
+    }
+
     public function test_update_without_price_leaves_it_unchanged(): void
     {
         ['band' => $band, 'event' => $event, 'token' => $token] = $this->makeOwnedEvent();

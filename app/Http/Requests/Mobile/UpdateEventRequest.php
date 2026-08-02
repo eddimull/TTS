@@ -24,7 +24,9 @@ class UpdateEventRequest extends FormRequest
             'notes'                  => 'sometimes|nullable|string',
             'venue_name'             => 'sometimes|nullable|string|max:255',
             'venue_address'          => 'sometimes|nullable|string|max:255',
-            'price'                  => 'sometimes|nullable|numeric|min:0',
+            // Stored as integer cents via the Price cast — cap at 2 decimals
+            // so sub-cent values aren't silently truncated by the *100 write.
+            'price'                  => 'sometimes|nullable|numeric|min:0|decimal:0,2',
             'attire'                 => 'sometimes|nullable|string|max:255',
             'is_public'              => 'sometimes|boolean',
             'outside'                => 'sometimes|boolean',
