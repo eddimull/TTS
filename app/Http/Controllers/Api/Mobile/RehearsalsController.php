@@ -66,17 +66,25 @@ class RehearsalsController extends Controller
     public function schedules(Request $request): JsonResponse
     {
         $band           = $request->input('mobile_band');
-        $includeVirtual = $request->boolean('include_virtual');
+        $user           = $request->user();
+        // A user who can only read via the rehearsal-sub carve-out sees just
+        // the rehearsals they're invited to — no virtuals, no full schedule.
+        $subScoped      = !$user->canReadRehearsalsAsMember($band->id);
+        $includeVirtual = $request->boolean('include_virtual') && !$subScoped;
         // A malformed `until` falls back to the default window rather than 500ing.
         $cutoff = (self::parseForwardBound($request->input('until'))
             ?? now()->addDays(self::DEFAULT_WINDOW_DAYS))->toDateString();
 
         $schedules = RehearsalSchedule::where('band_id', $band->id)
-            ->with(['rehearsals' => function ($query) use ($cutoff) {
+            ->with(['rehearsals' => function ($query) use ($cutoff, $subScoped, $user) {
                 $query->whereHas('events', function ($eq) use ($cutoff) {
                     $eq->where('date', '>=', now()->toDateString())
                        ->where('date', '<=', $cutoff);
                 })->with('events');
+
+                if ($subScoped) {
+                    $query->whereHas('subs', fn ($sq) => $sq->where('user_id', $user->id));
+                }
             }])
             ->get();
 
@@ -124,6 +132,10 @@ class RehearsalsController extends Controller
             ];
         });
 
+        if ($subScoped) {
+            $mapped = $mapped->filter(fn ($s) => count($s['upcoming_rehearsals']) > 0);
+        }
+
         return response()->json(['schedules' => $mapped->values()]);
     }
 
@@ -142,6 +154,11 @@ class RehearsalsController extends Controller
         }
 
         if (!$request->user()->canRead('rehearsals', $band->id)) {
+            abort(403, 'You do not have permission to view this rehearsal.');
+        }
+
+        if (!$request->user()->canReadRehearsalsAsMember($band->id)
+            && !$rehearsalModel->subs()->where('user_id', $request->user()->id)->exists()) {
             abort(403, 'You do not have permission to view this rehearsal.');
         }
 
@@ -176,6 +193,11 @@ class RehearsalsController extends Controller
                 abort(403, 'You do not have permission to view this rehearsal.');
             }
 
+            if (!$request->user()->canReadRehearsalsAsMember($band->id)
+                && !$rehearsalModel->subs()->where('user_id', $request->user()->id)->exists()) {
+                abort(403, 'You do not have permission to view this rehearsal.');
+            }
+
             return response()->json([
                 'rehearsal' => $this->rehearsalService->formatDetail($rehearsalModel),
             ]);
@@ -191,6 +213,12 @@ class RehearsalsController extends Controller
         }
 
         if (!$request->user()->canRead('rehearsals', $band->id)) {
+            abort(403, 'You do not have permission to view this rehearsal.');
+        }
+
+        // Virtual materialization is member-only: a sub's carve-out grants access
+        // to their own invited rehearsals, never to creating new ones.
+        if (!$request->user()->canReadRehearsalsAsMember($band->id)) {
             abort(403, 'You do not have permission to view this rehearsal.');
         }
 
