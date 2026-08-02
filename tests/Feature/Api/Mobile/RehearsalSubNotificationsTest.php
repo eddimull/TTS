@@ -198,4 +198,32 @@ class RehearsalSubNotificationsTest extends TestCase
         Mail::assertSent(\App\Mail\RehearsalSubNotice::class,
             fn ($mail) => $mail->hasTo('adhoc@example.com'));
     }
+
+    public function test_cancellation_notifies_registered_sub_and_emails_adhoc(): void
+    {
+        Mail::fake();
+        Queue::fake();
+        \Illuminate\Support\Facades\Notification::fake();
+
+        $registeredSub = User::factory()->create();
+        ['rehearsal' => $rehearsal, 'owner' => $owner, 'band' => $band] =
+            $this->createRehearsalWithSub($registeredSub);
+
+        // Second, ad-hoc invitee on the same rehearsal.
+        RehearsalSub::factory()->create([
+            'rehearsal_id' => $rehearsal->id,
+            'band_id'      => $band->id,
+            'email'        => 'adhoc2@example.com',
+        ]);
+
+        $rehearsal->update(['is_cancelled' => true]);
+
+        (new \App\Jobs\ProcessRehearsalCancelled($rehearsal->fresh(), $owner->id, true, 'dedupe-x'))
+            ->handle();
+
+        \Illuminate\Support\Facades\Notification::assertSentTo(
+            $registeredSub, \App\Notifications\RehearsalCancelled::class);
+        Mail::assertSent(\App\Mail\RehearsalSubNotice::class,
+            fn ($mail) => $mail->hasTo('adhoc2@example.com'));
+    }
 }

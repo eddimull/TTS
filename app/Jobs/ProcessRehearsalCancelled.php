@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Mail\RehearsalSubNotice;
 use App\Models\Rehearsal;
 use App\Notifications\RehearsalCancelled;
 use Illuminate\Bus\Queueable;
@@ -10,6 +11,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Mail;
 
 class ProcessRehearsalCancelled implements ShouldQueue
 {
@@ -24,7 +26,7 @@ class ProcessRehearsalCancelled implements ShouldQueue
 
     public function handle(): void
     {
-        $this->rehearsal->loadMissing(['rehearsalSchedule.band', 'events', 'band']);
+        $this->rehearsal->loadMissing(['rehearsalSchedule.band', 'events', 'band', 'subs.user']);
         $band = $this->rehearsal->rehearsalSchedule?->band ?? $this->rehearsal->band;
         if (!$band) {
             return;
@@ -73,6 +75,37 @@ class ProcessRehearsalCancelled implements ShouldQueue
 
             if ($user->deviceTokens()->exists()) {
                 SendUserPush::dispatch($user->id, $push, $this->dedupeKey, true);
+            }
+        }
+
+        // Invited rehearsal subs get the same treatment as members; ad-hoc
+        // invitees (no account) get a plain email notice.
+        foreach ($this->rehearsal->subs as $sub) {
+            $user = $sub->user;
+
+            if ($user) {
+                if ($user->id === $this->actorId
+                    || in_array($user->id, $notifiedUserIds, true)) {
+                    continue;
+                }
+                $notifiedUserIds[] = $user->id;
+
+                $user->notify(new RehearsalCancelled($this->rehearsal, $this->isCancelled, $date));
+
+                if ($user->deviceTokens()->exists()) {
+                    SendUserPush::dispatch($user->id, $push, $this->dedupeKey, true);
+                }
+            } else {
+                Mail::to($sub->email)->send(new RehearsalSubNotice(
+                    $this->isCancelled ? 'Rehearsal cancelled' : 'Rehearsal back on',
+                    sprintf(
+                        '%s on %s has been %s.',
+                        $name,
+                        $whenText,
+                        $this->isCancelled ? 'cancelled' : 'restored',
+                    ),
+                    $band->name,
+                ));
             }
         }
     }
