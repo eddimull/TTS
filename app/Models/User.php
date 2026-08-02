@@ -81,6 +81,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Grant the `sub` role at team 0 — the team UserEventsService pins before
+     * hasRole('sub'), so a band-scoped (or ambient-team) assignment does not
+     * satisfy the sub-only calendar path. Safe to call repeatedly.
+     */
+    public function ensureGlobalSubRole(): void
+    {
+        $previousTeam = getPermissionsTeamId();
+        setPermissionsTeamId(0);
+        $this->unsetRelation('roles');
+        if (!$this->hasRole('sub')) {
+            $this->assignRole('sub');
+        }
+        setPermissionsTeamId($previousTeam);
+    }
+
+    /**
      * Chart IDs a sub is entitled to see for a given band: the charts referenced
      * in the additional_data of events the user is assigned to (accepted
      * event_subs, or event_members rows filling a sub slot). A sub does NOT get
@@ -242,6 +258,14 @@ class User extends Authenticatable
             return true;
         }
 
+        // A sub may read rehearsals they've been invited to (a live
+        // rehearsal_subs row). Controllers must scope results to those
+        // rehearsals — mirrors the events/charts pattern above.
+        if ($resource === 'rehearsals' && $this->isSubOfBand($bandId)
+            && $this->hasRehearsalSubAssignmentForBand($bandId)) {
+            return true;
+        }
+
         setPermissionsTeamId($bandId);
         $result = $this->hasPermissionTo('read:' . $resource);
         setPermissionsTeamId(0);
@@ -260,6 +284,37 @@ class User extends Authenticatable
 
         setPermissionsTeamId($bandId);
         $result = $this->hasPermissionTo('write:' . $resource);
+        setPermissionsTeamId(0);
+
+        return $result;
+    }
+
+    /**
+     * Does this user have at least one live rehearsal-sub invite in this band?
+     */
+    public function hasRehearsalSubAssignmentForBand(int $bandId): bool
+    {
+        return \DB::table('rehearsal_subs')
+            ->where('user_id', $this->id)
+            ->where('band_id', $bandId)
+            ->whereNull('deleted_at')
+            ->exists();
+    }
+
+    /**
+     * Can this user read rehearsals through band membership (owner or the
+     * read:rehearsals permission) — i.e. WITHOUT the rehearsal-sub carve-out?
+     * Controllers use this to decide whether to scope rehearsal reads down to
+     * the user's own invites.
+     */
+    public function canReadRehearsalsAsMember(int $bandId): bool
+    {
+        if ($this->ownsBand($bandId)) {
+            return true;
+        }
+
+        setPermissionsTeamId($bandId);
+        $result = $this->hasPermissionTo('read:rehearsals');
         setPermissionsTeamId(0);
 
         return $result;

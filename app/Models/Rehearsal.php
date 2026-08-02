@@ -82,6 +82,14 @@ class Rehearsal extends Model implements GoogleCalenderable
     }
 
     /**
+     * Substitutes invited to this specific rehearsal.
+     */
+    public function subs()
+    {
+        return $this->hasMany(RehearsalSub::class);
+    }
+
+    /**
      * Get the Google Events for this rehearsal
      */
     public function googleEvents()
