@@ -18,7 +18,8 @@ class BandRoleFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'band_id' => \App\Models\Bands::factory(),
+            'name'    => 'Role ' . $this->faker->unique()->word(),
         ];
     }
 }

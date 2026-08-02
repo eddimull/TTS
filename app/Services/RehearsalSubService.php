@@ -55,6 +55,14 @@ class RehearsalSubService
             $phone  = $data['phone'] ?? null;
             $roleId = $data['band_role_id'] ?? null;
             $userId = null;
+
+            // band_role_id is only validated as exists:band_roles,id, so a
+            // client could otherwise attach another band's role.
+            if ($roleId !== null && !\App\Models\BandRole::where('band_id', $band->id)->whereKey($roleId)->exists()) {
+                throw ValidationException::withMessages([
+                    'band_role_id' => 'That role does not belong to this band.',
+                ]);
+            }
         }
 
         if (!$email) {

@@ -164,6 +164,25 @@ class RehearsalSubsTest extends TestCase
             ->assertJsonPath('subs.0.band_role_id', $role->id);
     }
 
+    public function test_adhoc_invite_with_foreign_band_role_id_is_rejected(): void
+    {
+        $ctx = $this->createOwnerWithRehearsal();
+        $otherBand = Bands::factory()->create();
+        $foreignRole = BandRole::factory()->create(['band_id' => $otherBand->id]);
+
+        $this->postSub($ctx, [
+            'name'         => 'Pat Horn',
+            'email'        => 'pat@example.com',
+            'band_role_id' => $foreignRole->id,
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['band_role_id']);
+
+        $this->assertDatabaseMissing('rehearsal_subs', [
+            'rehearsal_id' => $ctx['rehearsal']->id,
+            'email'        => 'pat@example.com',
+        ]);
+    }
+
     public function test_call_list_entry_from_other_band_is_rejected(): void
     {
         $ctx = $this->createOwnerWithRehearsal();
