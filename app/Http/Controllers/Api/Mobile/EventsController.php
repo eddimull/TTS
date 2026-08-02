@@ -194,14 +194,9 @@ class EventsController extends Controller
         );
 
         $event->update([
-            ...$request->only(['title', 'date', 'start_time', 'end_time', 'notes']),
+            ...$request->only(['title', 'date', 'start_time', 'end_time', 'notes', 'venue_name', 'venue_address', 'price']),
             'additional_data' => $ad,
         ]);
-
-        $venueData = array_filter($request->only(['venue_name', 'venue_address']), fn ($v) => $v !== null);
-        if (!empty($venueData) && $event->eventable) {
-            $event->eventable->update($venueData);
-        }
 
         return response()->json(['message' => 'Event updated successfully.']);
     }

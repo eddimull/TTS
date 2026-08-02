@@ -24,6 +24,7 @@ class UpdateEventRequest extends FormRequest
             'notes'                  => 'sometimes|nullable|string',
             'venue_name'             => 'sometimes|nullable|string|max:255',
             'venue_address'          => 'sometimes|nullable|string|max:255',
+            'price'                  => 'sometimes|nullable|numeric|min:0',
             'attire'                 => 'sometimes|nullable|string|max:255',
             'is_public'              => 'sometimes|boolean',
             'outside'                => 'sometimes|boolean',
