@@ -63,7 +63,32 @@ class RehearsalService
                 'location_name' => $schedule->location_name,
             ] : null,
             'associated_bookings' => $associatedBookings,
+            'subs'                => $this->formatSubs($rehearsal),
         ];
+    }
+
+    /**
+     * The rehearsal's invited substitutes, oldest first. Shared by the detail
+     * payload and the subs store/destroy responses.
+     */
+    public function formatSubs(Rehearsal $rehearsal): array
+    {
+        return $rehearsal->subs()
+            ->with(['bandRole', 'user'])
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn ($sub) => [
+                'id'            => $sub->id,
+                'name'          => $sub->name,
+                'email'         => $sub->email,
+                'phone'         => $sub->phone,
+                'band_role_id'  => $sub->band_role_id,
+                'role_name'     => $sub->bandRole?->name,
+                'user_id'       => $sub->user_id,
+                'is_registered' => $sub->user_id !== null,
+            ])
+            ->values()
+            ->all();
     }
 
     /**

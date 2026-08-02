@@ -242,6 +242,14 @@ class User extends Authenticatable
             return true;
         }
 
+        // A sub may read rehearsals they've been invited to (a live
+        // rehearsal_subs row). Controllers must scope results to those
+        // rehearsals — mirrors the events/charts pattern above.
+        if ($resource === 'rehearsals' && $this->isSubOfBand($bandId)
+            && $this->hasRehearsalSubAssignmentForBand($bandId)) {
+            return true;
+        }
+
         setPermissionsTeamId($bandId);
         $result = $this->hasPermissionTo('read:' . $resource);
         setPermissionsTeamId(0);
@@ -260,6 +268,37 @@ class User extends Authenticatable
 
         setPermissionsTeamId($bandId);
         $result = $this->hasPermissionTo('write:' . $resource);
+        setPermissionsTeamId(0);
+
+        return $result;
+    }
+
+    /**
+     * Does this user have at least one live rehearsal-sub invite in this band?
+     */
+    public function hasRehearsalSubAssignmentForBand(int $bandId): bool
+    {
+        return \DB::table('rehearsal_subs')
+            ->where('user_id', $this->id)
+            ->where('band_id', $bandId)
+            ->whereNull('deleted_at')
+            ->exists();
+    }
+
+    /**
+     * Can this user read rehearsals through band membership (owner or the
+     * read:rehearsals permission) — i.e. WITHOUT the rehearsal-sub carve-out?
+     * Controllers use this to decide whether to scope rehearsal reads down to
+     * the user's own invites.
+     */
+    public function canReadRehearsalsAsMember(int $bandId): bool
+    {
+        if ($this->ownsBand($bandId)) {
+            return true;
+        }
+
+        setPermissionsTeamId($bandId);
+        $result = $this->hasPermissionTo('read:rehearsals');
         setPermissionsTeamId(0);
 
         return $result;

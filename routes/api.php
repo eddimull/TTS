@@ -367,6 +367,8 @@ Route::prefix('mobile')->group(function () {
         Route::patch('/rehearsals/{rehearsal}/notes', [App\Http\Controllers\Api\Mobile\RehearsalsController::class, 'updateNotes'])->name('mobile.rehearsals.update-notes');
         Route::patch('/rehearsals/{rehearsal}/cancelled', [App\Http\Controllers\Api\Mobile\RehearsalsController::class, 'setCancelled'])->name('mobile.rehearsals.set-cancelled');
         Route::get('/rehearsals/{rehearsal}', [App\Http\Controllers\Api\Mobile\RehearsalsController::class, 'show'])->name('mobile.rehearsals.show');
+        Route::post('/rehearsals/{rehearsal}/subs', [App\Http\Controllers\Api\Mobile\RehearsalSubsController::class, 'store'])->name('mobile.rehearsals.subs.store');
+        Route::delete('/rehearsals/{rehearsal}/subs/{sub}', [App\Http\Controllers\Api\Mobile\RehearsalSubsController::class, 'destroy'])->name('mobile.rehearsals.subs.destroy');
 
         // ── Media (read) ───────────────────────────────────────────────
         Route::prefix('bands/{band}')->middleware('mobile.band:read:media')->group(function () {
