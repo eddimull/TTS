@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\ProcessRehearsalSubAdded;
 use App\Models\BandSubs;
 use App\Models\Rehearsal;
 use App\Models\RehearsalSub;
@@ -113,6 +114,12 @@ class RehearsalSubService
                 setPermissionsTeamId(0);
             }
         }
+
+        ProcessRehearsalSubAdded::dispatch(
+            $sub,
+            $actor->id,
+            sprintf('rehearsal-sub:%d:added:%s', $sub->id, now()->getPreciseTimestamp(3)),
+        );
 
         return $sub;
     }
