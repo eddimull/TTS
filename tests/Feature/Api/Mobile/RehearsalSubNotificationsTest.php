@@ -5,6 +5,8 @@ namespace Tests\Feature\Api\Mobile;
 use App\Jobs\ProcessRehearsalSubAdded;
 use App\Jobs\SendUserPush;
 use App\Mail\RehearsalSubAdded;
+use App\Mail\RehearsalSubNotice;
+use App\Models\BandRole;
 use App\Models\Bands;
 use App\Models\DeviceToken;
 use App\Models\Events;
@@ -111,5 +113,75 @@ class RehearsalSubNotificationsTest extends TestCase
         Mail::assertSent(RehearsalSubAdded::class,
             fn ($mail) => $mail->hasTo($subUser->email));
         Queue::assertPushed(SendUserPush::class);
+    }
+
+    /**
+     * Renders a mailable and flattens it to plain text with collapsed
+     * whitespace, so assertions can target copy rather than markup.
+     */
+    private function renderText(\Illuminate\Mail\Mailable $mail): string
+    {
+        return trim(preg_replace('/\s+/', ' ', strip_tags($mail->render())));
+    }
+
+    public function test_added_mailable_renders_with_role_suffix(): void
+    {
+        ['sub' => $sub, 'rehearsal' => $rehearsal, 'band' => $band] = $this->createRehearsalWithSub();
+
+        // BandObserver seeds the default roles (incl. "Drums") on band
+        // creation, so reuse that row rather than inserting a duplicate —
+        // band_roles has a unique (band_id, name) index.
+        $role = BandRole::where('band_id', $band->id)->where('name', 'Drums')->firstOrFail();
+        $sub->update(['band_role_id' => $role->id]);
+        $sub->refresh();
+
+        $text = $this->renderText(
+            new RehearsalSubAdded($sub, $rehearsal, $band, '2026-08-10')
+        );
+
+        $this->assertStringContainsString($band->name, $text);
+        $this->assertStringContainsString($sub->name, $text);
+        $this->assertStringContainsString('as a substitute (Drums) for a rehearsal', $text);
+        $this->assertStringContainsString('Monday, August 10, 2026', $text);
+    }
+
+    public function test_added_mailable_renders_without_role_and_has_no_empty_parens(): void
+    {
+        ['sub' => $sub, 'rehearsal' => $rehearsal, 'band' => $band] = $this->createRehearsalWithSub();
+
+        $this->assertNull($sub->band_role_id);
+
+        $text = $this->renderText(
+            new RehearsalSubAdded($sub, $rehearsal, $band, '2026-08-10')
+        );
+
+        $this->assertStringContainsString($band->name, $text);
+        $this->assertStringContainsString('as a substitute for a rehearsal', $text);
+        $this->assertStringNotContainsString('()', $text);
+    }
+
+    public function test_added_mailable_renders_with_null_date(): void
+    {
+        ['sub' => $sub, 'rehearsal' => $rehearsal, 'band' => $band] = $this->createRehearsalWithSub();
+
+        $text = $this->renderText(
+            new RehearsalSubAdded($sub, $rehearsal, $band, null)
+        );
+
+        $this->assertStringContainsString('Date: TBD', $text);
+    }
+
+    public function test_notice_mailable_renders_band_name_and_body(): void
+    {
+        $mail = new RehearsalSubNotice(
+            'You have been removed from a rehearsal',
+            'Your substitute spot for Friday has been cancelled.',
+            'The Testing Band',
+        );
+
+        $text = $this->renderText($mail);
+
+        $this->assertStringContainsString('The Testing Band', $text);
+        $this->assertStringContainsString('Your substitute spot for Friday has been cancelled.', $text);
     }
 }
