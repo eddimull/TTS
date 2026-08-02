@@ -236,6 +236,10 @@ class EventMembersController extends Controller
                     'message' => 'This user is already a band member. Use the band members list instead.'
                 ], 422);
             }
+
+            // The sub-only calendar path requires the global (team 0) `sub`
+            // role in addition to the event_members link.
+            User::find($validated['user_id'])?->ensureGlobalSubRole();
         }
 
         $eventMember = EventMember::create([

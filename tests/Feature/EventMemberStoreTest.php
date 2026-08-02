@@ -31,6 +31,10 @@ class EventMemberStoreTest extends TestCase
     {
         parent::setUp();
 
+        // ensureGlobalSubRole() on the addSubstitute path needs the sub role.
+        $this->artisan('db:seed', ['--class' => 'SubRolesPermissionsSeeder']);
+        \setPermissionsTeamId(0);
+
         $this->owner = User::factory()->create();
         $this->band = Bands::factory()->create();
 
@@ -173,6 +177,12 @@ class EventMemberStoreTest extends TestCase
             'user_id'  => $existingUser->id,
             'email'    => 'registered.sub@example.com',
         ]);
+
+        // The sub-only calendar path requires the `sub` role at team 0.
+        \setPermissionsTeamId(0);
+        $existingUser = $existingUser->fresh();
+        $existingUser->unsetRelation('roles');
+        $this->assertTrue($existingUser->hasRole('sub'));
     }
 
     /**

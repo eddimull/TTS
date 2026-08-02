@@ -72,6 +72,15 @@ class PendingInvitationService
         }
 
         $this->linkOrphanedAssignments($user);
+
+        // The invitation-acceptance paths above assign the `sub` role under
+        // the CURRENT Spatie team, which is caller-dependent (web registration
+        // runs with no team set). The sub-only calendar path requires the role
+        // at team 0 (UserEventsService pins team 0 before hasRole('sub')), so
+        // guarantee it for anyone who ended up on a band's sub bench.
+        if (BandSubs::where('user_id', $user->id)->exists()) {
+            $user->ensureGlobalSubRole();
+        }
     }
 
     /**
@@ -86,8 +95,6 @@ class PendingInvitationService
      */
     protected function linkOrphanedAssignments(User $user): void
     {
-        $linked = false;
-
         $orphanedMembers = EventMember::whereNull('user_id')
             ->where('email', $user->email)
             ->get();
@@ -102,7 +109,6 @@ class PendingInvitationService
                 // Saving through the model lets the EventMember hook create
                 // the band_subs row the mobile band-access middleware needs.
                 $member->update(['user_id' => $user->id]);
-                $linked = true;
             }
         }
 
@@ -122,20 +128,7 @@ class PendingInvitationService
                     'user_id' => $user->id,
                     'band_id' => $rehearsalSub->band_id,
                 ]);
-                $linked = true;
             }
-        }
-
-        if ($linked) {
-            // The sub-only calendar path requires the global `sub` role
-            // (UserEventsService pins team 0 before hasRole('sub')).
-            $previousTeam = getPermissionsTeamId();
-            setPermissionsTeamId(0);
-            $user->unsetRelation('roles');
-            if (!$user->hasRole('sub')) {
-                $user->assignRole('sub');
-            }
-            setPermissionsTeamId($previousTeam);
         }
     }
 }

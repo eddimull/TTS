@@ -228,13 +228,7 @@ class EventDataService
         // role (UserEventsService pins team 0 before hasRole('sub')). Mirrors
         // the side effect SubInvitationService::inviteSubToEvent() applies for
         // registered subs; band_subs is handled by the EventMember model hook.
-        $previousTeam = getPermissionsTeamId();
-        setPermissionsTeamId(0);
-        $user->unsetRelation('roles');
-        if (!$user->hasRole('sub')) {
-            $user->assignRole('sub');
-        }
-        setPermissionsTeamId($previousTeam);
+        $user->ensureGlobalSubRole();
 
         return $user->id;
     }

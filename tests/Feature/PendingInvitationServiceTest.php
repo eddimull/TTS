@@ -177,6 +177,28 @@ class PendingInvitationServiceTest extends TestCase
         $this->assertNull($orphan->fresh()->user_id);
     }
 
+    public function test_invitation_accepted_under_band_team_still_gets_global_sub_role(): void
+    {
+        $band = Bands::factory()->create();
+        BandSubInvitation::factory()->create([
+            'band_id' => $band->id,
+            'email'   => 'team-scoped@example.com',
+            'pending' => true,
+        ]);
+        $user = User::factory()->create(['email' => 'team-scoped@example.com']);
+
+        // Simulate a caller with a band team active (e.g. web middleware) —
+        // acceptBandInvitation() assigns `sub` under the ambient team, which
+        // does not satisfy UserEventsService's team-0 hasRole('sub') check.
+        \setPermissionsTeamId($band->id);
+        app(PendingInvitationService::class)->applyFor($user);
+        \setPermissionsTeamId(0);
+
+        $user = $user->fresh();
+        $user->unsetRelation('roles');
+        $this->assertTrue($user->hasRole('sub'));
+    }
+
     public function test_backfill_ignores_other_emails_and_assigns_no_role(): void
     {
         $band  = Bands::factory()->create();
