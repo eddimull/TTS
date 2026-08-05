@@ -7,7 +7,7 @@ use Laravel\Sanctum\PersonalAccessToken;
 
 class TokenService
 {
-    private const RESOURCES = ['bookings', 'events', 'media', 'rehearsals', 'charts', 'songs', 'questionnaires'];
+    private const RESOURCES = ['bookings', 'events', 'media', 'rehearsals', 'charts', 'songs', 'questionnaires', 'lodging'];
 
     public function buildAbilities(User $user): array
     {

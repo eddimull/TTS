@@ -78,6 +78,11 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         return $this->belongsTo(Bands::class);
     }
 
+    public function lodgings()
+    {
+        return $this->hasMany(Lodging::class, 'booking_id');
+    }
+
     public function contacts()
     {
         return $this->belongsToMany(Contacts::class, 'booking_contacts', 'booking_id', 'contact_id')
