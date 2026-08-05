@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Events\BandDataChanged;
 use App\Models\Traits\BroadcastsBandChanges;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 
@@ -48,6 +50,37 @@ class Lodging extends Model
     public function attachments()
     {
         return $this->hasMany(LodgingAttachment::class);
+    }
+
+    /**
+     * Force a realtime "updated" signal for this lodging even though the
+     * mutation that caused it (room sync, attachment upload/delete) only
+     * touches a child table and leaves this row's own tracked columns
+     * unchanged. BroadcastsBandChanges::broadcastHasMeaningfulChanges()
+     * ignores updated_at-only changes, so a plain touch() alone never
+     * broadcasts — this bypasses that gate by dispatching BandDataChanged
+     * directly, mirroring BroadcastsBandChanges::broadcastBandChange()
+     * exactly (same try/catch-and-report safety net: a realtime signal
+     * must never break the write that caused it).
+     */
+    public function broadcastRefresh(): void
+    {
+        try {
+            $bandId = $this->broadcastBandId();
+            if (! $bandId) {
+                return;
+            }
+
+            broadcast(new BandDataChanged(
+                (int) $bandId,
+                Str::snake(class_basename($this)),
+                (int) $this->getKey(),
+                'updated',
+                $this->broadcastParent(),
+            ))->toOthers();
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     public function getActivitylogOptions(): LogOptions

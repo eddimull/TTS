@@ -4,9 +4,11 @@ namespace Tests\Feature\Api\Mobile;
 use App\Models\Bands;
 use App\Models\Lodging;
 use App\Models\User;
+use App\Events\BandDataChanged;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -42,6 +44,36 @@ class LodgingAttachmentsTest extends TestCase
         $this->assertDatabaseHas('lodging_attachments', ['lodging_id' => $lodging->id]);
         Storage::disk(config('filesystems.default'))
             ->assertExists($lodging->attachments()->first()->stored_filename);
+    }
+
+    /**
+     * The attachment lives on a child table (lodging_attachments), so the
+     * lodging row's own tracked columns don't change on upload — only
+     * touch()'s updated_at. BroadcastsBandChanges::broadcastHasMeaningfulChanges()
+     * ignores updated_at-only diffs, so without Lodging::broadcastRefresh()
+     * bypassing that gate, mobile clients would get no realtime signal at
+     * all on attachment upload.
+     */
+    public function test_upload_broadcasts_lodging_updated(): void
+    {
+        Storage::fake(config('filesystems.default'));
+        Event::fake([BandDataChanged::class]);
+        ['band' => $band, 'lodging' => $lodging, 'token' => $token] = $this->createOwnerWithLodging();
+
+        $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->post("/api/mobile/bands/{$band->id}/lodgings/{$lodging->id}/attachments", [
+                'file' => UploadedFile::fake()->image('confirmation.jpg'),
+            ])
+            ->assertStatus(201);
+
+        Event::assertDispatched(
+            BandDataChanged::class,
+            fn (BandDataChanged $e) => $e->bandId === $band->id
+                && $e->model === 'lodging'
+                && $e->id === $lodging->id
+                && $e->action === 'updated',
+        );
     }
 
     public function test_serve_returns_bytes_for_member_and_403_for_stranger(): void

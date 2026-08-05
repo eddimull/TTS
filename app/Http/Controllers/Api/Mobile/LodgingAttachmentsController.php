@@ -40,7 +40,11 @@ class LodgingAttachmentsController extends Controller
             'file_size'       => $file->getSize(),
             'disk'            => $disk,
         ]);
-        $lodging->touch(); // broadcast parent update
+        // touch() alone doesn't broadcast (BroadcastsBandChanges ignores
+        // updated_at-only changes); the attachment lives on a child table so
+        // the parent row's own tracked columns don't change. Force the signal.
+        $lodging->touch();
+        $lodging->broadcastRefresh();
 
         return response()->json(['attachment' => $this->lodgingService->formatAttachment($attachment)], 201);
     }
@@ -55,6 +59,7 @@ class LodgingAttachmentsController extends Controller
 
         $attachment->delete(); // model hook removes the stored file
         $lodging->touch();
+        $lodging->broadcastRefresh();
 
         return response()->json(['message' => 'Attachment deleted.']);
     }

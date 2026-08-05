@@ -2,12 +2,14 @@
 
 namespace Tests\Feature\Api\Mobile;
 
+use App\Events\BandDataChanged;
 use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\Events;
 use App\Models\Lodging;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 class LodgingsTest extends TestCase
@@ -161,6 +163,36 @@ class LodgingsTest extends TestCase
         $labels = array_column($response['lodging']['rooms'], 'label');
         $this->assertSame(['King Renamed', 'Brand New'], $labels);
         $this->assertDatabaseMissing('lodging_rooms', ['label' => 'Doomed']);
+    }
+
+    /**
+     * Room sync only changes a child table (lodging_rooms), so the lodging
+     * row's own tracked columns don't change. A plain touch() alone would be
+     * swallowed by BroadcastsBandChanges::broadcastHasMeaningfulChanges()
+     * (it ignores updated_at-only diffs) — Lodging::broadcastRefresh() must
+     * bypass that gate so mobile clients still get a realtime signal.
+     */
+    public function test_update_rooms_broadcasts_lodging_updated(): void
+    {
+        Event::fake([BandDataChanged::class]);
+
+        ['band' => $band, 'token' => $token] = $this->createOwnerWithBand();
+        $lodging = Lodging::factory()->create(['band_id' => $band->id]);
+
+        $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->patchJson("/api/mobile/bands/{$band->id}/lodgings/{$lodging->id}", [
+                'rooms' => [['label' => 'Brand New']],
+            ])
+            ->assertOk();
+
+        Event::assertDispatched(
+            BandDataChanged::class,
+            fn (BandDataChanged $e) => $e->bandId === $band->id
+                && $e->model === 'lodging'
+                && $e->id === $lodging->id
+                && $e->action === 'updated',
+        );
     }
 
     public function test_member_without_write_cannot_store(): void

@@ -105,7 +105,11 @@ class LodgingsController extends Controller
         }
         if ($rooms !== null) {
             $this->lodgingService->syncRooms($lodging, $rooms);
-            $lodging->touch(); // broadcast one parent update for room changes
+            // touch() alone doesn't broadcast (BroadcastsBandChanges ignores
+            // updated_at-only changes); rooms are a child table so the parent
+            // row's own tracked columns don't change either. Force the signal.
+            $lodging->touch();
+            $lodging->broadcastRefresh();
         }
 
         return response()->json(['lodging' => $this->lodgingService->formatDetail($lodging->fresh())]);
