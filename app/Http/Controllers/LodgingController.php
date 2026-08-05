@@ -60,10 +60,7 @@ class LodgingController extends Controller
         return inertia('Lodging/Form', [
             'band'     => ['id' => $band->id, 'name' => $band->name],
             'lodging'  => null,
-            // bookings has no `date` column (moved to events by the
-            // 2026_05_03_140000 migration); order by created_at instead.
-            // Form.vue's picker only renders booking.id/booking.name.
-            'bookings' => $band->bookings()->orderByDesc('created_at')->get(['id', 'name']),
+            'bookings' => $this->bookingOptions($band),
             'events'   => $this->bandEventOptions($band),
         ]);
     }
@@ -107,10 +104,7 @@ class LodgingController extends Controller
         return inertia('Lodging/Form', [
             'band'     => ['id' => $band->id, 'name' => $band->name],
             'lodging'  => $this->formatForWeb($lodging),
-            // bookings has no `date` column (moved to events by the
-            // 2026_05_03_140000 migration); order by created_at instead.
-            // Form.vue's picker only renders booking.id/booking.name.
-            'bookings' => $band->bookings()->orderByDesc('created_at')->get(['id', 'name']),
+            'bookings' => $this->bookingOptions($band),
             'events'   => $this->bandEventOptions($band),
         ]);
     }
@@ -367,6 +361,32 @@ class LodgingController extends Controller
             'url'          => route('lodgings.attachments.show', $a),
             'download_url' => route('lodgings.attachments.download', $a),
         ];
+    }
+
+    /**
+     * Picker options: bookings have no date column (dates live on their
+     * events), so each option carries its nearest event date — the next
+     * upcoming one, else the most recent past one — for proximity sorting.
+     *
+     * Events::$date is cast `date:Y-m-d` (a Carbon instance), so casting to
+     * string yields a full `Y-m-d 00:00:00` timestamp — normalise with
+     * substr() to a bare date before comparing/returning it.
+     */
+    private function bookingOptions(Bands $band): array
+    {
+        $today = now()->toDateString();
+
+        return $band->bookings()
+            ->with(['events' => fn ($q) => $q->orderBy('date')->select(['id', 'eventable_id', 'eventable_type', 'date'])])
+            ->get(['id', 'name'])
+            ->map(function ($booking) use ($today) {
+                $dates = $booking->events->pluck('date')->map(fn ($d) => substr((string) $d, 0, 10))->sort()->values();
+                $date = $dates->first(fn ($d) => $d >= $today) ?? $dates->last();
+                return ['id' => $booking->id, 'name' => $booking->name, 'date' => $date ?: null];
+            })
+            ->sortBy(fn ($b) => $b['date'] ?? '9999-99-99')
+            ->values()
+            ->toArray();
     }
 
     /** Upcoming + recent events for the link picker. */

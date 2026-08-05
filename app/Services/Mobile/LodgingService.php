@@ -75,6 +75,24 @@ class LodgingService
         ];
     }
 
+    /**
+     * Safe-for-sharing subset: the advance page URL travels outside the
+     * band, so this deliberately omits confirmation numbers, notes, and
+     * attachments. Add fields here only if they are safe on a passed-around
+     * advance link.
+     */
+    public function formatLogistics(Lodging $lodging): array
+    {
+        return [
+            'id'           => $lodging->id,
+            'name'         => $lodging->name,
+            'address'      => $lodging->address,
+            'check_in_at'  => $lodging->check_in_at?->format('Y-m-d H:i:s'),
+            'check_out_at' => $lodging->check_out_at?->format('Y-m-d H:i:s'),
+            'room_count'   => $lodging->rooms_count ?? $lodging->rooms()->count(),
+        ];
+    }
+
     public function formatAttachment(LodgingAttachment $attachment): array
     {
         return [

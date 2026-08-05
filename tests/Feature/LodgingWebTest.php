@@ -338,4 +338,48 @@ class LodgingWebTest extends TestCase
         $this->assertStringNotContainsString("\n", $header);
         $this->assertMatchesRegularExpression('/filename="(?:[^"\\\\]|\\\\.)*"/', $header);
     }
+
+    public function test_format_logistics_exposes_only_safe_fields(): void
+    {
+        $band = Bands::factory()->create();
+        $lodging = Lodging::factory()->create([
+            'band_id' => $band->id,
+            'name'    => 'Safe Hotel',
+            'notes'   => 'SECRET-NOTE',
+        ]);
+        $lodging->rooms()->create(['label' => 'King', 'confirmation_number' => 'SECRET-CONF', 'sort_order' => 0]);
+
+        $logistics = app(\App\Services\Mobile\LodgingService::class)
+            ->formatLogistics($lodging->fresh()->loadCount('rooms'));
+
+        $this->assertSame(
+            ['id', 'name', 'address', 'check_in_at', 'check_out_at', 'room_count'],
+            array_keys($logistics),
+        );
+        $this->assertSame(1, $logistics['room_count']);
+        $this->assertStringNotContainsString('SECRET', json_encode($logistics));
+    }
+
+    public function test_booking_picker_options_carry_nearest_event_date(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        $booking = \App\Models\Bookings::factory()->create(['band_id' => $band->id, 'name' => 'Dated Booking']);
+        \App\Models\Events::factory()->create([
+            'eventable_id' => $booking->id, 'eventable_type' => 'App\\Models\\Bookings',
+            'event_type_id' => \App\Models\EventTypes::factory()->create()->id,
+            'date' => now()->addDays(9)->format('Y-m-d'),
+        ]);
+        $eventless = \App\Models\Bookings::factory()->create(['band_id' => $band->id, 'name' => 'Eventless']);
+
+        $response = $this->actingAs($user)->get(route('bands.lodgings.create', $band));
+        $response->assertOk();
+        $bookings = collect($response->viewData('page')['props']['bookings']);
+
+        $dated = $bookings->firstWhere('name', 'Dated Booking');
+        $this->assertSame(now()->addDays(9)->format('Y-m-d'), $dated['date']);
+        $this->assertNull($bookings->firstWhere('name', 'Eventless')['date']);
+    }
 }
