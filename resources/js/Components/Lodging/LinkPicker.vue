@@ -15,7 +15,7 @@
         type="button"
         data-testid="link-picker-option"
         class="w-full text-left px-2 py-1.5"
-        :class="modelValue === null ? 'bg-blue-500/10 text-blue-500' : ''"
+        :class="modelValue === null ? 'bg-blue-500/10 text-blue-500' : 'dark:text-gray-50'"
         @click="select(null)"
       >
         None
@@ -37,7 +37,7 @@
           type="button"
           data-testid="link-picker-option"
           class="w-full text-left px-2 py-1.5"
-          :class="option.id === modelValue ? 'bg-blue-500/10 text-blue-500' : ''"
+          :class="option.id === modelValue ? 'bg-blue-500/10 text-blue-500' : 'dark:text-gray-50'"
           @click="select(option.id)"
         >
           {{ option.name ?? option.title }}

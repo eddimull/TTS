@@ -85,13 +85,14 @@ describe('Lodging Form', () => {
     const filterInputs = wrapper.findAll('[data-testid="link-picker-filter"]');
     const bookingFilter = filterInputs[0];
 
-    expect(wrapper.findAll('[data-testid="link-picker-option"]').length).toBeGreaterThan(3);
+    const beforeCount = wrapper.findAll('[data-testid="link-picker-option"]').length;
+    expect(beforeCount).toBeGreaterThan(3);
 
     await bookingFilter.setValue('Grand');
 
-    const bookingPickerRows = wrapper.findAll('[data-testid="link-picker-option"]')
-      .filter(row => row.text().includes('Grand') || row.text() === 'None');
-    expect(bookingPickerRows.some(row => row.text().includes('Roadside Inn'))).toBe(false);
+    const afterRows = wrapper.findAll('[data-testid="link-picker-option"]');
+    expect(afterRows.length).toBeLessThan(beforeCount);
+    expect(afterRows.some(row => row.text().includes('Roadside Inn'))).toBe(false);
   });
 
   it('highlights the selected option when clicked', async () => {

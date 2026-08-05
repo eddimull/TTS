@@ -397,7 +397,7 @@ class LodgingController extends Controller
             ->where('date', '>=', now()->subMonths(3)->toDateString())
             ->orderBy('date')
             ->get(['id', 'title', 'date'])
-            ->map(fn ($e) => ['id' => $e->id, 'title' => $e->title, 'date' => $e->date])
+            ->map(fn ($e) => ['id' => $e->id, 'title' => $e->title, 'date' => $e->date?->toDateString()])
             ->toArray();
     }
 }
