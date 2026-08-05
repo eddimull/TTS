@@ -812,12 +812,6 @@ class DevSetupCommand extends Command
                     'backline_provided' => false,
                     'production_needed' => true,
                     'color' => 'TBD',
-                    'lodging' => [
-                        ['title' => 'Provided', 'type' => 'checkbox', 'data' => false],
-                        ['title' => 'location', 'type' => 'text', 'data' => 'TBD'],
-                        ['title' => 'check_in', 'type' => 'text', 'data' => 'TBD'],
-                        ['title' => 'check_out', 'type' => 'text', 'data' => 'TBD'],
-                    ],
                     'public' => true,
                     'outside' => false,
                 ]

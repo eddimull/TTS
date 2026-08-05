@@ -62,6 +62,7 @@ require __DIR__ . '/booking.php';
 require __DIR__ . '/events.php';
 require __DIR__ . '/finances.php';
 require __DIR__ . '/images.php';
+require __DIR__ . '/lodging.php';
 require __DIR__ . '/media.php';
 require __DIR__ . '/notifications.php';
 require __DIR__ . '/questionnaire.php';

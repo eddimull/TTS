@@ -266,6 +266,13 @@ class User extends Authenticatable
             return true;
         }
 
+        // Subs may READ lodging for bands they currently sub for; the
+        // controller scopes results to stays linked to their assigned gigs.
+        if ($resource === 'lodging' && $this->isSubOfBand($bandId)
+            && $this->hasCurrentSubAssignmentForBand($bandId)) {
+            return true;
+        }
+
         setPermissionsTeamId($bandId);
         $result = $this->hasPermissionTo('read:' . $resource);
         setPermissionsTeamId(0);

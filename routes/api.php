@@ -134,6 +134,7 @@ Route::prefix('mobile')->group(function () {
         Route::patch('/messages/{message}', [App\Http\Controllers\Api\Mobile\MessagesController::class, 'update'])->name('mobile.messages.update');
         Route::delete('/messages/{message}', [App\Http\Controllers\Api\Mobile\MessagesController::class, 'destroy'])->name('mobile.messages.destroy');
         Route::get('/messages/{message}/attachments/{attachment}', [App\Http\Controllers\Api\Mobile\MessagesController::class, 'attachment'])->name('mobile.messages.attachments.show');
+        Route::get('/lodging-attachments/{attachment}', [App\Http\Controllers\Api\Mobile\LodgingAttachmentsController::class, 'show'])->whereNumber('attachment')->name('mobile.lodging-attachments.show');
         Route::post('/messages/{message}/reactions', [App\Http\Controllers\Api\Mobile\MessageReactionsController::class, 'store'])->name('mobile.messages.reactions.store');
         Route::delete('/messages/{message}/reactions/{emoji}', [App\Http\Controllers\Api\Mobile\MessageReactionsController::class, 'destroy'])->name('mobile.messages.reactions.destroy');
 
@@ -230,6 +231,29 @@ Route::prefix('mobile')->group(function () {
         Route::middleware('mobile.band:write:events')->group(function () {
             Route::post('/bands/{band}/attire-chips', [App\Http\Controllers\Api\Mobile\AttireChipsController::class, 'store'])->name('mobile.attire-chips.store');
             Route::delete('/bands/{band}/attire-chips/{chip}', [App\Http\Controllers\Api\Mobile\AttireChipsController::class, 'destroy'])->name('mobile.attire-chips.destroy');
+        });
+
+        // ── Lodging (read) ─────────────────────────────────────────────
+        // No scopeBindings() here (unlike bookings): Bands has no lodgings()
+        // relation for Laravel to scope the child binding through. Every
+        // {lodging} action in the controller instead asserts
+        // `$lodging->band_id === $band->id` and 404s otherwise.
+        Route::middleware('mobile.band:read:lodging')->group(function () {
+            Route::get('/bands/{band}/lodgings', [App\Http\Controllers\Api\Mobile\LodgingsController::class, 'index'])->name('mobile.lodgings.index');
+            Route::get('/bands/{band}/lodgings/{lodging}', [App\Http\Controllers\Api\Mobile\LodgingsController::class, 'show'])->name('mobile.lodgings.show');
+        });
+
+        // ── Lodging (write) ────────────────────────────────────────────
+        Route::middleware('mobile.band:write:lodging')->group(function () {
+            Route::post('/bands/{band}/lodgings', [App\Http\Controllers\Api\Mobile\LodgingsController::class, 'store'])->name('mobile.lodgings.store');
+            Route::patch('/bands/{band}/lodgings/{lodging}', [App\Http\Controllers\Api\Mobile\LodgingsController::class, 'update'])->name('mobile.lodgings.update');
+            Route::delete('/bands/{band}/lodgings/{lodging}', [App\Http\Controllers\Api\Mobile\LodgingsController::class, 'destroy'])->name('mobile.lodgings.destroy');
+
+            // {lodging}/{attachment} scoping is manual via abort_if in the controller
+            // (nested binding may not scope through `lodging`) — mirrors the events
+            // attachment routes / Api/Mobile/EventsController::deleteAttachment.
+            Route::post('/bands/{band}/lodgings/{lodging}/attachments', [App\Http\Controllers\Api\Mobile\LodgingAttachmentsController::class, 'store'])->name('mobile.lodgings.attachments.store');
+            Route::delete('/bands/{band}/lodgings/{lodging}/attachments/{attachment}', [App\Http\Controllers\Api\Mobile\LodgingAttachmentsController::class, 'destroy'])->name('mobile.lodgings.attachments.destroy');
         });
 
         // ── Bookings (read) ────────────────────────────────────────────

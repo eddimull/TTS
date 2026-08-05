@@ -8,6 +8,7 @@
     :payout-result="payoutResult"
     :questionnaire-instances="questionnaireInstances"
     :available-questionnaires="availableQuestionnaires"
+    :lodgings="lodgings"
   />
   <BookingForm
     v-else
@@ -57,6 +58,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  lodgings: {
+    type: Array,
+    default: () => [],
+  },
 })
 
 useBandRealtime(props.band.id, {
@@ -69,6 +74,7 @@ useBandRealtime(props.band.id, {
   payout: { props: ['payoutResult', 'payoutConfig'], when: (p) => p.parent?.id === props.booking.id },
   payout_adjustment: { props: ['payoutResult', 'payoutConfig'], when: (p) => p.parent?.id === props.booking.id },
   band_payout_config: ['payoutResult', 'payoutConfig'],
+  lodging: ['lodgings'],
 })
 
 const page = usePage()

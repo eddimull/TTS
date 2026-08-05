@@ -159,12 +159,6 @@ class BookingsController extends Controller
                 'backline_provided' => false,
                 'production_needed' => true,
                 'color' => 'TBD',
-                'lodging' => [
-                    ['title' => 'Provided', 'type' => 'checkbox', 'data' => false],
-                    ['title' => 'location', 'type' => 'text', 'data' => 'TBD'],
-                    ['title' => 'check_in', 'type' => 'text', 'data' => 'TBD'],
-                    ['title' => 'check_out', 'type' => 'text', 'data' => 'TBD'],
-                ],
                 'public' => true,
                 'outside' => false,
             ]
@@ -282,10 +276,24 @@ class BookingsController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'slug']);
 
+        // Structured lodging records (the `lodgings` table) — NOT the legacy
+        // freeform additional_data->lodging blob.
+        //
+        // No sub-gating needed here (unlike Events/Show): this route is behind
+        // the `booking.access` middleware, which admits only band owners and
+        // members and 403s everyone else — subs never reach this page.
+        $lodgings = $booking->lodgings()
+            ->withCount(['rooms', 'attachments'])
+            ->orderBy('check_in_at')
+            ->get()
+            ->map(fn ($l) => app(\App\Services\Mobile\LodgingService::class)->formatSummary($l))
+            ->values();
+
         return Inertia::render('Bookings/Show', [
             'booking' => $booking,
             'band' => $band,
             'contacts' => $booking->contacts,
+            'lodgings' => $lodgings,
             'payments' => $booking->payments,
             'events' => $booking->events,
             'contract' => $booking->contract,

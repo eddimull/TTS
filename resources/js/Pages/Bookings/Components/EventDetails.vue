@@ -186,41 +186,6 @@
         </div>
       </SectionCard>
 
-      <!-- Lodging Section -->
-      <SectionCard
-        v-if="hasLodging"
-        title="Lodging Information"
-        icon="lodging"
-        :is-open="openSections.lodging"
-        :view-mode="true"
-        @toggle="toggleSection('lodging')"
-      >
-        <div class="space-y-3">
-          <div
-            v-for="(item, index) in event.additional_data.lodging"
-            :key="index"
-            class="flex items-center gap-2"
-          >
-            <i
-              v-if="item.type === 'checkbox'"
-              :class="item.data ? 'pi pi-check-square text-green-600' : 'pi pi-square text-gray-400'"
-              class="text-lg"
-            />
-            <div>
-              <div class="font-medium text-gray-900 dark:text-gray-50">
-                {{ item.title }}
-              </div>
-              <div
-                v-if="item.type === 'text' && item.data"
-                class="text-sm text-gray-600 dark:text-gray-400"
-              >
-                {{ item.data }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </SectionCard>
-
       <!-- Performance Section -->
       <SectionCard
         v-if="hasPerformanceData"
@@ -445,7 +410,6 @@ const openSections = reactive({
     timeline: true, // Default open so timeline can auto-scroll
     attire: false,
     additionalData: false,
-    lodging: false,
     performance: false,
     wedding: false,
 });
@@ -492,10 +456,6 @@ const hasAdditionalData = computed(() => {
            data?.outside !== undefined || 
            data?.backline_provided !== undefined || 
            data?.production_needed !== undefined;
-});
-
-const hasLodging = computed(() => {
-    return props.event.additional_data?.lodging?.length > 0;
 });
 
 const hasPerformanceData = computed(() => {

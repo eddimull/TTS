@@ -671,18 +671,6 @@
               }}</strong>
             </li>
             <li>
-              Lodging Provided:
-              <strong>{{
-                event.additional_data?.lodging?.find(
-                  (item) =>
-                    item.title === "Lodging Provided"
-                )?.data
-                  ? "Yes"
-                  : "No"
-              }}
-              </strong>
-            </li>
-            <li>
               Backline Provided:
               <strong>{{
                 event.additional_data?.backline_provided
