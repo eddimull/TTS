@@ -232,6 +232,23 @@ Route::prefix('mobile')->group(function () {
             Route::delete('/bands/{band}/attire-chips/{chip}', [App\Http\Controllers\Api\Mobile\AttireChipsController::class, 'destroy'])->name('mobile.attire-chips.destroy');
         });
 
+        // ── Lodging (read) ─────────────────────────────────────────────
+        // No scopeBindings() here (unlike bookings): Bands has no lodgings()
+        // relation for Laravel to scope the child binding through. Every
+        // {lodging} action in the controller instead asserts
+        // `$lodging->band_id === $band->id` and 404s otherwise.
+        Route::middleware('mobile.band:read:lodging')->group(function () {
+            Route::get('/bands/{band}/lodgings', [App\Http\Controllers\Api\Mobile\LodgingsController::class, 'index'])->name('mobile.lodgings.index');
+            Route::get('/bands/{band}/lodgings/{lodging}', [App\Http\Controllers\Api\Mobile\LodgingsController::class, 'show'])->name('mobile.lodgings.show');
+        });
+
+        // ── Lodging (write) ────────────────────────────────────────────
+        Route::middleware('mobile.band:write:lodging')->group(function () {
+            Route::post('/bands/{band}/lodgings', [App\Http\Controllers\Api\Mobile\LodgingsController::class, 'store'])->name('mobile.lodgings.store');
+            Route::patch('/bands/{band}/lodgings/{lodging}', [App\Http\Controllers\Api\Mobile\LodgingsController::class, 'update'])->name('mobile.lodgings.update');
+            Route::delete('/bands/{band}/lodgings/{lodging}', [App\Http\Controllers\Api\Mobile\LodgingsController::class, 'destroy'])->name('mobile.lodgings.destroy');
+        });
+
         // ── Bookings (read) ────────────────────────────────────────────
         Route::middleware('mobile.band:read:bookings')->scopeBindings()->group(function () {
             Route::get('/bands/{band}/bookings', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'index'])->name('mobile.bookings.index');
