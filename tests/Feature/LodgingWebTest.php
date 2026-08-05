@@ -188,9 +188,13 @@ class LodgingWebTest extends TestCase
     }
 
     /**
-     * events.show is guarded only by ['auth', 'verified'] — no band-membership
-     * middleware — so an unaffiliated user reaches the page with a 200. The
-     * lodgings prop must still be withheld from them.
+     * events.show used to be guarded only by ['auth', 'verified'], so an
+     * unaffiliated user reached the page with a 200 and the lodgings prop was
+     * withheld at the prop level. The page itself is now gated
+     * (EventsController::viewerCanAccessEvent — see EventShowAccessTest), so a
+     * stranger never renders it at all and the stay stays hidden a layer
+     * earlier. Kept as a lodging-specific regression: if the page gate is ever
+     * relaxed, this must fail rather than silently leak hotel details.
      */
     public function test_event_show_hides_lodgings_from_non_member(): void
     {
@@ -208,9 +212,8 @@ class LodgingWebTest extends TestCase
 
         $this->actingAs($stranger)
             ->get(route('events.show', $event))
-            ->assertOk()
-            ->assertDontSee('Secret Hotel')
-            ->assertInertia(fn ($page) => $page->where('lodgings', []));
+            ->assertStatus(403)
+            ->assertDontSee('Secret Hotel');
     }
 
     /**

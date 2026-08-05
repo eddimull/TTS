@@ -187,10 +187,15 @@ class LodgingSubVisibilityTest extends TestCase
 
     /**
      * The event-detail payload gained a `lodgings` key (Task 4). That endpoint
-     * gates only on canRead('events'), which ANY sub of the band passes with no
-     * assignment requirement — far looser than the read:lodging carve-out. So
-     * the key must be scoped at the formatter, or a sub could read hotel names,
-     * addresses and confirmation counts for gigs they are not on.
+     * used to gate only on canRead('events'), which ANY sub of the band passes
+     * with no assignment requirement, so the key had to be scoped at the
+     * formatter or a sub could read hotel names, addresses and confirmation
+     * counts for gigs they are not on.
+     *
+     * The endpoint now applies the per-gig gate itself (EventsController::show
+     * — see EventShowSubAccessTest) and 404s an unassigned sub before any
+     * payload is built, so the whole event — not just its stays — is hidden.
+     * Kept as the lodging-specific regression on that behaviour.
      */
     public function test_sub_does_not_see_lodgings_on_detail_of_an_event_they_are_not_assigned_to(): void
     {
@@ -207,12 +212,10 @@ class LodgingSubVisibilityTest extends TestCase
             'band_id' => $band->id, 'name' => 'Other Gig Hotel', 'event_id' => $otherEvent->id,
         ]);
 
-        $response = $this->withToken($subToken)
+        $this->withToken($subToken)
             ->getJson("/api/mobile/events/{$otherEvent->key}")
-            ->assertOk()
-            ->json();
-
-        $this->assertSame([], $response['event']['lodgings']);
+            ->assertStatus(404)
+            ->assertDontSee('Other Gig Hotel');
     }
 
     public function test_sub_sees_lodgings_on_detail_of_their_own_event(): void
