@@ -110,6 +110,27 @@ class EventsController extends Controller
             abort(403);
         }
 
+        // canRead('events') is band-WIDE for a sub (User::canRead grants it to
+        // any sub of the band with no per-gig check), and resolveRouteBinding()
+        // also accepts numeric ids — so without this second gate a sub's token
+        // could enumerate every gig in their band and read contacts,
+        // attachments and notes for gigs they were never called for.
+        //
+        // bands() is owners+members and excludes subs, so full members are
+        // unaffected. UserEventsService resolves Auth::user() internally and
+        // self-manages the Spatie permissions team; the one-year lookback
+        // overrides its default 72-hour window so a sub can still open a gig
+        // they played recently. 404 (not 403) hides existence, matching the
+        // LodgingsController::show() precedent.
+        if (!$request->user()->bands()->contains('id', $band->id)) {
+            $assignedEventIds = app(UserEventsService::class)
+                ->getEventIds(Carbon::now()->subYear());
+
+            if (!in_array((int) $event->id, $assignedEventIds, true)) {
+                abort(404);
+            }
+        }
+
         $liveSessionId = LiveSetlistSession::where('event_id', $event->id)
             ->whereIn('status', ['active', 'paused'])
             ->value('id');

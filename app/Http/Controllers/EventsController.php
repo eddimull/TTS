@@ -243,38 +243,33 @@ class EventsController extends Controller
 
         // Check user permissions for this event's band
         $band = $event->eventable->band;
+
+        // SECURITY: this route is only guarded by ['auth', 'verified'] — there
+        // is no band-membership middleware — so without this gate ANY verified
+        // user could read the full event payload (band contacts, attachments,
+        // roster, notes) for ANY event, enumerable via the numeric-id fallback
+        // above. Admit only full members/owners and subs assigned to THIS gig.
+        if (!$this->viewerCanAccessEvent($event, $band)) {
+            abort(403);
+        }
+
         $canEdit = Auth::user()->canWrite('events', $band->id);
 
         // Structured lodging records (the `lodgings` table) — NOT the legacy
         // freeform additional_data->lodging blob.
         //
-        // SECURITY: this route is only guarded by ['auth', 'verified'] — there
-        // is no band-membership middleware and no authorize() call, so ANY
-        // verified user (stranger or sub) can reach this page. Mirror the
-        // two-gate carve-out from Mobile\EventDataService::formatForShow:
-        //  1. canRead('lodging') — keeps out strangers, any role without
-        //     read:lodging, and subs with no current assignment in the band.
-        //  2. per-event assignment — canRead('lodging') is band-wide, so a sub
-        //     assigned to gig A would otherwise see gig B's stays. Non-members
-        //     must be assigned to THIS event.
+        // The page gate above already limits viewers to members and per-gig
+        // subs, so the only extra requirement here is the read:lodging
+        // permission itself (a member without it must not see stays).
         $lodgings = [];
         $viewer   = Auth::user();
         if ($viewer && $viewer->canRead('lodging', $band->id)) {
-            $isMember = $viewer->bands()->contains('id', $band->id);
-            $maySee   = $isMember || in_array(
-                (int) $event->id,
-                app(\App\Services\UserEventsService::class)->getEventIds(Carbon::now()->subYear()),
-                true,
-            );
-
-            if ($maySee) {
-                $lodgings = $event->lodgings()
-                    ->withCount(['rooms', 'attachments'])
-                    ->orderBy('check_in_at')
-                    ->get()
-                    ->map(fn ($l) => app(\App\Services\Mobile\LodgingService::class)->formatSummary($l))
-                    ->values();
-            }
+            $lodgings = $event->lodgings()
+                ->withCount(['rooms', 'attachments'])
+                ->orderBy('check_in_at')
+                ->get()
+                ->map(fn ($l) => app(\App\Services\Mobile\LodgingService::class)->formatSummary($l))
+                ->values();
         }
 
         return Inertia::render('Events/Show', [
@@ -284,6 +279,47 @@ class EventsController extends Controller
             'userPayout' => $userPayout,
             'lodgings' => $lodgings,
         ]);
+    }
+
+    /**
+     * May the authenticated user view this event at all?
+     *
+     * Two populations qualify:
+     *  1. Full members/owners of the event's band — `bands()` is owners+members
+     *     and deliberately excludes subs.
+     *  2. Subs of the band assigned to THIS event. Sub status is band-wide, so
+     *     a sub called for gig A must not reach gig B; UserEventsService is the
+     *     single source of truth for "which events does this user see" and
+     *     resolves Auth::user() internally (it also self-manages the Spatie
+     *     permissions team, which the sub role needs pinned to 0).
+     *
+     * The one-year lookback matches the lodging carve-out: getEventIds()
+     * otherwise defaults to a 72-hour window, which would 403 a sub trying to
+     * open a gig they played last month.
+     */
+    private function viewerCanAccessEvent(Events $event, Bands $band): bool
+    {
+        $viewer = Auth::user();
+
+        if (!$viewer) {
+            return false;
+        }
+
+        if ($viewer->bands()->contains('id', $band->id)) {
+            return true;
+        }
+
+        // NOTE: must be Illuminate\Support\Carbon, not the Carbon\Carbon
+        // aliased at the top of this file — UserEventsService hands the date
+        // straight to RehearsalScheduleService::generateUpcomingRehearsals(),
+        // whose ?Illuminate\Support\Carbon parameter type rejects the base
+        // class and throws a TypeError.
+        return in_array(
+            (int) $event->id,
+            app(\App\Services\UserEventsService::class)
+                ->getEventIds(\Illuminate\Support\Carbon::now()->subYear()),
+            true,
+        );
     }
 
     /**
