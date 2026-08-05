@@ -3,6 +3,10 @@ import { mount } from '@vue/test-utils';
 
 global.route = vi.fn((name) => `/mock-route/${name}`);
 
+const globalConfig = {
+  config: { globalProperties: { route: global.route } },
+};
+
 vi.mock('@inertiajs/vue3', async () => {
   const { reactive } = await import('vue');
   return {
@@ -22,6 +26,7 @@ const band = { id: 1, name: 'Test Band' };
 
 const mountOptions = {
   global: {
+    ...globalConfig,
     stubs: {
       LocationAutocomplete: { template: '<input />' },
     },
@@ -64,5 +69,43 @@ describe('Lodging Form', () => {
     });
     expect(wrapper.find('input#name').element.value).toBe('Hampton Inn');
     expect(wrapper.findAll('[data-testid="room-row"]').length).toBe(1);
+  });
+
+  const threeBookings = [
+    { id: 1, name: 'Grand Hotel', date: '2030-06-11' },
+    { id: 2, name: 'Roadside Inn', date: '2030-06-01' },
+    { id: 3, name: 'Grand Lodge', date: null },
+  ];
+
+  it('narrows booking options when filtering', async () => {
+    const wrapper = mount(LodgingForm, {
+      props: { band, lodging: null, bookings: threeBookings, events: [] },
+      ...mountOptions,
+    });
+    const filterInputs = wrapper.findAll('[data-testid="link-picker-filter"]');
+    const bookingFilter = filterInputs[0];
+
+    const beforeCount = wrapper.findAll('[data-testid="link-picker-option"]').length;
+    expect(beforeCount).toBeGreaterThan(3);
+
+    await bookingFilter.setValue('Grand');
+
+    const afterRows = wrapper.findAll('[data-testid="link-picker-option"]');
+    expect(afterRows.length).toBeLessThan(beforeCount);
+    expect(afterRows.some(row => row.text().includes('Roadside Inn'))).toBe(false);
+  });
+
+  it('highlights the selected option when clicked', async () => {
+    const wrapper = mount(LodgingForm, {
+      props: { band, lodging: null, bookings: threeBookings, events: [] },
+      ...mountOptions,
+    });
+    const options = wrapper.findAll('[data-testid="link-picker-option"]');
+    const target = options.find(o => o.text().includes('Grand Hotel'));
+    await target.trigger('click');
+
+    const updated = wrapper.findAll('[data-testid="link-picker-option"]')
+      .find(o => o.text().includes('Grand Hotel'));
+    expect(updated.classes()).toContain('bg-blue-500/10');
   });
 });

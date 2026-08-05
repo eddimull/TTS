@@ -84,10 +84,16 @@ class EventsController extends Controller
         // Add event_type_name to the event object
         $event->event_type_name = $event->eventType;
 
-        // Uncomment the following line if you want to use Inertia instead of the default View
-        // return Inertia::render('Events/Advance', ['event' => $event]);
+        $lodgingService = app(\App\Services\Mobile\LodgingService::class);
+        $lodgings = $event->lodgings()
+            ->withCount('rooms')
+            ->orderBy('check_in_at')
+            ->get()
+            ->map(fn ($l) => $lodgingService->formatLogistics($l))
+            ->values()
+            ->toArray();
 
-        return view('advance.advance', ['event' => $event]);
+        return view('advance.advance', ['event' => $event, 'lodgings' => $lodgings]);
     }
     public function createPDF($id)
     {
