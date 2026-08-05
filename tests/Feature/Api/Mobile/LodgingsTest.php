@@ -3,6 +3,8 @@
 namespace Tests\Feature\Api\Mobile;
 
 use App\Models\Bands;
+use App\Models\Bookings;
+use App\Models\Events;
 use App\Models\Lodging;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -94,6 +96,48 @@ class LodgingsTest extends TestCase
         $this->assertSame('Hampton Inn', $response['lodging']['name']);
         $this->assertCount(2, $response['lodging']['rooms']);
         $this->assertDatabaseHas('lodging_rooms', ['label' => 'King', 'confirmation_number' => 'ABC123']);
+    }
+
+    public function test_store_rejects_cross_band_booking_id(): void
+    {
+        ['band' => $band, 'token' => $token] = $this->createOwnerWithBand();
+        $otherBand = Bands::factory()->create();
+        $foreignBooking = Bookings::factory()->forBand($otherBand)->create();
+
+        $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->postJson("/api/mobile/bands/{$band->id}/lodgings", [
+                'name'         => 'Cross Band Hotel',
+                'check_in_at'  => now()->addDays(10)->format('Y-m-d') . ' 15:00:00',
+                'check_out_at' => now()->addDays(12)->format('Y-m-d') . ' 11:00:00',
+                'booking_id'   => $foreignBooking->id,
+            ])
+            ->assertStatus(422);
+
+        $this->assertDatabaseMissing('lodgings', ['name' => 'Cross Band Hotel']);
+    }
+
+    public function test_store_rejects_cross_band_event_id(): void
+    {
+        ['band' => $band, 'token' => $token] = $this->createOwnerWithBand();
+        $otherBand = Bands::factory()->create();
+        $foreignBooking = Bookings::factory()->forBand($otherBand)->create();
+        $foreignEvent = Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id'   => $foreignBooking->id,
+        ]);
+
+        $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->postJson("/api/mobile/bands/{$band->id}/lodgings", [
+                'name'         => 'Cross Band Event Hotel',
+                'check_in_at'  => now()->addDays(10)->format('Y-m-d') . ' 15:00:00',
+                'check_out_at' => now()->addDays(12)->format('Y-m-d') . ' 11:00:00',
+                'event_id'     => $foreignEvent->id,
+            ])
+            ->assertStatus(422);
+
+        $this->assertDatabaseMissing('lodgings', ['name' => 'Cross Band Event Hotel']);
     }
 
     public function test_update_syncs_rooms_by_id(): void
