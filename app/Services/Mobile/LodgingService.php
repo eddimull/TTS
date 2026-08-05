@@ -2,8 +2,12 @@
 
 namespace App\Services\Mobile;
 
+use App\Models\Bookings;
+use App\Models\Events;
 use App\Models\Lodging;
 use App\Models\LodgingAttachment;
+use App\Services\UserEventsService;
+use Carbon\Carbon;
 
 /**
  * Formats lodging records for the mobile wire contract and owns the nested
@@ -111,5 +115,54 @@ class LodgingService
             $keptIds[] = $lodging->rooms()->create($attributes)->id;
         }
         $lodging->rooms()->whereNotIn('id', $keptIds)->delete();
+    }
+
+    /**
+     * Sub-only users see only stays linked to their assigned gigs.
+     *
+     * UserEventsService::getEventIds() returns a plain array (it ends in
+     * ->all()), so array semantics are used throughout here. Shared by the
+     * mobile LodgingsController and the web LodgingController index/show —
+     * both gate reads through User::canRead('lodging', $bandId), which lets
+     * a sub through without scoping the result set, so this must be applied
+     * by every caller of that index.
+     */
+    public function scopeForSubs($query, $user, $band): void
+    {
+        if ($user->bands()->contains('id', $band->id)) {
+            return; // full member/owner — no scoping
+        }
+        $eventIds = app(UserEventsService::class)->getEventIds(Carbon::now()->subYear());
+        $bookingIds = Events::whereIn('id', $eventIds)
+            ->where('eventable_type', Bookings::class)
+            ->pluck('eventable_id');
+
+        $query->where(function ($q) use ($eventIds, $bookingIds) {
+            $q->whereIn('event_id', $eventIds)
+              ->orWhereIn('booking_id', $bookingIds);
+        });
+    }
+
+    /**
+     * Can the *authenticated* user (UserEventsService resolves them via
+     * Auth::user() internally) see this single stay as a sub?
+     */
+    public function subCanSee(Lodging $lodging): bool
+    {
+        if (!$lodging->event_id && !$lodging->booking_id) {
+            return false;
+        }
+        $eventIds = app(UserEventsService::class)->getEventIds(Carbon::now()->subYear());
+        if ($lodging->event_id && in_array((int) $lodging->event_id, $eventIds, true)) {
+            return true;
+        }
+        if ($lodging->booking_id) {
+            return Events::whereIn('id', $eventIds)
+                ->where('eventable_type', Bookings::class)
+                ->where('eventable_id', $lodging->booking_id)
+                ->exists();
+        }
+
+        return false;
     }
 }

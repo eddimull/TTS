@@ -10,8 +10,6 @@ use App\Models\Bookings;
 use App\Models\Events;
 use App\Models\Lodging;
 use App\Services\Mobile\LodgingService;
-use App\Services\UserEventsService;
-use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -23,7 +21,7 @@ use Illuminate\Http\Request;
  * with the `read:lodging` / `write:lodging` abilities. Subs pass that gate via
  * the User::canRead() lodging carve-out but only for stays attached to gigs
  * they're actually assigned to, so read paths here scope down further — see
- * scopeForSubs() / subCanSee().
+ * LodgingService::scopeForSubs() / subCanSee() (shared with the web controller).
  */
 class LodgingsController extends Controller
 {
@@ -42,7 +40,7 @@ class LodgingsController extends Controller
             ->withCount(['rooms', 'attachments'])
             ->orderBy('check_in_at');
 
-        $this->scopeForSubs($query, $user, $band);
+        $this->lodgingService->scopeForSubs($query, $user, $band);
 
         return response()->json([
             'lodgings'  => $query->get()->map(fn ($l) => $this->lodgingService->formatSummary($l))->values(),
@@ -60,7 +58,7 @@ class LodgingsController extends Controller
 
         // Full members/owners see every stay; a sub only sees stays tied to a
         // gig they're on. 404 (not 403) so we don't leak the row's existence.
-        if (!$user->bands()->contains('id', $band->id) && !$this->subCanSee($lodging)) {
+        if (!$user->bands()->contains('id', $band->id) && !$this->lodgingService->subCanSee($lodging)) {
             abort(404);
         }
 
@@ -145,50 +143,5 @@ class LodgingsController extends Controller
                 'Event does not belong to this band.'
             );
         }
-    }
-
-    /**
-     * Sub-only users see only stays linked to their assigned gigs.
-     *
-     * UserEventsService::getEventIds() returns a plain array (it ends in
-     * ->all()), so array semantics are used throughout here.
-     */
-    private function scopeForSubs($query, $user, $band): void
-    {
-        if ($user->bands()->contains('id', $band->id)) {
-            return; // full member/owner — no scoping
-        }
-        $eventIds = app(UserEventsService::class)->getEventIds(Carbon::now()->subYear());
-        $bookingIds = Events::whereIn('id', $eventIds)
-            ->where('eventable_type', Bookings::class)
-            ->pluck('eventable_id');
-
-        $query->where(function ($q) use ($eventIds, $bookingIds) {
-            $q->whereIn('event_id', $eventIds)
-              ->orWhereIn('booking_id', $bookingIds);
-        });
-    }
-
-    /**
-     * Can the *authenticated* user (UserEventsService resolves them via
-     * Auth::user() internally) see this single stay as a sub?
-     */
-    private function subCanSee(Lodging $lodging): bool
-    {
-        if (!$lodging->event_id && !$lodging->booking_id) {
-            return false;
-        }
-        $eventIds = app(UserEventsService::class)->getEventIds(Carbon::now()->subYear());
-        if ($lodging->event_id && in_array((int) $lodging->event_id, $eventIds, true)) {
-            return true;
-        }
-        if ($lodging->booking_id) {
-            return Events::whereIn('id', $eventIds)
-                ->where('eventable_type', Bookings::class)
-                ->where('eventable_id', $lodging->booking_id)
-                ->exists();
-        }
-
-        return false;
     }
 }
