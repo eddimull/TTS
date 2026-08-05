@@ -148,4 +148,68 @@ class LodgingAttachmentsTest extends TestCase
             ->deleteJson("/api/mobile/bands/{$band->id}/lodgings/{$lodging->id}/attachments/{$foreign->id}")
             ->assertStatus(404);
     }
+
+    /**
+     * I1 regression: LodgingAttachment::lodging() is a plain belongsTo, so
+     * SoftDeletingScope excludes a soft-deleted parent Lodging by default —
+     * `$attachment->lodging` resolves to null and dereferencing ->band_id on
+     * it was a fatal error. Decision: attachments of a soft-deleted stay
+     * 404 — the stay is gone, so its attachments are gone too.
+     */
+    public function test_serve_404s_for_attachment_of_a_soft_deleted_lodging(): void
+    {
+        Storage::fake(config('filesystems.default'));
+        ['lodging' => $lodging, 'token' => $token] = $this->createOwnerWithLodging();
+        $attachment = $lodging->attachments()->create([
+            'filename' => 'gone.jpg', 'stored_filename' => 'x/gone.jpg',
+            'mime_type' => 'image/jpeg', 'file_size' => 1, 'disk' => config('filesystems.default'),
+        ]);
+        Storage::disk($attachment->disk)->put($attachment->stored_filename, 'bytes');
+
+        $lodging->delete(); // soft delete
+
+        $this->withToken($token)
+            ->getJson("/api/mobile/lodging-attachments/{$attachment->id}")
+            ->assertStatus(404);
+    }
+
+    /**
+     * I2: non-image/PDF mimes must be forced to download (not rendered
+     * inline) to avoid a browser executing/rendering an arbitrary uploaded
+     * file type. Images/PDF remain inline.
+     */
+    public function test_serve_forces_download_disposition_for_non_previewable_mime(): void
+    {
+        Storage::fake(config('filesystems.default'));
+        ['band' => $band, 'lodging' => $lodging, 'token' => $token] = $this->createOwnerWithLodging();
+        $attachment = $lodging->attachments()->create([
+            'filename' => 'itinerary.html', 'stored_filename' => 'x/itinerary.html',
+            'mime_type' => 'text/html', 'file_size' => 1, 'disk' => config('filesystems.default'),
+        ]);
+        Storage::disk($attachment->disk)->put($attachment->stored_filename, '<script>alert(1)</script>');
+
+        $response = $this->withToken($token)
+            ->getJson("/api/mobile/lodging-attachments/{$attachment->id}")
+            ->assertOk()
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
+
+        $this->assertStringStartsWith('attachment', $response->headers->get('Content-Disposition'));
+    }
+
+    public function test_serve_keeps_inline_disposition_for_images(): void
+    {
+        Storage::fake(config('filesystems.default'));
+        ['band' => $band, 'lodging' => $lodging, 'token' => $token] = $this->createOwnerWithLodging();
+        $attachment = $lodging->attachments()->create([
+            'filename' => 'photo.jpg', 'stored_filename' => 'x/photo.jpg',
+            'mime_type' => 'image/jpeg', 'file_size' => 1, 'disk' => config('filesystems.default'),
+        ]);
+        Storage::disk($attachment->disk)->put($attachment->stored_filename, 'bytes');
+
+        $response = $this->withToken($token)
+            ->getJson("/api/mobile/lodging-attachments/{$attachment->id}")
+            ->assertOk();
+
+        $this->assertStringStartsWith('inline', $response->headers->get('Content-Disposition'));
+    }
 }

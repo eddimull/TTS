@@ -266,4 +266,49 @@ class LodgingSubVisibilityTest extends TestCase
             ->getJson("/api/mobile/bands/{$otherBand->id}/lodgings")
             ->assertStatus(403);
     }
+
+    /**
+     * C1 regression: LodgingAttachmentsController::show() (the sanctum serve
+     * route) previously gated only on User::canRead('lodging', $bandId),
+     * which is band-wide for a sub. A sub assigned to one gig could fetch
+     * another gig's attachments by enumerating sequential attachment ids.
+     * The serve route must apply the same per-stay subCanSee() gate as
+     * LodgingsController::show().
+     */
+    public function test_sub_can_fetch_attachment_of_their_assigned_lodging_via_serve_route(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake(config('filesystems.default'));
+        ['band' => $band, 'event' => $event, 'subToken' => $subToken] = $this->createBandWithSubAndEvent();
+
+        $linked = Lodging::factory()->create([
+            'band_id' => $band->id, 'name' => 'Linked Hotel', 'event_id' => $event->id,
+        ]);
+        $attachment = $linked->attachments()->create([
+            'filename' => 'confirmation.jpg', 'stored_filename' => 'x/confirmation.jpg',
+            'mime_type' => 'image/jpeg', 'file_size' => 1, 'disk' => config('filesystems.default'),
+        ]);
+        \Illuminate\Support\Facades\Storage::disk($attachment->disk)->put($attachment->stored_filename, 'bytes');
+
+        $this->withToken($subToken)
+            ->getJson("/api/mobile/lodging-attachments/{$attachment->id}")
+            ->assertOk()
+            ->assertHeader('X-Content-Type-Options', 'nosniff');
+    }
+
+    public function test_sub_cannot_fetch_attachment_of_an_unlinked_lodging_via_serve_route(): void
+    {
+        \Illuminate\Support\Facades\Storage::fake(config('filesystems.default'));
+        ['band' => $band, 'subToken' => $subToken] = $this->createBandWithSubAndEvent();
+
+        $unlinked = Lodging::factory()->create(['band_id' => $band->id, 'name' => 'Unlinked Hotel']);
+        $attachment = $unlinked->attachments()->create([
+            'filename' => 'secret.jpg', 'stored_filename' => 'x/secret.jpg',
+            'mime_type' => 'image/jpeg', 'file_size' => 1, 'disk' => config('filesystems.default'),
+        ]);
+        \Illuminate\Support\Facades\Storage::disk($attachment->disk)->put($attachment->stored_filename, 'bytes');
+
+        $this->withToken($subToken)
+            ->getJson("/api/mobile/lodging-attachments/{$attachment->id}")
+            ->assertStatus(404);
+    }
 }

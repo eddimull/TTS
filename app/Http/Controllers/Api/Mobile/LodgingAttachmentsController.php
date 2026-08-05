@@ -69,23 +69,56 @@ class LodgingAttachmentsController extends Controller
      *
      * Serve bytes with auth. Deliberately NOT the public /images/ proxy —
      * lodging attachments can contain confirmation numbers.
+     *
+     * `lodging()` (not the eager `->lodging` accessor) is resolved explicitly
+     * so a soft-deleted parent stay (SoftDeletingScope excludes it by
+     * default) 404s cleanly instead of dereferencing a null relation. A
+     * deleted stay's attachments are gone as far as this endpoint is
+     * concerned — the stay itself is gone.
      */
     public function show(Request $request, LodgingAttachment $attachment)
     {
+        $lodging = $attachment->lodging()->first();
+        abort_if(!$lodging, 404, 'File not found');
+
         $user = $request->user();
-        $bandId = $attachment->lodging->band_id;
+        $bandId = $lodging->band_id;
         if (!$user || !$user->canRead('lodging', $bandId)) {
             abort(403, 'You do not have permission to view this file');
         }
 
+        // Full members/owners pass canRead() band-wide; a sub only passes the
+        // canRead() carve-out but must additionally be tied to this specific
+        // stay's gig — otherwise a sub assigned to one gig could fetch
+        // another gig's attachments by enumerating attachment ids. Mirrors
+        // LodgingsController::show()'s per-stay gate.
+        if (!$user->bands()->contains('id', $bandId) && !$this->lodgingService->subCanSee($lodging)) {
+            abort(404, 'File not found');
+        }
+
         try {
             $file = Storage::disk($attachment->disk)->get($attachment->stored_filename);
+            $disposition = $this->dispositionFor($attachment->mime_type);
             return response($file)
                 ->header('Content-Type', $attachment->mime_type)
-                ->header('Content-Disposition', 'inline; filename="' . $attachment->filename . '"')
-                ->header('Cache-Control', 'private, max-age=3600');
+                ->header('Content-Disposition', $disposition . '; filename="' . $attachment->filename . '"')
+                ->header('Cache-Control', 'private, max-age=3600')
+                ->header('X-Content-Type-Options', 'nosniff');
         } catch (\Exception $e) {
             abort(404, 'File not found');
         }
+    }
+
+    /**
+     * Inline rendering is safe (and desirable) for images/PDF; every other
+     * mime forces a download so the browser never tries to execute/render
+     * an arbitrary uploaded file type inline.
+     */
+    private function dispositionFor(?string $mimeType): string
+    {
+        if ($mimeType && (str_starts_with($mimeType, 'image/') || $mimeType === 'application/pdf')) {
+            return 'inline';
+        }
+        return 'attachment';
     }
 }

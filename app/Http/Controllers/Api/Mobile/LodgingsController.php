@@ -12,6 +12,7 @@ use App\Models\Lodging;
 use App\Services\Mobile\LodgingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Mobile lodging CRUD: hotel stays for a band, optionally linked to a booking
@@ -79,8 +80,11 @@ class LodgingsController extends Controller
 
         $this->assertLinksBelongToBand($data, $band->id);
 
-        $lodging = Lodging::create($data + ['band_id' => $band->id]);
-        $this->lodgingService->syncRooms($lodging, $rooms);
+        $lodging = DB::transaction(function () use ($data, $band, $rooms) {
+            $lodging = Lodging::create($data + ['band_id' => $band->id]);
+            $this->lodgingService->syncRooms($lodging, $rooms);
+            return $lodging;
+        });
 
         return response()->json(['lodging' => $this->lodgingService->formatDetail($lodging->fresh())], 201);
     }
@@ -102,7 +106,9 @@ class LodgingsController extends Controller
             $lodging->update($data);
         }
         if ($rooms !== null) {
-            $this->lodgingService->syncRooms($lodging, $rooms);
+            DB::transaction(function () use ($lodging, $rooms) {
+                $this->lodgingService->syncRooms($lodging, $rooms);
+            });
             // touch() alone doesn't broadcast (BroadcastsBandChanges ignores
             // updated_at-only changes); rooms are a child table so the parent
             // row's own tracked columns don't change either. Force the signal.

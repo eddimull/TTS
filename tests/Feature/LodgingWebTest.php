@@ -130,4 +130,50 @@ class LodgingWebTest extends TestCase
             ->get(route('Booking Details', [$band, $booking]))
             ->assertStatus(403);
     }
+
+    /**
+     * C1/M4 regression: showAttachment() previously gated only on
+     * authorizeRead($attachment->lodging->band_id), i.e. canRead('lodging'),
+     * which is band-wide for a stranger too (403s) but was the same
+     * band-wide-only check that let a sub cross gigs on the mobile serve
+     * route. Locks in that a stranger with no band relationship is 403'd
+     * before ever reaching the sub per-stay check.
+     */
+    public function test_show_attachment_403s_for_stranger(): void
+    {
+        $stranger = User::factory()->create(['email_verified_at' => now()]);
+        $band = Bands::factory()->create();
+        $lodging = Lodging::factory()->create(['band_id' => $band->id]);
+        $attachment = $lodging->attachments()->create([
+            'filename' => 'x.jpg', 'stored_filename' => 'x/x.jpg',
+            'mime_type' => 'image/jpeg', 'file_size' => 1, 'disk' => config('filesystems.default'),
+        ]);
+
+        $this->actingAs($stranger)
+            ->get(route('lodgings.attachments.show', $attachment))
+            ->assertStatus(403);
+    }
+
+    /**
+     * I1 regression: showAttachment() dereferenced $attachment->lodging->band_id
+     * directly; a soft-deleted parent Lodging makes that relation null
+     * (SoftDeletingScope). Decision: 404, the stay is gone.
+     */
+    public function test_show_attachment_404s_for_soft_deleted_lodging(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+        $lodging = Lodging::factory()->create(['band_id' => $band->id]);
+        $attachment = $lodging->attachments()->create([
+            'filename' => 'x.jpg', 'stored_filename' => 'x/x.jpg',
+            'mime_type' => 'image/jpeg', 'file_size' => 1, 'disk' => config('filesystems.default'),
+        ]);
+
+        $lodging->delete();
+
+        $this->actingAs($user)
+            ->get(route('lodgings.attachments.show', $attachment))
+            ->assertStatus(404);
+    }
 }
