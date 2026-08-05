@@ -186,7 +186,23 @@ class EventsController extends Controller
             $event = Events::where('key', $keyOrId)->firstOrFail();
         }
 
-        // Load all necessary relationships for comprehensive view
+        // Load only what the access gate needs — NOT the full payload — so an
+        // unauthorized viewer's request is rejected before we do the work of
+        // hydrating contacts/attachments/roster or computing payout estimates.
+        $event->load('eventable.band');
+        $band = $event->eventable->band;
+
+        // SECURITY: this route is only guarded by ['auth', 'verified'] — there
+        // is no band-membership middleware — so without this gate ANY verified
+        // user could read the full event payload (band contacts, attachments,
+        // roster, notes) for ANY event, enumerable via the numeric-id fallback
+        // above. Admit only full members/owners and subs assigned to THIS gig.
+        if (!$this->viewerCanAccessEvent($event, $band)) {
+            abort(403);
+        }
+
+        // Load the remaining relationships for the full payload now that the
+        // viewer is authorized.
         $event->load([
             'eventable.band.colorways',
             'eventable.contacts',
@@ -197,6 +213,9 @@ class EventsController extends Controller
             'eventMembers.user',
             'roster'
         ]);
+        // load() replaces the relation, so re-grab $band with colorways now
+        // hydrated — the pre-gate copy above was used only for the check.
+        $band = $event->eventable->band;
 
         // Format roster members
         $event->roster_members = $event->eventMembers->map(function ($eventMember) {
@@ -239,18 +258,6 @@ class EventsController extends Controller
             $event->attachments->each(function ($attachment) {
                 $attachment->formatted_size = $attachment->formattedSize;
             });
-        }
-
-        // Check user permissions for this event's band
-        $band = $event->eventable->band;
-
-        // SECURITY: this route is only guarded by ['auth', 'verified'] — there
-        // is no band-membership middleware — so without this gate ANY verified
-        // user could read the full event payload (band contacts, attachments,
-        // roster, notes) for ANY event, enumerable via the numeric-id fallback
-        // above. Admit only full members/owners and subs assigned to THIS gig.
-        if (!$this->viewerCanAccessEvent($event, $band)) {
-            abort(403);
         }
 
         $canEdit = Auth::user()->canWrite('events', $band->id);

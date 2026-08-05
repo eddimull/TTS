@@ -98,11 +98,10 @@ class EventsController extends Controller
      */
     public function show(Request $request, Events $event): JsonResponse
     {
-        $event->load([
-            'eventable.band', 'eventable.contacts',
-            'type', 'eventMembers.user', 'eventMembers.rosterMember',
-            'eventMembers.bandRole', 'eventMembers.slot', 'attachments',
-        ]);
+        // Load only what the access gates need — NOT the full payload — so an
+        // unauthorized viewer's request is rejected before we do the work of
+        // hydrating contacts/attachments/members for formatForShow().
+        $event->loadMissing('eventable.band');
 
         $band = $event->eventable?->band ?? abort(404, 'Band not found for this event.');
 
@@ -130,6 +129,16 @@ class EventsController extends Controller
                 abort(404);
             }
         }
+
+        // Viewer is authorized — now load the rest of the payload.
+        $event->load([
+            'eventable.contacts',
+            'type', 'eventMembers.user', 'eventMembers.rosterMember',
+            'eventMembers.bandRole', 'eventMembers.slot', 'attachments',
+        ]);
+        // load() replaces the `eventable` relation object, so re-grab $band
+        // rather than dereference the pre-gate copy above.
+        $band = $event->eventable->band;
 
         $liveSessionId = LiveSetlistSession::where('event_id', $event->id)
             ->whereIn('status', ['active', 'paused'])
