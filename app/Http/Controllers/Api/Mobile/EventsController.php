@@ -152,7 +152,13 @@ class EventsController extends Controller
         $event->loadMissing('eventable.band');
         $band = $event->eventable?->band ?? abort(404, 'Band not found.');
 
-        if (!$request->user()->canRead('events', $band->id)) {
+        // The substitute call list (names + emails) feeds the sub-assignment
+        // picker in the mobile app, which is only reachable when the viewer
+        // has event write access (see EventDetailScreen's `canWrite`-gated
+        // onAssignSub). canRead('events') would let ANY sub of the band read
+        // every other sub's contact info band-wide — canWrite matches the
+        // sibling assignSub() gate below and has no sub carve-out.
+        if (!$request->user()->canWrite('events', $band->id)) {
             abort(403);
         }
 
