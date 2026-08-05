@@ -32,6 +32,13 @@ class LodgingAttachmentsController extends Controller
         $extension = $file->getClientOriginalExtension();
         $filename  = Str::uuid() . ($extension ? '.' . $extension : '');
         $path      = $file->storeAs($band->site_name . '/lodging_uploads', $filename, $disk);
+        // storeAs() returns false (not an exception) on a storage-driver
+        // failure. Persisting that as stored_filename would create a
+        // phantom attachment row that serves Content-Length: 0 forever
+        // (Storage::get('0') returns null rather than throwing, so show()'s
+        // catch never fires). Abort with a clear JSON error before the row
+        // exists.
+        abort_if($path === false, 500, 'Failed to store attachment file.');
 
         $attachment = LodgingAttachment::create([
             'lodging_id'      => $lodging->id,

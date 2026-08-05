@@ -6,12 +6,63 @@ use App\Models\Bands;
 use App\Models\Lodging;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class LodgingWebTest extends TestCase
 {
     use RefreshDatabase;
+
+    /**
+     * Regression for the create-page 500: create() queried
+     * `$band->bookings()->orderByDesc('date')->get(['id', 'name', 'date'])`,
+     * but `date` was moved off `bookings` onto `events` by the
+     * 2026_05_03_140000 migration — the query threw
+     * SQLSTATE[42S22] Column not found. An existing booking (and event) must
+     * be present in the band so the bookings()/bandEventOptions() queries
+     * actually execute against real rows, not just an empty result set.
+     */
+    public function test_create_page_renders_for_owner(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+        $booking = \App\Models\Bookings::factory()->create(['band_id' => $band->id]);
+        \App\Models\Events::factory()->create([
+            'eventable_id' => $booking->id, 'eventable_type' => 'App\\Models\\Bookings',
+            'event_type_id' => \App\Models\EventTypes::factory()->create()->id,
+            'date' => now()->addDays(5)->format('Y-m-d'),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('bands.lodgings.create', $band))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Lodging/Form'));
+    }
+
+    /**
+     * Same defect as test_create_page_renders_for_owner, but via edit()
+     * (line ~106), which had the identical bad `bookings.date` query.
+     */
+    public function test_edit_page_renders_for_owner(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+        $booking = \App\Models\Bookings::factory()->create(['band_id' => $band->id]);
+        \App\Models\Events::factory()->create([
+            'eventable_id' => $booking->id, 'eventable_type' => 'App\\Models\\Bookings',
+            'event_type_id' => \App\Models\EventTypes::factory()->create()->id,
+            'date' => now()->addDays(5)->format('Y-m-d'),
+        ]);
+        $lodging = Lodging::factory()->create(['band_id' => $band->id]);
+
+        $this->actingAs($user)
+            ->get(route('lodgings.edit', $lodging))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Lodging/Form'));
+    }
 
     public function test_index_renders_for_band_owner(): void
     {
@@ -231,6 +282,35 @@ class LodgingWebTest extends TestCase
      * inject arbitrary header bytes. HeaderUtils::makeDisposition() must
      * produce a single well-formed header value with no raw quote/newline.
      */
+    /**
+     * Regression: UploadedFile::storeAs() returns false (not an exception)
+     * on a storage-driver failure (e.g. S3/MinIO unreachable). Previously
+     * that `false` was persisted directly as `stored_filename`, creating a
+     * phantom attachment row that serves Content-Length: 0 forever. Mock
+     * the disk (Storage::fake() would make storeAs() succeed, defeating the
+     * point) so putFileAs() returns false, and assert the endpoint 500s
+     * with no row created.
+     */
+    public function test_upload_attachment_aborts_when_storage_write_fails(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+        $lodging = Lodging::factory()->create(['band_id' => $band->id]);
+
+        $failingDisk = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
+        $failingDisk->shouldReceive('putFileAs')->andReturn(false);
+        Storage::shouldReceive('disk')->andReturn($failingDisk);
+
+        $this->actingAs($user)
+            ->post(route('lodgings.attachments.upload', $lodging), [
+                'files' => [UploadedFile::fake()->image('confirmation.jpg')],
+            ])
+            ->assertStatus(500);
+
+        $this->assertDatabaseCount('lodging_attachments', 0);
+    }
+
     public function test_show_attachment_sanitizes_malicious_filename_in_content_disposition(): void
     {
         Storage::fake(config('filesystems.default'));

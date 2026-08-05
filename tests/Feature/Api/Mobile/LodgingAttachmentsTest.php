@@ -76,6 +76,32 @@ class LodgingAttachmentsTest extends TestCase
         );
     }
 
+    /**
+     * Regression: UploadedFile::storeAs() returns false (not an exception)
+     * on a storage-driver failure. Previously that `false` was persisted
+     * directly as `stored_filename`, creating a phantom attachment row that
+     * serves Content-Length: 0 forever. Mock the disk (Storage::fake()
+     * would make storeAs() succeed, defeating the point) so putFileAs()
+     * returns false, and assert the endpoint 500s with no row created.
+     */
+    public function test_upload_aborts_when_storage_write_fails(): void
+    {
+        ['band' => $band, 'lodging' => $lodging, 'token' => $token] = $this->createOwnerWithLodging();
+
+        $failingDisk = \Mockery::mock(\Illuminate\Contracts\Filesystem\Filesystem::class);
+        $failingDisk->shouldReceive('putFileAs')->andReturn(false);
+        Storage::shouldReceive('disk')->andReturn($failingDisk);
+
+        $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->post("/api/mobile/bands/{$band->id}/lodgings/{$lodging->id}/attachments", [
+                'file' => UploadedFile::fake()->image('confirmation.jpg'),
+            ])
+            ->assertStatus(500);
+
+        $this->assertDatabaseCount('lodging_attachments', 0);
+    }
+
     public function test_serve_returns_bytes_for_member_and_403_for_stranger(): void
     {
         Storage::fake(config('filesystems.default'));

@@ -60,6 +60,9 @@ class LodgingController extends Controller
         return inertia('Lodging/Form', [
             'band'     => ['id' => $band->id, 'name' => $band->name],
             'lodging'  => null,
+            // bookings has no `date` column (moved to events by the
+            // 2026_05_03_140000 migration); order by created_at instead.
+            // Form.vue's picker only renders booking.id/booking.name.
             'bookings' => $band->bookings()->orderByDesc('created_at')->get(['id', 'name']),
             'events'   => $this->bandEventOptions($band),
         ]);
@@ -104,6 +107,9 @@ class LodgingController extends Controller
         return inertia('Lodging/Form', [
             'band'     => ['id' => $band->id, 'name' => $band->name],
             'lodging'  => $this->formatForWeb($lodging),
+            // bookings has no `date` column (moved to events by the
+            // 2026_05_03_140000 migration); order by created_at instead.
+            // Form.vue's picker only renders booking.id/booking.name.
             'bookings' => $band->bookings()->orderByDesc('created_at')->get(['id', 'name']),
             'events'   => $this->bandEventOptions($band),
         ]);
@@ -161,6 +167,14 @@ class LodgingController extends Controller
             $extension = $file->getClientOriginalExtension();
             $filename  = Str::uuid() . ($extension ? '.' . $extension : '');
             $path      = $file->storeAs($band->site_name . '/lodging_uploads', $filename, $disk);
+            // storeAs() returns false (not an exception) on a storage-driver
+            // failure. Persisting that as stored_filename would create a
+            // phantom attachment row that serves Content-Length: 0 forever
+            // (Storage::get('0') returns null rather than throwing, so
+            // showAttachment()'s catch never fires). Abort before the row
+            // exists so the existing axios error alert in Form.vue surfaces
+            // the failure instead.
+            abort_if($path === false, 500, 'Failed to store attachment file.');
             LodgingAttachment::create([
                 'lodging_id'      => $lodging->id,
                 'filename'        => $file->getClientOriginalName(),
