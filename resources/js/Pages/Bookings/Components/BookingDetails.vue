@@ -92,6 +92,28 @@
         </div>
       </div>
 
+      <!-- Lodging -->
+      <div
+        v-if="lodgings.length"
+        class="bg-white dark:bg-slate-800 rounded-lg shadow-md p-4"
+      >
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-3 flex items-center">
+          <i class="pi pi-home mr-2" />
+          Lodging
+        </h2>
+        <div class="space-y-2 text-sm">
+          <a
+            v-for="l in lodgings"
+            :key="l.id"
+            :href="route('lodgings.show', l.id)"
+            class="flex items-start justify-between gap-2 hover:underline"
+          >
+            <span class="font-medium text-gray-900 dark:text-gray-50">{{ l.name }}</span>
+            <span class="text-gray-500 dark:text-gray-400 text-right">{{ formatStayRange(l) }}</span>
+          </a>
+        </div>
+      </div>
+
       <!-- Payout Section (if available) -->
       <BookingPayout
         v-if="payoutConfig"
@@ -567,8 +589,28 @@ const props = defineProps({
   availableQuestionnaires: {
     type: Array,
     default: () => []
+  },
+  lodgings: {
+    type: Array,
+    default: () => []
   }
 })
+
+// LodgingService::formatSummary emits `Y-m-d H:i:s` strings (never ISO-8601),
+// so these must be parsed with fromSQL.
+const formatStayRange = (lodging) => {
+  const checkIn = lodging.check_in_at ? DateTime.fromSQL(lodging.check_in_at) : null
+  const checkOut = lodging.check_out_at ? DateTime.fromSQL(lodging.check_out_at) : null
+
+  if (checkIn?.isValid && checkOut?.isValid) {
+    return checkIn.hasSame(checkOut, 'month') && checkIn.hasSame(checkOut, 'year')
+      ? `${checkIn.toFormat('MMM d')} - ${checkOut.toFormat('d, yyyy')}`
+      : `${checkIn.toFormat('MMM d')} - ${checkOut.toFormat('MMM d, yyyy')}`
+  }
+  if (checkIn?.isValid) return checkIn.toFormat('MMM d, yyyy')
+  if (checkOut?.isValid) return checkOut.toFormat('MMM d, yyyy')
+  return ''
+}
 
 const duration = computed(() => {
   const firstEvent = props.booking.events?.[0]

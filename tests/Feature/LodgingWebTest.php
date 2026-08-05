@@ -53,4 +53,81 @@ class LodgingWebTest extends TestCase
             ->get(route('lodgings.show', $lodging))
             ->assertStatus(403);
     }
+
+    public function test_event_show_receives_lodgings_prop(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+        $booking = \App\Models\Bookings::factory()->create(['band_id' => $band->id]);
+        $event = \App\Models\Events::factory()->create([
+            'eventable_id' => $booking->id, 'eventable_type' => 'App\\Models\\Bookings',
+            'event_type_id' => \App\Models\EventTypes::factory()->create()->id,
+            'date' => now()->addDays(5)->format('Y-m-d'),
+        ]);
+        Lodging::factory()->create(['band_id' => $band->id, 'event_id' => $event->id, 'name' => 'Prop Hotel']);
+
+        $this->actingAs($user)
+            ->get(route('events.show', $event))
+            ->assertOk()
+            ->assertSee('Prop Hotel');
+    }
+
+    public function test_booking_show_receives_lodgings_prop(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+        $booking = \App\Models\Bookings::factory()->create(['band_id' => $band->id]);
+        Lodging::factory()->create([
+            'band_id' => $band->id, 'booking_id' => $booking->id, 'name' => 'Booking Prop Hotel',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('Booking Details', [$band, $booking]))
+            ->assertOk()
+            ->assertSee('Booking Prop Hotel');
+    }
+
+    /**
+     * events.show is guarded only by ['auth', 'verified'] — no band-membership
+     * middleware — so an unaffiliated user reaches the page with a 200. The
+     * lodgings prop must still be withheld from them.
+     */
+    public function test_event_show_hides_lodgings_from_non_member(): void
+    {
+        $stranger = User::factory()->create(['email_verified_at' => now()]);
+        $band = Bands::factory()->create();
+        $booking = \App\Models\Bookings::factory()->create(['band_id' => $band->id]);
+        $event = \App\Models\Events::factory()->create([
+            'eventable_id' => $booking->id, 'eventable_type' => 'App\\Models\\Bookings',
+            'event_type_id' => \App\Models\EventTypes::factory()->create()->id,
+            'date' => now()->addDays(5)->format('Y-m-d'),
+        ]);
+        Lodging::factory()->create([
+            'band_id' => $band->id, 'event_id' => $event->id, 'name' => 'Secret Hotel',
+        ]);
+
+        $this->actingAs($stranger)
+            ->get(route('events.show', $event))
+            ->assertOk()
+            ->assertDontSee('Secret Hotel')
+            ->assertInertia(fn ($page) => $page->where('lodgings', []));
+    }
+
+    /**
+     * The booking page is behind `booking.access`, which admits only owners and
+     * members — a sub cannot reach it at all, so no prop-level gating is needed
+     * there. Locks in the 403 that makes that reasoning safe.
+     */
+    public function test_booking_show_403s_for_non_member(): void
+    {
+        $stranger = User::factory()->create(['email_verified_at' => now()]);
+        $band = Bands::factory()->create();
+        $booking = \App\Models\Bookings::factory()->create(['band_id' => $band->id]);
+
+        $this->actingAs($stranger)
+            ->get(route('Booking Details', [$band, $booking]))
+            ->assertStatus(403);
+    }
 }
