@@ -194,17 +194,6 @@
         <AdditionalData v-model="event" />
       </SectionCard>
 
-      <!-- Lodging Section -->
-      <SectionCard
-        v-show="!showNotesModal"
-        title="Lodging Information"
-        icon="lodging"
-        :is-open="openSections.lodging"
-        @toggle="toggleSection('lodging')"
-      >
-        <LodgingSection v-model="event" />
-      </SectionCard>
-
       <!-- Performance Section -->
       <SectionCard
         v-show="!showNotesModal"
@@ -270,7 +259,6 @@ import BasicInfo from "./EventEditor/BasicInfo.vue";
 import NotesSection from "./EventEditor/NotesSection.vue";
 import AttireSection from "./EventEditor/AttireSection.vue";
 import AdditionalData from "./EventEditor/AdditionalData.vue";
-import LodgingSection from "./EventEditor/LodgingSection.vue";
 import WeddingSection from "./EventEditor/WeddingSection.vue";
 import PerformanceSection from "./EventEditor/PerformanceSection.vue";
 import ActionButtons from "./EventEditor/ActionButtons.vue";
@@ -400,7 +388,6 @@ const openSections = reactive({
     timeline: true, // Default open so timeline can auto-scroll
     attire: true,
     additionalData: true,
-    lodging: true,
     performance: true,
     wedding: true,
     questionnaires: true,

@@ -248,7 +248,7 @@
 
       <!-- Lodging -->
       <Card
-        v-if="hasLodging"
+        v-if="lodgings.length"
         class="mb-4"
       >
         <template #title>
@@ -256,28 +256,15 @@
         </template>
         <template #content>
           <div class="space-y-2 text-sm">
-            <div
-              v-for="(item, index) in event.additional_data.lodging"
-              :key="index"
-              class="flex items-start gap-2"
+            <a
+              v-for="l in lodgings"
+              :key="l.id"
+              :href="route('lodgings.show', l.id)"
+              class="flex items-start justify-between gap-2 hover:underline"
             >
-              <i
-                v-if="item.type === 'checkbox'"
-                :class="item.data ? 'pi pi-check-square text-green-600' : 'pi pi-square text-gray-400'"
-                class="text-base mt-0.5"
-              />
-              <div class="flex-1">
-                <div class="font-medium text-gray-900 dark:text-gray-50">
-                  {{ item.title }}
-                </div>
-                <div
-                  v-if="item.type === 'text' && item.data"
-                  class="text-gray-600 dark:text-gray-400"
-                >
-                  {{ item.data }}
-                </div>
-              </div>
-            </div>
+              <span>{{ l.name }}</span>
+              <span class="text-gray-500 dark:text-gray-400">{{ formatStayRange(l) }}</span>
+            </a>
           </div>
         </template>
       </Card>
@@ -515,6 +502,10 @@ const props = defineProps({
   userPayout: {
     type: Number,
     default: null
+  },
+  lodgings: {
+    type: Array,
+    default: () => []
   }
 });
 
@@ -528,6 +519,7 @@ useBandRealtime(props.band.id, {
   payout: ['userPayout'],
   payout_adjustment: ['userPayout'],
   band_payout_config: ['userPayout'],
+  lodging: ['lodgings'],
 });
 
 // Computed properties
@@ -539,7 +531,6 @@ const hasAdditionalData = computed(() => {
   return data?.public !== undefined || data?.outside !== undefined ||
          data?.backline_provided !== undefined || data?.production_needed !== undefined;
 });
-const hasLodging = computed(() => props.event.additional_data?.lodging?.length > 0);
 const hasPerformanceData = computed(() => {
   const perf = props.event.additional_data?.performance;
   return perf?.notes || perf?.songs?.length > 0 || perf?.charts?.length > 0;
@@ -573,6 +564,23 @@ const formatDateTime = (dateTimeString) => {
   if (!dateTimeString) return 'Not specified';
   const dt = DateTime.fromISO(dateTimeString);
   return dt.isValid ? dt.toFormat('h:mm a') : dateTimeString;
+};
+
+// LodgingService::formatSummary emits `Y-m-d H:i:s` strings (never ISO-8601),
+// so these must be parsed with fromSQL.
+const formatStayRange = (lodging) => {
+  const checkIn = lodging.check_in_at ? DateTime.fromSQL(lodging.check_in_at) : null;
+  const checkOut = lodging.check_out_at ? DateTime.fromSQL(lodging.check_out_at) : null;
+
+  if (checkIn?.isValid && checkOut?.isValid) {
+    // Same month reads better collapsed: "Mar 3 - 5, 2026".
+    return checkIn.hasSame(checkOut, 'month') && checkIn.hasSame(checkOut, 'year')
+      ? `${checkIn.toFormat('MMM d')} - ${checkOut.toFormat('d, yyyy')}`
+      : `${checkIn.toFormat('MMM d')} - ${checkOut.toFormat('MMM d, yyyy')}`;
+  }
+  if (checkIn?.isValid) return checkIn.toFormat('MMM d, yyyy');
+  if (checkOut?.isValid) return checkOut.toFormat('MMM d, yyyy');
+  return '';
 };
 
 const formatCurrency = (value) => formatCurrencyUtil(value);

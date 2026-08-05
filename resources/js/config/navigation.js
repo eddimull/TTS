@@ -21,6 +21,11 @@ export const navigationGroups = [
         routeName: 'rehearsal-schedules.index',
         permission: 'Rehearsals',
         activeMatch: (route) => route.includes('rehearsal')
+      },
+      {
+        label: 'Lodging',
+        routeName: 'lodgings.index',
+        activeMatch: (route) => route.includes('lodging')
       }
     ]
   },

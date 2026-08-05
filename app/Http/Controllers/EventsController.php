@@ -245,11 +245,44 @@ class EventsController extends Controller
         $band = $event->eventable->band;
         $canEdit = Auth::user()->canWrite('events', $band->id);
 
+        // Structured lodging records (the `lodgings` table) — NOT the legacy
+        // freeform additional_data->lodging blob.
+        //
+        // SECURITY: this route is only guarded by ['auth', 'verified'] — there
+        // is no band-membership middleware and no authorize() call, so ANY
+        // verified user (stranger or sub) can reach this page. Mirror the
+        // two-gate carve-out from Mobile\EventDataService::formatForShow:
+        //  1. canRead('lodging') — keeps out strangers, any role without
+        //     read:lodging, and subs with no current assignment in the band.
+        //  2. per-event assignment — canRead('lodging') is band-wide, so a sub
+        //     assigned to gig A would otherwise see gig B's stays. Non-members
+        //     must be assigned to THIS event.
+        $lodgings = [];
+        $viewer   = Auth::user();
+        if ($viewer && $viewer->canRead('lodging', $band->id)) {
+            $isMember = $viewer->bands()->contains('id', $band->id);
+            $maySee   = $isMember || in_array(
+                (int) $event->id,
+                app(\App\Services\UserEventsService::class)->getEventIds(Carbon::now()->subYear()),
+                true,
+            );
+
+            if ($maySee) {
+                $lodgings = $event->lodgings()
+                    ->withCount(['rooms', 'attachments'])
+                    ->orderBy('check_in_at')
+                    ->get()
+                    ->map(fn ($l) => app(\App\Services\Mobile\LodgingService::class)->formatSummary($l))
+                    ->values();
+            }
+        }
+
         return Inertia::render('Events/Show', [
             'event' => $event,
             'canEdit' => $canEdit,
             'band' => $band,
             'userPayout' => $userPayout,
+            'lodgings' => $lodgings,
         ]);
     }
 

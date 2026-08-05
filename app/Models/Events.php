@@ -259,6 +259,11 @@ class Events extends Model implements GoogleCalenderable
         return $this->hasMany(EventMember::class, 'event_id');
     }
 
+    public function lodgings()
+    {
+        return $this->hasMany(Lodging::class, 'event_id');
+    }
+
     public function attendedMembers()
     {
         return $this->eventMembers()->attended();

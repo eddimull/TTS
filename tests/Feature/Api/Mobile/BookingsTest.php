@@ -10,6 +10,7 @@ use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\Events;
 use App\Models\EventTypes;
+use App\Models\Lodging;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Bus;
@@ -197,6 +198,76 @@ class BookingsTest extends TestCase
         $events = $response->json('booking.events');
         $this->assertNotEmpty($events);
         $this->assertArrayHasKey('key', $events[0]);
+    }
+
+    public function test_bookings_show_includes_linked_lodgings(): void
+    {
+        [
+            'band'    => $band,
+            'booking' => $booking,
+            'token'   => $token,
+        ] = $this->createUserWithBandAndBooking();
+
+        Lodging::factory()->create([
+            'band_id'     => $band->id,
+            'name'        => 'Later Hotel',
+            'booking_id'  => $booking->id,
+            'check_in_at' => now()->addDays(20),
+        ]);
+        Lodging::factory()->create([
+            'band_id'     => $band->id,
+            'name'        => 'Sooner Hotel',
+            'booking_id'  => $booking->id,
+            'check_in_at' => now()->addDays(5),
+        ]);
+        // Same band, different booking — must not appear on this booking.
+        Lodging::factory()->create(['band_id' => $band->id, 'name' => 'Unrelated Hotel']);
+
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}")
+            ->assertOk();
+
+        $lodgings = $response->json('booking.lodgings');
+        $this->assertSame(['Sooner Hotel', 'Later Hotel'], array_column($lodgings, 'name'));
+        $this->assertSame($booking->id, $lodgings[0]['booking_id']);
+        $this->assertSame(0, $lodgings[0]['room_count']);
+        $this->assertSame(0, $lodgings[0]['attachment_count']);
+    }
+
+    public function test_bookings_show_lodgings_is_empty_array_when_none_linked(): void
+    {
+        [
+            'band'    => $band,
+            'booking' => $booking,
+            'token'   => $token,
+        ] = $this->createUserWithBandAndBooking();
+
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}")
+            ->assertOk();
+
+        // Never null — the Flutter model expects a list it can iterate.
+        $this->assertSame([], $response->json('booking.lodgings'));
+    }
+
+    public function test_bookings_index_lodgings_is_empty_array(): void
+    {
+        // format() is shared with the list endpoint, where lodgings are not
+        // eager-loaded. The key must still be present (and an array, not null)
+        // so the Flutter model parses list rows without a special case.
+        [
+            'band'  => $band,
+            'token' => $token,
+        ] = $this->createUserWithBandAndBooking();
+
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson("/api/mobile/bands/{$band->id}/bookings")
+            ->assertOk();
+
+        $this->assertSame([], $response->json('bookings.0.lodgings'));
     }
 
     public function test_bookings_show_returns_404_for_wrong_band(): void
