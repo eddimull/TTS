@@ -9,6 +9,7 @@ use App\Models\Bookings;
 use App\Models\Events;
 use App\Models\EventTypes;
 use App\Models\LiveSetlistSession;
+use App\Models\Lodging;
 use App\Models\Rehearsal;
 use App\Models\RehearsalSchedule;
 use App\Models\User;
@@ -264,6 +265,43 @@ class EventsTest extends TestCase
         $response->assertOk();
         $this->assertSame('Chateau Country Club', $response->json('event.venue_name'));
         $this->assertSame('3600 Chateau Blvd, Kenner LA 70065', $response->json('event.venue_address'));
+    }
+
+    public function test_event_show_includes_linked_lodgings(): void
+    {
+        ['band' => $band, 'event' => $event, 'token' => $token] = $this->createUserWithBandAndEvent();
+
+        $lodging = Lodging::factory()->create([
+            'band_id'  => $band->id,
+            'name'     => 'Event Hotel',
+            'event_id' => $event->id,
+        ]);
+        // A stay in the same band but not linked to this event must not appear.
+        Lodging::factory()->create(['band_id' => $band->id, 'name' => 'Unrelated Hotel']);
+
+        $response = $this->withToken($token)
+            ->getJson("/api/mobile/events/{$event->key}")
+            ->assertOk();
+
+        $lodgings = $response->json('event.lodgings');
+        $this->assertSame(['Event Hotel'], array_column($lodgings, 'name'));
+        $this->assertSame($lodging->id, $lodgings[0]['id']);
+        // formatSummary shape — counts must be present (and eager-loaded).
+        $this->assertSame(0, $lodgings[0]['room_count']);
+        $this->assertSame(0, $lodgings[0]['attachment_count']);
+        $this->assertSame($event->id, $lodgings[0]['event_id']);
+    }
+
+    public function test_event_show_lodgings_is_empty_array_when_none_linked(): void
+    {
+        ['event' => $event, 'token' => $token] = $this->createUserWithBandAndEvent();
+
+        $response = $this->withToken($token)
+            ->getJson("/api/mobile/events/{$event->key}")
+            ->assertOk();
+
+        // Never null — the Flutter model expects a list it can iterate.
+        $this->assertSame([], $response->json('event.lodgings'));
     }
 
     public function test_events_index_returns_venue_from_event_row(): void

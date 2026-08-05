@@ -9,6 +9,10 @@ use App\Services\Mobile\TokenService;
 
 class BookingFormatter
 {
+    public function __construct(private readonly LodgingService $lodgingService)
+    {
+    }
+
     public function format(Bookings $booking): array
     {
         $base = [
@@ -48,6 +52,13 @@ class BookingFormatter
                 : [],
             'contract' => null,
             'payments'  => [],
+            // Only populated when the caller eager-loads `lodgings` (the detail
+            // endpoint does). format() is shared with the booking *list*
+            // endpoints, so an unconditional query here would be an N+1 —
+            // same relationLoaded() guard the events/contract/payments keys use.
+            'lodgings'  => $booking->relationLoaded('lodgings')
+                ? $booking->lodgings->map(fn ($l) => $this->lodgingService->formatSummary($l))->values()->all()
+                : [],
         ];
 
         if ($booking->relationLoaded('contract') && $booking->contract) {

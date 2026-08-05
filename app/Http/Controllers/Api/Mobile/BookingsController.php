@@ -142,7 +142,9 @@ class BookingsController extends Controller
      */
     public function show(Request $request, Bands $band, Bookings $booking): JsonResponse
     {
-        $booking->load(['contacts', 'events', 'contract', 'payments', 'band']);
+        $booking->load(['contacts', 'events', 'contract', 'payments', 'band', 'lodgings' => function ($q) {
+            $q->withCount(['rooms', 'attachments'])->orderBy('check_in_at');
+        }]);
 
         return response()->json(['booking' => $this->formatter->format($booking)]);
     }

@@ -11,13 +11,18 @@ use App\Models\MediaFile;
 use App\Models\RosterSlot;
 use App\Models\User;
 use App\Services\MediaLibraryService;
+use App\Services\UserEventsService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 
 class EventDataService
 {
-    public function __construct(private readonly MediaLibraryService $mediaService)
-    {
+    public function __construct(
+        private readonly MediaLibraryService $mediaService,
+        private readonly LodgingService $lodgingService,
+    ) {
     }
 
     /**
@@ -377,6 +382,46 @@ class EventDataService
             ->values()
             ->toArray();
 
+        // Structured lodging records (the `lodgings` table). NOT the same thing
+        // as the singular `lodging` key spread in from $additionalData below,
+        // which is the legacy freeform additional_data->lodging notes blob.
+        // Both ship: the legacy key stays for backwards compatibility.
+        //
+        // SECURITY: this endpoint authorizes on canRead('events'), which every
+        // sub of the band passes with NO assignment requirement — much looser
+        // than lodging's own carve-out. Without the extra checks below, an
+        // unassigned sub would receive hotel names/addresses for gigs they are
+        // not on.
+        //
+        // Two gates, because neither alone is sufficient:
+        //  1. canRead('lodging') — keeps out subs with no current assignment
+        //     anywhere in the band, and any role without read:lodging.
+        //  2. per-event assignment — canRead('lodging') is band-wide
+        //     (hasCurrentSubAssignmentForBand), so a sub assigned to gig A
+        //     would otherwise still see gig B's stays. Non-members must be
+        //     assigned to THIS event.
+        $lodgings = [];
+        $viewer   = Auth::user();
+        $bandId   = $event->eventable?->band_id;
+        if ($viewer && $bandId && $viewer->canRead('lodging', $bandId)) {
+            $isMember = $viewer->bands()->contains('id', $bandId);
+            $maySee   = $isMember || in_array(
+                (int) $event->id,
+                app(UserEventsService::class)->getEventIds(Carbon::now()->subYear()),
+                true,
+            );
+
+            if ($maySee) {
+                $lodgings = $event->lodgings()
+                    ->withCount(['rooms', 'attachments'])
+                    ->orderBy('check_in_at')
+                    ->get()
+                    ->map(fn ($l) => $this->lodgingService->formatSummary($l))
+                    ->values()
+                    ->toArray();
+            }
+        }
+
         return [
             'id'              => $event->id,
             'key'             => $event->key,
@@ -398,6 +443,7 @@ class EventDataService
             'contacts'        => $contacts,
             'attachments'     => $attachments,
             'media'           => $media,
+            'lodgings'        => $lodgings,
             ...$additionalData,
         ];
     }
