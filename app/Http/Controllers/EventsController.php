@@ -84,11 +84,12 @@ class EventsController extends Controller
         // Add event_type_name to the event object
         $event->event_type_name = $event->eventType;
 
+        $lodgingService = app(\App\Services\Mobile\LodgingService::class);
         $lodgings = $event->lodgings()
             ->withCount('rooms')
             ->orderBy('check_in_at')
             ->get()
-            ->map(fn ($l) => app(\App\Services\Mobile\LodgingService::class)->formatLogistics($l))
+            ->map(fn ($l) => $lodgingService->formatLogistics($l))
             ->values()
             ->toArray();
 

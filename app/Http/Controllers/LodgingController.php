@@ -369,8 +369,8 @@ class LodgingController extends Controller
      * upcoming one, else the most recent past one — for proximity sorting.
      *
      * Events::$date is cast `date:Y-m-d` (a Carbon instance), so casting to
-     * string yields a full `Y-m-d 00:00:00` timestamp — normalise with
-     * substr() to a bare date before comparing/returning it.
+     * string yields a full `Y-m-d 00:00:00` timestamp — normalise to a bare
+     * date via ->format() before comparing/returning it.
      */
     private function bookingOptions(Bands $band): array
     {
@@ -380,7 +380,7 @@ class LodgingController extends Controller
             ->with(['events' => fn ($q) => $q->orderBy('date')->select(['id', 'eventable_id', 'eventable_type', 'date'])])
             ->get(['id', 'name'])
             ->map(function ($booking) use ($today) {
-                $dates = $booking->events->pluck('date')->map(fn ($d) => substr((string) $d, 0, 10))->sort()->values();
+                $dates = $booking->events->pluck('date')->map(fn ($d) => $d->format('Y-m-d'))->sort()->values();
                 $date = $dates->first(fn ($d) => $d >= $today) ?? $dates->last();
                 return ['id' => $booking->id, 'name' => $booking->name, 'date' => $date ?: null];
             })

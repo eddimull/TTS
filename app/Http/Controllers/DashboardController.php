@@ -76,7 +76,7 @@ class DashboardController extends Controller
      * UserEventsService itself, this rebuilds and returns the collection via
      * map() rather than mutating in place. Callers MUST reassign the result.
      */
-    private function attachLodgingSummaries($events)
+    private function attachLodgingSummaries(iterable $events): \Illuminate\Support\Collection
     {
         $service = app(\App\Services\Mobile\LodgingService::class);
         $ids = collect($events)
