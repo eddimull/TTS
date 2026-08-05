@@ -212,4 +212,45 @@ class LodgingAttachmentsTest extends TestCase
 
         $this->assertStringStartsWith('inline', $response->headers->get('Content-Disposition'));
     }
+
+    /**
+     * A filename containing a double quote and CRLF is user-controlled
+     * (uploader's original filename) — naively concatenating it into
+     * `filename="..."` would let it break out of the quoted-string and
+     * inject arbitrary header bytes. HeaderUtils::makeDisposition() must
+     * produce a single well-formed header value with no raw quote/newline.
+     */
+    public function test_serve_sanitizes_malicious_filename_in_content_disposition(): void
+    {
+        Storage::fake(config('filesystems.default'));
+        ['band' => $band, 'lodging' => $lodging, 'token' => $token] = $this->createOwnerWithLodging();
+        $maliciousName = "evil\".jpg\r\nX-Injected: 1";
+        $attachment = $lodging->attachments()->create([
+            'filename' => $maliciousName, 'stored_filename' => 'x/evil.jpg',
+            'mime_type' => 'image/jpeg', 'file_size' => 1, 'disk' => config('filesystems.default'),
+        ]);
+        Storage::disk($attachment->disk)->put($attachment->stored_filename, 'bytes');
+
+        $response = $this->withToken($token)
+            ->getJson("/api/mobile/lodging-attachments/{$attachment->id}")
+            ->assertOk();
+
+        $header = $response->headers->get('Content-Disposition');
+        $this->assertStringStartsWith('inline', $header);
+        // No raw CR/LF bytes anywhere in the header value — the CRLF in the
+        // malicious filename must come through only percent-encoded (inside
+        // the RFC 5987 filename*= token), never as literal header-breaking
+        // bytes. This is the actual injection vector: a raw \r\n would let
+        // the attacker start a new header line.
+        $this->assertStringNotContainsString("\r", $header);
+        $this->assertStringNotContainsString("\n", $header);
+        // The quoted-string filename="" token (ASCII fallback) must not
+        // contain a raw, unescaped double quote — it would prematurely close
+        // the token and let trailing text be interpreted as new parameters.
+        $this->assertMatchesRegularExpression('/filename="(?:[^"\\\\]|\\\\.)*"/', $header);
+        // A single, well-formed header value overall (this is what
+        // response()->headers->get() would already collapse/reject if the
+        // underlying header bag received multiple lines).
+        $this->assertIsString($header);
+    }
 }

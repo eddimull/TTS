@@ -6,6 +6,7 @@ use App\Models\Bands;
 use App\Models\Lodging;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class LodgingWebTest extends TestCase
@@ -42,6 +43,52 @@ class LodgingWebTest extends TestCase
 
         $this->assertDatabaseHas('lodgings', ['name' => 'Web Hotel', 'band_id' => $band->id]);
         $this->assertDatabaseHas('lodging_rooms', ['label' => 'King']);
+    }
+
+    /**
+     * PATCH semantics validate check_in_at/check_out_at independently
+     * (`sometimes`), so supplying only check_out_at bypasses the
+     * `after:check_in_at` rule used on store(). Without comparing against
+     * the stay's currently-stored check_in_at, a caller could PATCH
+     * check_out_at alone to a moment before the existing check-in and end up
+     * with an inverted date range.
+     */
+    public function test_update_rejects_check_out_before_stored_check_in(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+        $lodging = Lodging::factory()->create([
+            'band_id'      => $band->id,
+            'check_in_at'  => now()->addDays(10)->format('Y-m-d H:i:s'),
+            'check_out_at' => now()->addDays(12)->format('Y-m-d H:i:s'),
+        ]);
+
+        $this->actingAs($user)
+            ->from(route('lodgings.edit', $lodging))
+            ->patch(route('lodgings.update', $lodging), [
+                'check_out_at' => now()->addDays(9)->format('Y-m-d H:i:s'),
+            ])
+            ->assertSessionHasErrors('check_out_at');
+    }
+
+    public function test_update_allows_moving_both_dates_to_a_valid_earlier_window(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+        $lodging = Lodging::factory()->create([
+            'band_id'      => $band->id,
+            'check_in_at'  => now()->addDays(10)->format('Y-m-d H:i:s'),
+            'check_out_at' => now()->addDays(12)->format('Y-m-d H:i:s'),
+        ]);
+
+        $this->actingAs($user)
+            ->patch(route('lodgings.update', $lodging), [
+                'check_in_at'  => now()->addDays(2)->format('Y-m-d H:i:s'),
+                'check_out_at' => now()->addDays(3)->format('Y-m-d H:i:s'),
+            ])
+            ->assertRedirect();
     }
 
     public function test_show_403s_for_stranger(): void
@@ -175,5 +222,37 @@ class LodgingWebTest extends TestCase
         $this->actingAs($user)
             ->get(route('lodgings.attachments.show', $attachment))
             ->assertStatus(404);
+    }
+
+    /**
+     * A filename containing a double quote and CRLF is user-controlled
+     * (uploader's original filename) — naively concatenating it into
+     * `filename="..."` would let it break out of the quoted-string and
+     * inject arbitrary header bytes. HeaderUtils::makeDisposition() must
+     * produce a single well-formed header value with no raw quote/newline.
+     */
+    public function test_show_attachment_sanitizes_malicious_filename_in_content_disposition(): void
+    {
+        Storage::fake(config('filesystems.default'));
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+        $lodging = Lodging::factory()->create(['band_id' => $band->id]);
+        $maliciousName = "evil\".jpg\r\nX-Injected: 1";
+        $attachment = $lodging->attachments()->create([
+            'filename' => $maliciousName, 'stored_filename' => 'x/evil.jpg',
+            'mime_type' => 'image/jpeg', 'file_size' => 1, 'disk' => config('filesystems.default'),
+        ]);
+        Storage::disk($attachment->disk)->put($attachment->stored_filename, 'bytes');
+
+        $response = $this->actingAs($user)
+            ->get(route('lodgings.attachments.show', $attachment))
+            ->assertOk();
+
+        $header = $response->headers->get('Content-Disposition');
+        $this->assertStringStartsWith('inline', $header);
+        $this->assertStringNotContainsString("\r", $header);
+        $this->assertStringNotContainsString("\n", $header);
+        $this->assertMatchesRegularExpression('/filename="(?:[^"\\\\]|\\\\.)*"/', $header);
     }
 }

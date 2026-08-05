@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\HeaderUtils;
 
 class LodgingAttachmentsController extends Controller
 {
@@ -101,7 +102,7 @@ class LodgingAttachmentsController extends Controller
             $disposition = $this->dispositionFor($attachment->mime_type);
             return response($file)
                 ->header('Content-Type', $attachment->mime_type)
-                ->header('Content-Disposition', $disposition . '; filename="' . $attachment->filename . '"')
+                ->header('Content-Disposition', $this->contentDisposition($disposition, $attachment->filename))
                 ->header('Cache-Control', 'private, max-age=3600')
                 ->header('X-Content-Type-Options', 'nosniff');
         } catch (\Exception $e) {
@@ -120,5 +121,30 @@ class LodgingAttachmentsController extends Controller
             return 'inline';
         }
         return 'attachment';
+    }
+
+    /**
+     * Build a safe Content-Disposition header. The stored filename is
+     * user-controlled (uploader-supplied original filename), so it cannot be
+     * concatenated directly into the header — a quote or CRLF in the
+     * filename could otherwise inject headers or break out of the
+     * filename="" token. HeaderUtils::makeDisposition() escapes the
+     * quoted-string filename and additionally emits an RFC 5987
+     * filename*=UTF-8'' fallback built from the sanitized ASCII name.
+     */
+    private function contentDisposition(string $disposition, string $filename): string
+    {
+        // Whitelist a conservative safe set (alnum, space, dot, dash,
+        // underscore, parens) rather than blacklisting — anything outside
+        // it (quotes, control chars, colons, etc.) becomes '_'. The real
+        // filename is still sent verbatim (percent-encoded) via the RFC 5987
+        // filename*= parameter that HeaderUtils::makeDisposition() adds.
+        $fallback = preg_replace('/[^A-Za-z0-9 ._()-]/', '_', $filename);
+        if ($fallback === '' || $fallback === null) {
+            $extension = pathinfo($filename, PATHINFO_EXTENSION);
+            $fallback = $extension ? 'file.' . preg_replace('/[^A-Za-z0-9]/', '', $extension) : 'file';
+        }
+
+        return HeaderUtils::makeDisposition($disposition, $filename, $fallback);
     }
 }

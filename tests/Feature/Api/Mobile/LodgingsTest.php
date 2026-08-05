@@ -212,6 +212,50 @@ class LodgingsTest extends TestCase
             ->assertStatus(403);
     }
 
+    /**
+     * PATCH semantics validate check_in_at/check_out_at independently
+     * (`sometimes`), so supplying only check_out_at bypasses the
+     * `after:check_in_at` rule used on store(). Without comparing against
+     * the stay's currently-stored check_in_at, a caller could PATCH
+     * check_out_at alone to a moment before the existing check-in and end up
+     * with an inverted date range.
+     */
+    public function test_update_rejects_check_out_before_stored_check_in(): void
+    {
+        ['band' => $band, 'token' => $token] = $this->createOwnerWithBand();
+        $lodging = Lodging::factory()->create([
+            'band_id'      => $band->id,
+            'check_in_at'  => now()->addDays(10)->format('Y-m-d H:i:s'),
+            'check_out_at' => now()->addDays(12)->format('Y-m-d H:i:s'),
+        ]);
+
+        $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->patchJson("/api/mobile/bands/{$band->id}/lodgings/{$lodging->id}", [
+                'check_out_at' => now()->addDays(9)->format('Y-m-d H:i:s'),
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('check_out_at');
+    }
+
+    public function test_update_allows_moving_both_dates_to_a_valid_earlier_window(): void
+    {
+        ['band' => $band, 'token' => $token] = $this->createOwnerWithBand();
+        $lodging = Lodging::factory()->create([
+            'band_id'      => $band->id,
+            'check_in_at'  => now()->addDays(10)->format('Y-m-d H:i:s'),
+            'check_out_at' => now()->addDays(12)->format('Y-m-d H:i:s'),
+        ]);
+
+        $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->patchJson("/api/mobile/bands/{$band->id}/lodgings/{$lodging->id}", [
+                'check_in_at'  => now()->addDays(2)->format('Y-m-d H:i:s'),
+                'check_out_at' => now()->addDays(3)->format('Y-m-d H:i:s'),
+            ])
+            ->assertOk();
+    }
+
     public function test_destroy_soft_deletes(): void
     {
         ['band' => $band, 'token' => $token] = $this->createOwnerWithBand();

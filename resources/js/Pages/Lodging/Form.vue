@@ -241,7 +241,7 @@
                         type="button"
                         variant="secondary"
                         size="sm"
-                        @click="$refs.fileInput.click()"
+                        @click="triggerFilePicker"
                       >
                         Add files
                       </Button>
@@ -267,6 +267,7 @@
                       <a
                         :href="attachment.url"
                         target="_blank"
+                        rel="noopener noreferrer"
                         class="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 truncate"
                       >
                         {{ attachment.filename }}
@@ -408,6 +409,10 @@ const confirmDelete = () => {
 
 // ── Attachments (edit mode only) ────────────────────────────────────────
 const fileInput = ref(null);
+
+const triggerFilePicker = () => {
+    fileInput.value?.click();
+};
 
 const handleFileSelect = async (event) => {
     const files = Array.from(event.target.files);

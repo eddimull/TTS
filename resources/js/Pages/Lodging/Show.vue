@@ -70,6 +70,7 @@
               <a
                 :href="directionsUrl"
                 target="_blank"
+                rel="noopener noreferrer"
                 class="text-blue-600 dark:text-blue-400 hover:underline"
               >
                 Directions
@@ -229,6 +230,6 @@ const imageAttachments = computed(() => (props.lodging.attachments || []).filter
 const fileAttachments = computed(() => (props.lodging.attachments || []).filter(a => !isImage(a.mime_type)));
 
 const openAttachment = (attachment) => {
-    window.open(attachment.url, '_blank');
+    window.open(attachment.url, '_blank', 'noopener,noreferrer');
 };
 </script>
