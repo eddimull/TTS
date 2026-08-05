@@ -188,9 +188,13 @@ class LodgingWebTest extends TestCase
     }
 
     /**
-     * events.show is guarded only by ['auth', 'verified'] — no band-membership
-     * middleware — so an unaffiliated user reaches the page with a 200. The
-     * lodgings prop must still be withheld from them.
+     * events.show used to be guarded only by ['auth', 'verified'], so an
+     * unaffiliated user reached the page with a 200 and the lodgings prop was
+     * withheld at the prop level. The page itself is now gated
+     * (EventsController::viewerCanAccessEvent — see EventShowAccessTest), so a
+     * stranger never renders it at all and the stay stays hidden a layer
+     * earlier. Kept as a lodging-specific regression: if the page gate is ever
+     * relaxed, this must fail rather than silently leak hotel details.
      */
     public function test_event_show_hides_lodgings_from_non_member(): void
     {
@@ -208,9 +212,8 @@ class LodgingWebTest extends TestCase
 
         $this->actingAs($stranger)
             ->get(route('events.show', $event))
-            ->assertOk()
-            ->assertDontSee('Secret Hotel')
-            ->assertInertia(fn ($page) => $page->where('lodgings', []));
+            ->assertStatus(403)
+            ->assertDontSee('Secret Hotel');
     }
 
     /**
@@ -334,5 +337,49 @@ class LodgingWebTest extends TestCase
         $this->assertStringNotContainsString("\r", $header);
         $this->assertStringNotContainsString("\n", $header);
         $this->assertMatchesRegularExpression('/filename="(?:[^"\\\\]|\\\\.)*"/', $header);
+    }
+
+    public function test_format_logistics_exposes_only_safe_fields(): void
+    {
+        $band = Bands::factory()->create();
+        $lodging = Lodging::factory()->create([
+            'band_id' => $band->id,
+            'name'    => 'Safe Hotel',
+            'notes'   => 'SECRET-NOTE',
+        ]);
+        $lodging->rooms()->create(['label' => 'King', 'confirmation_number' => 'SECRET-CONF', 'sort_order' => 0]);
+
+        $logistics = app(\App\Services\Mobile\LodgingService::class)
+            ->formatLogistics($lodging->fresh()->loadCount('rooms'));
+
+        $this->assertSame(
+            ['id', 'name', 'address', 'check_in_at', 'check_out_at', 'room_count'],
+            array_keys($logistics),
+        );
+        $this->assertSame(1, $logistics['room_count']);
+        $this->assertStringNotContainsString('SECRET', json_encode($logistics));
+    }
+
+    public function test_booking_picker_options_carry_nearest_event_date(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+
+        $booking = \App\Models\Bookings::factory()->create(['band_id' => $band->id, 'name' => 'Dated Booking']);
+        \App\Models\Events::factory()->create([
+            'eventable_id' => $booking->id, 'eventable_type' => 'App\\Models\\Bookings',
+            'event_type_id' => \App\Models\EventTypes::factory()->create()->id,
+            'date' => now()->addDays(9)->format('Y-m-d'),
+        ]);
+        $eventless = \App\Models\Bookings::factory()->create(['band_id' => $band->id, 'name' => 'Eventless']);
+
+        $response = $this->actingAs($user)->get(route('bands.lodgings.create', $band));
+        $response->assertOk();
+        $bookings = collect($response->viewData('page')['props']['bookings']);
+
+        $dated = $bookings->firstWhere('name', 'Dated Booking');
+        $this->assertSame(now()->addDays(9)->format('Y-m-d'), $dated['date']);
+        $this->assertNull($bookings->firstWhere('name', 'Eventless')['date']);
     }
 }

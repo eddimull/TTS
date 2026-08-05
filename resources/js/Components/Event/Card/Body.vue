@@ -716,6 +716,21 @@
           </div>
         </div>
       </li>
+      <li
+        v-if="event.lodgings_summary && event.lodgings_summary.length"
+        class="mt-2"
+      >
+        <a
+          v-for="lodging in event.lodgings_summary"
+          :key="lodging.id"
+          :href="route('lodgings.show', lodging.id)"
+          class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
+        >
+          <span>🛏</span>
+          <span class="truncate">{{ lodging.name }}</span>
+          <span class="flex-none">· in {{ formatCheckIn(lodging.check_in_at) }}</span>
+        </a>
+      </li>
       <Contacts :contacts="event.contacts || []" />
     </ul>
   </div>
@@ -731,6 +746,7 @@
 
 <script setup>
 import { computed, ref, onMounted, onBeforeUnmount, nextTick } from "vue";
+import { DateTime } from "luxon";
 import Times from "./Components/Times.vue";
 import Wedding from "./Components/Wedding.vue";
 import Contacts from "./Components/Contacts.vue";
@@ -808,6 +824,12 @@ const rehearsalCharts = computed(() => {
   }
   return [];
 });
+
+const formatCheckIn = (sql) => {
+  if (!sql) return '';
+  const dt = DateTime.fromSQL(sql);
+  return dt.isValid ? dt.toFormat('h:mm a') : '';
+};
 
 const formatDate = (date) => {
   if (!date) return '';

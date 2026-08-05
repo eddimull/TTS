@@ -107,26 +107,13 @@
                 <!-- Booking / Event pickers -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <div>
-                    <Label
-                      for="booking_id"
-                      value="Linked Booking"
-                    />
-                    <select
-                      id="booking_id"
+                    <LinkPicker
                       v-model="form.booking_id"
-                      class="w-full p-2 border rounded dark:bg-slate-700 dark:text-gray-50"
-                    >
-                      <option :value="null">
-                        None
-                      </option>
-                      <option
-                        v-for="booking in bookings"
-                        :key="booking.id"
-                        :value="booking.id"
-                      >
-                        {{ booking.name }}
-                      </option>
-                    </select>
+                      :options="bookings"
+                      :check-in="composedCheckIn"
+                      :check-out="composedCheckOut"
+                      label="Linked Booking"
+                    />
                     <InputError
                       :message="form.errors.booking_id"
                       class="mt-2"
@@ -134,26 +121,13 @@
                   </div>
 
                   <div>
-                    <Label
-                      for="event_id"
-                      value="Linked Event"
-                    />
-                    <select
-                      id="event_id"
+                    <LinkPicker
                       v-model="form.event_id"
-                      class="w-full p-2 border rounded dark:bg-slate-700 dark:text-gray-50"
-                    >
-                      <option :value="null">
-                        None
-                      </option>
-                      <option
-                        v-for="event in events"
-                        :key="event.id"
-                        :value="event.id"
-                      >
-                        {{ event.title }}
-                      </option>
-                    </select>
+                      :options="events"
+                      :check-in="composedCheckIn"
+                      :check-out="composedCheckOut"
+                      label="Linked Event"
+                    />
                     <InputError
                       :message="form.errors.event_id"
                       class="mt-2"
@@ -335,6 +309,7 @@ import InputError from '@/Components/InputError.vue';
 import Label from '@/Components/Label.vue';
 import TextArea from '@/Components/TextArea.vue';
 import LocationAutocomplete from '@/Components/LocationAutocomplete.vue';
+import LinkPicker from '@/Components/Lodging/LinkPicker.vue';
 
 defineOptions({
     layout: BreezeAuthenticatedLayout,
@@ -379,6 +354,9 @@ const form = useForm({
 });
 
 const composeDateTime = (d, t) => (d && t) ? `${d} ${t}:00` : '';
+
+const composedCheckIn = computed(() => composeDateTime(checkInDate.value, checkInTime.value) || null);
+const composedCheckOut = computed(() => composeDateTime(checkOutDate.value, checkOutTime.value) || null);
 
 const onLocationSelected = (payload) => {
     const r = payload.result ?? payload;

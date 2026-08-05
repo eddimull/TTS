@@ -98,17 +98,47 @@ class EventsController extends Controller
      */
     public function show(Request $request, Events $event): JsonResponse
     {
-        $event->load([
-            'eventable.band', 'eventable.contacts',
-            'type', 'eventMembers.user', 'eventMembers.rosterMember',
-            'eventMembers.bandRole', 'eventMembers.slot', 'attachments',
-        ]);
+        // Load only what the access gates need — NOT the full payload — so an
+        // unauthorized viewer's request is rejected before we do the work of
+        // hydrating contacts/attachments/members for formatForShow().
+        $event->loadMissing('eventable.band');
 
         $band = $event->eventable?->band ?? abort(404, 'Band not found for this event.');
 
         if (!$request->user()->canRead('events', $band->id)) {
             abort(403);
         }
+
+        // canRead('events') is band-WIDE for a sub (User::canRead grants it to
+        // any sub of the band with no per-gig check), and resolveRouteBinding()
+        // also accepts numeric ids — so without this second gate a sub's token
+        // could enumerate every gig in their band and read contacts,
+        // attachments and notes for gigs they were never called for.
+        //
+        // bands() is owners+members and excludes subs, so full members are
+        // unaffected. UserEventsService resolves Auth::user() internally and
+        // self-manages the Spatie permissions team; the one-year lookback
+        // overrides its default 72-hour window so a sub can still open a gig
+        // they played recently. 404 (not 403) hides existence, matching the
+        // LodgingsController::show() precedent.
+        if (!$request->user()->bands()->contains('id', $band->id)) {
+            $assignedEventIds = app(UserEventsService::class)
+                ->getEventIds(Carbon::now()->subYear());
+
+            if (!in_array((int) $event->id, $assignedEventIds, true)) {
+                abort(404);
+            }
+        }
+
+        // Viewer is authorized — now load the rest of the payload.
+        $event->load([
+            'eventable.contacts',
+            'type', 'eventMembers.user', 'eventMembers.rosterMember',
+            'eventMembers.bandRole', 'eventMembers.slot', 'attachments',
+        ]);
+        // load() replaces the `eventable` relation object, so re-grab $band
+        // rather than dereference the pre-gate copy above.
+        $band = $event->eventable->band;
 
         $liveSessionId = LiveSetlistSession::where('event_id', $event->id)
             ->whereIn('status', ['active', 'paused'])
@@ -131,7 +161,13 @@ class EventsController extends Controller
         $event->loadMissing('eventable.band');
         $band = $event->eventable?->band ?? abort(404, 'Band not found.');
 
-        if (!$request->user()->canRead('events', $band->id)) {
+        // The substitute call list (names + emails) feeds the sub-assignment
+        // picker in the mobile app, which is only reachable when the viewer
+        // has event write access (see EventDetailScreen's `canWrite`-gated
+        // onAssignSub). canRead('events') would let ANY sub of the band read
+        // every other sub's contact info band-wide — canWrite matches the
+        // sibling assignSub() gate below and has no sub carve-out.
+        if (!$request->user()->canWrite('events', $band->id)) {
             abort(403);
         }
 

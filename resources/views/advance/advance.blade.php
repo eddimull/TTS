@@ -62,12 +62,6 @@ $timeA = strtotime($a['time']);
 $timeB = strtotime($b['time']);
 return $timeA - $timeB;
 });
-
-
-if (isset($additionalData->lodging))
-{
-    $event['lodging'] = $additionalData->lodging;
-}
 @endphp
 
 <div class="max-w-lg mx-auto drop-shadow-md rounded-lg lg:px-8">
@@ -141,20 +135,30 @@ if (isset($additionalData->lodging))
                     Backline is not provided
                     @endif
                 </div>
-                <div class="border text-center">Lodging:</div>
-                <div class="border px-2">
-                    @if($event['lodging'])
-                    🏨
-                    @else
-                    👎
-                    @endif
-                </div>
             </div>
         </div>
         <div class="px-6">
             <div class="-ml-2 font-bold">Notes:</div>
             <div class="bg-gray-100 p-4">{!! $event->notes !!}</div>
         </div>
+        @if (!empty($lodgings))
+        <div class="px-6 mt-4">
+            <div class="-ml-2 font-bold">Lodging:</div>
+            @foreach ($lodgings as $lodging)
+            <div class="border rounded px-3 py-2 mt-2">
+                <div class="font-semibold">{{ $lodging['name'] }}</div>
+                @if ($lodging['address'])
+                <div>{{ $lodging['address'] }}</div>
+                @endif
+                <div>
+                    Check-in {{ \Carbon\Carbon::parse($lodging['check_in_at'])->format('D, M j g:i A') }}
+                    — Check-out {{ \Carbon\Carbon::parse($lodging['check_out_at'])->format('D, M j g:i A') }}
+                </div>
+                <div>{{ $lodging['room_count'] }} {{ \Illuminate\Support\Str::plural('room', $lodging['room_count']) }}</div>
+            </div>
+            @endforeach
+        </div>
+        @endif
     </div>
 </div>
 @stop
