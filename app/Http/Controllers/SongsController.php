@@ -143,7 +143,7 @@ class SongsController extends Controller
         $songs = $band->songs()
             ->where('active', true)
             ->orderBy('title')
-            ->get(['id', 'title', 'artist', 'genre']);
+            ->get(['title', 'artist']);
 
         $html = view('pdf.songList', [
             'band' => $band,

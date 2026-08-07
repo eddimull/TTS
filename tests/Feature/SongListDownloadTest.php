@@ -14,28 +14,43 @@ class SongListDownloadTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function makeOwnerWithSongs(): array
+    private function makeBandWithSongs(): Bands
     {
-        $user = User::factory()->create();
         $band = Bands::factory()->create();
-        $band->owners()->create(['user_id' => $user->id]);
 
         Song::factory()->create(['band_id' => $band->id, 'title' => 'Superstition', 'active' => true]);
         Song::factory()->create(['band_id' => $band->id, 'title' => 'Inactive Tune', 'active' => false]);
 
-        return [$user, $band];
+        return $band;
     }
 
-    private function fakePdf(): void
+    private function makeMemberWithRead(Bands $band): User
     {
-        $mock = $this->mock(PdfGeneratorService::class);
-        $mock->shouldReceive('generateFromHtml')->andReturn('%PDF-1.4 fake');
+        $user = User::factory()->create();
+        BandMembers::create(['band_id' => $band->id, 'user_id' => $user->id]);
+        setPermissionsTeamId($band->id);
+        $user->givePermissionTo('read:songs');
+        setPermissionsTeamId(0);
+
+        return $user;
     }
 
     public function test_band_member_can_download_song_list_pdf(): void
     {
-        [$user, $band] = $this->makeOwnerWithSongs();
-        $this->fakePdf();
+        $band = $this->makeBandWithSongs();
+        $user = $this->makeMemberWithRead($band);
+
+        // Assert the PDF is rendered from HTML containing only active songs,
+        // at the expected page format.
+        $this->mock(PdfGeneratorService::class)
+            ->shouldReceive('generateFromHtml')
+            ->once()
+            ->withArgs(function (string $html, string $format = 'Letter') {
+                return str_contains($html, 'Superstition')
+                    && !str_contains($html, 'Inactive Tune')
+                    && $format === 'Letter';
+            })
+            ->andReturn('%PDF-1.4 fake');
 
         $resp = $this->actingAs($user)->get('/songs/download?band_id=' . $band->id);
 
@@ -46,7 +61,7 @@ class SongListDownloadTest extends TestCase
 
     public function test_user_outside_band_cannot_download_song_list(): void
     {
-        [, $band] = $this->makeOwnerWithSongs();
+        $band = $this->makeBandWithSongs();
         $outsider = User::factory()->create();
 
         $this->actingAs($outsider)
@@ -56,7 +71,7 @@ class SongListDownloadTest extends TestCase
 
     public function test_guest_is_redirected(): void
     {
-        [, $band] = $this->makeOwnerWithSongs();
+        $band = $this->makeBandWithSongs();
 
         $this->get('/songs/download?band_id=' . $band->id)
             ->assertRedirect();
