@@ -7,9 +7,14 @@ use App\Http\Requests\UpdateSongRequest;
 use App\Models\Bands;
 use App\Models\Song;
 use App\Services\GetSongBpmService;
+use App\Services\PdfGeneratorService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Response as InertiaResponse;
 
 class SongsController extends Controller
@@ -114,6 +119,78 @@ class SongsController extends Controller
         $song->delete();
 
         return response()->json(['message' => 'Song deleted successfully']);
+    }
+
+    /**
+     * Download the band's active song list as a client-facing PDF.
+     */
+    public function download(Request $request): Response
+    {
+        $user = Auth::user();
+        $bands = $user->allBands();
+        $currentBandId = $request->get('band_id', $bands->first()?->id);
+
+        if (!$currentBandId) {
+            abort(404, 'No band available.');
+        }
+
+        $band = Bands::findOrFail($currentBandId);
+
+        if (!$band->everyone()->contains('user_id', $user->id) && !$user->canRead('songs', $band->id)) {
+            abort(403, 'Unauthorized');
+        }
+
+        $songs = $band->songs()
+            ->where('active', true)
+            ->orderBy('title')
+            ->get(['id', 'title', 'artist', 'genre']);
+
+        $html = view('pdf.songList', [
+            'band' => $band,
+            'songs' => $songs,
+            'logoDataUri' => $this->bandLogoDataUri($band),
+            'generatedAt' => now(),
+        ])->render();
+
+        $pdf = app(PdfGeneratorService::class)->generateFromHtml($html, 'Letter');
+
+        $filename = Str::slug($band->name . ' song list') . '.pdf';
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ]);
+    }
+
+    /**
+     * Build a base64 data URI for the band logo so it embeds in the PDF.
+     * Returns null when no logo is set or it cannot be read.
+     */
+    private function bandLogoDataUri(Bands $band): ?string
+    {
+        if (empty($band->logo)) {
+            return null;
+        }
+
+        try {
+            $logoPath = str_replace('/images/', '', $band->logo);
+
+            if (!Storage::disk('s3')->exists($logoPath)) {
+                return null;
+            }
+
+            $contents = Storage::disk('s3')->get($logoPath);
+            $mimeType = Storage::disk('s3')->mimeType($logoPath) ?: 'image/png';
+
+            return 'data:' . $mimeType . ';base64,' . base64_encode($contents);
+        } catch (\Throwable $e) {
+            Log::warning('Could not load band logo for song list PDF', [
+                'band_id' => $band->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
 }

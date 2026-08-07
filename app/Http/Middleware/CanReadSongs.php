@@ -16,8 +16,9 @@ class CanReadSongs
                 ->with('errorMessage', 'You must be logged in');
         }
 
-        // Index route resolves band_id from query param; controller handles no-band case
-        if ($request->route()->getName() === 'songs.index') {
+        // Index and download routes resolve band_id from query param; the
+        // controller performs the band-membership/permission check itself.
+        if (in_array($request->route()->getName(), ['songs.index', 'songs.download'], true)) {
             return $next($request);
         }
 
