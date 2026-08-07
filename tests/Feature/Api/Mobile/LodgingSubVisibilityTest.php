@@ -249,7 +249,6 @@ class LodgingSubVisibilityTest extends TestCase
 
         $ownBand = Bands::factory()->create();
         $ownBand->owners()->create(['user_id' => $sub->id]);
-        $sub->unsetRelation('bandOwner');
 
         Lodging::factory()->create([
             'band_id' => $band->id, 'name' => 'My Gig Hotel', 'event_id' => $event->id,
