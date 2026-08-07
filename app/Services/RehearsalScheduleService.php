@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\RehearsalSchedule;
 use App\Models\Rehearsal;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -14,18 +15,21 @@ class RehearsalScheduleService
      * This creates virtual rehearsal event objects based on the schedule's frequency
      * 
      * @param array $bandIds Array of band IDs to generate rehearsals for
-     * @param Carbon|null $startDate Starting date (default: now)
-     * @param Carbon|null $endDate Ending date (default: 12 weeks from start)
+     * @param CarbonInterface|null $startDate Starting date (default: now)
+     * @param CarbonInterface|null $endDate Ending date (default: 12 weeks from start)
      * @return Collection Collection of virtual event objects
      */
-    public function generateUpcomingRehearsals(array $bandIds, Carbon $startDate = null, Carbon $endDate = null): Collection
+    public function generateUpcomingRehearsals(array $bandIds, ?CarbonInterface $startDate = null, ?CarbonInterface $endDate = null): Collection
     {
         if (empty($bandIds)) {
             return collect();
         }
 
-        $startDate = $startDate ?? Carbon::now();
-        $endDate = $endDate ?? $startDate->copy()->addWeeks(12);
+        // Callers hold different Carbon flavors (Carbon\Carbon, CarbonImmutable,
+        // Illuminate\Support\Carbon); the protected generators require the
+        // Illuminate subclass, so normalize here at the public boundary.
+        $startDate = $startDate !== null ? Carbon::instance($startDate) : Carbon::now();
+        $endDate = $endDate !== null ? Carbon::instance($endDate) : $startDate->copy()->addWeeks(12);
 
         // Get all active rehearsal schedules for the user's bands
         $schedules = RehearsalSchedule::whereIn('band_id', $bandIds)
