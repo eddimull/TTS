@@ -8,6 +8,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('songs.read')
         ->name('songs.index');
 
+    Route::get('/songs/download', [SongsController::class, 'download'])
+        ->middleware('songs.read')
+        ->name('songs.download');
+
     Route::post('/songs', [SongsController::class, 'store'])
         ->middleware('songs.write')
         ->name('songs.store');
