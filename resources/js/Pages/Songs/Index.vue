@@ -16,6 +16,14 @@
             @change="changeBand"
           />
           <Button
+            v-if="band"
+            icon="pi pi-download"
+            label="Download PDF"
+            severity="secondary"
+            outlined
+            @click="downloadPdf"
+          />
+          <Button
             v-if="canWrite"
             icon="pi pi-plus"
             label="Add Song"
@@ -479,6 +487,11 @@ export default {
 
     changeBand(e) {
       router.get(route('songs.index'), { band_id: e.value.id }, { preserveState: false });
+    },
+
+    downloadPdf() {
+      if (!this.band) return;
+      window.location.href = route('songs.download', { band_id: this.band.id });
     },
 
     openCreateDialog() {
