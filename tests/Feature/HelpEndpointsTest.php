@@ -42,4 +42,11 @@ class HelpEndpointsTest extends TestCase
             ->get('/help/nope')
             ->assertNotFound();
     }
+
+    public function test_shared_props_include_user_created_at(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->get('/help')
+            ->assertInertia(fn (Assert $page) => $page->has('auth.user.created_at'));
+    }
 }
