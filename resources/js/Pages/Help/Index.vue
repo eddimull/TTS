@@ -14,6 +14,7 @@
             v-model="query"
             type="search"
             placeholder="Search help…"
+            aria-label="Search help"
             class="w-full rounded-md border-gray-300 dark:border-slate-500 dark:bg-slate-800 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
         </div>
