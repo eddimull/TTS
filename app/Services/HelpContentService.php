@@ -111,7 +111,11 @@ class HelpContentService
         }
 
         // Relative image refs work on web and in the mobile app alike.
-        $markdown = str_replace('](images/', '](' . url('/images/help') . '/', trim($m[2]));
+        // Use config('app.url') rather than url() — the corpus is cached across
+        // requests/contexts (queue workers, artisan, multiple hosts), and url()
+        // derives its root from whichever request context first fills the cache.
+        $imageRoot = rtrim(config('app.url'), '/') . '/images/help/';
+        $markdown = str_replace('](images/', '](' . $imageRoot, trim($m[2]));
 
         return [
             'slug' => $slug,

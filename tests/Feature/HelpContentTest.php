@@ -62,6 +62,39 @@ class HelpContentTest extends TestCase
         $this->assertStringNotContainsString('](images/', $article['markdown']);
     }
 
+    /**
+     * Pins the image URL root to config('app.url') rather than url(), which is
+     * request-context-dependent and would poison the cached corpus with whichever
+     * host first filled it (queue worker, artisan, or a request on another host).
+     */
+    public function test_article_image_urls_use_configured_app_url_not_request_context(): void
+    {
+        $fixturePath = resource_path('help/__fixture-image-rewrite.md');
+        file_put_contents($fixturePath, <<<'MD'
+            ---
+            title: Fixture
+            category: faq
+            platforms: [web, mobile]
+            order: 999
+            ---
+
+            ![Alt](images/foo.png)
+            MD);
+
+        try {
+            $article = $this->service->article('__fixture-image-rewrite');
+            $this->assertNotNull($article);
+
+            $expectedRoot = rtrim(config('app.url'), '/') . '/images/help/';
+            $this->assertStringContainsString(
+                '](' . $expectedRoot . 'foo.png)',
+                $article['markdown']
+            );
+        } finally {
+            unlink($fixturePath);
+        }
+    }
+
     public function test_unknown_slug_returns_null(): void
     {
         $this->assertNull($this->service->article('no-such-article'));
