@@ -26,8 +26,8 @@ captain moves through the set — nobody has to ask "what are we playing
 next?" mid-song. Only the captain can advance songs or end the session.
 
 ## Crowd reactions
-During a live session, the audience (or the band) can submit quick reactions
-to the current song — a lightweight pulse-check on what's landing, visible
-in real time without interrupting the show.
+During a live session, band members following along can submit quick
+reactions to the current song — a lightweight pulse-check on what's landing,
+visible in real time without interrupting the show.
 
 Next: [Run a live setlist](run-a-live-setlist), [Events](events), [FAQ: How does the live setlist work?](faq-live-setlist).

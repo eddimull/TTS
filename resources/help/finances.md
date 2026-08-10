@@ -31,8 +31,4 @@ For a repeatable split, set up a payout configuration once — a node-based
 flow you build to define how money moves from the gig fee to each member's
 share — and apply it to future bookings instead of calculating it every time.
 
-## Trends
-The Trends view shows how revenue is moving over the year, including a
-breakdown of revenue you've booked but haven't collected on yet.
-
 Next: [Bookings](bookings), [Get paid through the portal](get-paid), [The client portal](client-portal).

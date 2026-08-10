@@ -25,7 +25,8 @@ When a regular player can't make a gig or rehearsal, invite a substitute
 just for that date. Subs get access to what they need for that specific
 event — setlist, notes, chat — without becoming full band members.
 
-On the web, manage all of this under Personnel. On the app, it's in the
-Operations hub (band owners only).
+On the web, manage all of this from your band's settings (your name menu →
+Bands → your band). On the app, it's in the Operations hub under Personnel
+(band owners only).
 
 Next: [Invite your band](invite-your-band), [Events](events), [Rehearsals](rehearsals).
