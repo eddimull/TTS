@@ -46,5 +46,17 @@ class HelpApiTest extends TestCase
         $token = $user->createToken('test-device')->plainTextToken;
 
         $this->withToken($token)->getJson('/api/mobile/help/nope')->assertNotFound();
+        $this->withToken($token)->getJson('/api/mobile/help/finances')->assertNotFound();
+    }
+
+    public function test_index_excludes_web_only_articles(): void
+    {
+        $user = User::factory()->create();
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        $response = $this->withToken($token)->getJson('/api/mobile/help')->assertOk();
+
+        $slugs = array_column($response->json('articles'), 'slug');
+        $this->assertNotContains('finances', $slugs);
     }
 }
