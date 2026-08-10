@@ -19,7 +19,7 @@ class HelpEndpointsTest extends TestCase
             ->get('/help')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Help/Index', false)
+                ->component('Help/Index')
                 ->has('articles')
                 ->has('categoryLabels'));
     }
@@ -30,7 +30,7 @@ class HelpEndpointsTest extends TestCase
             ->get('/help/created-a-band')
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Help/Article', false)
+                ->component('Help/Article')
                 ->where('article.slug', 'created-a-band')
                 ->has('article.html')
                 ->has('siblings'));
