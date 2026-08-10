@@ -38,13 +38,30 @@ class HelpContentTest extends TestCase
 
     public function test_index_sorts_by_category_rank_then_order(): void
     {
+        $articles = $this->service->index();
+
         $ranks = array_map(
             fn ($a) => array_search($a['category'], HelpContentService::CATEGORIES, true),
-            $this->service->index()
+            $articles
         );
         $sorted = $ranks;
         sort($sorted);
         $this->assertSame($sorted, $ranks);
+
+        // Within each contiguous category group, order values must be non-decreasing.
+        $groups = [];
+        foreach ($articles as $a) {
+            $groups[$a['category']][] = $a['order'];
+        }
+        foreach ($groups as $category => $orders) {
+            $sortedOrders = $orders;
+            sort($sortedOrders);
+            $this->assertSame(
+                $sortedOrders,
+                $orders,
+                "Articles in category '{$category}' are not sorted by order"
+            );
+        }
     }
 
     public function test_platform_filter(): void
