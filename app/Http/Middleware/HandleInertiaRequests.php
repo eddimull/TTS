@@ -64,6 +64,7 @@ class HandleInertiaRequests extends Middleware
                     'id' => $webUser->id,
                     'name' => $webUser->name,
                     'email' => $webUser->email,
+                    'created_at' => $webUser->created_at?->toISOString(),
                     'navigation' => $webUser->getNav(),
                     'notifications' => $webUser->notifications,
                     'band_ids' => $webUser->allBands()->pluck('id')->values()->all(),

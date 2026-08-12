@@ -70,7 +70,7 @@ jobs:
             **/vendor
             ~/.npm
             **/node_modules
-          key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-composer-
 

@@ -77,3 +77,8 @@ Route::get('/healthcheck', fn() => response()->json(['status' => 'ok']))->name('
 
 Route::get('/privacy', fn() => Inertia::render('PrivacyPolicy'))->name('privacy');
 Route::get('/support', fn() => Inertia::render('Support'))->name('support');
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/help', [App\Http\Controllers\HelpController::class, 'index'])->name('help.index');
+    Route::get('/help/{slug}', [App\Http\Controllers\HelpController::class, 'show'])->name('help.show');
+});
