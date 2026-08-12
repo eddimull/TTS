@@ -8,6 +8,34 @@
         &nbsp;
     </div>
     <div class="col-span-2">
+      <!-- First-run Help Center pointer -->
+      <div
+        v-if="showHelpPointer"
+        class="mb-4 flex items-start justify-between rounded-lg bg-blue-50 dark:bg-slate-700 p-4"
+      >
+        <div>
+          <p class="font-medium text-gray-900 dark:text-white">
+            New here?
+          </p>
+          <p class="text-sm text-gray-600 dark:text-gray-300">
+            The getting-started guide walks you through bookings, setlists, and inviting your band.
+          </p>
+          <Link
+            :href="route('help.index')"
+            class="text-sm font-medium text-blue-600 dark:text-blue-400 underline"
+          >
+            Open the Help Center
+          </Link>
+        </div>
+        <button
+          aria-label="Dismiss"
+          class="text-gray-400 hover:text-gray-600"
+          @click="dismissHelpPointer"
+        >
+          ✕
+        </button>
+      </div>
+
       <!-- Load Older Events Button (non-touch devices only) -->
       <div
         v-if="!isTouchDevice && canLoadMore"
@@ -367,8 +395,8 @@
     import UpcomingCharts from '../Components/Dashboard/UpcomingCharts.vue'
     import RehearsalEditorModal from '../Components/Rehearsal/RehearsalEditorModal.vue'
     import Dialog from 'primevue/dialog';
-    import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
-    import { router, usePage } from '@inertiajs/vue3';
+    import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
+    import { Link, router, usePage } from '@inertiajs/vue3';
     import { useBandRealtime } from '@/composables/useBandRealtime';
 
     const props = defineProps({
@@ -426,6 +454,20 @@
 
       localEvents.value = [...pagedInOlderEvents, ...freshEvents];
     });
+
+    // First-run Help Center pointer state
+    const helpPointerDismissed = ref(localStorage.getItem('help_pointer_dismissed') === '1');
+
+    const showHelpPointer = computed(() => {
+      const created = usePage().props.auth?.user?.created_at;
+      if (!created || helpPointerDismissed.value) return false;
+      return (Date.now() - new Date(created).getTime()) < 14 * 24 * 60 * 60 * 1000;
+    });
+
+    const dismissHelpPointer = () => {
+      helpPointerDismissed.value = true;
+      localStorage.setItem('help_pointer_dismissed', '1');
+    };
 
     // Rehearsal editor state
     const showRehearsalEditor = ref(false);

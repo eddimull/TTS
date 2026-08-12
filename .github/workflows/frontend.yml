@@ -57,7 +57,7 @@ jobs:
             **/vendor
             ~/.npm
             **/node_modules
-          key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}-${{ hashFiles('**/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-composer-
 
@@ -89,7 +89,7 @@ jobs:
             **/vendor
             ~/.npm
             **/node_modules
-          key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}-${{ hashFiles('**/package-lock.json') }}
 
       - name: Install NPM dependencies if cache miss
         if: steps.cache-node-and-composer.outputs.cache-hit != 'true'
@@ -149,7 +149,7 @@ jobs:
             **/vendor
             ~/.npm
             **/node_modules
-          key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}
+          key: ${{ runner.os }}-deps-${{ hashFiles('**/composer.lock') }}-${{ hashFiles('**/package-lock.json') }}
 
       - name: Run tests
         if: ${{ inputs.run-tests }}

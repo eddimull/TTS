@@ -210,6 +210,13 @@
                     Stats
                   </breeze-dropdown-link>
                   <breeze-dropdown-link
+                    :href="route('help.index')"
+                    method="get"
+                    as="button"
+                  >
+                    Help
+                  </breeze-dropdown-link>
+                  <breeze-dropdown-link
                     :href="route('logout')"
                     method="post"
                     as="button"
@@ -466,6 +473,13 @@
               as="button"
             >
               Stats
+            </breeze-dropdown-link>
+            <breeze-dropdown-link
+              :href="route('help.index')"
+              method="get"
+              as="button"
+            >
+              Help
             </breeze-dropdown-link>
             <breeze-responsive-nav-link
               :href="route('logout')"

@@ -105,6 +105,17 @@ export const navigationGroups = [
         activeMatch: (route) => route.includes('questionnaires')
       }
     ]
+  },
+  {
+    id: 'support',
+    label: 'Support',
+    items: [
+      {
+        label: 'Help Center',
+        routeName: 'help.index',
+        activeMatch: (route) => route.startsWith('help')
+      }
+    ]
   }
 ];
 

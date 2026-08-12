@@ -113,6 +113,10 @@ Route::prefix('mobile')->group(function () {
         // Personal stats (earnings, travel, performance locations) across all bands.
         Route::get('/me/stats', [App\Http\Controllers\Api\Mobile\StatsController::class, 'index'])->name('mobile.me.stats');
 
+        // Help center content (markdown, rendered natively by the app)
+        Route::get('/help', [App\Http\Controllers\Api\Mobile\HelpController::class, 'index'])->name('mobile.help.index');
+        Route::get('/help/{slug}', [App\Http\Controllers\Api\Mobile\HelpController::class, 'show'])->name('mobile.help.show');
+
         // Contract audit trail (band-agnostic — keyed by PandaDoc envelope id).
         Route::get('/contracts/{contract:envelope_id}/history', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'contractHistory'])->name('mobile.contracts.history');
 

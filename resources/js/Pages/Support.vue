@@ -31,57 +31,13 @@
                     </a>
                 </div>
 
-                <hr class="border-gray-200 dark:border-slate-600" />
-
-                <!-- FAQ -->
-                <div>
-                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">Common Questions</h2>
-
-                    <div class="space-y-6">
-                        <div>
-                            <h3 class="font-medium text-gray-900 dark:text-white">How do I join a band?</h3>
-                            <p class="mt-1 text-gray-600 dark:text-gray-300">
-                                Your band administrator sends you an invitation. Accept the invite and your
-                                account will be linked to the band automatically.
-                            </p>
-                        </div>
-
-                        <div>
-                            <h3 class="font-medium text-gray-900 dark:text-white">How does the live setlist work?</h3>
-                            <p class="mt-1 text-gray-600 dark:text-gray-300">
-                                The band captain starts a live session from the Setlist screen. All band members
-                                with the app open will see the current song, up-next song, and can submit crowd
-                                reactions in real time. Only the captain can advance songs or end the session.
-                            </p>
-                        </div>
-
-                        <div>
-                            <h3 class="font-medium text-gray-900 dark:text-white">I forgot my password. How do I reset it?</h3>
-                            <p class="mt-1 text-gray-600 dark:text-gray-300">
-                                On the login screen, tap "Forgot your password?" and enter your email address.
-                                You'll receive a reset link within a few minutes.
-                            </p>
-                        </div>
-
-                        <div>
-                            <h3 class="font-medium text-gray-900 dark:text-white">How do I delete my account?</h3>
-                            <p class="mt-1 text-gray-600 dark:text-gray-300">
-                                Email us at
-                                <a href="mailto:support@tts.band" class="text-blue-600 dark:text-blue-400 underline">support@tts.band</a>
-                                with your request and we'll permanently delete your account and associated data
-                                within 30 days.
-                            </p>
-                        </div>
-
-                        <div>
-                            <h3 class="font-medium text-gray-900 dark:text-white">The app isn't syncing. What should I do?</h3>
-                            <p class="mt-1 text-gray-600 dark:text-gray-300">
-                                Try pulling down to refresh on the affected screen. If the problem persists,
-                                log out and back in. If you're still having trouble, contact us with your device
-                                model and OS version.
-                            </p>
-                        </div>
-                    </div>
+                <div v-if="$page.props.auth?.user">
+                    <Link
+                        :href="route('help.index')"
+                        class="text-blue-600 dark:text-blue-400 font-medium underline"
+                    >
+                        Browse the Help Center →
+                    </Link>
                 </div>
             </div>
 
