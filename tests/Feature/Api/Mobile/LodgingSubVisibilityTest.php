@@ -235,6 +235,34 @@ class LodgingSubVisibilityTest extends TestCase
     }
 
     /**
+     * Regression for TTS-BAND-16B, HTTP level. A HYBRID viewer — sub on this
+     * band's gig who also owns/belongs to another band — skips the pure-sub
+     * early return in UserEventsService::getEvents() and takes the band path,
+     * which is the only path that reaches generateUpcomingRehearsals() (and
+     * therefore the only path that hit the Carbon-flavor TypeError; the
+     * pure-sub test above could never catch it). Pins that such a viewer gets
+     * a 200 AND still sees their assigned gig's stays.
+     */
+    public function test_hybrid_sub_with_own_band_sees_lodgings_on_detail_of_their_assigned_event(): void
+    {
+        ['band' => $band, 'event' => $event, 'sub' => $sub, 'subToken' => $subToken] = $this->createBandWithSubAndEvent();
+
+        $ownBand = Bands::factory()->create();
+        $ownBand->owners()->create(['user_id' => $sub->id]);
+
+        Lodging::factory()->create([
+            'band_id' => $band->id, 'name' => 'My Gig Hotel', 'event_id' => $event->id,
+        ]);
+
+        $response = $this->withToken($subToken)
+            ->getJson("/api/mobile/events/{$event->key}")
+            ->assertOk()
+            ->json();
+
+        $this->assertSame(['My Gig Hotel'], array_column($response['event']['lodgings'], 'name'));
+    }
+
+    /**
      * The booking-detail payload also gained a `lodgings` key, but that route
      * requires `read:bookings`, which has no sub carve-out — so a sub never
      * reaches the payload at all. Pinned so a future carve-out for bookings
