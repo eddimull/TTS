@@ -118,6 +118,37 @@ class EventTimelineReanchorTest extends TestCase
         $this->assertSame(['Load In' => '2026-10-20 15:00'], $this->times($event));
     }
 
+    public function test_reanchors_cached_additional_data_object_with_array_entries()
+    {
+        // Mirrors Api/Mobile/EventsController::update exactly: the controller
+        // reads $event->additional_data (priming Laravel's attribute object
+        // cache), EventDataService replaces ->times with an array of ARRAYS
+        // built from the request, and the same (cached) object is passed back
+        // through update(). The hook must re-anchor array entries too — on
+        // device this path left the timeline on the old date while the date
+        // column moved.
+        $event = $this->makeEvent([
+            ['title' => 'Load In', 'time' => '2026-10-10 16:00'],
+        ]);
+        $event = Events::find($event->id);
+
+        $ad = $event->additional_data; // prime the accessor / object cache
+        $ad->times = [
+            ['title' => 'Load In', 'time' => '2026-10-10 15:00'],
+            ['title' => 'Soundcheck', 'time' => '2026-10-10 16:00'],
+        ];
+
+        $event->update([
+            'date' => '2026-10-20',
+            'additional_data' => $ad,
+        ]);
+
+        $this->assertSame([
+            'Load In'    => '2026-10-20 15:00',
+            'Soundcheck' => '2026-10-20 16:00',
+        ], $this->times($event));
+    }
+
     public function test_update_without_date_change_leaves_timeline_alone()
     {
         $event = $this->makeEvent([
