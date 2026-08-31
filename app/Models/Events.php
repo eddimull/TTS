@@ -78,8 +78,15 @@ class Events extends Model implements GoogleCalenderable
         }
 
         $changed = false;
-        foreach ($additionalData->times as $entry) {
-            $time = is_object($entry) ? ($entry->time ?? null) : null;
+        // Entries are stdClass when freshly decoded from the JSON column, but
+        // plain arrays when a controller replaced ->times from request input
+        // on the cached additional_data object — handle both, writing arrays
+        // back by index since foreach copies them.
+        foreach ($additionalData->times as $i => $entry) {
+            $isObject = is_object($entry);
+            $time = $isObject
+                ? ($entry->time ?? null)
+                : (is_array($entry) ? ($entry['time'] ?? null) : null);
             if (!is_string($time) || !preg_match('/^(\d{4}-\d{2}-\d{2})([T ].*)$/', $time, $matches)) {
                 continue;
             }
@@ -95,7 +102,12 @@ class Events extends Model implements GoogleCalenderable
                 continue;
             }
 
-            $entry->time = $newDate->copy()->addDays($offsetDays)->format('Y-m-d') . $matches[2];
+            $shifted = $newDate->copy()->addDays($offsetDays)->format('Y-m-d') . $matches[2];
+            if ($isObject) {
+                $entry->time = $shifted;
+            } else {
+                $additionalData->times[$i]['time'] = $shifted;
+            }
             $changed = true;
         }
 
