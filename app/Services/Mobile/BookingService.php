@@ -10,7 +10,8 @@ class BookingService
 {
     /**
      * Build the per-event `additional_data` blob (load-in / soundcheck / etc.)
-     * anchored to a single event's start and end.
+     * anchored to a single event's start; the end lives on the events row's
+     * canonical end_time column, not in this blob.
      */
     public function buildAdditionalData(int $eventTypeId, Carbon $startDt): array
     {
