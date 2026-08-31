@@ -12,14 +12,16 @@ class BookingService
      * Build the per-event `additional_data` blob (load-in / soundcheck / etc.)
      * anchored to a single event's start and end.
      */
-    public function buildAdditionalData(int $eventTypeId, Carbon $startDt, Carbon $endDt): array
+    public function buildAdditionalData(int $eventTypeId, Carbon $startDt): array
     {
         $additionalData = [
             'times' => [
                 ['title' => 'Load In',    'time' => $startDt->copy()->subHours(4)->format('Y-m-d H:i')],
                 ['title' => 'Soundcheck', 'time' => $startDt->copy()->subHours(3)->format('Y-m-d H:i')],
                 ['title' => 'Quiet',      'time' => $startDt->copy()->subHours(1)->format('Y-m-d H:i')],
-                ['title' => 'End Time',   'time' => $endDt->format('Y-m-d H:i')],
+                // No 'End Time' marker (parity with web store()): the event's
+                // end is the canonical end_time column, already rendered as
+                // the End Time pin in the timeline.
             ],
             'backline_provided' => false,
             'production_needed' => true,
@@ -91,7 +93,6 @@ class BookingService
         // end_time is optional; when absent, default the event to two hours.
         $endTime = $eventData['end_time']
             ?? $startDt->copy()->addHours(2)->format('H:i');
-        $endDt = Carbon::parse($eventData['date'] . ' ' . $endTime);
 
         $eventAttrs = [
             'title'           => $eventData['title'],
@@ -101,7 +102,7 @@ class BookingService
             'venue_address'   => $eventData['venue_address'] ?? null,
             'event_type_id'   => $eventTypeId,
             'value'           => $eventData['price'] ?? 0,
-            'additional_data' => $this->buildAdditionalData($eventTypeId, $startDt, $endDt),
+            'additional_data' => $this->buildAdditionalData($eventTypeId, $startDt),
             'key'             => Str::uuid()->toString(),
             'roster_id'       => $defaultRoster?->id,
         ];
