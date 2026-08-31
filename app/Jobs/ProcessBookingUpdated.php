@@ -19,6 +19,11 @@ class ProcessBookingUpdated implements ShouldQueue, ShouldBeUniqueUntilProcessin
     protected $booking;
     protected $originalData;
 
+    // Event deletions during a booking delete cascade dispatch this job for a
+    // booking that no longer exists by the time the delay elapses; discard
+    // instead of failing.
+    public $deleteWhenMissingModels = true;
+
     public function __construct(Bookings $booking, array $originalData)
     {
         $this->booking = $booking;
