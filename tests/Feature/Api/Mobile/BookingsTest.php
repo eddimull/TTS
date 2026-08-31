@@ -429,6 +429,44 @@ class BookingsTest extends TestCase
         $this->assertSame('23:00', $events[1]->end_time->format('H:i'));
     }
 
+    public function test_bookings_store_does_not_seed_a_duplicate_end_time_marker(): void
+    {
+        // Parity with web store(): the event end is the canonical end_time
+        // column (already rendered as the End Time pin in the timeline), so
+        // the seeded additional_data.times must not duplicate it.
+        $user = User::factory()->create();
+        $band = Bands::factory()->create();
+        $band->owners()->create(['user_id' => $user->id]);
+        $eventType = EventTypes::factory()->create();
+        $token = $user->createToken('test-device')->plainTextToken;
+
+        $response = $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->postJson("/api/mobile/bands/{$band->id}/bookings", [
+                'name'          => 'Seed parity gig',
+                'event_type_id' => $eventType->id,
+                'events'        => [
+                    [
+                        'title'      => 'Seed parity gig',
+                        'date'       => '2030-03-01',
+                        'start_time' => '20:00',
+                        'end_time'   => '23:00',
+                    ],
+                ],
+            ])
+            ->assertCreated();
+
+        $event = Events::where('eventable_type', Bookings::class)
+            ->where('eventable_id', $response->json('booking.id'))
+            ->firstOrFail();
+
+        $titles = collect($event->additional_data->times ?? [])->pluck('title');
+        $this->assertNotContains('End Time', $titles, 'mobile store should not seed a duplicate End Time marker');
+        $this->assertContains('Load In', $titles);
+        $this->assertContains('Soundcheck', $titles);
+        $this->assertSame('23:00', $event->end_time->format('H:i'));
+    }
+
     public function test_bookings_store_rejects_event_without_start_time(): void
     {
         $user = User::factory()->create();
