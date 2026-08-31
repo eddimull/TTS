@@ -41,6 +41,67 @@ class Events extends Model implements GoogleCalenderable
                 $event->syncRosterMembers();
             }
         });
+
+        static::updating(function ($event) {
+            $event->reanchorTimelineToDateChange();
+        });
+    }
+
+    /**
+     * Timeline entries (additional_data->times) store absolute 'Y-m-d H:i'
+     * strings anchored to the event date at creation; nothing else updates
+     * them when the date moves. Shift every entry still anchored to the old
+     * date (within ±1 day, preserving next-day offsets like a 00:30 end
+     * time) so the timeline follows the event. Entries with no date part or
+     * anchored elsewhere (e.g. a rain date) are left untouched.
+     */
+    protected function reanchorTimelineToDateChange(): void
+    {
+        if (!$this->isDirty('date') || !$this->date) {
+            return;
+        }
+
+        $original = $this->getOriginal('date');
+        if (!$original) {
+            return;
+        }
+
+        $oldDate = Carbon::parse($original)->startOfDay();
+        $newDate = $this->date->copy()->startOfDay();
+        if ($oldDate->equalTo($newDate)) {
+            return;
+        }
+
+        $additionalData = $this->additional_data;
+        if (!$additionalData || empty($additionalData->times) || !is_array($additionalData->times)) {
+            return;
+        }
+
+        $changed = false;
+        foreach ($additionalData->times as $entry) {
+            $time = is_object($entry) ? ($entry->time ?? null) : null;
+            if (!is_string($time) || !preg_match('/^(\d{4}-\d{2}-\d{2})([T ].*)$/', $time, $matches)) {
+                continue;
+            }
+
+            try {
+                $entryDate = Carbon::createFromFormat('Y-m-d', $matches[1])->startOfDay();
+            } catch (\Exception $e) {
+                continue;
+            }
+
+            $offsetDays = (int) $oldDate->diffInDays($entryDate, false);
+            if (abs($offsetDays) > 1) {
+                continue;
+            }
+
+            $entry->time = $newDate->copy()->addDays($offsetDays)->format('Y-m-d') . $matches[2];
+            $changed = true;
+        }
+
+        if ($changed) {
+            $this->additional_data = $additionalData;
+        }
     }
 
     public function getRouteKeyName(): string

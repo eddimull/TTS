@@ -104,7 +104,16 @@ class BookingCreationPreventsDuplicateCalendarEventsTest extends TestCase
                 return $event;
             });
 
-        $mockService->shouldNotReceive('updateEvent');
+        // Creating the event re-syncs the parent booking's calendar entry
+        // (its start/end derive from the primary event), which is an update
+        // of the already-inserted booking entry — never a second insert.
+        $mockService->shouldReceive('updateEvent')
+            ->with($this->bookingCalendar->calendar_id, Mockery::any(), Mockery::any())
+            ->andReturnUsing(function () {
+                $event = new GoogleEvent();
+                $event->setId('booking-event-updated');
+                return $event;
+            });
 
         $booking = Bookings::factory()->create([
             'band_id' => $this->band->id,
@@ -238,6 +247,15 @@ class BookingCreationPreventsDuplicateCalendarEventsTest extends TestCase
                 return $event;
             });
 
+
+        // The event edit also re-syncs the parent booking's calendar entry.
+        $mockService->shouldReceive('updateEvent')
+            ->with($this->bookingCalendar->calendar_id, 'booking-123', Mockery::any())
+            ->andReturnUsing(function () {
+                $event = new GoogleEvent();
+                $event->setId('booking-123');
+                return $event;
+            });
 
         $mockService->shouldNotReceive('insertEvent');
 
