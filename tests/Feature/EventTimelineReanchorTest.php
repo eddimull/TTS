@@ -81,13 +81,12 @@ class EventTimelineReanchorTest extends TestCase
         ], $this->times($event));
     }
 
-    public function test_unparseable_and_unanchored_entries_are_left_untouched()
+    public function test_unparseable_entries_are_left_untouched()
     {
         $event = $this->makeEvent([
             ['title' => 'Load In',   'time' => '2026-10-10 16:00'],
             ['title' => 'Breakdown', 'time' => 'TBD'],
             ['title' => 'Doors',     'time' => '19:00'],
-            ['title' => 'Rain Date', 'time' => '2026-11-01 20:00'],
         ]);
 
         $event->update(['date' => '2026-10-20']);
@@ -96,7 +95,28 @@ class EventTimelineReanchorTest extends TestCase
             'Load In'   => '2026-10-20 16:00',
             'Breakdown' => 'TBD',
             'Doors'     => '19:00',
-            'Rain Date' => '2026-11-01 20:00',
+        ], $this->times($event));
+    }
+
+    public function test_already_drifted_entries_snap_to_the_new_date()
+    {
+        // A timeline that drifted before the re-anchor hook existed is
+        // anchored to some long-gone date, far outside ±1 day of the event's
+        // current date. Changing the date must heal it — snap every dated
+        // entry to the new date, preserving time-of-day. This is the exact
+        // "created with the wrong date, timeline stuck there" report.
+        $event = $this->makeEvent([
+            ['title' => 'Load In',    'time' => '2026-08-31 15:00'],
+            ['title' => 'Soundcheck', 'time' => '2026-08-31 16:00'],
+            ['title' => 'Quiet',      'time' => '2026-08-31 18:00'],
+        ], '2026-09-04');
+
+        $event->update(['date' => '2026-09-11']);
+
+        $this->assertSame([
+            'Load In'    => '2026-09-11 15:00',
+            'Soundcheck' => '2026-09-11 16:00',
+            'Quiet'      => '2026-09-11 18:00',
         ], $this->times($event));
     }
 
