@@ -81,7 +81,7 @@ class EventTimelineReanchorTest extends TestCase
         ], $this->times($event));
     }
 
-    public function test_unparseable_entries_are_left_untouched()
+    public function test_undated_entries_are_left_untouched()
     {
         $event = $this->makeEvent([
             ['title' => 'Load In',   'time' => '2026-10-10 16:00'],

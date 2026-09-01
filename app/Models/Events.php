@@ -54,7 +54,8 @@ class Events extends Model implements GoogleCalenderable
      * the event: entries within ±1 day of the old date keep their day offset
      * (preserving next-day ends like 00:30), and entries anchored anywhere
      * else — drift damage from before re-anchoring existed — snap to the new
-     * date. Only entries with no date part (e.g. 'TBD') are left untouched.
+     * date. Entries without a leading 'Y-m-d' date component ('TBD', bare
+     * times like '19:00') are left untouched.
      */
     protected function reanchorTimelineToDateChange(): void
     {
