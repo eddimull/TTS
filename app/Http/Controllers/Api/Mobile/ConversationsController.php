@@ -295,8 +295,12 @@ class ConversationsController extends Controller
 
     /**
      * Row icon discriminator for the mobile Messages list. Frozen wire
-     * contract: 'booking' | 'event' | 'rehearsal' for topics, null otherwise
-     * (including a topic whose conversable has since been deleted).
+     * contract: 'booking' | 'event' | 'rehearsal' for topics, null otherwise.
+     *
+     * Derived from the loaded conversable rather than the `conversable_type`
+     * column, so a thread whose item has been deleted reports null — pairing
+     * with the 'Thread' title fallback, which is the honest rendering when
+     * there is no longer an item to point at.
      */
     private function topicType(Conversation $conversation): ?string
     {
@@ -304,11 +308,11 @@ class ConversationsController extends Controller
             return null;
         }
 
-        return match ($conversation->conversable_type) {
-            Bookings::class  => 'booking',
-            Events::class    => 'event',
-            Rehearsal::class => 'rehearsal',
-            default          => null,
+        return match (true) {
+            $conversation->conversable instanceof Bookings  => 'booking',
+            $conversation->conversable instanceof Events    => 'event',
+            $conversation->conversable instanceof Rehearsal => 'rehearsal',
+            default => null,
         };
     }
 

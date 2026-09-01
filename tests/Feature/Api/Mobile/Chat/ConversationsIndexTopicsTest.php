@@ -225,9 +225,9 @@ class ConversationsIndexTopicsTest extends TestCase
         $this->actingAs($member)
             ->getJson("/api/mobile/events/{$event->id}/conversation")->assertOk();
 
-        $this->actingAs($member)->getJson('/api/mobile/conversations')->assertOk();
         $rows = $this->topicRows(
-            $this->actingAs($member)->getJson('/api/mobile/conversations')->json('conversations')
+            $this->actingAs($member)->getJson('/api/mobile/conversations')
+                ->assertOk()->json('conversations')
         );
         $this->assertSame(0, $rows[0]['unread_count'], 'everything read');
 
@@ -260,8 +260,37 @@ class ConversationsIndexTopicsTest extends TestCase
         $response = $this->actingAs($owner)->getJson('/api/mobile/conversations')->assertOk();
 
         // The policy denies a thread whose target is gone, so it drops out of
-        // the list entirely — but the title helper must still be null-safe.
+        // the list entirely — but the summarize() helpers must still be
+        // null-safe, since they run on any conversation the app resolves.
         $this->assertSame([], $this->topicRows($response->json('conversations')));
+
+        $row = $this->summarizeFresh($conversation, $owner);
+        $this->assertSame('Thread', $row['title']);
+        $this->assertNull(
+            $row['topic_type'],
+            'a topic with no surviving item reports no type, matching the Thread title',
+        );
+    }
+
+    /** Invoke the controller's private summarize() on a freshly loaded row. */
+    private function summarizeFresh(\App\Models\Conversation $conversation, \App\Models\User $user): array
+    {
+        $controller = app(\App\Http\Controllers\Api\Mobile\ConversationsController::class);
+
+        $summarize = new \ReflectionMethod($controller, 'summarize');
+        $summarize->setAccessible(true);
+
+        $prefetch = new \ReflectionMethod($controller, 'prefetchSummaryData');
+        $prefetch->setAccessible(true);
+
+        $ids = collect([$conversation->id]);
+
+        return $summarize->invoke(
+            $controller,
+            $conversation->fresh(),
+            $user,
+            $prefetch->invoke($controller, $ids, $user, collect()),
+        );
     }
 
     public function test_listing_many_topics_does_not_n_plus_one(): void
