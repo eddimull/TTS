@@ -50,10 +50,12 @@ class Events extends Model implements GoogleCalenderable
     /**
      * Timeline entries (additional_data->times) store absolute 'Y-m-d H:i'
      * strings anchored to the event date at creation; nothing else updates
-     * them when the date moves. Shift every entry still anchored to the old
-     * date (within ±1 day, preserving next-day offsets like a 00:30 end
-     * time) so the timeline follows the event. Entries with no date part or
-     * anchored elsewhere (e.g. a rain date) are left untouched.
+     * them when the date moves. On a date change, every dated entry follows
+     * the event: entries within ±1 day of the old date keep their day offset
+     * (preserving next-day ends like 00:30), and entries anchored anywhere
+     * else — drift damage from before re-anchoring existed — snap to the new
+     * date. Entries without a leading 'Y-m-d' date component ('TBD', bare
+     * times like '19:00') are left untouched.
      */
     protected function reanchorTimelineToDateChange(): void
     {
@@ -97,9 +99,13 @@ class Events extends Model implements GoogleCalenderable
                 continue;
             }
 
+            // Entries near the old date keep their day offset (e.g. a
+            // next-day 00:30 end). Entries anchored anywhere else are drift
+            // damage from before re-anchoring existed — snap them to the
+            // event date so a date change always heals the timeline.
             $offsetDays = (int) $oldDate->diffInDays($entryDate, false);
             if (abs($offsetDays) > 1) {
-                continue;
+                $offsetDays = 0;
             }
 
             $shifted = $newDate->copy()->addDays($offsetDays)->format('Y-m-d') . $matches[2];
