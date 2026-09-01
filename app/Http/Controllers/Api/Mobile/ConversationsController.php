@@ -15,6 +15,7 @@ use App\Models\Rehearsal;
 use App\Models\User;
 use App\Services\Chat\ConversationService;
 use App\Services\Chat\MessageFormatter;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -30,10 +31,10 @@ class ConversationsController extends Controller
     ) {}
 
     /**
-     * GET /api/mobile/conversations — the Messages screen: the user's DMs
-     * plus a band channel per owned/member band (lazily created so it is
-     * always present). Topic threads are NOT listed; they surface on their
-     * event/rehearsal/booking screens.
+     * GET /api/mobile/conversations — the Messages screen: the user's DMs,
+     * a band channel per owned/member band (lazily created so it is always
+     * present), and every topic thread they can see that someone has actually
+     * posted in.
      */
     public function index(Request $request): JsonResponse
     {
@@ -46,7 +47,7 @@ class ConversationsController extends Controller
             ->whereHas('participants', fn ($q) => $q->where('user_id', $user->id))
             ->get();
 
-        $all = $channels->concat($dms);
+        $all = $channels->concat($dms)->concat($this->visibleTopics($user));
         $ids = $all->pluck('id');
 
         $lastReads = ConversationParticipant::where('user_id', $user->id)
@@ -60,6 +61,43 @@ class ConversationsController extends Controller
             ->values();
 
         return response()->json(['conversations' => $rows]);
+    }
+
+    /**
+     * Topic threads the user may see, for the Messages list.
+     *
+     * Candidates are narrowed in SQL to the bands the user has any standing in
+     * (owner/member/sub — the same union ProcessChatMessagePush::recipients
+     * walks) and to threads someone has actually posted in: topics are
+     * firstOrCreate'd the moment anyone opens an item's chat tab, so empty
+     * auto-created shells must never reach the list. Soft-deleted messages
+     * still count — a thread whose only message was deleted stays listed with
+     * a null preview, exactly as DM rows behave.
+     *
+     * Final visibility is decided by ConversationPolicy, the single source of
+     * truth (members need canRead on the domain; subs only for gigs they are
+     * entitled to). The conversable morph is eager-loaded because the policy
+     * reads it on every row.
+     */
+    private function visibleTopics(User $user): \Illuminate\Support\Collection
+    {
+        $bandIds = $user->allBands()->pluck('id');
+
+        if ($bandIds->isEmpty()) {
+            return collect();
+        }
+
+        return Conversation::where('type', Conversation::TYPE_TOPIC)
+            ->whereIn('band_id', $bandIds)
+            ->whereHas('messages', fn ($q) => $q->withTrashed())
+            ->with(['conversable' => fn (MorphTo $morph) => $morph->morphWith([
+                // Rehearsals have no name of their own; topicTitle() reads
+                // through to the child event and the schedule.
+                Rehearsal::class => ['events', 'rehearsalSchedule'],
+            ])])
+            ->get()
+            ->filter(fn (Conversation $c) => $user->can('view', $c))
+            ->values();
     }
 
     /**
@@ -238,7 +276,7 @@ class ConversationsController extends Controller
         $title = match ($conversation->type) {
             Conversation::TYPE_BAND  => $conversation->band?->name ?? 'Band',
             Conversation::TYPE_DM    => $prefetch['dmOther']->get($conversation->id)?->user?->name ?? 'Direct message',
-            Conversation::TYPE_TOPIC => 'Thread',
+            Conversation::TYPE_TOPIC => $this->topicTitle($conversation),
             default => 'Conversation',
         };
 
@@ -247,11 +285,61 @@ class ConversationsController extends Controller
             'type'                 => $conversation->type,
             'band_id'              => $conversation->band_id ? (int) $conversation->band_id : null,
             'title'                => $title,
+            'topic_type'           => $this->topicType($conversation),
             'last_message_preview' => $preview,
             'last_message_at'      => $lastAt,
             'unread_count'         => $unread,
             'can_moderate'         => $user->can('moderate', $conversation),
         ];
+    }
+
+    /**
+     * Row icon discriminator for the mobile Messages list. Frozen wire
+     * contract: 'booking' | 'event' | 'rehearsal' for topics, null otherwise
+     * (including a topic whose conversable has since been deleted).
+     */
+    private function topicType(Conversation $conversation): ?string
+    {
+        if ($conversation->type !== Conversation::TYPE_TOPIC) {
+            return null;
+        }
+
+        return match ($conversation->conversable_type) {
+            Bookings::class  => 'booking',
+            Events::class    => 'event',
+            Rehearsal::class => 'rehearsal',
+            default          => null,
+        };
+    }
+
+    /**
+     * The item's human name. Bookings carry `name`, Events carry `title`.
+     * Rehearsals have neither column, so they reuse the established fallback
+     * chain from Rehearsal::getGoogleCalendarSummary() — the child event's
+     * title, then the schedule name, then a literal. 'Thread' remains the
+     * fallback when the conversable has been deleted out from under the row.
+     */
+    private function topicTitle(Conversation $conversation): string
+    {
+        $target = $conversation->conversable;
+
+        $title = match (true) {
+            $target instanceof Bookings  => $target->name,
+            $target instanceof Events    => $target->title,
+            // ->events (not ->events()) so the eager-loaded collection is
+            // reused instead of firing a query per row.
+            $target instanceof Rehearsal => $target->events->first()?->title
+                ?? $target->rehearsalSchedule?->name,
+            default => null,
+        };
+
+        $title = is_string($title) ? trim($title) : '';
+
+        if ($title !== '') {
+            return $title;
+        }
+
+        return $target instanceof Rehearsal ? 'Rehearsal' : 'Thread';
     }
 
     /** GET /api/mobile/events/{event}/conversation */
