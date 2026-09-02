@@ -322,6 +322,7 @@ class EventDataService
     {
         $date = is_string($event->date) ? $event->date : $event->date->format('Y-m-d');
         $time = $event?->start_time?->format('H:i');
+        $endTime = $event->end_time?->format('H:i');
 
         $eventSource = match ($event->eventable_type) {
             Bookings::class, 'App\\Models\\Bookings'     => 'booking',
@@ -336,6 +337,7 @@ class EventDataService
             'title'           => $event->title,
             'date'            => $date,
             'time'            => $time,
+            'end_time'        => $endTime,
             'event_type'      => $event->type?->name,
             'event_source'    => $eventSource,
             'venue_name'      => $event->resolved_venue_name,
@@ -354,6 +356,7 @@ class EventDataService
     {
         $date = is_string($event->date) ? $event->date : $event->date->format('Y-m-d');
         $time = $event?->start_time?->format('H:i');
+        $endTime = $event->end_time?->format('H:i');
 
         $members = $event->eventMembers
             ->whereNull('deleted_at')
@@ -428,6 +431,7 @@ class EventDataService
             'title'           => $event->title,
             'date'            => $date,
             'time'            => $time,
+            'end_time'        => $endTime,
             'notes'           => $event->notes,
             'event_type'      => $event->type?->name,
             'event_type_id'   => $event->event_type_id,

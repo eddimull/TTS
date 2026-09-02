@@ -106,7 +106,9 @@ class TopicConversationTest extends TestCase
             $message->created_at->toIso8601String(),
             $response->json('conversation.last_message_at'),
         );
-        $this->assertSame('Thread', $response->json('conversation.title'));
+        // Topic threads are titled from their conversable — here the event.
+        $this->assertSame('Test Gig', $response->json('conversation.title'));
+        $this->assertSame('event', $response->json('conversation.topic_type'));
     }
 
     public function test_sub_cannot_reach_a_booking_thread(): void
