@@ -787,7 +787,7 @@
             <template #option="{ option }">
               <div class="flex items-center gap-2">
                 <i v-if="clientStatus(option.id) === 'must_play'" class="pi pi-star-fill text-amber-500 text-xs" />
-                <span :class="{ 'line-through text-gray-400': clientStatus(option.id) === 'do_not_play' }">
+                <span :class="{ 'line-through text-gray-400 dark:text-gray-500': clientStatus(option.id) === 'do_not_play' }">
                   {{ option.label }}
                 </span>
                 <span v-if="clientStatus(option.id) === 'do_not_play'" class="text-xs text-red-600 dark:text-red-400 ml-auto">Do not play</span>

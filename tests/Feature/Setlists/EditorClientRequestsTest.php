@@ -12,6 +12,7 @@ use App\Models\QuestionnaireResponses;
 use App\Models\Song;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
@@ -45,7 +46,7 @@ class EditorClientRequestsTest extends TestCase
         ]);
     }
 
-    private function show()
+    private function show(): TestResponse
     {
         return $this->actingAs($this->user)->get("/events/{$this->event->key}/setlist");
     }
