@@ -506,7 +506,7 @@ class BookingsController extends Controller
             'events.eventMembers.user',
             'questionnaireInstances.fields',
             'questionnaireInstances.responses',
-            'questionnaireInstances.recipientContact',
+            'questionnaireInstances.recipientContact:id,name',
             'questionnaireInstances.sentByUser:id,name',
         ]);
 
