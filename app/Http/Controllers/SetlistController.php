@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Bookings;
 use App\Models\Events;
 use App\Models\EventSetlist;
 use App\Models\SetlistSong;
+use App\Services\ClientSongRequestsService;
 use App\Services\SetlistAiService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -60,6 +62,11 @@ class SetlistController extends Controller
             'setlist' => $setlist ? $this->formatSetlist($setlist) : null,
             'songs' => $songs,
             'canWrite' => Auth::user()->canWrite('events', $band->id),
+            // Client must-play / do-not-play picks from submitted (or locked)
+            // questionnaires on the event's booking; null when there are none.
+            'clientRequests' => $event->eventable instanceof Bookings
+                ? app(ClientSongRequestsService::class)->forBooking($event->eventable)
+                : null,
         ]);
     }
 
