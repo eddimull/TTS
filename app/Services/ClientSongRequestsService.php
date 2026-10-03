@@ -36,13 +36,12 @@ class ClientSongRequestsService
             ->orderByDesc('submitted_at')
             ->get();
 
-        $mustPlay = collect();
-        $doNotPlay = collect();
-        $source = null;
-
+        // Per-instance picks, most recently submitted first.
+        $picks = [];
         foreach ($instances as $instance) {
             $responses = $instance->responses->keyBy('instance_field_id');
-            $picked = false;
+            $must = collect();
+            $skip = collect();
 
             foreach ($instance->fields as $field) {
                 $purpose = $field->settings['purpose'] ?? null;
@@ -50,35 +49,28 @@ class ClientSongRequestsService
                     continue;
                 }
                 $decoded = json_decode((string) ($responses->get($field->id)?->value ?? ''), true);
-                if (!is_array($decoded) || $decoded === []) {
+                if (!is_array($decoded)) {
                     continue;
                 }
                 $ids = collect($decoded)->filter(fn ($id) => is_numeric($id))->map(fn ($id) => (int) $id);
-                if ($ids->isEmpty()) {
-                    continue;
-                }
-                $picked = true;
                 if ($purpose === 'must_play') {
-                    $mustPlay = $mustPlay->merge($ids);
+                    $must = $must->merge($ids);
                 } else {
-                    $doNotPlay = $doNotPlay->merge($ids);
+                    $skip = $skip->merge($ids);
                 }
             }
 
-            // Most recently submitted instance with picks is the headline source.
-            if ($picked && $source === null) {
-                $source = [
-                    'instance_id'    => $instance->id,
-                    'name'           => $instance->name,
-                    'recipient_name' => $instance->recipientContact?->name,
-                    'submitted_at'   => $instance->submitted_at?->toIso8601String(),
-                ];
+            if ($must->isNotEmpty() || $skip->isNotEmpty()) {
+                $picks[] = ['instance' => $instance, 'must' => $must, 'skip' => $skip];
             }
         }
 
-        if ($mustPlay->isEmpty() && $doNotPlay->isEmpty()) {
+        if ($picks === []) {
             return null;
         }
+
+        $mustPlay = collect($picks)->flatMap(fn ($p) => $p['must']);
+        $doNotPlay = collect($picks)->flatMap(fn ($p) => $p['skip']);
 
         // Only songs still in the band's active catalog are meaningful.
         $valid = Song::query()
@@ -96,6 +88,24 @@ class ClientSongRequestsService
 
         if ($mustPlay->isEmpty() && $doNotPlay->isEmpty()) {
             return null;
+        }
+
+        // Headline source: the most recent instance that contributes at least
+        // one surviving pick (an instance whose songs were all removed from the
+        // catalog shouldn't be credited).
+        $source = null;
+        foreach ($picks as $p) {
+            $contributes = $p['must']->merge($p['skip'])->contains(fn ($id) => $valid->contains($id));
+            if ($contributes) {
+                $instance = $p['instance'];
+                $source = [
+                    'instance_id'    => $instance->id,
+                    'name'           => $instance->name,
+                    'recipient_name' => $instance->recipientContact?->name,
+                    'submitted_at'   => $instance->submitted_at?->toIso8601String(),
+                ];
+                break;
+            }
         }
 
         return [

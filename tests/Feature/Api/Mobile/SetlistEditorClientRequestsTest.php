@@ -164,6 +164,22 @@ class SetlistEditorClientRequestsTest extends TestCase
         $this->assertEqualsCanonicalizing([$a->id, $b->id], $resp->json('client_requests.must_play'));
     }
 
+    public function test_source_skips_newer_instance_whose_picks_were_all_removed(): void
+    {
+        $keep = Song::factory()->active()->create(['band_id' => $this->band->id]);
+        $older = $this->makeInstance([$keep->id], [], fn ($f) => $f->submitted());
+        $older->forceFill(['name' => 'Older Questionnaire', 'submitted_at' => now()->subDays(5)])->save();
+
+        $gone = Song::factory()->inactive()->create(['band_id' => $this->band->id]);
+        $this->makeInstance([$gone->id], [], fn ($f) => $f->submitted());
+
+        $this->show()
+            ->assertOk()
+            ->assertJsonPath('client_requests.must_play', [$keep->id])
+            ->assertJsonPath('client_requests.source.instance_id', $older->id)
+            ->assertJsonPath('client_requests.source.name', 'Older Questionnaire');
+    }
+
     public function test_instance_with_only_empty_song_picks_yields_null(): void
     {
         $this->makeInstance([], [], fn ($f) => $f->submitted());
