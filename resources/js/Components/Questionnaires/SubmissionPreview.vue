@@ -9,7 +9,7 @@
     <div v-if="instance" class="space-y-4">
       <div class="text-xs uppercase text-gray-500 dark:text-gray-400">
         <span>Recipient: {{ instance.recipient_name || '—' }}</span>
-        <span v-if="instance.sent_at"> · Sent {{ instance.sent_at }}</span>
+        <span v-if="instance.sent_at"> · Sent {{ instance.sent_at }}<template v-if="instance.sent_by_name"> by {{ instance.sent_by_name }}</template></span>
         <span v-if="instance.submitted_at"> · Submitted {{ instance.submitted_at }}</span>
         <span class="ml-2 px-2 py-0.5 rounded text-[10px]"
           :class="{

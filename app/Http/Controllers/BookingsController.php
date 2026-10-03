@@ -242,6 +242,7 @@ class BookingsController extends Controller
         $questionnaireInstances = $booking->questionnaireInstances()
             ->with([
                 'recipientContact:id,name',
+                'sentByUser:id,name',
                 'questionnaire:id,name,slug',
                 'fields' => fn ($q) => $q->orderBy('position'),
                 'responses',
@@ -256,6 +257,7 @@ class BookingsController extends Controller
             'name' => $i->name,
             'status' => $i->status,
             'sent_at' => $i->sent_at?->format('M j, Y'),
+            'sent_by_name' => $i->sentByUser?->name,
             'submitted_at' => $i->submitted_at?->format('M j, Y'),
             'recipient_name' => $i->recipientContact->name ?? 'Unknown',
             'fields' => $i->fields->map(fn ($f) => [
@@ -504,7 +506,8 @@ class BookingsController extends Controller
             'events.eventMembers.user',
             'questionnaireInstances.fields',
             'questionnaireInstances.responses',
-            'questionnaireInstances.recipientContact',
+            'questionnaireInstances.recipientContact:id,name',
+            'questionnaireInstances.sentByUser:id,name',
         ]);
 
         $registry = app(\App\Services\QuestionnaireMappingRegistry::class);
@@ -514,6 +517,7 @@ class BookingsController extends Controller
             'name' => $i->name,
             'status' => $i->status,
             'sent_at' => $i->sent_at?->format('M j, Y'),
+            'sent_by_name' => $i->sentByUser?->name,
             'submitted_at' => $i->submitted_at?->format('M j, Y'),
             'recipient_name' => $i->recipientContact->name ?? 'Unknown',
             'fields' => $i->fields->map(fn ($f) => [
