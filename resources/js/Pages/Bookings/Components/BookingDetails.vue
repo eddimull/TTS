@@ -334,7 +334,7 @@
               <div class="min-w-0 flex-1">
                 <div class="font-medium text-gray-900 dark:text-gray-50">{{ instance.name }}</div>
                 <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                  Sent to {{ instance.recipient_name }} · {{ instance.sent_at }}
+                  Sent to {{ instance.recipient_name }} · {{ instance.sent_at }}<span v-if="instance.sent_by_name"> by {{ instance.sent_by_name }}</span>
                   <span v-if="instance.submitted_at"> · Submitted {{ instance.submitted_at }}</span>
                 </div>
               </div>

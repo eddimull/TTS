@@ -11,7 +11,7 @@
         <div>
           <h4 class="font-medium">{{ instance.name }}</h4>
           <p class="text-xs text-gray-500">
-            Sent to {{ instance.recipient_name }} on {{ instance.sent_at }}
+            Sent to {{ instance.recipient_name }} on {{ instance.sent_at }}<span v-if="instance.sent_by_name"> by {{ instance.sent_by_name }}</span>
             <span v-if="instance.submitted_at"> · Submitted {{ instance.submitted_at }}</span>
             <span class="ml-2 px-2 py-0.5 rounded text-xs uppercase"
               :class="{

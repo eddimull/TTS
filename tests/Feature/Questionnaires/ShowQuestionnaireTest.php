@@ -116,6 +116,19 @@ class ShowQuestionnaireTest extends TestCase
             ->where('instances.0.booking.date', null));
     }
 
+    public function test_show_includes_sender_name_for_audit(): void
+    {
+        $booking = $this->bookingWithEvents(['2026-07-04']);
+        $this->instanceFor($booking);
+
+        $response = $this->actingAs($this->owner)
+            ->get(route('questionnaires.show', [$this->band, $this->template]));
+
+        $response->assertOk();
+        $response->assertInertia(fn ($a) => $a
+            ->where('instances.0.sent_by_name', $this->owner->name));
+    }
+
     public function test_send_list_only_includes_bookings_with_upcoming_events(): void
     {
         $upcoming = $this->bookingWithEvents([now()->addWeek()->toDateString()]);

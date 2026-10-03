@@ -110,6 +110,7 @@ class QuestionnairesController extends Controller
         $rawInstances = $questionnaire->instances()
             ->with([
                 'recipientContact:id,name',
+                'sentByUser:id,name',
                 'booking:id,name,band_id',
                 'booking.events:id,eventable_id,eventable_type,date,venue_name',
                 'fields' => fn ($q) => $q->orderBy('position'),
@@ -126,6 +127,7 @@ class QuestionnairesController extends Controller
             'status' => $i->status,
             'sent_at' => $i->sent_at?->format('M j, Y'),
             'sent_at_iso' => $i->sent_at?->toIso8601String(),
+            'sent_by_name' => $i->sentByUser?->name,
             'submitted_at' => $i->submitted_at?->format('M j, Y'),
             'submitted_at_iso' => $i->submitted_at?->toIso8601String(),
             'recipient_name' => $i->recipientContact->name ?? 'Unknown',

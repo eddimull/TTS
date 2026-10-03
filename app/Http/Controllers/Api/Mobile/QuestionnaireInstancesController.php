@@ -39,7 +39,7 @@ class QuestionnaireInstancesController extends Controller
         abort_if($questionnaire->band_id !== $band->id, 404);
 
         $instances = $questionnaire->instances()
-            ->with(['recipientContact:id,name', 'booking:id,name,band_id'])
+            ->with(['recipientContact:id,name', 'booking:id,name,band_id', 'sentByUser:id,name'])
             ->orderByDesc('sent_at')
             ->get()
             ->map(fn (QuestionnaireInstances $i) => $this->summary($i));
@@ -78,7 +78,7 @@ class QuestionnaireInstancesController extends Controller
         abort_if($booking->band_id !== $band->id, 404);
 
         $instances = $booking->questionnaireInstances()
-            ->with(['recipientContact:id,name', 'booking:id,name,band_id'])
+            ->with(['recipientContact:id,name', 'booking:id,name,band_id', 'sentByUser:id,name'])
             ->orderByDesc('sent_at')
             ->get()
             ->map(fn (QuestionnaireInstances $i) => $this->summary($i));
@@ -101,6 +101,7 @@ class QuestionnaireInstancesController extends Controller
         $instance->load([
             'recipientContact:id,name',
             'booking:id,name,band_id',
+            'sentByUser:id,name',
             'fields',
             'responses',
         ]);
@@ -118,7 +119,7 @@ class QuestionnaireInstancesController extends Controller
         $instance = $this->snapshotService->snapshot($template, $booking, $contact, Auth::user());
         $contact->notify(new QuestionnaireSent($instance));
 
-        $instance->load(['recipientContact:id,name', 'booking:id,name,band_id']);
+        $instance->load(['recipientContact:id,name', 'booking:id,name,band_id', 'sentByUser:id,name']);
 
         return response()->json(['instance' => $this->summary($instance)], 201);
     }
@@ -128,7 +129,7 @@ class QuestionnaireInstancesController extends Controller
         $this->ensureBelongsToBand($band, $instance);
 
         $instance->recipientContact->notify(new QuestionnaireSent($instance));
-        $instance->load(['recipientContact:id,name', 'booking:id,name,band_id']);
+        $instance->load(['recipientContact:id,name', 'booking:id,name,band_id', 'sentByUser:id,name']);
 
         return response()->json(['instance' => $this->summary($instance)]);
     }
@@ -142,7 +143,7 @@ class QuestionnaireInstancesController extends Controller
             'locked_at' => now(),
             'locked_by_user_id' => Auth::id(),
         ]);
-        $instance->load(['recipientContact:id,name', 'booking:id,name,band_id']);
+        $instance->load(['recipientContact:id,name', 'booking:id,name,band_id', 'sentByUser:id,name']);
 
         return response()->json(['instance' => $this->summary($instance)]);
     }
@@ -159,7 +160,7 @@ class QuestionnaireInstancesController extends Controller
             'locked_at' => null,
             'locked_by_user_id' => null,
         ]);
-        $instance->load(['recipientContact:id,name', 'booking:id,name,band_id']);
+        $instance->load(['recipientContact:id,name', 'booking:id,name,band_id', 'sentByUser:id,name']);
 
         return response()->json(['instance' => $this->summary($instance)]);
     }
@@ -256,6 +257,7 @@ class QuestionnaireInstancesController extends Controller
             'name' => $i->name,
             'status' => $i->status,
             'sent_at' => $i->sent_at?->toIso8601String(),
+            'sent_by_name' => $i->sentByUser?->name,
             'submitted_at' => $i->submitted_at?->toIso8601String(),
             'recipient_name' => $i->recipientContact->name ?? 'Unknown',
             'booking' => [
