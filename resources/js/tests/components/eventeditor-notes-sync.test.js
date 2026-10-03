@@ -27,6 +27,7 @@ window.route = global.route;
 window.scrollTo = vi.fn();
 
 import EventEditor from '../../Pages/Bookings/Components/EventEditor.vue';
+import BasicInfo from '../../Pages/Bookings/Components/EventEditor/BasicInfo.vue';
 
 const AUTOSAVE_MS = 3000;
 
@@ -42,15 +43,32 @@ const baseEvent = (notes) => ({
   eventable: { band_id: 1 },
 });
 
+// `wrapper.emitted()` relies on Vue's devtools hook, which production builds
+// (CI's pipeline mode) drop. A listener passed as the `onSave` prop is wired
+// by Vue itself, so it records saves in both modes.
 const mountEditor = async (notes) => {
-  const wrapper = shallowMount(EventEditor, { props: { initialEvent: baseEvent(notes) } });
+  const onSave = vi.fn();
+  const wrapper = shallowMount(EventEditor, {
+    props: { initialEvent: baseEvent(notes), onSave },
+    // BasicInfo lives inside the (stubbed) SectionCard's default slot.
+    global: { renderStubDefaultSlot: true },
+  });
+  wrapper.onSave = onSave;
   await nextTick();
   await nextTick(); // isInitialized flips after mount
   return wrapper;
 };
 
+// CI runs vitest in production mode, where <script setup> state is not
+// reachable through wrapper.vm. Drive the editor the way its child sections
+// do: BasicInfo (always rendered) gets `v-model="event"`, so its modelValue
+// prop IS the editor's reactive event object — the same one the notes
+// textarea binds to.
+const localEvent = (wrapper) =>
+  wrapper.findComponent(BasicInfo).props('modelValue');
+
 const type = async (wrapper, notes) => {
-  wrapper.vm.event.notes = notes;
+  localEvent(wrapper).notes = notes;
   await nextTick();
 };
 
@@ -60,8 +78,8 @@ const letAutosaveFire = async () => {
 };
 
 const lastSavedNotes = (wrapper) => {
-  const saves = wrapper.emitted('save') ?? [];
-  return saves.length ? saves[saves.length - 1][0].notes : undefined;
+  const calls = wrapper.onSave.mock.calls;
+  return calls.length ? calls[calls.length - 1][0].notes : undefined;
 };
 
 describe('EventEditor notes ↔ server prop sync', () => {
@@ -82,7 +100,7 @@ describe('EventEditor notes ↔ server prop sync', () => {
     await wrapper.setProps({ initialEvent: baseEvent('Load in at 4pm') });
     await nextTick();
 
-    expect(wrapper.vm.event.notes).toBe('Load in at 4pm, sound check 5');
+    expect(localEvent(wrapper).notes).toBe('Load in at 4pm, sound check 5');
 
     // And the extra typing still reaches the server on the next autosave.
     await letAutosaveFire();
@@ -97,10 +115,10 @@ describe('EventEditor notes ↔ server prop sync', () => {
     });
     await nextTick();
 
-    expect(wrapper.vm.event.notes).toBe('Load in at 4pm\n\nQuestionnaire: 120 guests');
+    expect(localEvent(wrapper).notes).toBe('Load in at 4pm\n\nQuestionnaire: 120 guests');
     // A server-driven sync is not a user edit: nothing to autosave.
     await letAutosaveFire();
-    expect(wrapper.emitted('save')).toBeUndefined();
+    expect(wrapper.onSave).not.toHaveBeenCalled();
   });
 
   it('after an autosave with no further typing, a different server value is accepted', async () => {
@@ -113,6 +131,6 @@ describe('EventEditor notes ↔ server prop sync', () => {
     await wrapper.setProps({ initialEvent: baseEvent('Load in at 4pm\n\nParking: rear lot') });
     await nextTick();
 
-    expect(wrapper.vm.event.notes).toBe('Load in at 4pm\n\nParking: rear lot');
+    expect(localEvent(wrapper).notes).toBe('Load in at 4pm\n\nParking: rear lot');
   });
 });
