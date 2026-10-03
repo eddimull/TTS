@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
 use App\Models\Bands;
+use App\Models\Bookings;
 use App\Models\Events;
 use App\Models\EventSetlist;
 use App\Models\SetlistSong;
+use App\Services\ClientSongRequestsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -49,6 +51,11 @@ class SetlistEditorController extends Controller
             'setlist'   => $setlist ? $this->formatSetlist($setlist) : null,
             'songs'     => $songs,
             'can_write' => Auth::user()->canWrite('events', $band->id),
+            // Client must-play / do-not-play picks from submitted questionnaires
+            // on the event's booking; null when there are none.
+            'client_requests' => $event->eventable instanceof Bookings
+                ? app(ClientSongRequestsService::class)->forBooking($event->eventable)
+                : null,
         ]);
     }
 
