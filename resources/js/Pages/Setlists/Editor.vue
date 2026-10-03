@@ -141,6 +141,14 @@
         />
       </div>
 
+      <!-- Client must-play / do-not-play picks (only when a questionnaire has them) -->
+      <ClientCatalogPanel
+        v-if="clientRequests"
+        :songs="songs"
+        :requests="clientRequests"
+        class="print:hidden"
+      />
+
       <!-- AI Sources panel (shown after generation) -->
       <div
         v-if="localSetlist && (localSetlist.event_context || localSetlist.image_context?.length)"
@@ -379,11 +387,32 @@
 
               <!-- Song info -->
               <div class="flex-1 min-w-0">
-                <div class="font-medium text-gray-900 dark:text-gray-50 truncate">
+                <div
+                  :class="[
+                    'font-medium truncate',
+                    clientStatus(element.song_id) === 'do_not_play'
+                      ? 'line-through text-gray-400 dark:text-gray-500'
+                      : 'text-gray-900 dark:text-gray-50',
+                  ]"
+                >
+                  <i
+                    v-if="clientStatus(element.song_id) === 'must_play'"
+                    class="pi pi-star-fill text-amber-500 text-xs mr-1"
+                    aria-label="Must play"
+                  />
                   {{ element.title }}
                 </div>
                 <div class="text-sm text-gray-500 dark:text-gray-400 flex flex-wrap gap-2">
-                  <span v-if="element.artist">{{ element.artist }}</span>
+                  <span
+                    v-if="element.artist"
+                    :class="{ 'line-through text-gray-400 dark:text-gray-500': clientStatus(element.song_id) === 'do_not_play' }"
+                  >{{ element.artist }}</span>
+                  <span v-if="clientStatus(element.song_id) === 'do_not_play'" class="text-xs font-semibold text-red-600 dark:text-red-400">
+                    Do not play
+                  </span>
+                  <span v-else-if="clientStatus(element.song_id) === 'must_play'" class="text-xs font-semibold text-amber-600 dark:text-amber-400">
+                    Must play
+                  </span>
                   <span v-if="element.song_key" class="text-xs bg-gray-100 dark:bg-slate-600 px-1.5 py-0.5 rounded">
                     {{ element.song_key }}
                   </span>
@@ -754,7 +783,18 @@
             filter
             class="w-full"
             @change="onSongSelect"
-          />
+          >
+            <template #option="{ option }">
+              <div class="flex items-center gap-2">
+                <i v-if="clientStatus(option.id) === 'must_play'" class="pi pi-star-fill text-amber-500 text-xs" />
+                <span :class="{ 'line-through text-gray-400': clientStatus(option.id) === 'do_not_play' }">
+                  {{ option.label }}
+                </span>
+                <span v-if="clientStatus(option.id) === 'do_not_play'" class="text-xs text-red-600 dark:text-red-400 ml-auto">Do not play</span>
+                <span v-else-if="clientStatus(option.id) === 'must_play'" class="text-xs text-amber-600 dark:text-amber-400 ml-auto">Must play</span>
+              </div>
+            </template>
+          </Dropdown>
         </div>
 
         <div class="text-center text-xs text-gray-400">— or enter custom song —</div>
@@ -788,9 +828,11 @@ import { Link, router } from '@inertiajs/vue3';
 import draggable from 'vuedraggable';
 import { DateTime } from 'luxon';
 import Sidebar from 'primevue/sidebar';
+import ClientCatalogPanel from '@/Components/Setlists/ClientCatalogPanel.vue';
+import { clientSongStatus } from '@/Utils/clientSongRequests';
 
 export default {
-  components: { Link, draggable, Sidebar },
+  components: { Link, draggable, Sidebar, ClientCatalogPanel },
 
   props: {
     event: { type: Object, required: true },
@@ -798,6 +840,8 @@ export default {
     setlist: { type: Object, default: null },
     songs: { type: Array, default: () => [] },
     canWrite: { type: Boolean, default: false },
+    // {must_play:[ids], do_not_play:[ids], source:{...}} | null
+    clientRequests: { type: Object, default: null },
   },
 
   data() {
@@ -855,6 +899,11 @@ export default {
   },
 
   methods: {
+    /** 'must_play' | 'do_not_play' | 'none' for a library song id. */
+    clientStatus(songId) {
+      return clientSongStatus(this.clientRequests, songId);
+    },
+
     emptyEntryForm() {
       return { type: 'song', song_id: null, custom_title: '', custom_artist: '', notes: '' };
     },
