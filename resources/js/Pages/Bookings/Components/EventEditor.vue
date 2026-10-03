@@ -292,14 +292,34 @@ watch(
     },
     { deep: true }
 );
+// The notes value the server is known to hold: seeded from props, advanced
+// whenever we send a save, and whenever we accept a server-driven update.
+// Comparing local notes against it tells us whether the user has typed since.
+let lastSyncedNotes = props.initialEvent.notes ?? '';
+
 watch(
     () => props.initialEvent.notes,
     (val) => {
-        // Always surface server-driven notes updates (e.g., append-to-notes).
-        // The autosave watcher ignores these because of isSyncingFromProps.
-        if (val === event.value.notes) return;
+        const incoming = val ?? '';
+        if (incoming === event.value.notes) {
+            lastSyncedNotes = incoming;
+            return;
+        }
+        // The autosave round-trips through an Inertia visit whose redirect
+        // re-renders props. If the user kept typing while that was in
+        // flight, the incoming value is OLDER than the textarea: keep the
+        // user's text (the pending autosave will send it) instead of
+        // throwing the caret to the end and dropping their keystrokes.
+        if (event.value.notes !== lastSyncedNotes) {
+            lastSyncedNotes = incoming;
+            return;
+        }
+        // User is idle since the last sync: surface the server-driven
+        // change (append-to-notes, a bandmate's edit). The autosave watcher
+        // ignores it because of isSyncingFromProps.
+        lastSyncedNotes = incoming;
         isSyncingFromProps.value = true;
-        event.value.notes = val;
+        event.value.notes = incoming;
         nextTick(() => { isSyncingFromProps.value = false; });
     }
 );
@@ -459,6 +479,7 @@ const autoSave = () => {
     isSaving.value = true;
     
     try {
+        lastSyncedNotes = event.value.notes ?? '';
         emit("save", event.value, { silent: true });
         hasUnsavedChanges.value = false;
         lastSaved.value = Date.now();
@@ -518,6 +539,7 @@ const save = async () => {
     
     try {
         // First save the event data
+        lastSyncedNotes = event.value.notes ?? '';
         await emit("save", event.value);
         
         // Then upload any new attachments
