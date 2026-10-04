@@ -55,8 +55,7 @@ class ContractCompletionService
         $response = $this->pandaDoc()
             ->get('https://api.pandadoc.com/public/v1/documents/' . $contract->envelope_id . '/download');
 
-        if ($response->status() === 202 || $response->status() === 409)
-        {
+        if ($response->status() === 202 || $response->status() === 409) {
             throw new SignedContractNotReadyException(
                 "PandaDoc has not finished generating the signed PDF for envelope {$contract->envelope_id} (HTTP {$response->status()})",
                 $this->retryAfterSeconds($response),
@@ -65,8 +64,7 @@ class ContractCompletionService
 
         $response->throw();
 
-        if ($response->body() === '')
-        {
+        if ($response->body() === '') {
             throw new SignedContractNotReadyException(
                 "PandaDoc returned an empty PDF for envelope {$contract->envelope_id}",
             );
@@ -95,8 +93,7 @@ class ContractCompletionService
 
         $status = $response->json('status');
 
-        if ($status !== 'document.completed')
-        {
+        if ($status !== 'document.completed') {
             throw new SignedContractNotReadyException(
                 "PandaDoc envelope {$contract->envelope_id} is not completed yet (status: " . ($status ?? 'unknown') . ")",
             );

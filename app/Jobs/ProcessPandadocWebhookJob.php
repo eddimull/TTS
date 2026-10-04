@@ -13,9 +13,10 @@ class ProcessPandadocWebhookJob extends SpatieProcessWebhookJob
     /**
      * PandaDoc fires `recipient_completed` before the signed PDF is rendered, so
      * the first few attempts routinely find the document not ready. Each not-ready
-     * attempt releases the job back onto the queue with a growing delay; the
-     * attempt budget below covers roughly an hour before the job is marked failed
-     * (the daily `contracts:check-signed` poller is the backstop after that).
+     * attempt releases the job back onto the queue with a growing delay
+     * (30s, 60s, 120s, 240s, 480s, then 15m x4 ≈ 75 minutes worst case across
+     * the nine releases below) before the job is marked failed. The daily
+     * `contracts:check-signed` poller is the backstop after that.
      */
     public int $tries = 10;
 
