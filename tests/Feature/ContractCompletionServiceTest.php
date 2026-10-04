@@ -7,6 +7,7 @@ use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\Contracts;
 use App\Models\User;
+use App\Exceptions\SignedContractNotReadyException;
 use App\Services\ContractCompletionService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -40,6 +41,7 @@ class ContractCompletionServiceTest extends TestCase
         Storage::fake('s3');
         Http::fake([
             'api.pandadoc.com/public/v1/documents/*/download' => Http::response('PDFBYTES', 200),
+            'api.pandadoc.com/public/v1/documents/*' => Http::response(['status' => 'document.completed'], 200),
         ]);
 
         $contract = $this->makeSentContract();
@@ -59,6 +61,7 @@ class ContractCompletionServiceTest extends TestCase
         Storage::fake('s3');
         Http::fake([
             'api.pandadoc.com/public/v1/documents/*/download' => Http::response('', 500),
+            'api.pandadoc.com/public/v1/documents/*' => Http::response(['status' => 'document.completed'], 200),
         ]);
 
         $contract = $this->makeSentContract();
@@ -78,6 +81,7 @@ class ContractCompletionServiceTest extends TestCase
         Storage::fake('s3');
         Http::fake([
             'api.pandadoc.com/public/v1/documents/*/download' => Http::response('PDFBYTES', 200),
+            'api.pandadoc.com/public/v1/documents/*' => Http::response(['status' => 'document.completed'], 200),
         ]);
 
         $contract = $this->makeSentContract();
@@ -94,5 +98,88 @@ class ContractCompletionServiceTest extends TestCase
         Http::assertNothingSent();
         $this->assertSame($firstAssetUrl, $contract->fresh()->asset_url);
         $this->assertSame('completed', $contract->fresh()->status);
+    }
+
+    public function test_mark_completed_throws_not_ready_when_document_is_not_completed_yet(): void
+    {
+        Storage::fake('s3');
+        Http::fake([
+            'api.pandadoc.com/public/v1/documents/*/download' => Http::response('PDFBYTES', 200),
+            'api.pandadoc.com/public/v1/documents/*' => Http::response(['status' => 'document.viewed'], 200),
+        ]);
+
+        $contract = $this->makeSentContract();
+
+        try {
+            (new ContractCompletionService())->markCompleted($contract);
+            $this->fail('Expected SignedContractNotReadyException');
+        } catch (SignedContractNotReadyException $e) {
+            $this->assertNull($e->retryAfterSeconds);
+        }
+
+        $this->assertSame('sent', $contract->fresh()->status);
+        $this->assertNull($contract->fresh()->asset_url);
+        Http::assertNotSent(fn ($request) => str_ends_with($request->url(), '/download'));
+    }
+
+    public function test_mark_completed_throws_not_ready_when_download_is_still_being_generated(): void
+    {
+        Storage::fake('s3');
+        Http::fake([
+            'api.pandadoc.com/public/v1/documents/*/download' => Http::response('', 202, ['Retry-After' => '45']),
+            'api.pandadoc.com/public/v1/documents/*' => Http::response(['status' => 'document.completed'], 200),
+        ]);
+
+        $contract = $this->makeSentContract();
+
+        try {
+            (new ContractCompletionService())->markCompleted($contract);
+            $this->fail('Expected SignedContractNotReadyException');
+        } catch (SignedContractNotReadyException $e) {
+            $this->assertSame(45, $e->retryAfterSeconds);
+        }
+
+        $this->assertSame('sent', $contract->fresh()->status);
+        $this->assertNull($contract->fresh()->asset_url);
+        Storage::disk('s3')->assertDirectoryEmpty('');
+    }
+
+    public function test_mark_completed_throws_not_ready_when_download_conflicts(): void
+    {
+        Storage::fake('s3');
+        Http::fake([
+            'api.pandadoc.com/public/v1/documents/*/download' => Http::response(['detail' => 'processing'], 409),
+            'api.pandadoc.com/public/v1/documents/*' => Http::response(['status' => 'document.completed'], 200),
+        ]);
+
+        $contract = $this->makeSentContract();
+
+        $this->expectException(SignedContractNotReadyException::class);
+
+        try {
+            (new ContractCompletionService())->markCompleted($contract);
+        } finally {
+            $this->assertSame('sent', $contract->fresh()->status);
+        }
+    }
+
+    public function test_mark_completed_throws_not_ready_when_download_body_is_empty(): void
+    {
+        Storage::fake('s3');
+        Http::fake([
+            'api.pandadoc.com/public/v1/documents/*/download' => Http::response('', 200),
+            'api.pandadoc.com/public/v1/documents/*' => Http::response(['status' => 'document.completed'], 200),
+        ]);
+
+        $contract = $this->makeSentContract();
+
+        $this->expectException(SignedContractNotReadyException::class);
+
+        try {
+            (new ContractCompletionService())->markCompleted($contract);
+        } finally {
+            $this->assertSame('sent', $contract->fresh()->status);
+            $this->assertNull($contract->fresh()->asset_url);
+        }
     }
 }
