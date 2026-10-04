@@ -122,7 +122,10 @@
               <Column field="recipient_name" header="Recipient" sortable class="hidden md:table-cell" header-class="hidden md:table-cell"/>
               <Column field="sent_at_iso" header="Sent" sortable>
                 <template #body="{ data }">
-                  {{ data.sent_at }}
+                  <div>{{ data.sent_at }}</div>
+                  <div v-if="data.sent_by_name" class="text-xs text-gray-500 dark:text-gray-400">
+                    by {{ data.sent_by_name }}
+                  </div>
                 </template>
               </Column>
               <Column field="submitted_at_iso" header="Submitted" sortable class="hidden md:table-cell" header-class="hidden md:table-cell">

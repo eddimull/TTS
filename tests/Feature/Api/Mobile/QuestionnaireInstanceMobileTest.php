@@ -103,6 +103,27 @@ class QuestionnaireInstanceMobileTest extends TestCase
             ->assertJsonPath('instances.0.booking.id', $this->booking->id);
     }
 
+    public function test_instance_payloads_include_sender_name(): void
+    {
+        $instance = $this->makeInstance();
+        $expected = $this->owner->name;
+
+        $this->withHeaders($this->asMember())
+            ->getJson("/api/mobile/bands/{$this->band->id}/questionnaires/{$this->template->id}/instances")
+            ->assertOk()
+            ->assertJsonPath('instances.0.sent_by_name', $expected);
+
+        $this->withHeaders($this->asMember())
+            ->getJson("/api/mobile/bands/{$this->band->id}/bookings/{$this->booking->id}/questionnaire-instances")
+            ->assertOk()
+            ->assertJsonPath('instances.0.sent_by_name', $expected);
+
+        $this->withHeaders($this->asMember())
+            ->getJson("/api/mobile/bands/{$this->band->id}/questionnaire-instances/{$instance->id}")
+            ->assertOk()
+            ->assertJsonPath('instance.sent_by_name', $expected);
+    }
+
     public function test_eligible_bookings_flags_already_sent_and_portal_access(): void
     {
         $this->makeInstance();
