@@ -148,7 +148,12 @@ class ContractCompletionServiceTest extends TestCase
     {
         Storage::fake('s3');
         Http::fake([
-            'api.pandadoc.com/public/v1/documents/*/download' => Http::response(['detail' => 'processing'], 409),
+            // Real production response (Sentry TTS-BAND-14C): PandaDoc answers 409 while
+            // the signed download assets are still being generated after signing.
+            'api.pandadoc.com/public/v1/documents/*/download' => Http::response([
+                'id'           => 'env-test-123',
+                'info_message' => 'The document is not completed yet. Signed download assets are still being generated.',
+            ], 409),
             'api.pandadoc.com/public/v1/documents/*' => Http::response(['status' => 'document.completed'], 200),
         ]);
 
