@@ -15,7 +15,6 @@ use App\Models\User;
 use App\Services\Chat\ConversationPresenter;
 use App\Services\Chat\ConversationService;
 use App\Services\Chat\MessageFormatter;
-use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -39,62 +38,7 @@ class ConversationsController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $user = $request->user();
-
-        $channels = $user->bands()->unique('id')->values()
-            ->map(fn ($band) => $this->conversations->bandChannelFor($band));
-
-        $dms = Conversation::where('type', Conversation::TYPE_DM)
-            ->whereHas('participants', fn ($q) => $q->where('user_id', $user->id))
-            ->get();
-
-        $all = $channels->concat($dms)->concat($this->visibleTopics($user));
-        $ids = $all->pluck('id');
-
-        $prefetch = $this->presenter->prefetch($ids, $user);
-
-        $rows = $all->map(fn (Conversation $c) => $this->presenter->summarize($c, $user, $prefetch))
-            ->sortByDesc(fn ($row) => $row['last_message_at'] ?? '')
-            ->values();
-
-        return response()->json(['conversations' => $rows]);
-    }
-
-    /**
-     * Topic threads the user may see, for the Messages list.
-     *
-     * Candidates are narrowed in SQL to the bands the user has any standing in
-     * (owner/member/sub — the same union ProcessChatMessagePush::recipients
-     * walks) and to threads someone has actually posted in: topics are
-     * firstOrCreate'd the moment anyone opens an item's chat tab, so empty
-     * auto-created shells must never reach the list. Soft-deleted messages
-     * still count — a thread whose only message was deleted stays listed with
-     * a null preview, exactly as DM rows behave.
-     *
-     * Final visibility is decided by ConversationPolicy, the single source of
-     * truth (members need canRead on the domain; subs only for gigs they are
-     * entitled to). The conversable morph is eager-loaded because the policy
-     * reads it on every row.
-     */
-    private function visibleTopics(User $user): \Illuminate\Support\Collection
-    {
-        $bandIds = $user->allBands()->pluck('id');
-
-        if ($bandIds->isEmpty()) {
-            return collect();
-        }
-
-        return Conversation::where('type', Conversation::TYPE_TOPIC)
-            ->whereIn('band_id', $bandIds)
-            ->whereHas('messages', fn ($q) => $q->withTrashed())
-            ->with(['conversable' => fn (MorphTo $morph) => $morph->morphWith([
-                // Rehearsals have no name of their own; topicTitle() reads
-                // through to the child event and the schedule.
-                Rehearsal::class => ['events', 'rehearsalSchedule'],
-            ])])
-            ->get()
-            ->filter(fn (Conversation $c) => $user->can('view', $c))
-            ->values();
+        return response()->json(['conversations' => $this->presenter->listFor($request->user())]);
     }
 
     /** POST /api/mobile/conversations/dm {user_id} — find-or-create the global pair thread. */

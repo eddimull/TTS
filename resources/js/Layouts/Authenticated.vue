@@ -71,6 +71,11 @@
                 />
               </svg>
             </button>
+            <MessagesNavIcon
+              :count="chatUnread"
+              :href="route('messages.index')"
+              class="ml-3"
+            />
             <div class="ml-3 relative">
               <breeze-dropdown
                 align="right"
@@ -230,6 +235,11 @@
 
           <!-- notifications on mobile -->
           <div class="flex items-center sm:hidden pr-4">
+            <MessagesNavIcon
+              :count="chatUnread"
+              :href="route('messages.index')"
+              class="mr-1"
+            />
             <breeze-dropdown
               align="full"
               width="full"
@@ -549,6 +559,7 @@ import SearchComponent from "@/Components/Search/SearchComponent.vue";
 import NavDropdown from "@/Components/NavDropdown.vue";
 import UploadQueueWidget from "@/Components/UploadQueueWidget.vue";
 import NavAccordion from "@/Components/NavAccordion.vue";
+import MessagesNavIcon from "@/Components/Chat/MessagesNavIcon.vue";
 import Toast from "primevue/toast";
 import axios from "axios";
 import { mapState, mapActions } from "vuex";
@@ -570,6 +581,7 @@ export default {
         NavAccordion,
         Toast,
         UploadQueueWidget,
+        MessagesNavIcon,
     },
     props: {
         navSuffix: {
@@ -590,7 +602,7 @@ export default {
         };
     },
     computed: {
-        ...mapState("user", ["navigation", "notifications"]),
+        ...mapState("user", ["navigation", "notifications", "chatUnread"]),
         unseenNotifications() {
             return !this.notifications
                 ? 0
@@ -628,6 +640,7 @@ export default {
         }
     },
     mounted() {
+        this.fetchChatUnread();
         this.subscribeToUserChannel();
         this.subscribeToBandSignals();
     },
@@ -638,6 +651,7 @@ export default {
         }
         this._bandUnsubscribe?.();
         this._bellRefresher?.dispose();
+        clearTimeout(this._chatSignalTimer);
     },
     onUpdated() {
         this.toast();
@@ -660,11 +674,19 @@ export default {
             "markAllNotificationsAsRead",
             "markNotificationAsRead",
             "markNotificationsAsSeen",
+            "fetchChatUnread",
+            "signalChatChange",
         ]),
 
         fetchUserData() {
             this.fetchNavigation();
             this.fetchNotifications();
+        },
+
+        onChatSignal() {
+            // Coalesce a burst of message signals into one badge refetch.
+            clearTimeout(this._chatSignalTimer);
+            this._chatSignalTimer = setTimeout(() => this.signalChatChange(), 300);
         },
 
         subscribeToUserChannel() {
@@ -682,6 +704,9 @@ export default {
                         life: 60000,
                         data: { liveUrl: route('setlists.live', e.event_key) },
                     });
+                })
+                .listen('.user.data-changed', (p) => {
+                    if (p?.model === 'message') this.onChatSignal();
                 });
 
             console.log('[Layout] Subscribed to App.Models.User.' + userId);
@@ -700,7 +725,10 @@ export default {
                 getLatest: () => this.notifications?.[0],
                 toast: (opts) => this.$toast?.add(opts),
             });
-            this._bandUnsubscribe = subscribeBandSignals(bandIds, this._bellRefresher.onSignal);
+            this._bandUnsubscribe = subscribeBandSignals(bandIds, (payload) => {
+                this._bellRefresher.onSignal(payload);
+                if (payload?.model === 'message') this.onChatSignal();
+            });
         },
 
         onSetlistToastClose() {
