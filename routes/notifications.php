@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
+use App\Events\NotificationChanged;
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/notifications', function () {
@@ -12,6 +13,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         $notification = Auth::user()->Notifications->find($id);
         if ($notification) {
             $notification->markAsRead();
+            NotificationChanged::dispatch(Auth::id(), $notification->id, 'read');
         }
         return false;
     });
@@ -21,6 +23,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         foreach ($notifications as $notification) {
             $notification->markAsRead();
         }
+        NotificationChanged::dispatch(Auth::id(), null, 'read');
         return false;
     });
 
@@ -29,6 +32,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         foreach ($notifications as $notification) {
             $notification->markAsSeen();
         }
+        NotificationChanged::dispatch(Auth::id(), null, 'seen');
         return false;
     });
 });

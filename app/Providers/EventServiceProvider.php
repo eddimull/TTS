@@ -28,6 +28,9 @@ class EventServiceProvider extends ServiceProvider
         PaymentWasReceived::class => [
             SendPaymentNotification::class,
         ],
+        \Illuminate\Notifications\Events\NotificationSent::class => [
+            \App\Listeners\BroadcastDatabaseNotification::class,
+        ],
     ];
 
     /**

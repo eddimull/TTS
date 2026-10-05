@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Mobile;
 
+use App\Events\NotificationChanged;
 use App\Http\Controllers\Controller;
 use App\Models\Bandnotification;
 use App\Models\User;
@@ -60,7 +61,7 @@ class NotificationsController extends Controller
         $row = $this->own($request->user())->where('id', $notification)->firstOrFail();
         $row->markAsRead();
 
-        // Task 3: broadcast NotificationChanged(user, id, 'read') here.
+        NotificationChanged::dispatch($request->user()->id, $row->id, 'read');
 
         return response()->noContent();
     }
@@ -70,7 +71,7 @@ class NotificationsController extends Controller
     {
         $this->own($request->user())->whereNull('read_at')->update(['read_at' => now()]);
 
-        // Task 3: broadcast NotificationChanged(user, null, 'read') here.
+        NotificationChanged::dispatch($request->user()->id, null, 'read');
 
         return response()->noContent();
     }
@@ -80,7 +81,7 @@ class NotificationsController extends Controller
     {
         $this->own($request->user())->whereNull('seen_at')->update(['seen_at' => now()]);
 
-        // Task 3: broadcast NotificationChanged(user, null, 'seen') here.
+        NotificationChanged::dispatch($request->user()->id, null, 'seen');
 
         return response()->noContent();
     }
