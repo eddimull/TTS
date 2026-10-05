@@ -72,6 +72,22 @@ class NotificationPushTest extends TestCase
         Queue::assertNotPushed(SendUserPush::class, fn (SendUserPush $job) => $job->data['type'] === 'notification');
     }
 
+    public function test_subclasses_of_self_pushing_notifications_are_not_pushed(): void
+    {
+        config(['push.notifications_feed' => true]);
+        Queue::fake([SendNotificationPush::class]);
+        [$owner, $band] = $this->makeOwnerWithBand();
+        $member = $this->makeMember($band, ['read:events']);
+        $event  = $this->makeBookingEvent($band);
+        $topic  = app(ConversationService::class)->topicFor($event);
+        $message = $topic->messages()->create(['user_id' => $owner->id, 'body' => 'hey']);
+
+        $member->notify(new class ($message, $topic, 'Test Gig') extends CommentPosted {
+        });
+
+        Queue::assertNotPushed(SendNotificationPush::class);
+    }
+
     public function test_contact_notifications_never_push(): void
     {
         config(['push.notifications_feed' => true]);

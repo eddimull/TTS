@@ -33,8 +33,10 @@ class PushDatabaseNotification
         if ($event->channel !== 'database' || !$event->notifiable instanceof User) {
             return;
         }
-        if (in_array(get_class($event->notification), self::SELF_PUSHING, true)) {
-            return;
+        foreach (self::SELF_PUSHING as $class) {
+            if ($event->notification instanceof $class) {
+                return;
+            }
         }
         if (!$event->response instanceof DatabaseNotification) {
             return;
