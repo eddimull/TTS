@@ -183,6 +183,8 @@ class RehearsalController extends Controller
             'schedule' => $rehearsalSchedule,
             'rehearsal' => $rehearsal,
             'canWrite' => Auth::user()->canWrite('rehearsals', $band->id),
+            'unreadCommentCount' => app(\App\Services\Chat\ConversationPresenter::class)
+                ->unreadCountFor(Auth::user(), $rehearsal),
         ]);
     }
 

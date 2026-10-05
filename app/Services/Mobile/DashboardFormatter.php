@@ -98,6 +98,17 @@ class DashboardFormatter
     }
 
     /**
+     * The conversable pair for ONE dashboard row (model or array), or null
+     * for rows that have no topic thread (virtual rehearsal_schedule rows).
+     *
+     * @return array{0: class-string, 1: int}|null
+     */
+    public function conversablePairFor(mixed $e): ?array
+    {
+        return $this->conversableFor($this->toRowArray($e));
+    }
+
+    /**
      * Preload bands for the events being formatted so each event can include the
      * band chip without N+1 queries. Pass any iterable of events that carry a
      * `band_id` (array key or object property).

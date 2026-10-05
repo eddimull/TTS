@@ -27,6 +27,7 @@ class UserPermissionsController extends Controller
                 $r->readPermission()  => $user->hasPermissionTo($r->readPermission()),
                 $r->writePermission() => $user->hasPermissionTo($r->writePermission()),
             ])
+            ->put('moderate:chat', $user->hasPermissionTo('moderate:chat'))
             ->all();
 
         setPermissionsTeamId(0);
@@ -74,6 +75,12 @@ class UserPermissionsController extends Controller
             } else {
                 $revoke[] = $write;
             }
+        }
+
+        if (!empty($incoming['moderate:chat'])) {
+            $grant[] = 'moderate:chat';
+        } else {
+            $revoke[] = 'moderate:chat';
         }
 
         setPermissionsTeamId($band->id);

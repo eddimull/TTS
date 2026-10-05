@@ -365,6 +365,9 @@
         </div>
       </div>
 
+      <!-- Confirm dialogs (e.g. deleting a comment) -->
+      <ConfirmDialog />
+
       <!-- Toast notifications -->
       <Toast />
       <Toast
