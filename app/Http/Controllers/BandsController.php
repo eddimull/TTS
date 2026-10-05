@@ -278,8 +278,8 @@ class BandsController extends Controller
                 $user = User::find($owner->user_id);
                 $user->notify(new TTSNotification([
                     'text' => $author->name . ' updated the logo for ' . $band->name,
-                    'route' => 'bands',
-                    'routeParams' => null,
+                    'route' => 'bands.edit',
+                    'routeParams' => $band->id,
                     'url' => '/bands/' . $band->id . '/edit'
                 ]));
             }
