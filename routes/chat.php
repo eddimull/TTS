@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Mobile\ConversationsController;
 use App\Http\Controllers\Api\Mobile\MessageReactionsController;
 use App\Http\Controllers\Api\Mobile\MessagesController;
+use App\Http\Controllers\Web\MessagesController as WebMessagesController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -47,4 +48,19 @@ Route::middleware(['auth', 'verified'])->name('chat.')->group(function () {
         ->name('messages.reactions.store');
     Route::delete('chat/messages/{message}/reactions/{emoji}', [MessageReactionsController::class, 'destroy'])
         ->name('messages.reactions.destroy');
+});
+
+// ── Inbox (slice 2) ─────────────────────────────────────────────────────────
+Route::middleware(['auth', 'verified'])->group(function () {
+    // The page itself is not under the chat. name prefix: bell deep links and
+    // the header icon use `messages.index`.
+    Route::get('messages/{conversation?}', [WebMessagesController::class, 'index'])->name('messages.index');
+
+    Route::name('chat.')->group(function () {
+        Route::get('chat/conversations', [ConversationsController::class, 'index'])->name('conversations.index');
+        Route::post('chat/conversations/dm', [ConversationsController::class, 'storeDm'])->name('conversations.dm');
+        Route::get('chat/contacts', [ConversationsController::class, 'contacts'])->name('contacts');
+        Route::post('chat/conversations/delivered', [ConversationsController::class, 'delivered'])->name('conversations.delivered');
+        Route::get('chat/unread-count', [WebMessagesController::class, 'unreadCount'])->name('unread-count');
+    });
 });

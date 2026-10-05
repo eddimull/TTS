@@ -169,4 +169,46 @@ class ChatWebRoutesTest extends TestCase
         $this->actingAs($member)->get($url)->assertOk()->assertHeader('Content-Type', 'image/jpeg');
         $this->actingAs(User::factory()->create())->get($url)->assertForbidden();
     }
+
+    public function test_inbox_routes_are_registered(): void
+    {
+        foreach (['messages.index', 'chat.conversations.index', 'chat.conversations.dm', 'chat.contacts', 'chat.conversations.delivered', 'chat.unread-count'] as $name) {
+            $this->assertTrue(Route::has($name), "missing route {$name}");
+        }
+    }
+
+    public function test_list_dm_contacts_delivered_and_unread_count_work_with_a_session(): void
+    {
+        [$owner, $band] = $this->makeOwnerWithBand();
+        $member = $this->makeMember($band);
+
+        $contacts = $this->actingAs($owner)->getJson(route('chat.contacts'))->assertOk();
+        $this->assertContains($member->id, collect($contacts->json('contacts'))->pluck('id')->all());
+
+        $dm = $this->actingAs($owner)
+            ->postJson(route('chat.conversations.dm'), ['user_id' => $member->id])
+            ->assertOk();
+        $this->assertSame('dm', $dm->json('conversation.type'));
+
+        $this->actingAs($member)
+            ->postJson(route('chat.conversations.messages.store', $dm->json('conversation.id')), ['body' => 'yo'])
+            ->assertCreated();
+
+        $this->actingAs($owner)->getJson(route('chat.unread-count'))->assertOk()->assertJson(['count' => 1]);
+
+        $list = $this->actingAs($owner)->getJson(route('chat.conversations.index'))->assertOk();
+        $this->assertSame(1, collect($list->json('conversations'))->firstWhere('type', 'dm')['unread_count']);
+
+        $this->actingAs($owner)->postJson(route('chat.conversations.delivered'))->assertNoContent();
+    }
+
+    public function test_dm_requires_a_shared_band(): void
+    {
+        [$owner] = $this->makeOwnerWithBand();
+        $stranger = User::factory()->create();
+
+        $this->actingAs($owner)
+            ->postJson(route('chat.conversations.dm'), ['user_id' => $stranger->id])
+            ->assertForbidden();
+    }
 }
