@@ -298,6 +298,8 @@ class EventsController extends Controller
             'band' => $band,
             'userPayout' => $userPayout,
             'lodgings' => $lodgings,
+            'unreadCommentCount' => app(\App\Services\Chat\ConversationPresenter::class)
+                ->unreadCountFor(Auth::user(), $event),
         ]);
     }
 

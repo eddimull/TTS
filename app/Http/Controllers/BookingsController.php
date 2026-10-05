@@ -304,6 +304,8 @@ class BookingsController extends Controller
             'payoutResult' => $payoutResult,
             'questionnaireInstances' => $questionnaireInstances,
             'availableQuestionnaires' => $availableQuestionnaires,
+            'unreadCommentCount' => app(\App\Services\Chat\ConversationPresenter::class)
+                ->unreadCountFor(Auth::user(), $booking),
         ]);
     }
 
