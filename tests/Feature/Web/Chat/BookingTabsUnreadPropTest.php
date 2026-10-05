@@ -22,6 +22,10 @@ class BookingTabsUnreadPropTest extends TestCase
         $member  = $this->makeMember($band, ['read:bookings']);
         $event   = $this->makeBookingEvent($band);
         $booking = $event->eventable;
+        // The Contract tab redirects to Contacts when a booking that wants a
+        // contract has no contacts; give it one so every tab renders.
+        $contact = \App\Models\Contacts::factory()->create(['band_id' => $band->id]);
+        $booking->contacts()->attach($contact->id, ['role' => 'primary']);
         $topic   = app(ConversationService::class)->topicFor($booking);
         $topic->messages()->create(['user_id' => $member->id, 'body' => 'deposit in']);
         $topic->messages()->create(['user_id' => $member->id, 'body' => 'contract signed']);
