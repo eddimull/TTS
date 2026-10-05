@@ -2,7 +2,6 @@
 
 namespace App\Services\Chat;
 
-use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\Conversation;
 use App\Models\ConversationParticipant;
@@ -82,6 +81,8 @@ final class ConversationPresenter
             ->whereIn('band_id', $bandIds)
             ->whereHas('messages', fn ($q) => $q->withTrashed())
             ->with(['conversable' => fn (MorphTo $morph) => $morph->morphWith([
+                // Rehearsals have no name of their own; topicTitle() reads
+                // through to the child event and the schedule.
                 Rehearsal::class => ['events', 'rehearsalSchedule'],
             ])])
             ->get()
