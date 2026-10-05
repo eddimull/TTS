@@ -97,22 +97,6 @@ class ConversationsController extends Controller
             ->values();
     }
 
-    /**
-     * Back-compat shim for ConversationsIndexTopicsTest::summarizeFresh(),
-     * which reaches these via ReflectionMethod against this controller. All
-     * real logic lives in ConversationPresenter now; do not add new callers.
-     */
-    private function prefetchSummaryData($ids, User $user, $lastReads): array
-    {
-        return $this->presenter->prefetch(collect($ids), $user, $lastReads === null ? null : collect($lastReads));
-    }
-
-    /** @see self::prefetchSummaryData() */
-    private function summarize(Conversation $conversation, User $user, array $prefetch): array
-    {
-        return $this->presenter->summarize($conversation, $user, $prefetch);
-    }
-
     /** POST /api/mobile/conversations/dm {user_id} — find-or-create the global pair thread. */
     public function storeDm(Request $request): JsonResponse
     {
