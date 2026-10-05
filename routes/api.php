@@ -124,6 +124,13 @@ Route::prefix('mobile')->group(function () {
         Route::post('/devices', [App\Http\Controllers\Api\Mobile\DevicesController::class, 'store'])->name('mobile.devices.store');
         Route::delete('/devices', [App\Http\Controllers\Api\Mobile\DevicesController::class, 'destroy'])->name('mobile.devices.destroy');
 
+        // In-app notification feed (the web "bell") — personal, band-agnostic.
+        Route::get('/notifications', [App\Http\Controllers\Api\Mobile\NotificationsController::class, 'index'])->name('mobile.notifications.index');
+        Route::get('/notifications/unseen-count', [App\Http\Controllers\Api\Mobile\NotificationsController::class, 'unseenCount'])->name('mobile.notifications.unseen');
+        Route::post('/notifications/read-all', [App\Http\Controllers\Api\Mobile\NotificationsController::class, 'readAll'])->name('mobile.notifications.read-all');
+        Route::post('/notifications/seen', [App\Http\Controllers\Api\Mobile\NotificationsController::class, 'seen'])->name('mobile.notifications.seen');
+        Route::post('/notifications/{notification}/read', [App\Http\Controllers\Api\Mobile\NotificationsController::class, 'read'])->name('mobile.notifications.read');
+
         // ── Chat / comments (band-agnostic; ConversationPolicy is the gate) ──
         Route::get('/conversations', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'index'])->name('mobile.conversations.index');
         Route::post('/conversations/dm', [App\Http\Controllers\Api\Mobile\ConversationsController::class, 'storeDm'])->name('mobile.conversations.dm');
