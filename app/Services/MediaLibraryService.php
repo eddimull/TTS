@@ -1398,7 +1398,14 @@ class MediaLibraryService
         }
 
         // Create the folder using existing method
-        $this->createFolder($bandId, $folderPath, $event->eventable->author_id ?? 1);
+        // Attribution: the booking author, else the acting user, else a band
+        // owner (background/CLI paths), and only then the legacy user #1.
+        $createdBy = $event->eventable->author_id
+            ?? auth()->id()
+            ?? \App\Models\Bands::find($bandId)?->owners()->first()?->user_id
+            ?? 1;
+
+        $this->createFolder($bandId, $folderPath, $createdBy);
 
         return $folderPath;
     }

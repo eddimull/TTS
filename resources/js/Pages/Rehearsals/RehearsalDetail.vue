@@ -207,7 +207,7 @@
                       d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
                     />
                   </svg>
-                  Associated Bookings
+                  Associated Events
                 </h3>
                 <div class="text-sm text-gray-600 dark:text-gray-400 mb-4">
                   This rehearsal is preparing for the following events:
@@ -215,20 +215,20 @@
 
                 <div class="space-y-3">
                   <div
-                    v-for="association in rehearsal.associations"
+                    v-for="{ association, card } in associationCards"
                     :key="association.id"
                     class="p-4 bg-white dark:bg-gray-800 rounded-lg"
                   >
                     <div
-                      v-if="association.associable"
+                      v-if="card"
                       class="flex justify-between items-start"
                     >
                       <div class="flex-1">
                         <div class="font-semibold text-gray-900 dark:text-white">
-                          {{ association.associable.name }}
+                          {{ card.title }}
                         </div>
                         <div class="text-sm text-gray-600 dark:text-gray-400">
-                          {{ formatDate(association.associable.date) }} - {{ association.associable.venue_name }}
+                          {{ formatDate(card.date) }}<template v-if="card.venue"> - {{ card.venue }}</template>
                         </div>
                         <div
                           v-if="association.notes"
@@ -238,10 +238,10 @@
                         </div>
                       </div>
                       <Link
-                        :href="route('Show Booking', { booking: association.associable.id })"
+                        :href="card.href"
                         class="text-blue-500 hover:text-blue-700 text-sm ml-4"
                       >
-                        View Booking →
+                        {{ card.linkLabel }}
                       </Link>
                     </div>
                   </div>
@@ -292,6 +292,7 @@ import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue';
 import Container from '@/Components/Container.vue';
 import { useBandRealtime } from '@/composables/useBandRealtime';
 import { noteToPlainText } from '@/utils/noteText';
+import { describeAssociation } from '@/utils/rehearsalAssociation';
 import CommentsButton from '@/Components/Chat/CommentsButton.vue';
 import CommentsDrawer from '@/Components/Chat/CommentsDrawer.vue';
 import { useCommentsDrawer } from '@/composables/useCommentsDrawer';
@@ -334,6 +335,15 @@ const formatDate = (date) => {
     if (!date) return 'N/A';
     return DateTime.fromISO(date).toLocaleString(DateTime.DATE_FULL);
 };
+
+// Associations are RehearsalAssociation morphs (events today); the helper
+// picks the right title/date/venue fields and page link per type. `card` is
+// null when the associated item was deleted, so those rows are dropped.
+const associationCards = computed(() =>
+    (props.rehearsal.associations ?? [])
+        .map((association) => ({ association, card: describeAssociation(association, route) }))
+        .filter(({ card }) => card !== null),
+);
 
 const formatTime = (time) => {
     if (!time) return 'N/A';
