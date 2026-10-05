@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class Message extends Model
 {
@@ -78,5 +79,27 @@ class Message extends Model
     protected function broadcastParent(): ?array
     {
         return ['model' => 'conversation', 'id' => (int) $this->conversation_id];
+    }
+
+    /**
+     * Human-readable one-liner for this message: the trimmed body, optionally
+     * truncated, or the photo placeholder for image-only messages. The single
+     * source for push text, bell notifications and list previews.
+     */
+    public function previewSnippet(?int $limit = null): string
+    {
+        $body = trim((string) $this->body);
+
+        if ($body === '') {
+            return '📷 Photo';
+        }
+
+        return $limit !== null ? Str::limit($body, $limit) : $body;
+    }
+
+    /** Author name with the tombstone fallback used everywhere a sender is shown. */
+    public function senderDisplayName(): string
+    {
+        return $this->user?->name ?? 'Deleted user';
     }
 }

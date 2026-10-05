@@ -5,7 +5,6 @@ namespace App\Notifications;
 use App\Models\Conversation;
 use App\Models\Message;
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\Str;
 
 /**
  * Web bell entry for a new direct message. Database-only (no mail) and
@@ -26,9 +25,8 @@ class DirectMessageReceived extends Notification
 
     public function toArray(object $notifiable): array
     {
-        $body    = $this->message->body;
-        $snippet = ($body !== null && trim($body) !== '') ? Str::limit(trim($body), 80) : '📷 Photo';
-        $sender  = $this->message->user?->name ?? 'Deleted user';
+        $snippet = $this->message->previewSnippet(80);
+        $sender  = $this->message->senderDisplayName();
 
         return [
             'text'            => "{$sender}: {$snippet}",

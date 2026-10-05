@@ -36,8 +36,8 @@ class ProcessChatMessagePush implements ShouldQueue
         $isTopic      = $conversation->type === Conversation::TYPE_TOPIC;
         $isDm         = $conversation->type === Conversation::TYPE_DM;
         $topicTitle   = $isTopic ? app(ConversationPresenter::class)->topicTitle($conversation) : null;
-        $body       = $message->body !== null && $message->body !== '' ? $message->body : '📷 Photo';
-        $senderName = $message->user->name ?? 'Deleted user';
+        $body       = $message->previewSnippet();
+        $senderName = $message->senderDisplayName();
         $title      = $conversation->type === Conversation::TYPE_DM
             ? $senderName
             : ($conversation->band?->name ?? 'Band') . ' — ' . $senderName;
