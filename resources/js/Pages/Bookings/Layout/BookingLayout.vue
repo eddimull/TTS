@@ -4,7 +4,7 @@
       <NavSubmenu
         :routes="filteredRoutes"
         :booking="booking"
-        :unread-comment-count="comments.unread.value"
+        :unread-comment-count="unreadCommentCount === null ? null : comments.unread.value"
         @open-comments="comments.openDrawer()"
       />
       <slot />
