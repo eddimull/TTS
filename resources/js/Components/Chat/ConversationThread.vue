@@ -164,7 +164,7 @@ const confirm = useConfirm();
 const toast = useToast();
 
 const {
-  conversation, messages, participants, hasMore, loading, loadingOlder, error, sending, typingUsers, readSignal,
+  conversation, messages, participants, hasMore, loading, loadingOlder, error, loadOlderError, sending, typingUsers, readSignal,
   load, loadOlder, send, edit, remove, toggleReaction, markRead, notifyTyping,
 } = useConversationThread({ currentUserId: props.currentUserId });
 
@@ -175,6 +175,11 @@ const editBody = ref('');
 const lightbox = reactive({ show: false, images: [], index: 0 });
 
 watch(readSignal, () => emit('read'));
+
+watch(loadOlderError, (e) => {
+  if (!e) return;
+  toast.add({ severity: 'error', summary: 'Could not load earlier comments', life: 4000 });
+});
 
 function isAtBottom() {
   const el = scroller.value;

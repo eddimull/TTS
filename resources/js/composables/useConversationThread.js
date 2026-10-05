@@ -24,6 +24,7 @@ export function useConversationThread({ currentUserId }) {
 	const loading = ref(false);
 	const loadingOlder = ref(false);
 	const error = ref(null);
+	const loadOlderError = ref(null);
 	const sending = ref(false);
 	const typingUsers = ref([]);
 	const readSignal = ref(0);
@@ -133,6 +134,7 @@ export function useConversationThread({ currentUserId }) {
 	async function loadOlder() {
 		if (!hasMore.value || loadingOlder.value || !conversation.value || !messages.value.length) return;
 		loadingOlder.value = true;
+		loadOlderError.value = null;
 		try {
 			const before = messages.value[0].id;
 			const { data } = await axios.get(
@@ -141,6 +143,8 @@ export function useConversationThread({ currentUserId }) {
 			);
 			messages.value = [...data.messages, ...messages.value];
 			hasMore.value = Boolean(data.has_more);
+		} catch (e) {
+			loadOlderError.value = e;
 		} finally {
 			loadingOlder.value = false;
 		}
@@ -156,10 +160,15 @@ export function useConversationThread({ currentUserId }) {
 		readTimer = null;
 		const last = messages.value[messages.value.length - 1];
 		if (!conversation.value || !last) return;
-		await axios.post(route('chat.conversations.read', conversation.value.id), {
-			last_read_message_id: last.id,
-		});
-		readSignal.value += 1;
+		try {
+			await axios.post(route('chat.conversations.read', conversation.value.id), {
+				last_read_message_id: last.id,
+			});
+			readSignal.value += 1;
+		} catch (e) {
+			// Read acks are best-effort: a dropped request just means the next
+			// scheduled/triggered markRead() retries it.
+		}
 	}
 
 	async function send({ body, files = [] }) {
@@ -229,7 +238,7 @@ export function useConversationThread({ currentUserId }) {
 	if (getCurrentInstance()) onBeforeUnmount(destroy);
 
 	return {
-		conversation, messages, participants, hasMore, loading, loadingOlder, error, sending, typingUsers, readSignal,
+		conversation, messages, participants, hasMore, loading, loadingOlder, error, loadOlderError, sending, typingUsers, readSignal,
 		load, loadOlder, send, edit, remove, toggleReaction, markRead, notifyTyping, destroy,
 	};
 }

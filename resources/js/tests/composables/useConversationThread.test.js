@@ -152,6 +152,19 @@ describe('useConversationThread', () => {
 		expect(axios.get).toHaveBeenCalledTimes(2);
 	});
 
+	it('loadOlder() failure sets loadOlderError and does not throw', async () => {
+		axios.get.mockResolvedValueOnce(page([msg(5), msg(6)], { has_more: true }));
+		const t = useConversationThread({ currentUserId: ME });
+		await t.load('/topic-url');
+
+		axios.get.mockRejectedValueOnce(new Error('boom'));
+		await expect(t.loadOlder()).resolves.toBeUndefined();
+
+		expect(t.loadOlderError.value).toBeTruthy();
+		expect(t.loadingOlder.value).toBe(false);
+		expect(t.messages.value.map((m) => m.id)).toEqual([5, 6]);
+	});
+
 	it('send() posts multipart and appends the returned message', async () => {
 		axios.get.mockResolvedValueOnce(page([]));
 		axios.post.mockResolvedValueOnce({ data: { message: msg(9, { user_id: ME, body: 'hi' }) } });
