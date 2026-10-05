@@ -119,12 +119,19 @@ describe('Messages/Index', () => {
 		expect(axios.post).toHaveBeenCalledWith('/r/chat.conversations.delivered/');
 	});
 
-	it('selecting a row mounts the thread for it and rewrites the URL', async () => {
+	it('selecting a row mounts the thread for it and rewrites the URL while preserving Inertia history state', async () => {
+		// beforeEach already mocked replaceState as a no-op; restore the real
+		// implementation to make this call observable, capture the resulting
+		// state, then re-mock so the assertion below can inspect the call args.
+		window.history.replaceState.mockRestore();
+		window.history.replaceState({ page: 'sentinel' }, '', '/');
+		const sentinelState = window.history.state;
+		vi.spyOn(window.history, 'replaceState').mockImplementation(() => {});
 		const w = mountPage();
 		await w.findAll('button[aria-current], button').filter((b) => b.text().includes('Taylor Campo'))[0].trigger('click');
 		await nextTick();
 		expect(w.find('[data-test="thread"]').attributes('data-url')).toBe('/r/chat.conversations.messages.index/2');
-		expect(window.history.replaceState).toHaveBeenCalledWith(null, '', '/r/messages.index/2');
+		expect(window.history.replaceState).toHaveBeenCalledWith(sentinelState, '', '/r/messages.index/2');
 		expect(w.text()).toContain('Direct message');
 	});
 

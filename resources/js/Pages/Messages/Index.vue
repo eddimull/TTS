@@ -111,7 +111,7 @@ function select(id) {
   selectedId.value = id;
   mobileShowThread.value = true;
   if (typeof window !== 'undefined') {
-    window.history.replaceState(null, '', route('messages.index', id));
+    window.history.replaceState(window.history.state, '', route('messages.index', id));
   }
 }
 
