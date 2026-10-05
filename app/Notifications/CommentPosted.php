@@ -8,7 +8,6 @@ use App\Models\Events;
 use App\Models\Message;
 use App\Models\Rehearsal;
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\Str;
 
 /**
  * Web bell entry for a new comment on an event / rehearsal / booking thread.
@@ -36,9 +35,8 @@ class CommentPosted extends Notification
     {
         $route = self::routeFor($this->conversation) ?? ['route' => 'dashboard', 'routeParams' => []];
 
-        $body    = $this->message->body;
-        $snippet = ($body !== null && trim($body) !== '') ? Str::limit(trim($body), 80) : '📷 Photo';
-        $sender  = $this->message->user?->name ?? 'Deleted user';
+        $snippet = $this->message->previewSnippet(80);
+        $sender  = $this->message->senderDisplayName();
 
         return [
             'text'            => "{$sender} commented on {$this->topicTitle}: {$snippet}",
