@@ -68,4 +68,24 @@ describe('MessageComposer', () => {
 		await ta.trigger('keydown', { key: 'Enter' });
 		expect(onSend).not.toHaveBeenCalled();
 	});
+
+	it('Enter during IME composition does not send', async () => {
+		const { wrapper, onSend } = mountComposer();
+		const ta = await type(wrapper, 'hi there');
+
+		await ta.trigger('keydown', { key: 'Enter', isComposing: true });
+		expect(onSend).not.toHaveBeenCalled();
+
+		await ta.trigger('keydown', { key: 'Enter' });
+		expect(onSend).toHaveBeenCalledWith({ body: 'hi there', files: [] });
+	});
+
+	it('paste is ignored while disabled', async () => {
+		const { wrapper } = mountComposer({ disabled: true });
+		const ta = wrapper.find('textarea');
+		await ta.trigger('paste', {
+			clipboardData: { items: [{ type: 'image/png', getAsFile: () => new File(['x'], 'p.png', { type: 'image/png' }) }] },
+		});
+		expect(wrapper.findAll('[data-test="preview"]')).toHaveLength(0);
+	});
 });

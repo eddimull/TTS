@@ -106,11 +106,13 @@ function addFiles(list) {
 }
 
 function onPick(e) {
+  if (props.disabled) return;
   addFiles(e.target.files);
   e.target.value = '';
 }
 
 function onPaste(e) {
+  if (props.disabled) return;
   const items = Array.from(e.clipboardData?.items || []).filter((i) => i.type.startsWith('image/'));
   if (!items.length) return;
   e.preventDefault();
@@ -136,6 +138,8 @@ function onInput() {
 }
 
 function onKeydown(e) {
+  if (props.disabled) return;
+  if (e.isComposing || e.keyCode === 229) return;
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
     submit();
