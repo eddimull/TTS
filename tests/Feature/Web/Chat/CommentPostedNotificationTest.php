@@ -100,16 +100,16 @@ class CommentPostedNotificationTest extends TestCase
             str_ends_with($n->toArray($member)['text'], ': 📷 Photo'));
     }
 
-    public function test_dm_and_band_channel_messages_do_not_create_bell_notifications(): void
+    public function test_band_channel_messages_do_not_create_bell_notifications(): void
     {
         [$owner, $band] = $this->makeOwnerWithBand();
-        $member  = $this->makeMember($band);
-        $dm      = app(ConversationService::class)->dmBetween($owner, $member);
+        $this->makeMember($band);
         $channel = app(ConversationService::class)->bandChannelFor($band);
 
-        $this->actingAs($owner)->postJson(route('chat.conversations.messages.store', $dm), ['body' => 'hi'])->assertCreated();
         $this->actingAs($owner)->postJson(route('chat.conversations.messages.store', $channel), ['body' => 'all'])->assertCreated();
 
+        // Band-channel chatter deliberately stays off the bell — see
+        // DirectMessageReceivedTest for DM delivery (added in web-messages T3).
         Notification::assertNothingSent();
     }
 

@@ -22,12 +22,25 @@
               {{ member.user.email }}
             </p>
           </div>
-          <Link
-            :href="'/permissions/' + band.id + '/' + member.user.id"
-            class="text-blue-600 dark:text-blue-400 hover:underline text-sm"
-          >
-            Edit Permissions
-          </Link>
+          <div class="flex items-center gap-2">
+            <Button
+              v-if="member.user.id !== currentUserId"
+              icon="pi pi-comment"
+              label="Message"
+              size="small"
+              text
+              data-test="message-user"
+              :aria-label="`Message ${member.user.name}`"
+              :disabled="messaging === member.user.id"
+              @click="messageUser(member.user)"
+            />
+            <Link
+              :href="'/permissions/' + band.id + '/' + member.user.id"
+              class="text-blue-600 dark:text-blue-400 hover:underline text-sm"
+            >
+              Edit Permissions
+            </Link>
+          </div>
         </div>
       </div>
       <p
@@ -60,12 +73,25 @@
               {{ owner.user.email }}
             </p>
           </div>
-          <button
-            class="text-red-600 dark:text-red-400 hover:underline text-sm"
-            @click="deleteOwner(owner)"
-          >
-            Remove
-          </button>
+          <div class="flex items-center gap-2">
+            <Button
+              v-if="owner.user.id !== currentUserId"
+              icon="pi pi-comment"
+              label="Message"
+              size="small"
+              text
+              data-test="message-user"
+              :aria-label="`Message ${owner.user.name}`"
+              :disabled="messaging === owner.user.id"
+              @click="messageUser(owner.user)"
+            />
+            <button
+              class="text-red-600 dark:text-red-400 hover:underline text-sm"
+              @click="deleteOwner(owner)"
+            >
+              Remove
+            </button>
+          </div>
         </div>
       </div>
       <p
@@ -173,6 +199,9 @@
 </template>
 
 <script>
+import axios from 'axios';
+import { router } from '@inertiajs/vue3';
+
 export default {
   name: 'EditMembers',
   props: {
@@ -190,7 +219,31 @@ export default {
     }
   },
   emits: ['delete-owner', 'delete-invite', 'invite-owner', 'invite-member', 'update-inviting', 'update-invite-email'],
+  data() {
+    return { messaging: null };
+  },
+  computed: {
+    currentUserId() {
+      return this.$page?.props?.auth?.user?.id ?? null;
+    },
+  },
   methods: {
+    async messageUser(user) {
+      this.messaging = user.id;
+      try {
+        const { data } = await axios.post(this.route('chat.conversations.dm'), { user_id: user.id });
+        router.visit(this.route('messages.index', data.conversation.id));
+      } catch (e) {
+        this.$toast?.add({
+          severity: 'error',
+          summary: 'Could not start the conversation',
+          detail: e?.response?.data?.message || 'Please try again.',
+          life: 4000,
+        });
+      } finally {
+        this.messaging = null;
+      }
+    },
     deleteOwner(owner) {
       this.$emit('delete-owner', owner);
     },
