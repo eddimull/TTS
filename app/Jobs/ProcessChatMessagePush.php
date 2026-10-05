@@ -57,13 +57,13 @@ class ProcessChatMessagePush implements ShouldQueue
             if ((int) $userId === (int) $message->user_id) {
                 continue;
             }
-            // Web bell entry (database only). Same audience as the push by
-            // construction; DMs and band channels wait for the Messages slice.
+            // Web bell entries (database only), same audience as the push by
+            // construction. Rule: topic threads → CommentPosted (here); DMs →
+            // DirectMessageReceived (below); band channel chatter deliberately
+            // stays off the bell — the Messages badge is its signal instead.
             if ($isTopic) {
                 $users->get($userId)?->notify(new CommentPosted($message, $conversation, $topicTitle));
             }
-            // Web bell entry for DMs (database only). Band-channel chatter
-            // deliberately stays off the bell — the Messages badge is its signal.
             if ($isDm) {
                 $users->get($userId)?->notify(new DirectMessageReceived($message, $conversation));
             }
