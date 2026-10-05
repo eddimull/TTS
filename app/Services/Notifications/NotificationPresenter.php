@@ -135,7 +135,7 @@ final class NotificationPresenter
 
     private function booking(int $bookingId, int $bandId): array
     {
-        $booking = $bookingId ? Bookings::find($bookingId) : null;
+        $booking = $bookingId ? Bookings::select('id', 'band_id')->find($bookingId) : null;
         if (!$booking) {
             return $this->dashboard();
         }
@@ -146,21 +146,21 @@ final class NotificationPresenter
 
     private function eventByKey(mixed $key): array
     {
-        $event = is_string($key) && $key !== '' ? Events::where('key', $key)->first() : null;
+        $event = is_string($key) && $key !== '' ? Events::select('id', 'key')->where('key', $key)->first() : null;
 
         return $event ? ['event', "/events/{$event->key}", "/events/{$event->key}"] : $this->dashboard();
     }
 
     private function eventById(int $id): array
     {
-        $event = $id ? Events::find($id) : null;
+        $event = $id ? Events::select('id', 'key')->find($id) : null;
 
         return $event ? ['event', "/events/{$event->key}", "/events/{$event->key}"] : $this->dashboard();
     }
 
     private function rehearsal(int $id): array
     {
-        $rehearsal = $id ? Rehearsal::find($id) : null;
+        $rehearsal = $id ? Rehearsal::select('id', 'band_id', 'rehearsal_schedule_id')->find($id) : null;
         if (!$rehearsal) {
             return $this->dashboard();
         }
@@ -179,7 +179,7 @@ final class NotificationPresenter
 
     private function questionnaireInstance(int $id): array
     {
-        $instance = QuestionnaireInstances::find($id);
+        $instance = QuestionnaireInstances::select('id', 'questionnaire_id')->find($id);
         if (!$instance) {
             return $this->dashboard();
         }

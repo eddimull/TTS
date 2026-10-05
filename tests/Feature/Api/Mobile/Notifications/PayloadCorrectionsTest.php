@@ -30,10 +30,13 @@ class PayloadCorrectionsTest extends TestCase
         $event->forceFill(['status' => 'confirmed']);
         $event->band = $band;
 
+        // Notification ids are UUIDs, so "latest" is meaningless: track ids instead.
+        $before = Bandnotification::where('notifiable_id', $owner->id)->pluck('id');
+
         // Mirror the observer: originalData carries the previous status.
         (new ProcessEventUpdated($event, ['status' => 'pending']))->SendNotification();
 
-        $row = Bandnotification::where('notifiable_id', $owner->id)->latest('id')->firstOrFail();
+        $row = Bandnotification::where('notifiable_id', $owner->id)->whereNotIn('id', $before)->firstOrFail();
         $this->assertSame('events.show', $row->data['route']);
         $this->assertSame(['key' => $event->key], $row->data['routeParams']);
         $this->assertSame("/events/{$event->key}", $row->data['url']);
