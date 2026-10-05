@@ -26,31 +26,13 @@ class BookingTabsUnreadPropTest extends TestCase
         $topic->messages()->create(['user_id' => $member->id, 'body' => 'deposit in']);
         $topic->messages()->create(['user_id' => $member->id, 'body' => 'contract signed']);
 
-        $params = ['band' => $band, 'booking' => $booking];
+        // Every GET tab under bands/{band}/booking/{booking}, including the overview.
+        foreach (['', 'contacts', 'events', 'media', 'finances', 'contract', 'lineup', 'payout', 'history'] as $segment) {
+            $response = $this->actingAs($owner)
+                ->get(rtrim("/bands/{$band->id}/booking/{$booking->id}/{$segment}", '/'));
 
-        foreach ([
-            'Booking Details'   => 'Bookings/Show',
-            'bookings.contacts' => 'Bookings/Contacts',
-            'bookings.events'   => 'Bookings/Events',
-            'bookings.history'  => 'Bookings/History',
-        ] as $routeName => $component) {
-            if (!\Illuminate\Support\Facades\Route::has($routeName)) {
-                continue; // route names differ per tab; the canonical ones are asserted below
-            }
-            $this->actingAs($owner)
-                ->get(route($routeName, $params))
-                ->assertOk()
-                ->assertInertia(fn (Assert $page) => $page
-                    ->component($component)
-                    ->where('unreadCommentCount', 2));
-        }
-
-        // Tabs are also reachable by URI regardless of their route names.
-        foreach (['contacts', 'events', 'lineup', 'finances', 'history'] as $segment) {
-            $this->actingAs($owner)
-                ->get("/bands/{$band->id}/booking/{$booking->id}/{$segment}")
-                ->assertOk()
-                ->assertInertia(fn (Assert $page) => $page->where('unreadCommentCount', 2));
+            $this->assertSame(200, $response->status(), "tab '{$segment}' did not render");
+            $response->assertInertia(fn (Assert $page) => $page->where('unreadCommentCount', 2));
         }
     }
 }

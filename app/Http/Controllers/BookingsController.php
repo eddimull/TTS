@@ -1170,6 +1170,7 @@ class BookingsController extends Controller
             'adjusted_amount' => $baseAmount,
         ]);
     }
+
     /**
      * Unread comment count for the booking's thread, or null when the viewer
      * cannot see it (the layout hides the Comments button on null). Sent by
