@@ -5,6 +5,8 @@ namespace App\Jobs;
 use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\User;
+use App\Notifications\CommentPosted;
+use App\Services\Chat\ConversationPresenter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -24,12 +26,14 @@ class ProcessChatMessagePush implements ShouldQueue
 
     public function handle(): void
     {
-        $message = Message::with(['conversation.band', 'user'])->find($this->messageId);
+        $message = Message::with(['conversation.band', 'conversation.conversable', 'user'])->find($this->messageId);
         if (!$message || $message->trashed()) {
             return;
         }
 
         $conversation = $message->conversation;
+        $isTopic      = $conversation->type === Conversation::TYPE_TOPIC;
+        $topicTitle   = $isTopic ? app(ConversationPresenter::class)->topicTitle($conversation) : null;
         $body       = $message->body !== null && $message->body !== '' ? $message->body : '📷 Photo';
         $senderName = $message->user->name ?? 'Deleted user';
         $title      = $conversation->type === Conversation::TYPE_DM
@@ -47,6 +51,11 @@ class ProcessChatMessagePush implements ShouldQueue
         foreach ($this->recipients($conversation) as $userId) {
             if ((int) $userId === (int) $message->user_id) {
                 continue;
+            }
+            // Web bell entry (database only). Same audience as the push by
+            // construction; DMs and band channels wait for the Messages slice.
+            if ($isTopic) {
+                User::find($userId)?->notify(new CommentPosted($message, $conversation, $topicTitle));
             }
             // alert: true routes through FcmSender::sendAlert() so a real APNs
             // notification block is sent. iOS never delivers data-only pushes to
