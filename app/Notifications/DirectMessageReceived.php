@@ -28,7 +28,7 @@ class DirectMessageReceived extends Notification
     {
         $body    = $this->message->body;
         $snippet = ($body !== null && trim($body) !== '') ? Str::limit(trim($body), 80) : '📷 Photo';
-        $sender  = $this->message->user->name ?? 'Deleted user';
+        $sender  = $this->message->user?->name ?? 'Deleted user';
 
         return [
             'text'            => "{$sender}: {$snippet}",
