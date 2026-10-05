@@ -202,20 +202,20 @@
                   />
                 </div>
 
-                <!-- Associated Bookings Section -->
+                <!-- Associated Events Section -->
                 <div class="mb-6 p-4 bg-green-50 dark:bg-green-900 rounded-lg">
                   <h3 class="text-lg font-semibold mb-4">
-                    Associated Bookings
+                    Associated Events
                   </h3>
                   <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    Link this rehearsal to specific bookings you're preparing for
+                    Link this rehearsal to the upcoming events you're preparing for
                   </p>
 
                   <div
-                    v-if="availableBookings.length === 0"
+                    v-if="availableEvents.length === 0"
                     class="text-gray-500 dark:text-gray-400 italic"
                   >
-                    No upcoming bookings available to associate
+                    No upcoming events available to associate
                   </div>
 
                   <div
@@ -223,29 +223,32 @@
                     class="space-y-2"
                   >
                     <label
-                      v-for="booking in availableBookings"
-                      :key="booking.id"
+                      v-for="event in availableEvents"
+                      :key="event.id"
                       class="flex items-start p-3 bg-white dark:bg-gray-800 rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
                     >
                       <input
-                        v-model="form.associated_bookings"
+                        v-model="form.associated_events"
                         type="checkbox"
-                        :value="booking.id"
+                        :value="event.id"
                         class="mt-1 mr-3 form-checkbox h-5 w-5 text-blue-600"
                       >
                       <div class="flex-1">
                         <div class="font-semibold">
-                          {{ booking.name }}
+                          {{ event.title }}<span
+                            v-if="event.booking_name && event.booking_name !== event.title"
+                            class="font-normal text-gray-500 dark:text-gray-400"
+                          > · {{ event.booking_name }}</span>
                         </div>
                         <div class="text-sm text-gray-600 dark:text-gray-400">
-                          {{ formatBookingDate(booking.start_date) }} - {{ booking.venue_summary }}
+                          {{ formatBookingDate(event.date) }}<template v-if="event.venue_name"> - {{ event.venue_name }}</template>
                         </div>
                       </div>
                     </label>
                   </div>
 
                   <InputError
-                    :message="form.errors.associated_bookings"
+                    :message="form.errors.associated_events"
                     class="mt-2"
                   />
                 </div>
@@ -306,7 +309,7 @@
 </template>
 
 <script setup>
-import { useForm, Link, usePage } from '@inertiajs/vue3';
+import { useForm, Link } from '@inertiajs/vue3';
 import { computed } from 'vue';
 import { DateTime } from 'luxon';
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue';
@@ -335,15 +338,14 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    upcomingEvents: {
+        type: Array,
+        default: () => [],
+    },
 });
 
-// Get bookings from page props if available
-const page = usePage();
-const availableBookings = computed(() => {
-    // You may need to pass bookings from the controller
-    // For now, returning empty array - controller needs to be updated
-    return page.props.bookings || [];
-});
+// Upcoming booking-backed events the controller offers for association.
+const availableEvents = computed(() => props.upcomingEvents ?? []);
 
 // Initialize form with rehearsal data or defaults
 const getEventData = () => {
@@ -366,10 +368,11 @@ const getEventData = () => {
     };
 };
 
-const getAssociatedBookings = () => {
+// RehearsalAssociation rows are Events morphs (see RehearsalController).
+const getAssociatedEvents = () => {
     if (props.rehearsal?.associations) {
         return props.rehearsal.associations
-            .filter(a => a.associable_type === 'App\\Models\\Bookings')
+            .filter(a => a.associable_type === 'App\\Models\\Events')
             .map(a => a.associable_id);
     }
     return [];
@@ -382,7 +385,7 @@ const form = useForm({
     additional_data: props.rehearsal?.additional_data || {},
     is_cancelled: props.rehearsal?.is_cancelled || false,
     ...getEventData(),
-    associated_bookings: getAssociatedBookings(),
+    associated_events: getAssociatedEvents(),
 });
 
 const submit = () => {
