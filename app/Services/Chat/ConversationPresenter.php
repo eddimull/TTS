@@ -2,6 +2,7 @@
 
 namespace App\Services\Chat;
 
+use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\Conversation;
 use App\Models\ConversationParticipant;
@@ -10,6 +11,7 @@ use App\Models\Message;
 use App\Models\Rehearsal;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Support\Collection;
 
 /**
@@ -24,6 +26,68 @@ final class ConversationPresenter
         private readonly MessageFormatter $formatter,
         private readonly TopicUnreadService $topicUnread,
     ) {}
+
+    /**
+     * Every conversation the user can see, for the inbox / Messages list:
+     * one band channel per owned/member band (lazily created so it is
+     * always present), the user's DMs, and every topic thread they can view
+     * that someone has actually posted in. One prefetch for all ids; rows
+     * in the frozen summary shape, newest message first.
+     *
+     * @return Collection<int, array>
+     */
+    public function listFor(User $user): Collection
+    {
+        $channels = $user->bands()->unique('id')->values()
+            ->map(fn ($band) => $this->conversations->bandChannelFor($band));
+
+        $dms = Conversation::where('type', Conversation::TYPE_DM)
+            ->whereHas('participants', fn ($q) => $q->where('user_id', $user->id))
+            ->get();
+
+        $all = $channels->concat($dms)->concat($this->visibleTopics($user));
+
+        $prefetch = $this->prefetch($all->pluck('id'), $user);
+
+        return $all->map(fn (Conversation $c) => $this->summarize($c, $user, $prefetch))
+            ->sortByDesc(fn ($row) => $row['last_message_at'] ?? '')
+            ->values();
+    }
+
+    /** Sum of unread_count across listFor() — the header badge number. */
+    public function unreadTotalFor(User $user): int
+    {
+        return (int) $this->listFor($user)->sum('unread_count');
+    }
+
+    /**
+     * Topic threads the user may see. Candidates are narrowed in SQL to the
+     * bands the user has any standing in (owner/member/sub) and to threads
+     * someone has posted in (soft-deleted messages still count — a thread
+     * whose only message was deleted stays listed with a null preview).
+     * Final visibility is ConversationPolicy; the conversable morph is
+     * eager-loaded because the policy and topicTitle() read it per row.
+     *
+     * @return Collection<int, Conversation>
+     */
+    private function visibleTopics(User $user): Collection
+    {
+        $bandIds = $user->allBands()->pluck('id');
+
+        if ($bandIds->isEmpty()) {
+            return collect();
+        }
+
+        return Conversation::where('type', Conversation::TYPE_TOPIC)
+            ->whereIn('band_id', $bandIds)
+            ->whereHas('messages', fn ($q) => $q->withTrashed())
+            ->with(['conversable' => fn (MorphTo $morph) => $morph->morphWith([
+                Rehearsal::class => ['events', 'rehearsalSchedule'],
+            ])])
+            ->get()
+            ->filter(fn (Conversation $c) => $user->can('view', $c))
+            ->values();
+    }
 
     /**
      * Bulk-load everything summarize() needs for a set of conversations so
