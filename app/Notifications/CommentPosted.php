@@ -38,7 +38,7 @@ class CommentPosted extends Notification
 
         $body    = $this->message->body;
         $snippet = ($body !== null && trim($body) !== '') ? Str::limit(trim($body), 80) : '📷 Photo';
-        $sender  = $this->message->user->name ?? 'Someone';
+        $sender  = $this->message->user->name ?? 'Deleted user';
 
         return [
             'text'            => "{$sender} commented on {$this->topicTitle}: {$snippet}",

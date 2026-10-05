@@ -126,4 +126,19 @@ class CommentPostedNotificationTest extends TestCase
         $this->assertStringContainsString('/events/' . $event->key, $url);
         $this->assertStringContainsString('comments=1', $url);
     }
+
+    public function test_deleted_item_falls_back_to_dashboard_route(): void
+    {
+        [$owner, $band] = $this->makeOwnerWithBand();
+        $event   = $this->makeBookingEvent($band);
+        $topic   = app(ConversationService::class)->topicFor($event);
+        $message = $topic->messages()->create(['user_id' => $owner->id, 'body' => 'x']);
+
+        $event->delete();
+
+        $data = (new CommentPosted($message, $topic->fresh(), 'Thread'))->toArray($owner);
+
+        $this->assertSame('dashboard', $data['route']);
+        $this->assertSame([], $data['routeParams']);
+    }
 }
