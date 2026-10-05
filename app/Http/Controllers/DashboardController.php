@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 use Inertia\Inertia;
+use App\Services\Chat\TopicUnreadService;
+use App\Services\Mobile\DashboardFormatter;
 use App\Services\MileageService;
 use App\Services\UserEventsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
@@ -19,6 +22,7 @@ class DashboardController extends Controller
     {
         $events = (new UserEventsService())->getEvents();
         $events = $this->attachLodgingSummaries($events);
+        $events = $this->attachUnreadCommentCounts($events);
         $upcomingCharts = (new UserEventsService())->getUpcomingCharts();
 
 
@@ -53,6 +57,7 @@ class DashboardController extends Controller
 
         $events = (new UserEventsService())->getEvents($afterDate, $beforeDate);
         $events = $this->attachLodgingSummaries($events);
+        $events = $this->attachUnreadCommentCounts($events);
 
         return response()->json(['events' => $events]);
     }
@@ -98,6 +103,36 @@ class DashboardController extends Controller
                 $event['lodgings_summary'] = $summary;
             } else {
                 $event->lodgings_summary = $summary;
+            }
+
+            return $event;
+        })->values();
+    }
+
+    /**
+     * Mirror of the mobile dashboard's `unread_comment_count`: one batched
+     * TopicUnreadService query for the whole page, then a per-row lookup.
+     * Rows can be arrays or models (see attachLodgingSummaries); virtual
+     * rehearsal_schedule rows have no thread and get 0.
+     */
+    private function attachUnreadCommentCounts(iterable $events): \Illuminate\Support\Collection
+    {
+        $formatter = app(DashboardFormatter::class);
+        $rows      = collect($events);
+
+        $unreadByKey = app(TopicUnreadService::class)->unreadCountsForConversables(
+            Auth::user(),
+            $formatter->conversablePairs($rows),
+        );
+
+        return $rows->map(function ($event) use ($formatter, $unreadByKey) {
+            $pair  = $formatter->conversablePairFor($event);
+            $count = $pair !== null ? (int) ($unreadByKey["{$pair[0]}:{$pair[1]}"] ?? 0) : 0;
+
+            if (is_array($event)) {
+                $event['unread_comment_count'] = $count;
+            } else {
+                $event->unread_comment_count = $count;
             }
 
             return $event;
