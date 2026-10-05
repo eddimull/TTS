@@ -363,8 +363,6 @@
       </template>
     </Dialog>
 
-    <!-- Delete confirmation -->
-    <ConfirmDialog />
     </Container>
   </breeze-authenticated-layout>
 

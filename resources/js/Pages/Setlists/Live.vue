@@ -582,8 +582,6 @@
         <Button label="Lock In" icon="pi pi-lock" :disabled="!breakManualSongId" @click="acceptBreakManualPick" />
       </template>
     </Dialog>
-
-    <ConfirmDialog />
   </breeze-authenticated-layout>
 </template>
 
