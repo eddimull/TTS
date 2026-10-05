@@ -24,7 +24,7 @@ class MessagesPageTest extends TestCase
             ->get(route('messages.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('Messages/Index', false) // Messages/Index.vue lands in Task 7; don't check it exists
+                ->component('Messages/Index')
                 ->has('conversations', 2)
                 ->where('conversations.0.type', 'dm')
                 ->where('conversations.0.unread_count', 1)
