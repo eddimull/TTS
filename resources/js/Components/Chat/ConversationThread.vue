@@ -116,7 +116,7 @@
         v-model="editBody"
         rows="2"
         class="w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-50 px-2 py-1 text-sm"
-        @keydown.enter.exact.prevent="saveEdit"
+        @keydown.enter.exact="onEditKeydown"
       />
       <div class="flex justify-end gap-2 mt-1">
         <Button
@@ -235,6 +235,12 @@ function startEdit(m) {
 function cancelEdit() {
   editing.value = null;
   editBody.value = '';
+}
+
+function onEditKeydown(e) {
+  if (e.isComposing || e.keyCode === 229) return;
+  e.preventDefault();
+  saveEdit();
 }
 
 async function saveEdit() {
