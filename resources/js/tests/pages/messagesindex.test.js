@@ -123,15 +123,30 @@ describe('Messages/Index', () => {
 		// beforeEach already mocked replaceState as a no-op; restore the real
 		// implementation to make this call observable, capture the resulting
 		// state, then re-mock so the assertion below can inspect the call args.
+		// The sentinel mirrors a real Inertia history entry shape (a `page`
+		// object with `url`/`props`, plus sibling scroll-tracking keys) so the
+		// assertion below can tell "preserved" apart from "replaced".
 		window.history.replaceState.mockRestore();
-		window.history.replaceState({ page: 'sentinel' }, '', '/');
+		window.history.replaceState({ page: { component: 'sentinel', url: '/', props: { foo: 'bar' } }, scrollRegions: ['sentinel-scroll'] }, '', '/');
 		const sentinelState = window.history.state;
 		vi.spyOn(window.history, 'replaceState').mockImplementation(() => {});
 		const w = mountPage();
 		await w.findAll('button[aria-current], button').filter((b) => b.text().includes('Taylor Campo'))[0].trigger('click');
 		await nextTick();
 		expect(w.find('[data-test="thread"]').attributes('data-url')).toBe('/r/chat.conversations.messages.index/2');
-		expect(window.history.replaceState).toHaveBeenCalledWith(sentinelState, '', '/r/messages.index/2');
+		// Never a bare `null`/replaced-from-scratch state (that's what wipes
+		// Inertia's cache and breaks Back/Forward) — the call must carry
+		// forward the sentinel's own fields (scrollRegions, unrelated props)
+		// untouched, with only url/initialConversationId updated to match the
+		// new selection so a later Back restores this conversation too.
+		expect(window.history.replaceState).toHaveBeenCalledWith(
+			{
+				...sentinelState,
+				page: { ...sentinelState.page, url: '/r/messages.index/2', props: { ...sentinelState.page.props, initialConversationId: 2 } },
+			},
+			'',
+			'/r/messages.index/2',
+		);
 		expect(w.text()).toContain('Direct message');
 	});
 

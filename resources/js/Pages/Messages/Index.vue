@@ -123,7 +123,16 @@ function select(id) {
   selectedId.value = id;
   mobileShowThread.value = true;
   if (typeof window !== 'undefined') {
-    window.history.replaceState(window.history.state, '', route('messages.index', id));
+    // Preserve Inertia's history state (never pass null — that wipes the
+    // cached page object, breaking Back/Forward) but also mirror the new
+    // selection into its cached page.url/props so that a later Back restores
+    // this conversation instead of replaying the initial, unselected load.
+    const state = window.history.state;
+    const nextUrl = route('messages.index', id);
+    const nextState = state?.page
+      ? { ...state, page: { ...state.page, url: nextUrl, props: { ...state.page.props, initialConversationId: id } } }
+      : state;
+    window.history.replaceState(nextState, '', nextUrl);
   }
 }
 
