@@ -48,14 +48,17 @@ class ProcessChatMessagePush implements ShouldQueue
             'body'           => $body,
         ];
 
-        foreach ($this->recipients($conversation) as $userId) {
+        $recipientIds = $this->recipients($conversation);
+        $users        = User::whereIn('id', $recipientIds)->get()->keyBy('id');
+
+        foreach ($recipientIds as $userId) {
             if ((int) $userId === (int) $message->user_id) {
                 continue;
             }
             // Web bell entry (database only). Same audience as the push by
             // construction; DMs and band channels wait for the Messages slice.
             if ($isTopic) {
-                User::find($userId)?->notify(new CommentPosted($message, $conversation, $topicTitle));
+                $users->get($userId)?->notify(new CommentPosted($message, $conversation, $topicTitle));
             }
             // alert: true routes through FcmSender::sendAlert() so a real APNs
             // notification block is sent. iOS never delivers data-only pushes to
