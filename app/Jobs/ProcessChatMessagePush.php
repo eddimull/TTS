@@ -6,6 +6,7 @@ use App\Models\Conversation;
 use App\Models\Message;
 use App\Models\User;
 use App\Notifications\CommentPosted;
+use App\Notifications\DirectMessageReceived;
 use App\Services\Chat\ConversationPresenter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -33,6 +34,7 @@ class ProcessChatMessagePush implements ShouldQueue
 
         $conversation = $message->conversation;
         $isTopic      = $conversation->type === Conversation::TYPE_TOPIC;
+        $isDm         = $conversation->type === Conversation::TYPE_DM;
         $topicTitle   = $isTopic ? app(ConversationPresenter::class)->topicTitle($conversation) : null;
         $body       = $message->body !== null && $message->body !== '' ? $message->body : '📷 Photo';
         $senderName = $message->user->name ?? 'Deleted user';
@@ -59,6 +61,11 @@ class ProcessChatMessagePush implements ShouldQueue
             // construction; DMs and band channels wait for the Messages slice.
             if ($isTopic) {
                 $users->get($userId)?->notify(new CommentPosted($message, $conversation, $topicTitle));
+            }
+            // Web bell entry for DMs (database only). Band-channel chatter
+            // deliberately stays off the bell — the Messages badge is its signal.
+            if ($isDm) {
+                $users->get($userId)?->notify(new DirectMessageReceived($message, $conversation));
             }
             // alert: true routes through FcmSender::sendAlert() so a real APNs
             // notification block is sent. iOS never delivers data-only pushes to
