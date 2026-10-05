@@ -423,6 +423,7 @@
       event_member: ['events'],
       roster: ['events'],
       bookings: ['stats'],
+      message: ['events'],
     });
 
     // Create a local reactive copy of events that we can mutate

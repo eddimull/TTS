@@ -29,13 +29,20 @@
                 {{ eventType.name }}
               </div>
             </div>
-            <span
-              data-test="status-pill"
-              :class="statusClass"
-              class="px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide whitespace-nowrap"
-            >
-              {{ booking.status }}
-            </span>
+            <div class="flex items-center gap-2">
+              <CommentsButton
+                v-if="unreadCommentCount !== null"
+                :unread-count="unreadCommentCount"
+                @click="emit('open-comments')"
+              />
+              <span
+                data-test="status-pill"
+                :class="statusClass"
+                class="px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide whitespace-nowrap"
+              >
+                {{ booking.status }}
+              </span>
+            </div>
           </div>
           <EngagementSummary :booking="booking" class="mt-2" />
         </div>
@@ -49,17 +56,14 @@ import { computed } from "vue";
 import { useStore } from "vuex";
 import ResponsiveSubNav from "@/Components/ResponsiveSubNav.vue";
 import EngagementSummary from "@/Pages/Bookings/Components/EngagementSummary.vue";
+import CommentsButton from '@/Components/Chat/CommentsButton.vue';
 
 const props = defineProps({
-    routes: {
-        type: Object,
-        required: true,
-    },
-    booking: {
-        type: Object,
-        required: true,
-    },
+    routes: { type: Object, required: true },
+    booking: { type: Object, required: true },
+    unreadCommentCount: { type: Number, default: null },
 });
+const emit = defineEmits(['open-comments']);
 
 const store = useStore();
 

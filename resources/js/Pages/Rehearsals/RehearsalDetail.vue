@@ -35,6 +35,11 @@
                   </Link>
                 </div>
                 <div class="flex gap-2">
+                  <CommentsButton
+                    v-if="unreadCommentCount !== null"
+                    :unread-count="comments.unread.value"
+                    @click="comments.openDrawer()"
+                  />
                   <Link
                     v-if="canWrite"
                     :href="route('rehearsals.toggle-cancelled', { 
@@ -267,17 +272,29 @@
           </div>
         </div>
       </div>
+      <CommentsDrawer
+        v-if="unreadCommentCount !== null"
+        v-model:visible="comments.open.value"
+        :title="`Comments · ${rehearsalTitle}`"
+        :load-url="commentsUrl"
+        :current-user-id="currentUserId"
+        @read="comments.onRead()"
+      />
     </Container>
   </BreezeAuthenticatedLayout>
 </template>
 
 <script setup>
-import { Link } from '@inertiajs/vue3';
+import { computed, toRef } from 'vue';
+import { Link, usePage } from '@inertiajs/vue3';
 import { DateTime } from 'luxon';
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue';
 import Container from '@/Components/Container.vue';
 import { useBandRealtime } from '@/composables/useBandRealtime';
 import { noteToPlainText } from '@/utils/noteText';
+import CommentsButton from '@/Components/Chat/CommentsButton.vue';
+import CommentsDrawer from '@/Components/Chat/CommentsDrawer.vue';
+import { useCommentsDrawer } from '@/composables/useCommentsDrawer';
 
 const props = defineProps({
     band: {
@@ -296,11 +313,22 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    unreadCommentCount: {
+        type: Number,
+        default: null,
+    },
 });
 
 useBandRealtime(props.band.id, {
     rehearsal: { props: ['rehearsal'], when: (p) => p.id === props.rehearsal.id },
+    message: ['unreadCommentCount'],
 });
+
+const page = usePage();
+const currentUserId = computed(() => page.props.auth?.user?.id);
+const comments = useCommentsDrawer(toRef(props, 'unreadCommentCount'));
+const commentsUrl = computed(() => route('chat.rehearsals.conversation', props.rehearsal.id));
+const rehearsalTitle = computed(() => props.rehearsal.events?.[0]?.title || 'Rehearsal');
 
 const formatDate = (date) => {
     if (!date) return 'N/A';

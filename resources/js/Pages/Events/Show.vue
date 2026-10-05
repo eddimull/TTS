@@ -15,6 +15,11 @@
             <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-50 flex-1">
               {{ event.title }}
             </h1>
+            <CommentsButton
+              v-if="unreadCommentCount !== null"
+              :unread-count="comments.unread.value"
+              @click="comments.openDrawer()"
+            />
             <Link :href="route('setlists.show', event.key)">
               <Button
                 icon="pi pi-list-check"
@@ -451,6 +456,14 @@
         </template>
       </Card>
     </div>
+      <CommentsDrawer
+        v-if="unreadCommentCount !== null"
+        v-model:visible="comments.open.value"
+        :title="`Comments · ${event.title}`"
+        :load-url="commentsUrl"
+        :current-user-id="currentUserId"
+        @read="comments.onRead()"
+      />
   </Container>
 
   <!-- Image Lightbox -->
@@ -463,8 +476,8 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
-import { Link, router } from '@inertiajs/vue3';
+import { computed, ref, toRef } from 'vue';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import Container from '@/Components/Container.vue';
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue';
 import Button from 'primevue/button';
@@ -481,6 +494,9 @@ import Times from '@/Components/Event/Card/Components/Times.vue';
 import ImageLightbox from '@/Components/ImageLightbox.vue';
 import SectionHeader from './Show/SectionHeader.vue';
 import { useBandRealtime } from '@/composables/useBandRealtime';
+import CommentsButton from '@/Components/Chat/CommentsButton.vue';
+import CommentsDrawer from '@/Components/Chat/CommentsDrawer.vue';
+import { useCommentsDrawer } from '@/composables/useCommentsDrawer';
 
 defineOptions({
   layout: BreezeAuthenticatedLayout,
@@ -506,7 +522,11 @@ const props = defineProps({
   lodgings: {
     type: Array,
     default: () => []
-  }
+  },
+  unreadCommentCount: {
+    type: Number,
+    default: null,
+  },
 });
 
 useBandRealtime(props.band.id, {
@@ -520,7 +540,13 @@ useBandRealtime(props.band.id, {
   payout_adjustment: ['userPayout'],
   band_payout_config: ['userPayout'],
   lodging: ['lodgings'],
+  message: ['unreadCommentCount'],
 });
+
+const page = usePage();
+const currentUserId = computed(() => page.props.auth?.user?.id);
+const comments = useCommentsDrawer(toRef(props, 'unreadCommentCount'));
+const commentsUrl = computed(() => route('chat.events.conversation', props.event.key));
 
 // Computed properties
 const hasRoster = computed(() => props.event.roster_members?.length > 0);
