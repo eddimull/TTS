@@ -20,8 +20,9 @@ class NotificationPresenterTest extends TestCase
     /** Store a raw database notification row for $user with the given data. */
     private function row(User $user, array $data, array $attrs = []): Bandnotification
     {
+        $before = Bandnotification::where('notifiable_id', $user->id)->pluck('id')->all();
         $user->notify(new TTSNotification($data));
-        $row = Bandnotification::where('notifiable_id', $user->id)->latest('id')->first();
+        $row = Bandnotification::where('notifiable_id', $user->id)->whereNotIn('id', $before)->firstOrFail();
         if ($attrs) {
             $row->forceFill($attrs)->save();
             $row->refresh();
