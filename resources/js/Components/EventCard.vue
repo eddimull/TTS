@@ -10,6 +10,17 @@
       'dark:text-white'
     ]"
   >
+    <span
+      v-if="event.unread_comment_count > 0"
+      data-test="unread-comments"
+      class="absolute top-2 inline-flex items-center gap-1 rounded-full bg-red-500 text-white text-xs font-semibold px-2 py-0.5"
+      :class="isRehearsal && canEditRehearsal ? 'right-12' : 'right-2'"
+      :title="`${event.unread_comment_count} unread comment${event.unread_comment_count === 1 ? '' : 's'}`"
+    >
+      <i class="pi pi-comments text-[10px]" />
+      {{ event.unread_comment_count }}
+    </span>
+
     <!-- Edit/Add Notes to Rehearsal Button (Top Right) -->
     <button
       v-if="isRehearsal && canEditRehearsal"

@@ -586,8 +586,6 @@
       </template>
     </Dialog>
 
-    <ConfirmDialog />
-
     <!-- Refine with AI drawer -->
     <Sidebar
       v-model:visible="refineDrawerOpen"

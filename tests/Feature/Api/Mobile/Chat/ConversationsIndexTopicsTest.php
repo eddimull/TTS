@@ -275,21 +275,13 @@ class ConversationsIndexTopicsTest extends TestCase
     /** Invoke the controller's private summarize() on a freshly loaded row. */
     private function summarizeFresh(\App\Models\Conversation $conversation, \App\Models\User $user): array
     {
-        $controller = app(\App\Http\Controllers\Api\Mobile\ConversationsController::class);
-
-        $summarize = new \ReflectionMethod($controller, 'summarize');
-        $summarize->setAccessible(true);
-
-        $prefetch = new \ReflectionMethod($controller, 'prefetchSummaryData');
-        $prefetch->setAccessible(true);
-
+        $presenter = app(\App\Services\Chat\ConversationPresenter::class);
         $ids = collect([$conversation->id]);
 
-        return $summarize->invoke(
-            $controller,
+        return $presenter->summarize(
             $conversation->fresh(),
             $user,
-            $prefetch->invoke($controller, $ids, $user, collect()),
+            $presenter->prefetch($ids, $user, collect()),
         );
     }
 

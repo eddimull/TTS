@@ -10,9 +10,9 @@ use App\Models\Bookings;
 use App\Models\Conversation;
 use App\Models\ConversationParticipant;
 use App\Models\Events;
-use App\Models\Message;
 use App\Models\Rehearsal;
 use App\Models\User;
+use App\Services\Chat\ConversationPresenter;
 use App\Services\Chat\ConversationService;
 use App\Services\Chat\MessageFormatter;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -28,6 +28,7 @@ class ConversationsController extends Controller
     public function __construct(
         private readonly ConversationService $conversations,
         private readonly MessageFormatter $formatter,
+        private readonly ConversationPresenter $presenter,
     ) {}
 
     /**
@@ -50,13 +51,9 @@ class ConversationsController extends Controller
         $all = $channels->concat($dms)->concat($this->visibleTopics($user));
         $ids = $all->pluck('id');
 
-        $lastReads = ConversationParticipant::where('user_id', $user->id)
-            ->whereIn('conversation_id', $ids)
-            ->pluck('last_read_at', 'conversation_id');
+        $prefetch = $this->presenter->prefetch($ids, $user);
 
-        $prefetch = $this->prefetchSummaryData($ids, $user, $lastReads);
-
-        $rows = $all->map(fn (Conversation $c) => $this->summarize($c, $user, $prefetch))
+        $rows = $all->map(fn (Conversation $c) => $this->presenter->summarize($c, $user, $prefetch))
             ->sortByDesc(fn ($row) => $row['last_message_at'] ?? '')
             ->values();
 
@@ -100,84 +97,6 @@ class ConversationsController extends Controller
             ->values();
     }
 
-    /**
-     * Bulk-load everything summarize() needs for a set of conversations so
-     * index() runs a constant number of queries instead of ~3 per row.
-     *
-     * @return array{last: \Illuminate\Support\Collection, unread: \Illuminate\Support\Collection, dmOther: \Illuminate\Support\Collection}
-     */
-    private function prefetchSummaryData($ids, User $user, $lastReads): array
-    {
-        $latestIds = Message::withTrashed()
-            ->whereIn('conversation_id', $ids)
-            ->selectRaw('MAX(id) as id')
-            ->groupBy('conversation_id')
-            ->pluck('id');
-
-        $last = Message::withTrashed()
-            ->whereIn('id', $latestIds)
-            ->with('attachments')
-            ->get()
-            ->keyBy('conversation_id');
-
-        // Grouped count of "not mine" messages per conversation that are
-        // newer than that conversation's own last_read_at. Thresholds differ
-        // per conversation, so this is two aggregate queries instead of one:
-        // conversations where the user has a read marker (join + threshold
-        // filter) and conversations where they don't (no floor, count all).
-        // Either way it's O(1) queries, never O(messages) rows into PHP.
-        // A participant row can exist with a NULL last_read_at (registered
-        // but never marked anything read) — that must fall into the
-        // "no floor, count everything" bucket, same as having no row at all.
-        $withMarkerIds    = $lastReads->filter(fn ($v) => $v !== null)->keys();
-        $withoutMarkerIds = collect($ids)->diff($withMarkerIds);
-
-        // Both queries key their result by conversation_id, which pluck()
-        // returns as PHP integer keys — Collection::merge() re-indexes
-        // (appends) integer-keyed collections instead of merging by key, so
-        // union() is required here to preserve the conversation_id keying.
-        $unread = collect();
-
-        if ($withMarkerIds->isNotEmpty()) {
-            $unread = $unread->union(
-                Message::query()
-                    ->whereIn('messages.conversation_id', $withMarkerIds)
-                    ->where(fn ($q) => $q->where('messages.user_id', '!=', $user->id)
-                        ->orWhereNull('messages.user_id'))
-                    ->join('conversation_participants', function ($join) use ($user) {
-                        $join->on('conversation_participants.conversation_id', '=', 'messages.conversation_id')
-                            ->where('conversation_participants.user_id', '=', $user->id);
-                    })
-                    ->whereColumn('messages.created_at', '>', 'conversation_participants.last_read_at')
-                    ->selectRaw('messages.conversation_id as conversation_id, COUNT(*) as unread')
-                    ->groupBy('messages.conversation_id')
-                    ->pluck('unread', 'conversation_id')
-                    ->map(fn ($n) => (int) $n)
-            );
-        }
-
-        if ($withoutMarkerIds->isNotEmpty()) {
-            $unread = $unread->union(
-                Message::query()
-                    ->whereIn('conversation_id', $withoutMarkerIds->values())
-                    ->where(fn ($q) => $q->where('user_id', '!=', $user->id)
-                        ->orWhereNull('user_id'))
-                    ->selectRaw('conversation_id, COUNT(*) as unread')
-                    ->groupBy('conversation_id')
-                    ->pluck('unread', 'conversation_id')
-                    ->map(fn ($n) => (int) $n)
-            );
-        }
-
-        $dmOther = ConversationParticipant::whereIn('conversation_id', $ids)
-            ->where('user_id', '!=', $user->id)
-            ->with('user')
-            ->get()
-            ->keyBy('conversation_id');
-
-        return ['last' => $last, 'unread' => $unread, 'dmOther' => $dmOther];
-    }
-
     /** POST /api/mobile/conversations/dm {user_id} — find-or-create the global pair thread. */
     public function storeDm(Request $request): JsonResponse
     {
@@ -190,9 +109,11 @@ class ConversationsController extends Controller
 
         $conversation = $this->conversations->dmBetween($me, $other);
 
-        $prefetch = $this->prefetchSummaryData(collect([$conversation->id]), $me, collect());
+        // collect() (not null): the DM was just created or re-found; mobile's
+        // established behaviour is the no-marker bucket here.
+        $prefetch = $this->presenter->prefetch(collect([$conversation->id]), $me, collect());
 
-        return response()->json(['conversation' => $this->summarize($conversation, $me, $prefetch)]);
+        return response()->json(['conversation' => $this->presenter->summarize($conversation, $me, $prefetch)]);
     }
 
     /** GET /api/mobile/chat/contacts — who the current user may start a DM with. */
@@ -252,100 +173,6 @@ class ConversationsController extends Controller
         return response()->json(['contacts' => $contacts]);
     }
 
-    /**
-     * Conversation JSON — the one wire shape for a conversation everywhere.
-     *
-     * @param array{last: \Illuminate\Support\Collection, unread: \Illuminate\Support\Collection, dmOther: \Illuminate\Support\Collection} $prefetch
-     *        Bulk-loaded data from prefetchSummaryData(), keyed by conversation_id.
-     */
-    private function summarize(Conversation $conversation, User $user, array $prefetch): array
-    {
-        $last = $prefetch['last']->get($conversation->id);
-
-        $preview = null;
-        $lastAt  = null;
-        if ($last) {
-            $lastAt  = $last->created_at->toIso8601String();
-            $preview = $last->trashed()
-                ? null
-                : (($last->body !== null && $last->body !== '') ? $last->body : '📷 Photo');
-        }
-
-        $unread = $prefetch['unread']->get($conversation->id, 0);
-
-        $title = match ($conversation->type) {
-            Conversation::TYPE_BAND  => $conversation->band?->name ?? 'Band',
-            Conversation::TYPE_DM    => $prefetch['dmOther']->get($conversation->id)?->user?->name ?? 'Direct message',
-            Conversation::TYPE_TOPIC => $this->topicTitle($conversation),
-            default => 'Conversation',
-        };
-
-        return [
-            'id'                   => $conversation->id,
-            'type'                 => $conversation->type,
-            'band_id'              => $conversation->band_id ? (int) $conversation->band_id : null,
-            'title'                => $title,
-            'topic_type'           => $this->topicType($conversation),
-            'last_message_preview' => $preview,
-            'last_message_at'      => $lastAt,
-            'unread_count'         => $unread,
-            'can_moderate'         => $user->can('moderate', $conversation),
-        ];
-    }
-
-    /**
-     * Row icon discriminator for the mobile Messages list. Frozen wire
-     * contract: 'booking' | 'event' | 'rehearsal' for topics, null otherwise.
-     *
-     * Derived from the loaded conversable rather than the `conversable_type`
-     * column, so a thread whose item has been deleted reports null — pairing
-     * with the 'Thread' title fallback, which is the honest rendering when
-     * there is no longer an item to point at.
-     */
-    private function topicType(Conversation $conversation): ?string
-    {
-        if ($conversation->type !== Conversation::TYPE_TOPIC) {
-            return null;
-        }
-
-        return match (true) {
-            $conversation->conversable instanceof Bookings  => 'booking',
-            $conversation->conversable instanceof Events    => 'event',
-            $conversation->conversable instanceof Rehearsal => 'rehearsal',
-            default => null,
-        };
-    }
-
-    /**
-     * The item's human name. Bookings carry `name`, Events carry `title`.
-     * Rehearsals have neither column, so they reuse the established fallback
-     * chain from Rehearsal::getGoogleCalendarSummary() — the child event's
-     * title, then the schedule name, then a literal. 'Thread' remains the
-     * fallback when the conversable has been deleted out from under the row.
-     */
-    private function topicTitle(Conversation $conversation): string
-    {
-        $target = $conversation->conversable;
-
-        $title = match (true) {
-            $target instanceof Bookings  => $target->name,
-            $target instanceof Events    => $target->title,
-            // ->events (not ->events()) so the eager-loaded collection is
-            // reused instead of firing a query per row.
-            $target instanceof Rehearsal => $target->events->first()?->title
-                ?? $target->rehearsalSchedule?->name,
-            default => null,
-        };
-
-        $title = is_string($title) ? trim($title) : '';
-
-        if ($title !== '') {
-            return $title;
-        }
-
-        return $target instanceof Rehearsal ? 'Rehearsal' : 'Thread';
-    }
-
     /** GET /api/mobile/events/{event}/conversation */
     public function forEvent(Request $request, Events $event): JsonResponse
     {
@@ -371,53 +198,7 @@ class ConversationsController extends Controller
         // Opening a thread registers the viewer and marks it read.
         $this->conversations->touchParticipant($conversation, $request->user());
 
-        return $this->threadPage($request, $conversation);
-    }
-
-    /**
-     * The shared ThreadPage shape: also returned by the messages index
-     * (Task 6). Messages come back oldest→newest; `channel` is what the
-     * client subscribes to for live updates.
-     */
-    private function threadPage(Request $request, Conversation $conversation, ?int $before = null): JsonResponse
-    {
-        $user  = $request->user();
-        $limit = 50;
-
-        $page = $conversation->messages()->withTrashed()
-            ->with(['user', 'attachments', 'reactions'])
-            ->when($before, fn ($q) => $q->where('id', '<', $before))
-            ->latest('id')->limit($limit + 1)->get();
-
-        $hasMore  = $page->count() > $limit;
-        $messages = $page->take($limit)->reverse()->values()
-            ->map(fn ($m) => $this->formatter->format($m));
-
-        $participants = $conversation->participants()->with('user')->get()
-            ->map(fn ($p) => [
-                'user_id'      => (int) $p->user_id,
-                'name'         => $p->user?->name,
-                'avatar_url'   => null,
-                'last_read_at' => $p->last_read_at?->toIso8601String(),
-                'last_delivered_at' => $p->last_delivered_at?->toIso8601String(),
-            ])->values();
-
-        // Reuse the one Conversation JSON shape via summarize(). touchParticipant()
-        // just ran, so unread_count is legitimately 0 — but the last-message
-        // preview and timestamp are real.
-        $ids       = collect([$conversation->id]);
-        $lastReads = ConversationParticipant::where('user_id', $user->id)
-            ->whereIn('conversation_id', $ids)
-            ->pluck('last_read_at', 'conversation_id');
-        $prefetch = $this->prefetchSummaryData($ids, $user, $lastReads);
-
-        return response()->json([
-            'conversation' => $this->summarize($conversation, $user, $prefetch),
-            'messages'     => $messages,
-            'participants' => $participants,
-            'channel'      => 'private-conversation.' . $conversation->id,
-            'has_more'     => $hasMore,
-        ]);
+        return response()->json($this->presenter->threadPage($request->user(), $conversation));
     }
 
     /** GET /api/mobile/conversations/{conversation}/messages?before={messageId} — ThreadPage. */
@@ -427,11 +208,11 @@ class ConversationsController extends Controller
 
         $validated = $request->validate(['before' => 'sometimes|integer|min:1']);
 
-        return $this->threadPage(
-            $request,
+        return response()->json($this->presenter->threadPage(
+            $request->user(),
             $conversation,
             $validated['before'] ?? null,
-        );
+        ));
     }
 
     /** POST /api/mobile/conversations/{conversation}/messages — multipart body and/or images[]. */

@@ -21,6 +21,7 @@ import PrimeVue from 'primevue/config';
 import Aura from '@primevue/themes/aura';
 import DatePicker from 'primevue/datepicker';
 import Divider from 'primevue/divider';
+import Drawer from 'primevue/drawer';
 import Button from 'primevue/button';
 import RadioButton from 'primevue/radiobutton';
 import InputText from 'primevue/inputtext';
@@ -141,7 +142,8 @@ createInertiaApp({
             MultiSelect,
             ContextMenu,
             InputSwitch,
-            ConfirmDialog
+            ConfirmDialog,
+            Drawer
         };
 
         Object.entries(components).forEach(([name, component]) => {

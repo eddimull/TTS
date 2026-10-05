@@ -211,7 +211,6 @@ class EventsController extends Controller
         // viewer is authorized.
         $event->load([
             'eventable.band.colorways',
-            'eventable.contacts',
             'type',
             'attachments',
             'eventMembers.bandRole',
@@ -219,6 +218,14 @@ class EventsController extends Controller
             'eventMembers.user',
             'roster'
         ]);
+        // contacts() only exists on Bookings, not on the other eventable types
+        // (e.g. Rehearsal) — load it conditionally, same guard as the
+        // userPayout instanceof check below. See commit 74a4f172 for the
+        // precedent (same "Rehearsal has no contacts()" bug, fixed in
+        // ContactPortalController).
+        if ($event->eventable instanceof \App\Models\Bookings) {
+            $event->eventable->loadMissing('contacts');
+        }
         // load() replaces the relation, so re-grab $band with colorways now
         // hydrated — the pre-gate copy above was used only for the check.
         $band = $event->eventable->band;
@@ -291,6 +298,8 @@ class EventsController extends Controller
             'band' => $band,
             'userPayout' => $userPayout,
             'lodgings' => $lodgings,
+            'unreadCommentCount' => app(\App\Services\Chat\ConversationPresenter::class)
+                ->unreadCountFor(Auth::user(), $event),
         ]);
     }
 

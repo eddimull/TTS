@@ -27,11 +27,12 @@ const baseBooking = {
   events: [{}],
 };
 
-function mountNav(booking = baseBooking) {
+function mountNav(booking = baseBooking, extraProps = {}) {
   return mount(NavSubmenu, {
     props: {
       routes: {},
       booking,
+      ...extraProps,
     },
     global: {
       stubs,
@@ -70,5 +71,24 @@ describe('NavSubmenu header', () => {
     // The previous header used the literal "Status: confirmed" inline label;
     // the new design surfaces status as a pill instead.
     expect(wrapper.text()).not.toMatch(/Status:\s/);
+  });
+});
+
+describe('NavSubmenu Comments button', () => {
+  it('does not render the Comments button when unreadCommentCount is null', () => {
+    const wrapper = mountNav(baseBooking, { unreadCommentCount: null });
+    const commentsButtons = wrapper
+      .findAll('button')
+      .filter((b) => b.text().includes('Comments'));
+    expect(commentsButtons.length).toBe(0);
+  });
+
+  it('renders the Comments button with the unread pill when unreadCommentCount is a number', () => {
+    const wrapper = mountNav(baseBooking, { unreadCommentCount: 2 });
+    const commentsButtons = wrapper
+      .findAll('button')
+      .filter((b) => b.text().includes('Comments'));
+    expect(commentsButtons.length).toBe(1);
+    expect(commentsButtons[0].text()).toContain('2');
   });
 });
