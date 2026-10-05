@@ -75,22 +75,28 @@ const loading = ref(false);
 const creating = ref(false);
 const error = ref('');
 
+let loadSeq = 0;
+
 async function load() {
+  const seq = ++loadSeq;
   loading.value = true;
   error.value = '';
   try {
     const { data } = await axios.get(route('chat.contacts'));
+    if (seq !== loadSeq) return;
     contacts.value = data.contacts ?? [];
   } catch (e) {
+    if (seq !== loadSeq) return;
     error.value = 'Could not load people. Please try again.';
   } finally {
-    loading.value = false;
+    if (seq === loadSeq) loading.value = false;
   }
 }
 
 watch(() => props.visible, (v) => {
   if (v) {
     query.value = '';
+    error.value = '';
     load();
   }
 }, { immediate: true });
@@ -101,6 +107,7 @@ const filtered = computed(() => {
 });
 
 async function choose(contact) {
+  if (creating.value) return;
   creating.value = true;
   error.value = '';
   try {

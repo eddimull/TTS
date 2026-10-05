@@ -59,4 +59,46 @@ describe('NewMessageDialog', () => {
 		await flushPromises();
 		expect(w.text()).toContain('You do not share a band with this user.');
 	});
+
+	it('ignores a second click while a DM is being created', async () => {
+		axios.get.mockResolvedValueOnce({ data: { contacts } });
+		let resolvePost;
+		axios.post.mockImplementationOnce(() => new Promise((resolve) => { resolvePost = resolve; }));
+		const onCreated = vi.fn();
+		const w = mount(NewMessageDialog, { props: { visible: true, onCreated }, global: { stubs } });
+		await flushPromises();
+
+		const row = w.find('[data-test="contact-row"]');
+		const clicks = Promise.all([row.trigger('click'), row.trigger('click')]);
+		await clicks;
+
+		resolvePost({ data: { conversation: { id: 77, type: 'dm', title: 'Taylor Campo', unread_count: 0 } } });
+		await flushPromises();
+
+		expect(axios.post).toHaveBeenCalledTimes(1);
+		expect(onCreated).toHaveBeenCalledTimes(1);
+	});
+
+	it('discards a stale contacts response when reopened', async () => {
+		let resolveFirst;
+		let resolveSecond;
+		axios.get
+			.mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }))
+			.mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve; }));
+
+		const w = mount(NewMessageDialog, { props: { visible: false }, global: { stubs } });
+
+		await w.setProps({ visible: true });
+		await w.setProps({ visible: false });
+		await w.setProps({ visible: true });
+
+		resolveSecond({ data: { contacts: [{ id: 2, name: 'Second', avatar_url: null, context: 'Band', is_sub: false }] } });
+		await flushPromises();
+
+		resolveFirst({ data: { contacts: [{ id: 1, name: 'First', avatar_url: null, context: 'Band', is_sub: false }] } });
+		await flushPromises();
+
+		expect(w.text()).toContain('Second');
+		expect(w.text()).not.toContain('First');
+	});
 });
