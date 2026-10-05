@@ -338,12 +338,11 @@ const formatDate = (date) => {
 
 // Associations are RehearsalAssociation morphs (events today); the helper
 // picks the right title/date/venue fields and page link per type. `card` is
-// null when the associated item was deleted, so the row renders nothing.
+// null when the associated item was deleted, so those rows are dropped.
 const associationCards = computed(() =>
-    (props.rehearsal.associations ?? []).map((association) => ({
-        association,
-        card: describeAssociation(association, route),
-    })),
+    (props.rehearsal.associations ?? [])
+        .map((association) => ({ association, card: describeAssociation(association, route) }))
+        .filter(({ card }) => card !== null),
 );
 
 const formatTime = (time) => {
