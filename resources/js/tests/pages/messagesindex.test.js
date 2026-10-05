@@ -3,6 +3,10 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { h, nextTick, reactive } from 'vue';
 
 vi.mock('axios', () => ({ default: { get: vi.fn(), post: vi.fn() } }));
+// vi.mock factories are hoisted above all imports/const declarations, so a
+// variable they close over must itself be declared via vi.hoisted().
+const { toastAdd } = vi.hoisted(() => ({ toastAdd: vi.fn() }));
+vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: toastAdd }) }));
 const storeState = reactive({ user: { chatSignal: 0 } });
 const dispatch = vi.fn();
 // mapState/mapActions are no-ops here — they're only needed because importing the
@@ -90,7 +94,7 @@ function mountPage(props = {}) {
 
 describe('Messages/Index', () => {
 	beforeEach(() => {
-		axios.get.mockReset(); axios.post.mockReset(); dispatch.mockReset();
+		axios.get.mockReset(); axios.post.mockReset(); dispatch.mockReset(); toastAdd.mockReset();
 		storeState.user.chatSignal = 0;
 		vi.stubGlobal('route', (name, p) => `/r/${name}/${p ?? ''}`);
 		vi.spyOn(window.history, 'replaceState').mockImplementation(() => {});
@@ -147,6 +151,23 @@ describe('Messages/Index', () => {
 		await nextTick();
 		expect(w.find('[data-test="unread-pill"]').exists()).toBe(false);
 		expect(dispatch).toHaveBeenCalledWith('user/fetchChatUnread');
+	});
+
+	it('toasts once when the list refresh fails and keeps the rows', async () => {
+		axios.get.mockRejectedValueOnce(new Error('network down'));
+		axios.get.mockRejectedValueOnce(new Error('still down'));
+		const w = mountPage();
+		await flushPromises();
+
+		storeState.user.chatSignal += 1;
+		await flushPromises();
+		storeState.user.chatSignal += 1;
+		await flushPromises();
+
+		expect(toastAdd).toHaveBeenCalledTimes(1);
+		expect(toastAdd).toHaveBeenCalledWith(expect.objectContaining({ severity: 'warn', summary: 'Could not refresh messages' }));
+		expect(w.text()).toContain('Three Thirty Seven');
+		expect(w.text()).toContain('Taylor Campo');
 	});
 
 	it('inserts and selects a conversation created from the dialog', async () => {

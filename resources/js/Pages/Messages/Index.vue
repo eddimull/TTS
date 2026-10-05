@@ -72,6 +72,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import { useStore } from 'vuex';
+import { useToast } from 'primevue/usetoast';
 import axios from 'axios';
 import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue';
 import ConversationThread from '@/Components/Chat/ConversationThread.vue';
@@ -87,6 +88,8 @@ const props = defineProps({
 
 const page = usePage();
 const store = useStore();
+const toast = useToast();
+let refreshToasted = false;
 
 const currentUserId = computed(() => page.props.auth?.user?.id);
 const rows = ref([...props.conversations]);
@@ -118,8 +121,13 @@ async function refreshList() {
   try {
     const { data } = await axios.get(route('chat.conversations.index'));
     rows.value = data.conversations ?? rows.value;
+    refreshToasted = false;
   } catch (e) {
     // keep the current rows; the next signal retries
+    if (!refreshToasted) {
+      refreshToasted = true;
+      toast.add({ severity: 'warn', summary: 'Could not refresh messages', detail: 'Showing the last known list. It will retry on the next update.', life: 5000 });
+    }
   }
   axios.post(route('chat.conversations.delivered')).catch(() => {});
 }
