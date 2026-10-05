@@ -137,12 +137,9 @@ class ProcessEventUpdated implements ShouldQueue, ShouldBeUniqueUntilProcessing
                 'text' => "Event '{$this->event->name}' status changed from {$oldStatus} to {$newStatus}",
                 'emailHeader' => "Event Status Update for {$this->event->band->name}",
                 'actionText' => 'View Event',
-                'route' => 'Event Details',
-                'routeParams' => [
-                    'band' => $this->event->band_id,
-                    'event' => $this->event->id
-                ],
-                'url' => "/bands/{$this->event->band_id}/events/{$this->event->id}"
+                'route' => 'events.show',
+                'routeParams' => ['key' => $this->event->key],
+                'url' => "/events/{$this->event->key}"
             ];
 
             // Get all band members and owners

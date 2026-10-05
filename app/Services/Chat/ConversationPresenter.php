@@ -37,14 +37,7 @@ final class ConversationPresenter
      */
     public function listFor(User $user): Collection
     {
-        $channels = $user->bands()->unique('id')->values()
-            ->map(fn ($band) => $this->conversations->bandChannelFor($band));
-
-        $dms = Conversation::where('type', Conversation::TYPE_DM)
-            ->whereHas('participants', fn ($q) => $q->where('user_id', $user->id))
-            ->get();
-
-        $all = $channels->concat($dms)->concat($this->visibleTopics($user));
+        $all = $this->visibleConversations($user);
 
         $prefetch = $this->prefetch($all->pluck('id'), $user);
 
@@ -56,7 +49,28 @@ final class ConversationPresenter
     /** Sum of unread_count across listFor() — the header badge number. */
     public function unreadTotalFor(User $user): int
     {
-        return (int) $this->listFor($user)->sum('unread_count');
+        $ids = $this->visibleConversations($user)->pluck('id');
+
+        return (int) $this->unreadCounts($ids, $user)->sum();
+    }
+
+    /**
+     * Every conversation the user can see: one band channel per owned/member
+     * band (lazily created), their DMs, and policy-visible topic threads that
+     * have at least one message.
+     *
+     * @return Collection<int, Conversation>
+     */
+    private function visibleConversations(User $user): Collection
+    {
+        $channels = $user->bands()->unique('id')->values()
+            ->map(fn ($band) => $this->conversations->bandChannelFor($band));
+
+        $dms = Conversation::where('type', Conversation::TYPE_DM)
+            ->whereHas('participants', fn ($q) => $q->where('user_id', $user->id))
+            ->get();
+
+        return $channels->concat($dms)->concat($this->visibleTopics($user));
     }
 
     /**
@@ -118,6 +132,31 @@ final class ConversationPresenter
             ->get()
             ->keyBy('conversation_id');
 
+        $unread = $this->unreadCounts($ids, $user, $lastReads);
+
+        $dmOther = ConversationParticipant::whereIn('conversation_id', $ids)
+            ->where('user_id', '!=', $user->id)
+            ->with('user')
+            ->get()
+            ->keyBy('conversation_id');
+
+        return ['last' => $last, 'unread' => $unread, 'dmOther' => $dmOther];
+    }
+
+    /**
+     * Unread "not mine" message counts keyed by conversation_id (zero rows
+     * omitted). O(1) queries for any number of conversations.
+     *
+     * @param  Collection<int, int>  $ids
+     * @param  Collection|null  $lastReads  conversation_id => last_read_at for $user; null = look up
+     * @return Collection<int, int>
+     */
+    public function unreadCounts(Collection $ids, User $user, ?Collection $lastReads = null): Collection
+    {
+        $lastReads ??= ConversationParticipant::where('user_id', $user->id)
+            ->whereIn('conversation_id', $ids)
+            ->pluck('last_read_at', 'conversation_id');
+
         // Grouped count of "not mine" messages per conversation newer than that
         // conversation's own last_read_at. Two aggregate queries (with marker /
         // without marker) — O(1) queries, never O(messages) rows into PHP. A
@@ -160,13 +199,7 @@ final class ConversationPresenter
             );
         }
 
-        $dmOther = ConversationParticipant::whereIn('conversation_id', $ids)
-            ->where('user_id', '!=', $user->id)
-            ->with('user')
-            ->get()
-            ->keyBy('conversation_id');
-
-        return ['last' => $last, 'unread' => $unread, 'dmOther' => $dmOther];
+        return $unread;
     }
 
     /**
@@ -182,9 +215,7 @@ final class ConversationPresenter
         $lastAt  = null;
         if ($last) {
             $lastAt  = $last->created_at->toIso8601String();
-            $preview = $last->trashed()
-                ? null
-                : (($last->body !== null && $last->body !== '') ? $last->body : '📷 Photo');
+            $preview = $last->trashed() ? null : $last->previewSnippet();
         }
 
         $unread = $prefetch['unread']->get($conversation->id, 0);
