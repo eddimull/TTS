@@ -23,13 +23,20 @@ class NotificationsController extends Controller
     /** GET /api/mobile/notifications?cursor={created_at|id}&limit=30 */
     public function index(Request $request): JsonResponse
     {
-        $user  = $request->user();
-        $limit = max(1, min(100, (int) $request->input('limit', 30)));
+        $user = $request->user();
+
+        $requested = $request->input('limit');
+        $limit     = is_numeric($requested) && (int) $requested > 0 ? min(100, (int) $requested) : 30;
 
         $query = $this->own($user)->orderByDesc('created_at')->orderByDesc('id');
 
         if ($cursor = (string) $request->input('cursor', '')) {
             [$at, $id] = array_pad(explode('|', $cursor, 2), 2, null);
+            try {
+                $at = $at ? \Carbon\Carbon::parse($at)->format('Y-m-d H:i:s') : null;
+            } catch (\Throwable) {
+                $at = null; // unparseable cursor → first page, not a 500
+            }
             if ($at) {
                 $query->where(fn (Builder $q) => $q
                     ->where('created_at', '<', $at)

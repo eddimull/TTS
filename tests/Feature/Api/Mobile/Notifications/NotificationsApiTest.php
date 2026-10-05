@@ -52,6 +52,59 @@ class NotificationsApiTest extends TestCase
         $this->assertCount(55, array_unique($ids), 'no duplicates across pages');
     }
 
+    public function test_malformed_cursor_degrades_to_first_page(): void
+    {
+        [$owner] = $this->makeOwnerWithBand();
+        $this->seedNotifications($owner, 3);
+
+        $noCursor = $this->actingAs($owner)->getJson('/api/mobile/notifications')->assertOk();
+
+        $garbage = $this->actingAs($owner)->getJson('/api/mobile/notifications?cursor=garbage')->assertOk();
+        $this->assertSame($noCursor->json('notifications.*.id'), $garbage->json('notifications.*.id'));
+
+        $partial = $this->actingAs($owner)->getJson('/api/mobile/notifications?cursor=' . urlencode('not-a-date|abc'))->assertOk();
+        $this->assertSame($noCursor->json('notifications.*.id'), $partial->json('notifications.*.id'));
+    }
+
+    public function test_cursor_round_trips_after_carbon_reformat(): void
+    {
+        [$owner] = $this->makeOwnerWithBand();
+        $this->seedNotifications($owner, 5);
+
+        $first = $this->actingAs($owner)->getJson('/api/mobile/notifications?limit=3')->assertOk();
+        $this->assertCount(3, $first->json('notifications'));
+        $this->assertNotNull($first->json('next_cursor'));
+
+        $second = $this->actingAs($owner)->getJson('/api/mobile/notifications?limit=3&cursor=' . urlencode($first->json('next_cursor')))->assertOk();
+        $this->assertCount(2, $second->json('notifications'));
+        $this->assertNull($second->json('next_cursor'));
+
+        $ids = array_merge($first->json('notifications.*.id'), $second->json('notifications.*.id'));
+        $this->assertCount(5, array_unique($ids), 'no duplicates and no drops across the round-tripped cursor');
+    }
+
+    public function test_non_numeric_or_negative_limit_falls_back_to_default(): void
+    {
+        [$owner] = $this->makeOwnerWithBand();
+        $this->seedNotifications($owner, 3);
+
+        $abc = $this->actingAs($owner)->getJson('/api/mobile/notifications?limit=abc')->assertOk();
+        $this->assertCount(3, $abc->json('notifications'));
+
+        $negative = $this->actingAs($owner)->getJson('/api/mobile/notifications?limit=-5')->assertOk();
+        $this->assertCount(3, $negative->json('notifications'));
+    }
+
+    public function test_limit_still_caps_at_one_hundred(): void
+    {
+        [$owner] = $this->makeOwnerWithBand();
+        $this->seedNotifications($owner, 2);
+
+        $response = $this->actingAs($owner)->getJson('/api/mobile/notifications?limit=9999')->assertOk();
+        $this->assertCount(2, $response->json('notifications'));
+        $this->assertLessThanOrEqual(100, count($response->json('notifications')));
+    }
+
     public function test_read_read_all_and_seen_semantics(): void
     {
         [$owner] = $this->makeOwnerWithBand();
