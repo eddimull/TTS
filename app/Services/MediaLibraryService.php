@@ -1398,7 +1398,7 @@ class MediaLibraryService
         }
 
         // Create the folder using existing method
-        $this->createFolder($bandId, $folderPath, $event->eventable->author_id ?? 1);
+        $this->createFolder($bandId, $folderPath, $event->eventable->author_id ?? auth()->id() ?? 1);
 
         return $folderPath;
     }
