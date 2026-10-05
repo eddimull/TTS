@@ -8,7 +8,9 @@ export default {
   
   state: () => ({
     navigation: null,
-    notifications: []
+    notifications: [],
+    chatUnread: 0,
+    chatSignal: 0,
   }),
   
   mutations: {
@@ -30,7 +32,13 @@ export default {
           notification.seen_at = new Date()
         }
       })
-    }
+    },
+    SET_CHAT_UNREAD(state, count) {
+      state.chatUnread = Number(count) || 0
+    },
+    BUMP_CHAT_SIGNAL(state) {
+      state.chatSignal += 1
+    },
   },
   
   actions: {
@@ -86,6 +94,22 @@ export default {
       } catch (error) {
         console.error('Error marking notifications as seen:', error)
       }
-    }
+    },
+
+    async fetchChatUnread({ commit }) {
+      try {
+        const { data } = await axios.get(route('chat.unread-count'))
+        commit('SET_CHAT_UNREAD', data.count ?? 0)
+      } catch (error) {
+        // Badge is best-effort: keep the last known count.
+      }
+    },
+
+    // A message changed somewhere the user can see (user channel for DMs,
+    // band channel for everything else). Pages watch chatSignal to refresh.
+    async signalChatChange({ commit, dispatch }) {
+      commit('BUMP_CHAT_SIGNAL')
+      await dispatch('fetchChatUnread')
+    },
   }
 }
