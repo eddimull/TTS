@@ -106,6 +106,29 @@
             </div>
           </div>
 
+          <!-- Chat moderation -->
+          <div class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 mt-6">
+            <h4 class="text-base font-medium text-gray-900 dark:text-white mb-4">
+              Chat
+            </h4>
+            <div class="flex items-center space-x-3">
+              <Checkbox
+                v-model="localPermissions['moderate:chat']"
+                :binary="true"
+                input-id="moderate_chat"
+              />
+              <label
+                for="moderate_chat"
+                class="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer"
+              >
+                Moderate chat
+                <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">
+                  Delete other members' comments and messages in this band's threads
+                </span>
+              </label>
+            </div>
+          </div>
+
           <!-- Action Buttons -->
           <div class="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-600 mt-8">
             <Link :href="`/bands/${band.id}/edit`">
