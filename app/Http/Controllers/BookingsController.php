@@ -304,8 +304,7 @@ class BookingsController extends Controller
             'payoutResult' => $payoutResult,
             'questionnaireInstances' => $questionnaireInstances,
             'availableQuestionnaires' => $availableQuestionnaires,
-            'unreadCommentCount' => app(\App\Services\Chat\ConversationPresenter::class)
-                ->unreadCountFor(Auth::user(), $booking),
+            'unreadCommentCount' => $this->unreadCommentCount($booking),
         ]);
     }
 
@@ -332,7 +331,11 @@ class BookingsController extends Controller
             $contact->append('booking_history');
         });
 
-        return Inertia::render('Bookings/Contacts', ['booking' => $booking, 'band' => $band]);
+        return Inertia::render('Bookings/Contacts', [
+            'booking' => $booking,
+            'band' => $band,
+            'unreadCommentCount' => $this->unreadCommentCount($booking),
+        ]);
     }
 
     public function storeContact(BookingContactRequest $request, Bands $band, Bookings $booking)
@@ -370,6 +373,7 @@ class BookingsController extends Controller
         $booking->append(['amountPaid', 'amountLeft']);
 
         return Inertia::render('Bookings/Finances', [
+            'unreadCommentCount' => $this->unreadCommentCount($booking),
             'booking' => $booking,
             'band' => $band,
             'payments' => $booking->payments,
@@ -486,6 +490,7 @@ class BookingsController extends Controller
         $booking->duration = $booking->duration;
 
         return Inertia::render('Bookings/Contract', [
+            'unreadCommentCount' => $this->unreadCommentCount($booking),
             'booking' => $booking,
             'band' => $band,
         ]);
@@ -550,6 +555,7 @@ class BookingsController extends Controller
         });
 
         return Inertia::render('Bookings/Events', [
+            'unreadCommentCount' => $this->unreadCommentCount($booking),
             'booking' => $booking,
             'events' => $events
         ]);
@@ -565,6 +571,7 @@ class BookingsController extends Controller
         });
 
         return Inertia::render('Bookings/Lineup', [
+            'unreadCommentCount' => $this->unreadCommentCount($booking),
             'booking' => $booking,
             'band' => $band,
             'events' => $events,
@@ -610,6 +617,7 @@ class BookingsController extends Controller
         }
 
         return Inertia::render('Bookings/Media', [
+            'unreadCommentCount' => $this->unreadCommentCount($booking),
             'booking' => $booking,
             'band' => $band,
             'event' => $event ? [
@@ -810,6 +818,7 @@ class BookingsController extends Controller
         });
 
         return Inertia::render('Bookings/Payout', [
+            'unreadCommentCount' => $this->unreadCommentCount($booking),
             'booking' => $booking,
             'band' => $band,
             'payoutConfig' => $payoutConfig,
@@ -831,6 +840,7 @@ class BookingsController extends Controller
         $booking->load('band', 'eventType', 'contacts', 'events');
         
         return Inertia::render('Bookings/History', [
+            'unreadCommentCount' => $this->unreadCommentCount($booking),
             'booking' => [
                 'id' => $booking->id,
                 'name' => $booking->name,
@@ -1159,5 +1169,16 @@ class BookingsController extends Controller
             'base_amount' => $baseAmount,
             'adjusted_amount' => $baseAmount,
         ]);
+    }
+    /**
+     * Unread comment count for the booking's thread, or null when the viewer
+     * cannot see it (the layout hides the Comments button on null). Sent by
+     * every booking tab so the button in BookingLayout is available on all
+     * of them, not only the overview.
+     */
+    private function unreadCommentCount(Bookings $booking): ?int
+    {
+        return app(\App\Services\Chat\ConversationPresenter::class)
+            ->unreadCountFor(Auth::user(), $booking);
     }
 }
