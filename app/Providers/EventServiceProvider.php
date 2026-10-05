@@ -30,6 +30,7 @@ class EventServiceProvider extends ServiceProvider
         ],
         \Illuminate\Notifications\Events\NotificationSent::class => [
             \App\Listeners\BroadcastDatabaseNotification::class,
+            \App\Listeners\PushDatabaseNotification::class,
         ],
     ];
 
