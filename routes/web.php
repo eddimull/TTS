@@ -59,6 +59,7 @@ require __DIR__ . '/account.php';
 require __DIR__ . '/auth.php';
 require __DIR__ . '/bands.php';
 require __DIR__ . '/booking.php';
+require __DIR__ . '/chat.php';
 require __DIR__ . '/events.php';
 require __DIR__ . '/finances.php';
 require __DIR__ . '/images.php';
