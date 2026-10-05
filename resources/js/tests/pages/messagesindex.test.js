@@ -177,6 +177,13 @@ describe('Messages/Index', () => {
 		expect(w.text()).toContain('Taylor Campo');
 	});
 
+	it('explains a deep-linked conversation that is not yet in the inbox list', () => {
+		const w = mountPage({ initialConversationId: 999 });
+		expect(w.find('[data-test="unlisted-conversation"]').exists()).toBe(true);
+		expect(w.text()).not.toContain('Select a conversation');
+		expect(w.find('[data-test="thread"]').exists()).toBe(false);
+	});
+
 	it('inserts and selects a conversation created from the dialog', async () => {
 		const w = mountPage();
 		await w.find('[data-test="new-message"]').trigger('click');

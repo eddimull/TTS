@@ -52,6 +52,18 @@
             />
           </template>
           <div
+            v-else-if="selectedId !== null"
+            data-test="unlisted-conversation"
+            class="flex-1 flex flex-col items-center justify-center text-center px-4 gap-1"
+          >
+            <p class="text-sm text-gray-600 dark:text-gray-300">
+              This conversation has no messages yet.
+            </p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">
+              It will appear in your list once someone posts.
+            </p>
+          </div>
+          <div
             v-else
             class="flex-1 flex items-center justify-center text-sm text-gray-500 dark:text-gray-400"
           >
