@@ -1,13 +1,40 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
+import { h } from 'vue';
 
 vi.mock('axios', () => ({ default: { get: vi.fn(), post: vi.fn() } }));
 import axios from 'axios';
 import NewMessageDialog from '@/Pages/Messages/Components/NewMessageDialog.vue';
 
-const stubs = {
-	Dialog: { props: ['visible'], template: '<div v-if="visible"><slot name="header" /><slot /></div>' },
-	Tag: { props: ['value'], template: '<span>{{ value }}</span>' },
+// Dialog/Tag are resolved globally (app.js registers them, NewMessageDialog.vue
+// references them by bare tag with no local import), so `global.stubs` won't
+// reach them: VTU's `global.stubs` auto-stubbing relies on Vue's dev-only
+// `transformVNodeArgs` hook around `createVNode`, which the production Vue
+// build (`@vue/runtime-core/dist/runtime-core.cjs.prod.js`) compiles out
+// entirely — `createVNode` there is the raw, untransformed function, so no
+// stub substitution happens and the REAL Dialog (which teleports to
+// `document.body`) renders instead, leaving the mounted wrapper empty.
+// `global.components` registers on the app's component registry instead,
+// which `resolveComponent` consults directly in both dev and prod builds.
+// Render functions (not template strings) keep these stubs independent of
+// any particular compile path.
+const globalOpts = {
+	components: {
+		Dialog: {
+			name: 'Dialog',
+			props: ['visible'],
+			render() {
+				return this.visible ? h('div', [this.$slots.header?.(), this.$slots.default?.()]) : null;
+			},
+		},
+		Tag: {
+			name: 'Tag',
+			props: ['value'],
+			render() {
+				return h('span', this.value);
+			},
+		},
+	},
 };
 
 const contacts = [
@@ -23,7 +50,7 @@ describe('NewMessageDialog', () => {
 
 	it('loads contacts when opened, filters by name, flags subs', async () => {
 		axios.get.mockResolvedValueOnce({ data: { contacts } });
-		const w = mount(NewMessageDialog, { props: { visible: true }, global: { stubs } });
+		const w = mount(NewMessageDialog, { props: { visible: true }, global: globalOpts });
 		await flushPromises();
 
 		expect(axios.get).toHaveBeenCalledWith('/r/chat.contacts');
@@ -39,7 +66,7 @@ describe('NewMessageDialog', () => {
 		axios.post.mockResolvedValueOnce({ data: { conversation: { id: 77, type: 'dm', title: 'Taylor Campo', unread_count: 0 } } });
 		const onCreated = vi.fn();
 		const onUpdateVisible = vi.fn();
-		const w = mount(NewMessageDialog, { props: { visible: true, onCreated, 'onUpdate:visible': onUpdateVisible }, global: { stubs } });
+		const w = mount(NewMessageDialog, { props: { visible: true, onCreated, 'onUpdate:visible': onUpdateVisible }, global: globalOpts });
 		await flushPromises();
 
 		await w.find('[data-test="contact-row"]').trigger('click');
@@ -53,7 +80,7 @@ describe('NewMessageDialog', () => {
 	it('shows the server message when the DM cannot be created', async () => {
 		axios.get.mockResolvedValueOnce({ data: { contacts } });
 		axios.post.mockRejectedValueOnce({ response: { data: { message: 'You do not share a band with this user.' } } });
-		const w = mount(NewMessageDialog, { props: { visible: true }, global: { stubs } });
+		const w = mount(NewMessageDialog, { props: { visible: true }, global: globalOpts });
 		await flushPromises();
 		await w.find('[data-test="contact-row"]').trigger('click');
 		await flushPromises();
@@ -65,7 +92,7 @@ describe('NewMessageDialog', () => {
 		let resolvePost;
 		axios.post.mockImplementationOnce(() => new Promise((resolve) => { resolvePost = resolve; }));
 		const onCreated = vi.fn();
-		const w = mount(NewMessageDialog, { props: { visible: true, onCreated }, global: { stubs } });
+		const w = mount(NewMessageDialog, { props: { visible: true, onCreated }, global: globalOpts });
 		await flushPromises();
 
 		const row = w.find('[data-test="contact-row"]');
@@ -86,7 +113,7 @@ describe('NewMessageDialog', () => {
 			.mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }))
 			.mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve; }));
 
-		const w = mount(NewMessageDialog, { props: { visible: false }, global: { stubs } });
+		const w = mount(NewMessageDialog, { props: { visible: false }, global: globalOpts });
 
 		await w.setProps({ visible: true });
 		await w.setProps({ visible: false });

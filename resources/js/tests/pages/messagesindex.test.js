@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import { nextTick, reactive } from 'vue';
+import { h, nextTick, reactive } from 'vue';
 
 vi.mock('axios', () => ({ default: { get: vi.fn(), post: vi.fn() } }));
 const storeState = reactive({ user: { chatSignal: 0 } });
@@ -17,6 +17,35 @@ vi.mock('@inertiajs/vue3', () => ({
 	usePage: () => ({ props: { auth: { user: { id: 10 } } } }),
 	Head: { template: '<div />' },
 }));
+// ConversationThread and NewMessageDialog are imported directly in
+// Index.vue's <script setup> (not resolved by bare tag name), so neither
+// `global.stubs` (dev-mode-only; see the component-level comment below) nor
+// `global.components` (tag-resolution only) can intercept them — a direct
+// import-binding vnode type bypasses both mechanisms entirely, in both dev
+// and prod builds. Mocking the module itself works in both, since it swaps
+// what the `import` binds to at the loader level, orthogonal to Vue's
+// render/compile internals.
+vi.mock('@/Components/Chat/ConversationThread.vue', () => ({
+	default: {
+		name: 'ConversationThread',
+		props: ['loadUrl', 'currentUserId'],
+		emits: ['read'],
+		render() {
+			return h('div', { 'data-test': 'thread', 'data-url': this.loadUrl, onClick: () => this.$emit('read') });
+		},
+	},
+}));
+vi.mock('@/Pages/Messages/Components/NewMessageDialog.vue', () => ({
+	default: {
+		// Explicit `name` so `findComponent({ name: 'NewMessageDialog' })` can match the stub.
+		name: 'NewMessageDialog',
+		props: ['visible'],
+		emits: ['update:visible', 'created'],
+		render() {
+			return h('div', { 'data-test': 'dialog', 'data-visible': String(this.visible) });
+		},
+	},
+}));
 import axios from 'axios';
 import MessagesIndex from '@/Pages/Messages/Index.vue';
 
@@ -25,13 +54,14 @@ const rows = [
 	{ id: 2, type: 'dm', title: 'Taylor Campo', topic_type: null, last_message_preview: 'yo', last_message_at: '2026-10-05T09:00:00+00:00', unread_count: 0, can_moderate: false, band_id: null },
 ];
 
-const stubs = {
-	// Container is globally registered at runtime via app.js; stub it here since
-	// this test mounts the page in isolation (brief Step 3 note).
-	Container: { template: '<div><slot /></div>' },
-	ConversationThread: { props: ['loadUrl', 'currentUserId'], template: '<div data-test="thread" :data-url="loadUrl" @click="$emit(\'read\')" />' },
-	// Explicit `name` so `findComponent({ name: 'NewMessageDialog' })` can match the stub.
-	NewMessageDialog: { name: 'NewMessageDialog', props: ['visible'], template: '<div data-test="dialog" :data-visible="visible" />' },
+// Container is globally registered at runtime via app.js (referenced by bare
+// tag, no local import) and resolved via Vue's `resolveComponent`, which
+// consults the app's component registry in both dev and prod builds — so
+// `global.components` (not `global.stubs`, which is dev-mode-only; see the
+// module mocks above) reaches it correctly in either mode. Render function,
+// not a template string, so it doesn't depend on any particular compile path.
+const components = {
+	Container: { name: 'Container', render() { return h('div', this.$slots.default?.()); } },
 };
 
 // Wrappers from every mountPage() call in the current test, unmounted in
@@ -44,12 +74,15 @@ let wrappers = [];
 function mountPage(props = {}) {
 	const w = mount(MessagesIndex, {
 		props: { conversations: rows, initialConversationId: null, ...props },
-		// `route` is a real global at runtime (ziggy-js), and app.js additionally
-		// installs it as a mixin method so Options API templates (`_ctx.route`)
-		// can see it. `vi.stubGlobal` covers the global; this mixin reproduces
-		// the same `_ctx.route` resolution the real app provides, for the one
-		// call inside this page's own template.
-		global: { stubs, mixins: [{ methods: { route } }] },
+		global: {
+			components,
+			// `route` is a real global at runtime (ziggy-js), and app.js additionally
+			// installs it as a mixin method so Options API templates (`_ctx.route`)
+			// can see it. `vi.stubGlobal` covers the global; this mixin reproduces
+			// the same `_ctx.route` resolution the real app provides, for the one
+			// call inside this page's own template.
+			mixins: [{ methods: { route } }],
+		},
 	});
 	wrappers.push(w);
 	return w;
