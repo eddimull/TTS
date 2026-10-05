@@ -92,6 +92,10 @@ let keyCounter = 0;
 
 const canSend = computed(() => !props.disabled && (body.value.trim() !== '' || files.value.length > 0));
 
+function revokePreview(url) {
+  if (url && typeof URL !== 'undefined' && typeof URL.revokeObjectURL === 'function') URL.revokeObjectURL(url);
+}
+
 function previewUrl(file) {
   return typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function' ? URL.createObjectURL(file) : '';
 }
@@ -121,7 +125,7 @@ function onPaste(e) {
 
 function removeFile(i) {
   const [removed] = files.value.splice(i, 1);
-  if (removed?.url && typeof URL.revokeObjectURL === 'function') URL.revokeObjectURL(removed.url);
+  revokePreview(removed?.url);
   capNotice.value = false;
 }
 
@@ -149,7 +153,7 @@ function onKeydown(e) {
 function submit() {
   if (!canSend.value) return;
   emit('send', { body: body.value.trim(), files: files.value.map((f) => f.file) });
-  files.value.forEach((f) => f.url && typeof URL.revokeObjectURL === 'function' && URL.revokeObjectURL(f.url));
+  files.value.forEach((f) => revokePreview(f.url));
   body.value = '';
   files.value = [];
   capNotice.value = false;
