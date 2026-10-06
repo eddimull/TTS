@@ -12,6 +12,7 @@
         >
       </span>
       <Button
+        v-if="showNew"
         icon="pi pi-pencil"
         rounded
         aria-label="New message"
@@ -45,6 +46,7 @@ import ConversationRow from './ConversationRow.vue';
 const props = defineProps({
   conversations: { type: Array, default: () => [] },
   selectedId: { type: Number, default: null },
+  showNew: { type: Boolean, default: true },
 });
 defineEmits(['select', 'new']);
 

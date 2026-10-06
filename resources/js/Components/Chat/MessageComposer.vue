@@ -31,7 +31,7 @@
       v-if="capNotice"
       class="text-xs text-amber-600 dark:text-amber-400 mb-1"
     >
-      Up to {{ maxImages }} images per comment.
+      Up to {{ maxImages }} images per {{ noun }}.
     </p>
 
     <div class="flex items-end gap-2">
@@ -56,7 +56,7 @@
         v-model="body"
         rows="1"
         :disabled="disabled"
-        placeholder="Add a comment…"
+        :placeholder="`Add a ${noun}…`"
         class="flex-1 resize-none max-h-40 rounded-2xl border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         @input="onInput"
         @keydown="onKeydown"
@@ -81,6 +81,8 @@ import { computed, nextTick, ref } from 'vue';
 const props = defineProps({
   disabled: { type: Boolean, default: false },
   maxImages: { type: Number, default: 4 },
+  /** 'comment' (topic threads) or 'message' (DMs / band chat) — copy only. */
+  noun: { type: String, default: 'comment' },
 });
 const emit = defineEmits(['send', 'typing']);
 
