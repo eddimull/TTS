@@ -10,14 +10,14 @@
         v-if="loading && !messages.length"
         class="text-sm text-gray-500 dark:text-gray-400 text-center py-6"
       >
-        Loading comments…
+        Loading {{ nouns.many }}…
       </div>
 
       <div
         v-else-if="error"
         class="text-sm text-center py-6 text-gray-600 dark:text-gray-300"
       >
-        Comments unavailable.
+        {{ nouns.Many }} unavailable.
         <button
           type="button"
           class="ml-1 text-blue-600 dark:text-blue-400 underline"
@@ -38,7 +38,7 @@
             :disabled="loadingOlder"
             @click="loadOlderKeepingOffset"
           >
-            {{ loadingOlder ? 'Loading…' : 'Load earlier comments' }}
+            {{ loadingOlder ? 'Loading…' : `Load earlier ${nouns.many}` }}
           </button>
         </div>
 
@@ -46,7 +46,7 @@
           v-if="!messages.length"
           class="text-sm text-gray-500 dark:text-gray-400 text-center py-6"
         >
-          No comments yet. Start the conversation.
+          No {{ nouns.many }} yet. Start the conversation.
         </div>
 
         <template
@@ -99,7 +99,7 @@
       v-if="editing"
       class="px-3 py-1 text-xs bg-amber-50 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 flex items-center justify-between"
     >
-      <span>Editing comment</span>
+      <span>Editing {{ nouns.one }}</span>
       <button
         type="button"
         class="underline"
@@ -131,6 +131,7 @@
     <MessageComposer
       v-else
       :disabled="!conversation || sending"
+      :noun="noun"
       @send="onSend"
       @typing="notifyTyping"
     />
@@ -157,8 +158,16 @@ import { needsDateSeparator, dateSeparatorLabel } from '@/utils/messageTime';
 const props = defineProps({
   loadUrl: { type: String, required: true },
   currentUserId: { type: Number, required: true },
+  /** 'comment' (topic threads) or 'message' (DMs / band chat) — copy only. */
+  noun: { type: String, default: 'comment' },
 });
 const emit = defineEmits(['read']);
+
+const nouns = computed(() => {
+  const one = props.noun;
+  const many = `${one}s`;
+  return { one, many, Many: many.charAt(0).toUpperCase() + many.slice(1) };
+});
 
 const confirm = useConfirm();
 const toast = useToast();
@@ -178,7 +187,7 @@ watch(readSignal, () => emit('read'));
 
 watch(loadOlderError, (e) => {
   if (!e) return;
-  toast.add({ severity: 'error', summary: 'Could not load earlier comments', life: 4000 });
+  toast.add({ severity: 'error', summary: `Could not load earlier ${nouns.value.many}`, life: 4000 });
 });
 
 function isAtBottom() {
@@ -227,7 +236,7 @@ async function onSend(payload) {
     await send(payload);
     scrollToBottom();
   } catch (e) {
-    const detail = e?.response?.data?.message || 'Could not send your comment. Please try again.';
+    const detail = e?.response?.data?.message || `Could not send your ${nouns.value.one}. Please try again.`;
     toast.add({ severity: 'error', summary: 'Not sent', detail, life: 4000 });
   }
 }
@@ -260,8 +269,8 @@ async function saveEdit() {
 
 function confirmDelete(m) {
   confirm.require({
-    message: 'Delete this comment?',
-    header: 'Delete comment',
+    message: `Delete this ${nouns.value.one}?`,
+    header: `Delete ${nouns.value.one}`,
     icon: 'pi pi-exclamation-triangle',
     acceptClass: 'p-button-danger',
     accept: async () => {
