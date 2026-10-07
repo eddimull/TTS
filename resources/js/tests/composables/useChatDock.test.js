@@ -136,6 +136,18 @@ describe('useChatDock', () => {
 		expect(dock.state.conversations.map((c) => c.unread_count)).toEqual([0, 5]);
 	});
 
+	it('ignores a list response that lands after reset()', async () => {
+		let resolve;
+		axios.get.mockReturnValueOnce(new Promise((r) => { resolve = r; }));
+		const dock = createChatDock({ storage: memoryStorage() });
+		const pending = dock.refreshList();
+		dock.reset();
+		resolve(listResponse(1, 2));
+		await pending;
+		expect(dock.state.conversations).toEqual([]);
+		expect(dock.state.loaded).toBe(false);
+	});
+
 	it('reset() clears state without touching storage', async () => {
 		const storage = memoryStorage();
 		const dock = createChatDock({ storage });

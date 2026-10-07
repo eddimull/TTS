@@ -68,6 +68,16 @@ describe('ChatDockWindow', () => {
 		expect(onToggle).toHaveBeenCalledTimes(2);
 	});
 
+	it('header is keyboard-operable', async () => {
+		const { wrapper, onToggle } = mountWindow(dm);
+		const header = wrapper.find('[data-test="window-header"]');
+		expect(header.attributes('role')).toBe('button');
+		expect(header.attributes('tabindex')).toBe('0');
+		await header.trigger('keydown', { key: 'Enter' });
+		await header.trigger('keydown', { key: ' ' });
+		expect(onToggle).toHaveBeenCalledTimes(2);
+	});
+
 	it('relays read from the thread', async () => {
 		const { wrapper, onRead } = mountWindow(dm);
 		await wrapper.find('[data-test="thread"]').trigger('click');

@@ -77,6 +77,12 @@ watch(userId, (id) => {
   else if (state.userId !== id) dock.hydrate(id);
 }, { immediate: true });
 
+// Leaving for a page where the dock is hidden (Messages) shouldn't leave
+// the popover open — or keep posting delivered acks — for when it returns.
+watch(visible, (v) => {
+  if (!v) dock.closeList();
+});
+
 watch(() => store.state.user.chatSignal, () => {
   if (userId.value !== null) dock.refreshList();
 });

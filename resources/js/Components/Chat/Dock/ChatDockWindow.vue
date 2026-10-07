@@ -6,8 +6,13 @@
   >
     <header
       data-test="window-header"
-      class="flex items-center gap-2 px-3 py-2 shrink-0 cursor-pointer select-none bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-600"
+      role="button"
+      tabindex="0"
+      :aria-expanded="minimized ? 'false' : 'true'"
+      class="flex items-center gap-2 px-3 py-2 shrink-0 cursor-pointer select-none bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
       @click="$emit('toggle')"
+      @keydown.enter.prevent="$emit('toggle')"
+      @keydown.space.prevent="$emit('toggle')"
     >
       <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 shrink-0">
         <i :class="['pi', icon, 'text-sm']" />
@@ -25,7 +30,7 @@
         type="button"
         data-test="window-minimize"
         class="p-1 rounded text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-slate-700"
-        :aria-label="minimized ? 'Restore' : 'Minimise'"
+        :aria-label="minimized ? 'Restore' : 'Minimize'"
         @click.stop="$emit('toggle')"
       >
         <i :class="['pi text-sm', minimized ? 'pi-window-maximize' : 'pi-minus']" />
@@ -41,7 +46,7 @@
       </button>
     </header>
 
-    <!-- Minimised = not reading: unmount the thread so no read acks fire. -->
+    <!-- Minimized = not reading: unmount the thread so no read acks fire. -->
     <ConversationThread
       v-if="!minimized"
       :load-url="route('chat.conversations.messages.index', conversation.id)"

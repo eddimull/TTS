@@ -153,6 +153,20 @@ describe('ChatDock', () => {
 		expect(q('[data-test="list"]')).toBeNull();
 	});
 
+	it('closes the popover when the dock hides (Messages page)', async () => {
+		mountDock();
+		await flushPromises();
+		dock.toggleList();
+		await nextTick();
+		expect(q('[data-test="list"]')).not.toBeNull();
+		page.component = 'Messages/Index';
+		await nextTick();
+		expect(dock.state.listOpen).toBe(false);
+		page.component = 'Dashboard';
+		await nextTick();
+		expect(q('[data-test="list"]')).toBeNull();
+	});
+
 	it('resets when the user signs out', async () => {
 		mountDock();
 		await flushPromises();

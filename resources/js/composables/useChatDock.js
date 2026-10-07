@@ -27,6 +27,10 @@ export function createChatDock({ storage = typeof window !== 'undefined' ? windo
 		loaded: false, // first successful fetch done
 	});
 
+	// Bumped by reset()/hydrate() so a list response that lands after the
+	// user changed (logout, account switch) can't repopulate state.
+	let fetchSeq = 0;
+
 	function persist() {
 		if (!storage || state.userId === null) return;
 		try {
@@ -51,11 +55,14 @@ export function createChatDock({ storage = typeof window !== 'undefined' ? windo
 	}
 
 	async function refreshList() {
+		const seq = fetchSeq;
 		try {
 			const { data } = await axios.get(route('chat.conversations.index'));
+			if (seq !== fetchSeq) return; // stale: user changed while in flight
 			state.conversations = data.conversations ?? [];
 			state.loaded = true;
 		} catch (e) {
+			if (seq !== fetchSeq) return;
 			// Keep the current rows; the next chatSignal retries.
 		}
 		if (state.loaded) {
@@ -73,12 +80,14 @@ export function createChatDock({ storage = typeof window !== 'undefined' ? windo
 	}
 
 	async function hydrate(userId) {
+		fetchSeq += 1;
 		state.userId = userId;
 		state.windows = restore(userId);
 		await refreshList();
 	}
 
 	function reset() {
+		fetchSeq += 1;
 		state.userId = null;
 		state.listOpen = false;
 		state.windows = [];
