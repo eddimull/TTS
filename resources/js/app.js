@@ -10,6 +10,7 @@ import { ZiggyVue } from 'ziggy-js';
 import { DateTime } from 'luxon';
 import * as Sentry from "@sentry/vue";
 import CardModal from '@/Components/CardModal'
+import ChatDock from '@/Components/Chat/Dock/ChatDock.vue';
 import Card from '@/Components/Card'
 import Accordion from 'primevue/accordion';
 import AccordionTab from 'primevue/accordiontab';
@@ -74,7 +75,9 @@ createInertiaApp({
     progress: { color: '#4B5563' },
     resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
     setup({ el, App, props, plugin }) {
-        const app = createApp({ render: () => h(App, props) });
+        // The chat dock renders beside the Inertia root so it survives
+        // navigation between pages that remount the authenticated layout.
+        const app = createApp({ render: () => [h(App, props), h(ChatDock)] });
 
         // Initialize Sentry for frontend error tracking
         if (import.meta.env.VITE_SENTRY_DSN) {

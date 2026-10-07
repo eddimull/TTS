@@ -62,6 +62,11 @@ describe('MessageComposer', () => {
 		expect(onSend.mock.calls[0][0].files).toHaveLength(2);
 	});
 
+	it('wording follows the noun prop', () => {
+		expect(mountComposer().wrapper.find('textarea').attributes('placeholder')).toBe('Add a comment…');
+		expect(mountComposer({ noun: 'message' }).wrapper.find('textarea').attributes('placeholder')).toBe('Add a message…');
+	});
+
 	it('does nothing while disabled', async () => {
 		const { wrapper, onSend } = mountComposer({ disabled: true });
 		const ta = await type(wrapper, 'hello');

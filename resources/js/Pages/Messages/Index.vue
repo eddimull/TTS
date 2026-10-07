@@ -47,6 +47,7 @@
               :key="selected.id"
               :load-url="route('chat.conversations.messages.index', selected.id)"
               :current-user-id="currentUserId"
+              noun="message"
               class="flex-1 min-h-0"
               @read="onRead(selected.id)"
             />
@@ -90,6 +91,7 @@ import BreezeAuthenticatedLayout from '@/Layouts/Authenticated.vue';
 import ConversationThread from '@/Components/Chat/ConversationThread.vue';
 import ConversationList from './Components/ConversationList.vue';
 import NewMessageDialog from './Components/NewMessageDialog.vue';
+import { conversationSubtitle } from '@/utils/conversationLabels';
 
 defineOptions({ layout: BreezeAuthenticatedLayout });
 
@@ -111,13 +113,7 @@ const dialogOpen = ref(false);
 
 const selected = computed(() => rows.value.find((c) => c.id === selectedId.value) ?? null);
 
-const subtitle = computed(() => {
-  const c = selected.value;
-  if (!c) return '';
-  if (c.type === 'dm') return 'Direct message';
-  if (c.type === 'band') return 'Band channel';
-  return { booking: 'Booking thread', event: 'Event thread', rehearsal: 'Rehearsal thread' }[c.topic_type] ?? 'Thread';
-});
+const subtitle = computed(() => conversationSubtitle(selected.value));
 
 function select(id) {
   selectedId.value = id;
