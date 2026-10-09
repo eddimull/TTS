@@ -162,7 +162,8 @@ trait Signable
      * A 404 means the document was already deleted (e.g. by hand in the
      * PandaDoc dashboard) — treated as success so amendment is idempotent.
      * If the void is refused but the document can no longer be signed anyway
-     * (already voided/expired or declined) that is also treated as success.
+     * (document.voided, which is how PandaDoc reports expired documents, or
+     * document.declined) that is also treated as success.
      * A document that was already signed throws InvalidArgumentException;
      * any other failure throws PandaDocVoidException. On throw the caller
      * must not mutate local state.

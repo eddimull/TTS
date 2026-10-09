@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\PandaDocVoidException;
 use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\Contracts;
@@ -251,6 +252,13 @@ class ContractsController extends Controller
         catch (\InvalidArgumentException $e)
         {
             return redirect()->back()->withErrors(['Cannot amend' => $e->getMessage()]);
+        }
+        catch (PandaDocVoidException $e)
+        {
+            report($e);
+            return redirect()->back()->withErrors([
+                'Amend failed' => 'PandaDoc wouldn\'t recall this contract. Please try again, or void it from the PandaDoc dashboard.',
+            ]);
         }
         catch (\Exception $e)
         {
