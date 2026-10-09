@@ -254,6 +254,7 @@ class ContractsController extends Controller
         }
         catch (\Exception $e)
         {
+            report($e);
             return redirect()->back()->withErrors(['Amend failed' => $e->getMessage()]);
         }
 

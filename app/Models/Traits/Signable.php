@@ -2,6 +2,7 @@
 
 namespace App\Models\Traits;
 
+use App\Exceptions\PandaDocVoidException;
 use App\Models\Contacts;
 use App\Services\PandaDocService;
 use Illuminate\Support\Facades\Log;
@@ -160,7 +161,11 @@ trait Signable
      *
      * A 404 means the document was already deleted (e.g. by hand in the
      * PandaDoc dashboard) — treated as success so amendment is idempotent.
-     * Any other failure throws and the caller must not mutate local state.
+     * If the void is refused but the document can no longer be signed anyway
+     * (already voided/expired or declined) that is also treated as success.
+     * A document that was already signed throws InvalidArgumentException;
+     * any other failure throws PandaDocVoidException. On throw the caller
+     * must not mutate local state.
      */
     public function voidPandaDocDocument(): void
     {
@@ -174,7 +179,7 @@ trait Signable
         $response = Http::withHeaders([
             'Authorization' => 'API-Key ' . $apiKey,
             'Content-Type' => 'application/json',
-        ])->patch("https://api.pandadoc.com/public/v1/documents/{$this->envelope_id}/status/", [
+        ])->patch("https://api.pandadoc.com/public/v1/documents/{$this->envelope_id}/status", [
             'status' => 11, // document.voided
         ]);
 
@@ -183,8 +188,27 @@ trait Signable
             return;
         }
 
-        Log::error('Failed to void PandaDoc document: ' . $response->body());
-        throw new \Exception('Failed to void the PandaDoc document: ' . $response->body());
+        $currentStatus = null;
+        try
+        {
+            $currentStatus = $this->documentStatus()['status'] ?? null;
+        }
+        catch (\Exception)
+        {
+            // Fall through and report the original void failure.
+        }
+
+        if (in_array($currentStatus, ['document.voided', 'document.declined'], true))
+        {
+            return;
+        }
+
+        if ($currentStatus === 'document.completed')
+        {
+            throw new \InvalidArgumentException('This contract has already been signed and can no longer be amended.');
+        }
+
+        throw new PandaDocVoidException($this->envelope_id, $response->status(), $response->body());
     }
 
     public function auditTrail()

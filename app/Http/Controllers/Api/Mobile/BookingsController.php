@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Mobile;
 
+use App\Exceptions\PandaDocVoidException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Mobile\BookingIndexRequest;
 use App\Http\Requests\Mobile\SendBookingContractRequest;
@@ -583,8 +584,14 @@ class BookingsController extends Controller
             $amendmentService->amend($booking);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
+        } catch (PandaDocVoidException $e) {
+            report($e);
+            return response()->json([
+                'message' => 'PandaDoc wouldn\'t recall this contract. Please try again, or void it from the PandaDoc dashboard.',
+            ], 502);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Failed to amend contract: ' . $e->getMessage()], 500);
+            report($e);
+            return response()->json(['message' => 'Failed to amend contract. Please try again.'], 500);
         }
 
         return response()->json([
