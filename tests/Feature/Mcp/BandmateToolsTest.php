@@ -4,6 +4,7 @@ namespace Tests\Feature\Mcp;
 
 use App\Mcp\Servers\BandmateServer;
 use App\Mcp\Support\McpScopes;
+use App\Mcp\Tools\AddBookingContact;
 use App\Mcp\Tools\CheckAvailability;
 use App\Mcp\Tools\CreateBooking;
 use App\Mcp\Tools\DeleteBooking;
@@ -18,8 +19,10 @@ use App\Models\BandApiToken;
 use App\Models\Bands;
 use App\Models\BandSubs;
 use App\Models\Bookings;
+use App\Models\Contacts;
 use App\Models\Events;
 use App\Models\EventTypes;
+use App\Models\Roster;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -155,7 +158,7 @@ class BandmateToolsTest extends TestCase
         $this->assertSame('owner', $alpha['role']);
         $this->assertSame([
             'check_availability', 'list_bookings', 'get_booking', 'create_booking',
-            'update_booking', 'delete_booking', 'list_events', 'estimate_price',
+            'update_booking', 'delete_booking', 'add_booking_contact', 'list_events', 'estimate_price',
         ], $alpha['tools']);
 
         $this->assertSame('member', $beta['role']);
@@ -377,6 +380,103 @@ class BandmateToolsTest extends TestCase
         $booking = Bookings::findOrFail($data['booking']['id']);
         $this->assertSame($this->band->id, $booking->band_id);
         $this->assertSame($member->id, $booking->author_id);
+    }
+
+    public function test_create_booking_generates_contract_timeline_roster_and_attaches_the_contact(): void
+    {
+        $roster = Roster::factory()->default()->create(['band_id' => $this->band->id]);
+        $existing = Contacts::factory()->create(['band_id' => $this->band->id, 'email' => 'jane@example.com', 'name' => 'Jane Doe']);
+        $this->asMcp($this->owner, [McpScopes::BOOKINGS_WRITE]);
+
+        $data = $this->toolJson(BandmateServer::tool(CreateBooking::class, [
+            'band_id' => $this->band->id,
+            'name' => 'Lead from email',
+            'event_type_id' => $this->wedding->id,
+            'date' => '2027-04-10',
+            'start_time' => '18:00',
+            'duration' => 4,
+            'price' => 5000,
+            'contract_option' => 'default',
+            'venue_name' => null,
+            'contact' => ['name' => 'Jane D.', 'email' => 'jane@example.com', 'phone' => null, 'is_primary' => null],
+            'contacts' => [['name' => 'Pat Planner', 'email' => 'pat@example.com', 'role' => 'Planner']],
+        ]));
+
+        $this->assertSame('draft', $data['booking']['status']);
+        $this->assertSame(['jane@example.com', 'pat@example.com'], collect($data['booking']['contacts'])->pluck('email')->sort()->values()->all());
+
+        $booking = Bookings::findOrFail($data['booking']['id']);
+        $this->assertSame($this->owner->id, $booking->contract->author_id);
+        $this->assertNotEmpty($booking->contract->custom_terms);
+
+        $event = $booking->events()->sole();
+        $this->assertSame($roster->id, $event->roster_id);
+        $this->assertSame('5000.00', $event->value);
+        $this->assertSame(['Load In', 'Soundcheck', 'Quiet'], collect($event->additional_data->times)->pluck('title')->all());
+
+        $contacts = $booking->contacts()->get()->keyBy('email');
+        $this->assertSame($existing->id, $contacts['jane@example.com']->id);
+        $this->assertSame('Jane Doe', $contacts['jane@example.com']->name);
+        $this->assertTrue((bool) $contacts['jane@example.com']->pivot->is_primary);
+        $this->assertFalse((bool) $contacts['pat@example.com']->pivot->is_primary);
+    }
+
+    public function test_add_booking_contact(): void
+    {
+        $member = $this->memberWith(['read:bookings', 'write:bookings']);
+        $this->asMcp($member, [McpScopes::BOOKINGS_WRITE]);
+
+        $data = $this->toolJson(BandmateServer::tool(AddBookingContact::class, [
+            'band_id' => $this->band->id,
+            'booking_id' => $this->booking->id,
+            'name' => 'Sam Smith',
+            'email' => 'sam@example.com',
+            'phone' => '337-555-0199',
+            'role' => 'Groom',
+        ]));
+
+        $this->assertSame('Contact added successfully', $data['message']);
+        $this->assertSame('sam@example.com', $data['booking']['contacts'][0]['email']);
+        $this->assertSame('Groom', $data['booking']['contacts'][0]['pivot']['role']);
+        $this->assertTrue((bool) $data['booking']['contacts'][0]['pivot']['is_primary']);
+        $this->assertSame($this->band->id, Contacts::where('email', 'sam@example.com')->sole()->band_id);
+    }
+
+    public function test_add_booking_contact_is_band_scoped_and_permission_checked(): void
+    {
+        $this->asMcp($this->owner, [McpScopes::BOOKINGS_WRITE]);
+        BandmateServer::tool(AddBookingContact::class, [
+            'band_id' => $this->band->id,
+            'booking_id' => $this->otherBooking->id,
+            'name' => 'X',
+            'email' => 'x@example.com',
+        ])->assertHasErrors(['not found in Alpha Band'])->assertDontSee('Secret Gig');
+
+        BandmateServer::tool(AddBookingContact::class, [
+            'band_id' => $this->band->id,
+            'booking_id' => $this->booking->id,
+            'name' => 'No Email',
+        ])->assertHasErrors(['email']);
+
+        $reader = $this->memberWith(['read:bookings']);
+        $this->asMcp($reader);
+        BandmateServer::tool(AddBookingContact::class, [
+            'band_id' => $this->band->id,
+            'booking_id' => $this->booking->id,
+            'name' => 'X',
+            'email' => 'x@example.com',
+        ])->assertHasErrors(["You don't have permission to write bookings in Alpha Band"]);
+
+        $this->asMcp($this->owner, [McpScopes::BOOKINGS_READ]);
+        BandmateServer::tool(AddBookingContact::class, [
+            'band_id' => $this->band->id,
+            'booking_id' => $this->booking->id,
+            'name' => 'X',
+            'email' => 'x@example.com',
+        ])->assertHasErrors(["'bookings:write' scope"]);
+
+        $this->assertFalse(Contacts::where('email', 'x@example.com')->exists());
+        $this->assertSame(0, $this->otherBooking->contacts()->count());
     }
 
     public function test_create_booking_validates_like_the_api(): void

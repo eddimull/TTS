@@ -14,7 +14,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsIdempotent;
 
 #[Name('update_booking')]
 #[Title('Update a booking')]
-#[Description('Updates a booking. Send only the fields to change. date, start_time, end_time, venue_name and venue_address apply to the booking\'s first (earliest) event. Same rules as the developer API\'s PATCH /bookings/{id}. Requires bookings:write.')]
+#[Description('Updates a booking. Send only the fields to change. date, start_time, end_time, venue_name and venue_address apply to the booking\'s first (earliest) event. A price change re-splits the event values. Changing event_type_id changes only the booking\'s type; as in the TTS app, the existing event\'s timeline is not regenerated. Same rules as the developer API\'s PATCH /bookings/{id}. Requires bookings:write.')]
 #[IsDestructive(false)]
 #[IsIdempotent]
 class UpdateBooking extends BandTool
