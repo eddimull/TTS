@@ -22,9 +22,9 @@ trait DescribesContacts
         return [
             'name' => $requireNameAndEmail ? $name->required() : $name,
             'email' => $requireNameAndEmail ? $email->required() : $email,
-            'phone' => $schema->string()->max(255)->description('Phone number.'),
-            'role' => $schema->string()->max(255)->description('Role on this booking, e.g. "Bride", "Planner".'),
-            'is_primary' => $schema->boolean()->description('Primary contact for the booking. Defaults to true when the booking has no other primary contact.'),
+            'phone' => $schema->string()->max(255)->nullable()->description('Phone number (optional).'),
+            'role' => $schema->string()->max(255)->nullable()->description('Role on this booking, e.g. "Bride", "Planner".'),
+            'is_primary' => $schema->boolean()->nullable()->description('Primary contact for the booking. Defaults to true when the booking has no other primary contact.'),
         ];
     }
 
