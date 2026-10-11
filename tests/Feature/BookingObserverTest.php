@@ -14,6 +14,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class BookingObserverTest extends TestCase
 {
+    use RefreshDatabase;
+
     // use RefreshDatabase;
 
     protected $band;

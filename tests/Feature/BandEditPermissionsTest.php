@@ -11,6 +11,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class BandEditPermissionsTest extends TestCase
 {
+    use RefreshDatabase;
+
 
     public function test_unauthenticated_denial(): void
     {
