@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
 
 class HelpEndpointsTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_help_requires_auth(): void
     {
         $this->get('/help')->assertRedirect();

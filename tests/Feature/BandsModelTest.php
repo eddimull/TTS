@@ -11,6 +11,8 @@ use Tests\TestCase;
 
 class BandsModelTest extends TestCase
 {
+    use RefreshDatabase;
+
     /**
      * A basic feature test example.
      *
