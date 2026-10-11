@@ -51,6 +51,15 @@ return [
             'provider' => 'users',
             'hash' => false,
         ],
+
+        // OAuth 2.1 bearer tokens (Laravel Passport) for the remote MCP server
+        // at /mcp. Kept separate from `api` (legacy token driver) and from
+        // Sanctum (mobile app) so neither changes behaviour. Uses the
+        // `mcp_users` provider — see that entry for why it isn't `users`.
+        'mcp' => [
+            'driver' => 'passport',
+            'provider' => 'mcp_users',
+        ],
     ],
 
     /*
@@ -74,6 +83,16 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => App\Models\User::class,
+        ],
+
+        // The same users as `users`, through a driver registered in
+        // McpOAuthServiceProvider. It deliberately has no `model` key:
+        // spatie/laravel-permission maps the *current* guard to a permission
+        // guard_name by matching provider models, and every band permission is
+        // stored for `web`. With a model here, requests authenticated by the
+        // `mcp` guard would look permissions up under guard `mcp` and fail.
+        'mcp_users' => [
+            'driver' => 'mcp-users',
         ],
 
         'contacts' => [

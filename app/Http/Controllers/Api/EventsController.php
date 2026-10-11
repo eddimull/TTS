@@ -3,9 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Events;
-use App\Models\Bookings;
-use App\Models\BandEvents;
+use App\Services\BandApi\BandEventsQuery;
+use App\Services\BandApi\DateFilters;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
@@ -41,7 +40,7 @@ class EventsController extends Controller
             new OA\Response(response: 403, description: 'Forbidden', content: new OA\JsonContent(ref: '#/components/schemas/ErrorForbidden')),
         ],
     )]
-    public function index(Request $request)
+    public function index(Request $request, BandEventsQuery $eventsQuery)
     {
         $band = $request->input('authenticated_band');
 
@@ -52,89 +51,9 @@ class EventsController extends Controller
             ], 400);
         }
 
-        // Validate date parameters
-        $validated = $request->validate([
-            'date' => 'nullable|date_format:Y-m-d',
-            'from' => 'nullable|date_format:Y-m-d',
-            'to' => 'nullable|date_format:Y-m-d',
-            'before' => 'nullable|date_format:Y-m-d',
-            'after' => 'nullable|date_format:Y-m-d',
-        ]);
+        $filters = $request->validate(DateFilters::rules());
 
-        // Query events for this band through both bookings and band_events (polymorphic relationship)
-        $query = Events::where(function ($query) use ($band) {
-            $query->where(function ($q) use ($band) {
-                // Events from bookings
-                $q->where('eventable_type', Bookings::class)
-                    ->whereHas('eventable', function ($bookingQuery) use ($band) {
-                        $bookingQuery->where('band_id', $band->id);
-                    });
-            })->orWhere(function ($q) use ($band) {
-                // Events from band_events
-                $q->where('eventable_type', BandEvents::class)
-                    ->whereHas('eventable', function ($bandEventQuery) use ($band) {
-                        $bandEventQuery->where('band_id', $band->id);
-                    });
-            });
-        })->with(['eventable', 'type']);
-
-        // Apply date filters
-        if ($request->has('date')) {
-            // Exact date match
-            $query->whereDate('date', $validated['date']);
-        }
-
-        if ($request->has('from')) {
-            // Start of date range
-            $query->whereDate('date', '>=', $validated['from']);
-        }
-
-        if ($request->has('to')) {
-            // End of date range
-            $query->whereDate('date', '<=', $validated['to']);
-        }
-
-        if ($request->has('before')) {
-            // Before a specific date
-            $query->whereDate('date', '<', $validated['before']);
-        }
-
-        if ($request->has('after')) {
-            // After a specific date
-            $query->whereDate('date', '>', $validated['after']);
-        }
-
-        $events = $query->orderBy('date', 'asc')
-            ->orderBy('start_time', 'asc')
-            ->get()
-            ->map(function ($event) {
-                $date = is_string($event->date) ? $event->date : $event->date->format('Y-m-d');
-                $time = null;
-
-                if ($event->start_time) {
-                    $time = $event->start_time->format('H:i');
-                }
-
-                return [
-                    'id' => $event->id,
-                    'title' => $event->title,
-                    'date' => $date,
-                    'time' => $time,
-                    'start_datetime' => $event->startDateTime,
-                    'end_datetime' => $event->endDateTime,
-                    'event_type' => $event->type?->name,
-                    'event_type_id' => $event->event_type_id,
-                    'eventable_type' => class_basename($event->eventable_type),
-                    'eventable_id' => $event->eventable_id,
-                    'venue_name' => $event->venue_name,
-                    'venue_address' => $event->venue_address,
-                    'status' => $event->eventable?->status ?? null,
-                    'price' => $event->eventable?->price ?? null,
-                    'notes' => $event->notes,
-                    'is_public' => isset($event->additional_data->public)
-                        && in_array($event->additional_data->public, [1, true, '1', 'true'], true),
-                ];
-            });
+        $events = $eventsQuery->forBand($band, $filters);
 
         $response = [
             'success' => true,
@@ -147,25 +66,8 @@ class EventsController extends Controller
         ];
 
         // Include filter information in response if any filters were applied
-        $appliedFilters = [];
-        if ($request->has('date')) {
-            $appliedFilters['date'] = $validated['date'];
-        }
-        if ($request->has('from')) {
-            $appliedFilters['from'] = $validated['from'];
-        }
-        if ($request->has('to')) {
-            $appliedFilters['to'] = $validated['to'];
-        }
-        if ($request->has('before')) {
-            $appliedFilters['before'] = $validated['before'];
-        }
-        if ($request->has('after')) {
-            $appliedFilters['after'] = $validated['after'];
-        }
-
-        if (!empty($appliedFilters)) {
-            $response['filters'] = $appliedFilters;
+        if ($applied = DateFilters::applied($filters)) {
+            $response['filters'] = $applied;
         }
 
         return response()->json($response);

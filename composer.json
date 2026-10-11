@@ -21,6 +21,7 @@
         "laravel/ai": "^0.5.1",
         "laravel/framework": "^12.0",
         "laravel/horizon": "^5.43",
+        "laravel/passport": "^13.0",
         "laravel/sanctum": "^4.0",
         "laravel/scout": "^10.15",
         "laravel/socialite": "^5.28",
