@@ -73,6 +73,10 @@ class BandAccess
      */
     public function resolve(User $user, mixed $bandId, string $tool): Bands|string
     {
+        if (! isset(self::TOOLS[$tool])) {
+            return $this->unknownTool($tool);
+        }
+
         [$scope] = self::TOOLS[$tool];
 
         if (! McpScopes::granted($user, $scope)) {
@@ -93,6 +97,10 @@ class BandAccess
      */
     public function denial(User $user, Bands $band, string $tool): ?string
     {
+        if (! isset(self::TOOLS[$tool])) {
+            return $this->unknownTool($tool);
+        }
+
         [$scope, $permission, $ownerOnly] = self::TOOLS[$tool];
 
         if (! McpScopes::granted($user, $scope)) {
@@ -121,6 +129,17 @@ class BandAccess
         }
 
         return null;
+    }
+
+    /**
+     * Fail closed when a band tool has no entry in TOOLS (e.g. a new tool or a
+     * rename that didn't update the map) instead of erroring on the lookup.
+     */
+    private function unknownTool(string $tool): string
+    {
+        report(new \LogicException("MCP tool '{$tool}' has no BandAccess::TOOLS entry."));
+
+        return "{$tool} is not available right now.";
     }
 
     private function missingScope(string $scope): string
