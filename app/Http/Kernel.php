@@ -99,6 +99,7 @@ class Kernel extends HttpKernel
         'booking.access' => \App\Http\Middleware\BookingAccessMiddleware::class,
         'dev' => \App\Http\Middleware\dev::class,
         'band.api' => \App\Http\Middleware\AuthenticateBandApiToken::class,
+        'auth.mcp' => \App\Http\Middleware\AuthenticateMcp::class,
         'api.permission' => \App\Http\Middleware\CheckApiPermission::class,
         'mobile.band' => \App\Http\Middleware\EnsureUserInBand::class,
     ];

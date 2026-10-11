@@ -3,14 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Bookings;
+use App\Services\BandApi\BandBookingsService;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
-use Carbon\Carbon;
 use OpenApi\Attributes as OA;
 
 class BookingsController extends Controller
 {
+    public function __construct(
+        private BandBookingsService $bookings
+    ) {}
+
     #[OA\Get(
         path: '/bookings',
         operationId: 'listBookings',
@@ -43,12 +45,7 @@ class BookingsController extends Controller
             ], 400);
         }
 
-        $bookings = $band->bookings()
-            ->with(['events', 'contacts', 'payments'])
-            ->get()
-            ->map(function ($booking) {
-                return $this->formatBooking($booking);
-            });
+        $bookings = $this->bookings->list($band);
 
         return response()->json([
             'success' => true,
@@ -102,61 +99,15 @@ class BookingsController extends Controller
             ], 400);
         }
 
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'event_type_id' => ['required', Rule::exists('event_types', 'id')],
-            'date' => 'required|date|after_or_equal:today',
-            'start_time' => 'required|date_format:H:i',
-            'duration' => 'required|integer|min:1|max:24',
-            'price' => 'required|numeric|min:0',
-            'venue_name' => 'nullable|string|max:255',
-            'venue_address' => 'nullable|string',
-            'contract_option' => 'required|in:default,none,external',
-            'status' => 'nullable|in:draft,pending,confirmed,cancelled',
-            'notes' => 'nullable|string',
-        ]);
+        $validated = $request->validate(BandBookingsService::createRules());
 
-        // Capture event-level fields before stripping them from the booking payload
-        $eventDate    = $validated['date'];
-        $eventStart   = $validated['start_time'];
-        $eventDuration = $validated['duration'];
-        $venueName    = $validated['venue_name'] ?? null;
-        $venueAddress = $validated['venue_address'] ?? null;
-
-        // Calculate end_time from duration
-        $startDateTime = Carbon::parse($eventDate . ' ' . $eventStart);
-        $endDateTime   = $startDateTime->copy()->addHours($eventDuration);
-        $eventEnd      = $endDateTime->format('H:i');
-
-        // Strip event-level fields from the booking payload
-        $bookingData = collect($validated)->except([
-            'date', 'start_time', 'end_time', 'venue_name', 'venue_address', 'duration',
-        ])->toArray();
-
-        // Add band_id and set defaults
-        $bookingData['band_id'] = $band->id;
-        $bookingData['status']  = $validated['status'] ?? 'draft';
-        // Use the first band owner as the author for API-created bookings
-        $bookingData['author_id'] = $band->owners->first()?->user_id ?? $band->members->first()?->user_id;
-
-        $booking = Bookings::create($bookingData);
-
-        // Create the initial event with the date/time/venue data
-        $booking->events()->create([
-            'event_type_id' => $booking->event_type_id,
-            'key'           => \Illuminate\Support\Str::uuid(),
-            'title'         => $booking->name,
-            'date'          => $eventDate,
-            'start_time'    => $eventStart,
-            'end_time'      => $eventEnd,
-            'venue_name'    => $venueName,
-            'venue_address' => $venueAddress,
-        ]);
+        // No user on token requests: the band's first owner is the author.
+        $booking = $this->bookings->create($band, $validated);
 
         return response()->json([
             'success' => true,
             'message' => 'Booking created successfully',
-            'booking' => $this->formatBooking($booking->load(['events', 'contacts', 'payments'])),
+            'booking' => $this->bookings->format($booking),
         ], 201);
     }
 
@@ -188,21 +139,15 @@ class BookingsController extends Controller
     {
         $band = $request->input('authenticated_band');
 
-        $booking = Bookings::where('id', $id)
-            ->where('band_id', $band->id)
-            ->with(['events', 'contacts', 'payments'])
-            ->first();
+        $booking = $this->bookings->find($band, $id, withRelations: true);
 
         if (!$booking) {
-            return response()->json([
-                'error' => 'Not Found',
-                'message' => 'Booking not found or does not belong to your band'
-            ], 404);
+            return $this->notFound();
         }
 
         return response()->json([
             'success' => true,
-            'booking' => $this->formatBooking($booking),
+            'booking' => $this->bookings->format($booking),
         ]);
     }
 
@@ -264,46 +209,20 @@ class BookingsController extends Controller
     {
         $band = $request->input('authenticated_band');
 
-        $booking = Bookings::where('id', $id)
-            ->where('band_id', $band->id)
-            ->first();
+        $booking = $this->bookings->find($band, $id);
 
         if (!$booking) {
-            return response()->json([
-                'error' => 'Not Found',
-                'message' => 'Booking not found or does not belong to your band'
-            ], 404);
+            return $this->notFound();
         }
 
-        $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255',
-            'event_type_id' => ['sometimes', 'required', Rule::exists('event_types', 'id')],
-            'date' => 'sometimes|required|date',
-            'start_time' => 'sometimes|required|date_format:H:i',
-            'end_time' => 'sometimes|required|date_format:H:i',
-            'price' => 'sometimes|required|numeric|min:0',
-            'venue_name' => 'nullable|string|max:255',
-            'venue_address' => 'nullable|string',
-            'contract_option' => 'sometimes|required|in:default,none,external',
-            'status' => 'nullable|in:draft,pending,confirmed,cancelled',
-            'notes' => 'nullable|string',
-        ]);
+        $validated = $request->validate(BandBookingsService::updateRules());
 
-        $movedFields   = ['date', 'start_time', 'end_time', 'venue_name', 'venue_address'];
-        $bookingFields = collect($validated)->except($movedFields)->toArray();
-        $eventFields   = collect($validated)->only($movedFields)->toArray();
-
-        $booking->update($bookingFields);
-
-        if (!empty($eventFields)) {
-            $primaryEvent = $booking->events()->orderBy('date')->orderBy('id')->first();
-            $primaryEvent?->update($eventFields);
-        }
+        $booking = $this->bookings->update($booking, $validated);
 
         return response()->json([
             'success' => true,
             'message' => 'Booking updated successfully',
-            'booking' => $this->formatBooking($booking->fresh(['events', 'contacts', 'payments'])),
+            'booking' => $this->bookings->format($booking),
         ]);
     }
 
@@ -335,18 +254,13 @@ class BookingsController extends Controller
     {
         $band = $request->input('authenticated_band');
 
-        $booking = Bookings::where('id', $id)
-            ->where('band_id', $band->id)
-            ->first();
+        $booking = $this->bookings->find($band, $id);
 
         if (!$booking) {
-            return response()->json([
-                'error' => 'Not Found',
-                'message' => 'Booking not found or does not belong to your band'
-            ], 404);
+            return $this->notFound();
         }
 
-        $booking->delete();
+        $this->bookings->delete($booking);
 
         return response()->json([
             'success' => true,
@@ -354,40 +268,11 @@ class BookingsController extends Controller
         ]);
     }
 
-    /**
-     * Format booking for API response
-     */
-    private function formatBooking($booking)
+    private function notFound()
     {
-        return [
-            'id' => $booking->id,
-            'name' => $booking->name,
-            'start_date' => $booking->start_date?->format('Y-m-d'),
-            'end_date' => $booking->end_date?->format('Y-m-d'),
-            'event_count' => $booking->event_count,
-            'is_multi_event' => $booking->is_multi_event,
-            'venue_summary' => $booking->venue_summary,
-            'price' => $booking->price,
-            'status' => $booking->status,
-            'contract_option' => $booking->contract_option,
-            'notes' => $booking->notes,
-            'event_type_id' => $booking->event_type_id,
-            'created_at' => $booking->created_at->toISOString(),
-            'updated_at' => $booking->updated_at->toISOString(),
-            'events' => ($booking->events ?? collect())->map(fn ($event) => [
-                'id' => $event->id,
-                'title' => $event->title,
-                'date' => $event->date?->format('Y-m-d'),
-                'start_time' => $event->start_time?->format('H:i'),
-                'end_time' => $event->end_time?->format('H:i'),
-                'venue_name' => $event->venue_name,
-                'venue_address' => $event->venue_address,
-            ])->values(),
-            'contacts' => $booking->contacts ?? [],
-            'payments' => $booking->payments ?? [],
-            'amount_paid' => $booking->amount_paid ?? 0,
-            'amount_due' => $booking->amount_due ?? 0,
-            'is_paid' => $booking->is_paid ?? false,
-        ];
+        return response()->json([
+            'error' => 'Not Found',
+            'message' => 'Booking not found or does not belong to your band'
+        ], 404);
     }
 }

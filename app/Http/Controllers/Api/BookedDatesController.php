@@ -3,7 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Bookings;
+use App\Services\BandApi\BandBookingsService;
+use App\Services\BandApi\DateFilters;
 use Illuminate\Http\Request;
 use OpenApi\Attributes as OA;
 
@@ -39,7 +40,7 @@ class BookedDatesController extends Controller
             new OA\Response(response: 403, description: 'Forbidden', content: new OA\JsonContent(ref: '#/components/schemas/ErrorForbidden')),
         ],
     )]
-    public function index(Request $request)
+    public function index(Request $request, BandBookingsService $bookings)
     {
         $band = $request->input('authenticated_band');
 
@@ -50,68 +51,9 @@ class BookedDatesController extends Controller
             ], 400);
         }
 
-        // Validate date parameters
-        $validated = $request->validate([
-            'date' => 'nullable|date_format:Y-m-d',
-            'from' => 'nullable|date_format:Y-m-d',
-            'to' => 'nullable|date_format:Y-m-d',
-            'before' => 'nullable|date_format:Y-m-d',
-            'after' => 'nullable|date_format:Y-m-d',
-        ]);
+        $filters = $request->validate(DateFilters::rules());
 
-        // Query bookings directly for this band
-        $query = Bookings::where('band_id', $band->id)
-            ->with(['eventType', 'events']);
-
-        // Apply date filters — filter against events.date since that column moved to events
-        if ($request->has('date')) {
-            $query->whereHas('events', fn ($q) => $q->whereDate('date', $validated['date']));
-        }
-
-        if ($request->has('from')) {
-            $query->whereHas('events', fn ($q) => $q->whereDate('date', '>=', $validated['from']));
-        }
-
-        if ($request->has('to')) {
-            $query->whereHas('events', fn ($q) => $q->whereDate('date', '<=', $validated['to']));
-        }
-
-        if ($request->has('before')) {
-            $query->whereHas('events', fn ($q) => $q->whereDate('date', '<', $validated['before']));
-        }
-
-        if ($request->has('after')) {
-            $query->whereHas('events', fn ($q) => $q->whereDate('date', '>', $validated['after']));
-        }
-
-        $bookings = $query->get()
-            ->sortBy(fn ($booking) => $booking->start_date?->format('Y-m-d H:i') ?? '')
-            ->values()
-            ->map(function ($booking) {
-                $primaryEvent = $booking->events->sortBy([['date', 'asc'], ['id', 'asc']])->first();
-                return [
-                    'id' => $booking->id,
-                    'name' => $booking->name,
-                    'start_date' => $booking->start_date?->format('Y-m-d'),
-                    'end_date' => $booking->end_date?->format('Y-m-d'),
-                    'event_count' => $booking->event_count,
-                    'is_multi_event' => $booking->is_multi_event,
-                    'venue_summary' => $booking->venue_summary,
-                    'event_type' => $booking->eventType?->name,
-                    'event_type_id' => $booking->event_type_id,
-                    'status' => $booking->status,
-                    'price' => $booking->price,
-                    'notes' => $booking->notes,
-                    'events' => $booking->events->map(fn ($event) => [
-                        'id' => $event->id,
-                        'date' => $event->date?->format('Y-m-d'),
-                        'start_time' => $event->start_time?->format('H:i'),
-                        'end_time' => $event->end_time?->format('H:i'),
-                        'venue_name' => $event->venue_name,
-                        'venue_address' => $event->venue_address,
-                    ])->values(),
-                ];
-            });
+        $rows = $bookings->bookedDates($band, $filters);
 
         $response = [
             'success' => true,
@@ -119,30 +61,13 @@ class BookedDatesController extends Controller
                 'id' => $band->id,
                 'name' => $band->name,
             ],
-            'bookings' => $bookings,
-            'total' => $bookings->count(),
+            'bookings' => $rows,
+            'total' => $rows->count(),
         ];
 
         // Include filter information in response if any filters were applied
-        $appliedFilters = [];
-        if ($request->has('date')) {
-            $appliedFilters['date'] = $validated['date'];
-        }
-        if ($request->has('from')) {
-            $appliedFilters['from'] = $validated['from'];
-        }
-        if ($request->has('to')) {
-            $appliedFilters['to'] = $validated['to'];
-        }
-        if ($request->has('before')) {
-            $appliedFilters['before'] = $validated['before'];
-        }
-        if ($request->has('after')) {
-            $appliedFilters['after'] = $validated['after'];
-        }
-
-        if (!empty($appliedFilters)) {
-            $response['filters'] = $appliedFilters;
+        if ($applied = DateFilters::applied($filters)) {
+            $response['filters'] = $applied;
         }
 
         return response()->json($response);
