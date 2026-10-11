@@ -340,9 +340,11 @@ class BookingsController extends Controller
 
     public function storeContact(BookingContactRequest $request, Bands $band, Bookings $booking)
     {
+        // Contacts are per band (unique band_id + email): never match another
+        // band's contact with the same email.
         $contact = Contacts::firstOrCreate(
-            ['email' => $request->email],
-            $request->only(['name', 'phone']) + ['band_id' => $band->id]
+            ['band_id' => $band->id, 'email' => $request->email],
+            $request->only(['name', 'phone'])
         );
 
         $booking->contacts()->syncWithoutDetaching([
