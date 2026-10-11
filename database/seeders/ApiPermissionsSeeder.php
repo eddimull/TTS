@@ -25,6 +25,9 @@ class ApiPermissionsSeeder extends Seeder
             // Booking permissions
             ['name' => 'api:read-bookings', 'guard_name' => 'api_token'],
             ['name' => 'api:write-bookings', 'guard_name' => 'api_token'],
+
+            // Pricing permissions
+            ['name' => 'api:read-pricing', 'guard_name' => 'api_token'],
         ];
 
         foreach ($permissions as $permission) {

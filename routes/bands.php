@@ -7,6 +7,7 @@ use App\Http\Controllers\InvitationsController;
 use App\Http\Controllers\BandCalendarController;
 use App\Http\Controllers\CalendarAccessController;
 use App\Http\Controllers\BandApiTokenController;
+use App\Http\Controllers\PriceEstimatorController;
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('bands')->group(function () {
@@ -22,6 +23,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{band}/uploadLogo', [BandsController::class, 'uploadLogo'])->middleware(['owner'])->name('bands.uploadLogo');
         Route::get('/{band}/setupStripe', [BandsController::class, 'setupStripe'])->middleware(['owner'])->name('bands.setupStripe');
         Route::post('/{band}/syncBandCalendarAccess', [BandsController::class, 'syncBandCalendarAccess'])->middleware(['owner'])->name('bands.syncBandCalendarAccess');
+
+        // Price estimator (owner-only)
+        Route::get('/{band}/price-estimator', [PriceEstimatorController::class, 'index'])->middleware(['owner'])->name('bands.priceEstimator');
+        Route::post('/{band}/price-estimate', [PriceEstimatorController::class, 'estimate'])->middleware(['owner'])->name('bands.priceEstimate');
+        Route::get('/{band}/pricing-settings', [PriceEstimatorController::class, 'showSettings'])->middleware(['owner'])->name('bands.pricingSettings');
+        Route::patch('/{band}/pricing-settings', [PriceEstimatorController::class, 'updateSettings'])->middleware(['owner'])->name('bands.pricingSettings.update');
 
         // API Token Management
         Route::get('/{band}/api-tokens', [BandApiTokenController::class, 'index'])->middleware(['owner'])->name('bands.apiTokens');

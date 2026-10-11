@@ -21,8 +21,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
-      issues: read
+      # Posting the review (PR review + inline comments) needs write.
+      pull-requests: write
+      issues: write
       id-token: write
 
     steps:
