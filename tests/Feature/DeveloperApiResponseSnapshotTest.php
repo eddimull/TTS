@@ -6,6 +6,7 @@ use App\Models\BandApiToken;
 use App\Models\BandEvents;
 use App\Models\Bands;
 use App\Models\Bookings;
+use App\Models\Contacts;
 use App\Models\Events;
 use App\Models\EventTypes;
 use App\Models\User;
@@ -271,6 +272,31 @@ class DeveloperApiResponseSnapshotTest extends TestCase
 
         $response = $this->api()->postJson('/api/bookings', ['name' => ''])->assertStatus(422);
         $this->assertMatchesSnapshot('bookings-store-422', $response->getContent());
+    }
+
+    public function test_bookings_add_contact(): void
+    {
+        $response = $this->api()->postJson('/api/bookings/970201/contacts', [
+            'name' => 'Jane Smith',
+            'email' => 'jane@example.com',
+            'phone' => '337-555-0100',
+            'role' => 'Bride',
+        ])->assertCreated();
+
+        $contact = Contacts::where('email', 'jane@example.com')->sole();
+        $pivotId = Bookings::findOrFail(970201)->contacts()->sole()->pivot->id;
+        $content = str_replace(
+            ['"id":' . $contact->id . ',', '"contact_id":' . $contact->id . ',', '"id":' . $pivotId . ','],
+            ['"id":"__ID__",', '"contact_id":"__ID__",', '"id":"__ID__",'],
+            $response->getContent()
+        );
+        $this->assertMatchesSnapshot('bookings-add-contact', $content);
+
+        $response = $this->api()->postJson('/api/bookings/970299/contacts', ['name' => 'X', 'email' => 'x@example.com'])->assertNotFound();
+        $this->assertMatchesSnapshot('bookings-add-contact-404', $response->getContent());
+
+        $response = $this->api()->postJson('/api/bookings/970201/contacts', ['name' => 'X'])->assertStatus(422);
+        $this->assertMatchesSnapshot('bookings-add-contact-422', $response->getContent());
     }
 
     public function test_bookings_update_and_destroy(): void

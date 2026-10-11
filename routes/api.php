@@ -549,6 +549,10 @@ Route::middleware(['band.api'])->group(function () {
         ->middleware('api.permission:api:write-bookings')
         ->name('api.bookings.destroy');
 
+    Route::post('/bookings/{id}/contacts', [BookingsController::class, 'storeContact'])
+        ->middleware('api.permission:api:write-bookings')
+        ->name('api.bookings.contacts.store');
+
     // Pricing - Read (POST because the estimate takes a request body; it never writes)
     Route::post('/price-estimate', [PriceEstimateController::class, 'store'])
         ->middleware('api.permission:api:read-pricing')
