@@ -2,12 +2,52 @@
 
 namespace App\Services\Mobile;
 
+use App\Models\Bands;
 use App\Models\Bookings;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class BookingService
 {
+    /**
+     * Create a booking with everything a new booking needs: its contract
+     * (pending, seeded with the initial terms), one templated event per entry
+     * of $events (timeline + extras via {@see createBookingEvent()}, default
+     * roster), and event values split from the booking price.
+     *
+     * The single creation path shared by the mobile store and the band
+     * developer API / MCP create_booking.
+     *
+     * @param  array<string, mixed>  $attributes  booking columns (name, event_type_id, price,
+     *                                            contract_option, notes, status, ...)
+     * @param  list<array<string, mixed>>  $events  {@see createBookingEvent()} payloads
+     */
+    public function createBooking(Bands $band, array $attributes, array $events, ?int $authorId): Bookings
+    {
+        return DB::transaction(function () use ($band, $attributes, $events, $authorId) {
+            $booking = Bookings::create([
+                'band_id'   => $band->id,
+                'author_id' => $authorId,
+            ] + $attributes);
+
+            $booking->contract()->create([
+                'author_id'    => $authorId,
+                'status'       => 'pending',
+                'custom_terms' => $this->getInitialTerms(),
+            ]);
+
+            foreach ($events as $eventData) {
+                $this->createBookingEvent($booking, $eventData, (int) $booking->event_type_id);
+            }
+
+            // Split the booking price evenly across the events created above.
+            $this->redistributeEventValues($booking->fresh());
+
+            return $booking;
+        });
+    }
+
     /**
      * Build the per-event `additional_data` blob (load-in / soundcheck / etc.)
      * anchored to a single event's start; the end lives on the events row's

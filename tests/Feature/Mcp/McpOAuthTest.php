@@ -298,7 +298,7 @@ class McpOAuthTest extends TestCase
         $tools = collect($this->mcp($tokens['access_token'], 'tools/list', [], 2)->assertOk()->json('result.tools'))->pluck('name');
         $this->assertEqualsCanonicalizing([
             'list_bands', 'list_event_types', 'check_availability', 'list_events', 'list_bookings',
-            'get_booking', 'create_booking', 'update_booking', 'delete_booking', 'estimate_price',
+            'get_booking', 'create_booking', 'update_booking', 'delete_booking', 'add_booking_contact', 'estimate_price',
         ], $tools->all());
 
         $result = $this->mcp($tokens['access_token'], 'tools/call', ['name' => 'list_bands', 'arguments' => (object) []], 3)
@@ -310,7 +310,7 @@ class McpOAuthTest extends TestCase
         $this->assertSame(McpScopes::ids(), $data['granted_scopes']);
         $this->assertSame([['id' => $this->band->id, 'name' => 'Alpha Band', 'role' => 'owner', 'tools' => [
             'check_availability', 'list_bookings', 'get_booking', 'create_booking',
-            'update_booking', 'delete_booking', 'list_events', 'estimate_price',
+            'update_booking', 'delete_booking', 'add_booking_contact', 'list_events', 'estimate_price',
         ]]], $data['bands']);
     }
 

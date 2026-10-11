@@ -4,9 +4,11 @@ namespace App\Services\BandApi;
 
 use App\Models\Bands;
 use App\Models\Bookings;
+use App\Services\BookingContactService;
+use App\Services\Mobile\BookingService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
@@ -22,6 +24,14 @@ class BandBookingsService
 
     /** Fields that live on the booking's events rather than the booking row. */
     private const EVENT_FIELDS = ['date', 'start_time', 'end_time', 'venue_name', 'venue_address'];
+
+    /** Most contacts accepted by one create call (`contact` + `contacts`). */
+    private const MAX_CONTACTS = 10;
+
+    public function __construct(
+        private BookingService $bookingService,
+        private BookingContactService $contacts,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -40,6 +50,26 @@ class BandBookingsService
             'contract_option' => 'required|in:default,none,external',
             'status' => 'nullable|in:draft,pending,confirmed,cancelled',
             'notes' => 'nullable|string',
+            'contact' => 'nullable|array',
+            ...self::contactRules('contact.', 'required_with:contact'),
+            'contacts' => 'nullable|array|max:' . self::MAX_CONTACTS,
+            ...self::contactRules('contacts.*.', 'required'),
+        ];
+    }
+
+    /**
+     * Rules for one client contact, keys prefixed (e.g. "contact.").
+     *
+     * @return array<string, mixed>
+     */
+    public static function contactRules(string $prefix = '', string $required = 'required'): array
+    {
+        return [
+            "{$prefix}name" => "{$required}|string|max:255",
+            "{$prefix}email" => "{$required}|email|max:255",
+            "{$prefix}phone" => 'nullable|string|max:255',
+            "{$prefix}role" => 'nullable|string|max:255',
+            "{$prefix}is_primary" => 'nullable|boolean',
         ];
     }
 
@@ -133,52 +163,86 @@ class BandBookingsService
     }
 
     /**
-     * Create a booking and its initial event. End time is start + duration hours.
+     * Create a booking the same way the mobile app does
+     * ({@see BookingService::createBooking()}): contract with the initial terms,
+     * one event templated for the event type (timeline, extras, default
+     * roster), event value = price. End time is start + duration hours. Any
+     * `contact` / `contacts` are then attached; all in one transaction.
+     *
+     * Unlike mobile/web, status is never derived from contract_option: it is
+     * the given `status`, or draft.
      *
      * @param  array<string, mixed>  $validated  {@see createRules()} input
      * @param  int|null  $authorId  defaults to the band's first owner (then member)
      */
     public function create(Bands $band, array $validated, ?int $authorId = null): Bookings
     {
-        // Capture event-level fields before stripping them from the booking payload
-        $eventDate = $validated['date'];
-        $eventStart = $validated['start_time'];
-        $eventDuration = $validated['duration'];
-        $venueName = $validated['venue_name'] ?? null;
-        $venueAddress = $validated['venue_address'] ?? null;
+        $startDateTime = Carbon::parse($validated['date'] . ' ' . $validated['start_time']);
 
-        // Calculate end_time from duration
-        $startDateTime = Carbon::parse($eventDate . ' ' . $eventStart);
-        $eventEnd = $startDateTime->copy()->addHours($eventDuration)->format('H:i');
+        $event = [
+            'title' => $validated['name'],
+            'date' => $validated['date'],
+            'start_time' => $validated['start_time'],
+            'end_time' => $startDateTime->copy()->addHours((int) $validated['duration'])->format('H:i'),
+            'venue_name' => $validated['venue_name'] ?? null,
+            'venue_address' => $validated['venue_address'] ?? null,
+        ];
 
-        // Strip event-level fields from the booking payload
-        $bookingData = collect($validated)->except([...self::EVENT_FIELDS, 'duration'])->toArray();
+        $attributes = collect($validated)
+            ->except([...self::EVENT_FIELDS, 'duration', 'contact', 'contacts'])
+            ->toArray();
+        $attributes['status'] = $validated['status'] ?? 'draft';
 
-        $bookingData['band_id'] = $band->id;
-        $bookingData['status'] = $validated['status'] ?? 'draft';
-        $bookingData['author_id'] = $authorId
-            ?? $band->owners->first()?->user_id
+        $authorId ??= $band->owners->first()?->user_id
             ?? $band->members->first()?->user_id;
 
-        $booking = Bookings::create($bookingData);
+        $contacts = array_values(array_filter([
+            $validated['contact'] ?? null,
+            ...($validated['contacts'] ?? []),
+        ]));
 
-        // Create the initial event with the date/time/venue data
-        $booking->events()->create([
-            'event_type_id' => $booking->event_type_id,
-            'key' => Str::uuid(),
-            'title' => $booking->name,
-            'date' => $eventDate,
-            'start_time' => $eventStart,
-            'end_time' => $eventEnd,
-            'venue_name' => $venueName,
-            'venue_address' => $venueAddress,
-        ]);
+        return DB::transaction(function () use ($band, $attributes, $event, $authorId, $contacts) {
+            $booking = $this->bookingService->createBooking($band, $attributes, [$event], $authorId);
 
-        return $booking->load(self::WITH);
+            foreach ($contacts as $contact) {
+                $this->attachContact($band, $booking, $contact);
+            }
+
+            return $booking->load(self::WITH);
+        });
+    }
+
+    /**
+     * Attach a client contact (find-or-create by email within the band).
+     *
+     * @param  array<string, mixed>  $contact  {@see contactRules()} input
+     */
+    public function addContact(Bands $band, Bookings $booking, array $contact): Bookings
+    {
+        $this->attachContact($band, $booking, $contact);
+
+        return $booking->fresh(self::WITH);
+    }
+
+    /**
+     * is_primary defaults to true while the booking has no other primary
+     * contact, so a lead's first contact becomes the primary one.
+     *
+     * @param  array<string, mixed>  $contact
+     */
+    private function attachContact(Bands $band, Bookings $booking, array $contact): void
+    {
+        $contact['is_primary'] ??= ! $booking->contacts()
+            ->wherePivot('is_primary', true)
+            ->where('contacts.email', '!=', $contact['email'])
+            ->exists();
+
+        $this->contacts->attach($band, $booking, $contact);
     }
 
     /**
      * Update a booking. Date/time/venue fields go to its primary (earliest) event.
+     * A price change re-splits the event values, as web and mobile do.
      *
      * @param  array<string, mixed>  $validated  {@see updateRules()} input
      */
@@ -188,6 +252,10 @@ class BandBookingsService
         $eventFields = collect($validated)->only(self::EVENT_FIELDS)->toArray();
 
         $booking->update($bookingFields);
+
+        if ($booking->wasChanged('price')) {
+            $this->bookingService->redistributeEventValues($booking->fresh());
+        }
 
         if (! empty($eventFields)) {
             $primaryEvent = $booking->events()->orderBy('date')->orderBy('id')->first();

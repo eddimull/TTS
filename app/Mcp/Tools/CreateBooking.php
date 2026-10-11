@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Tools;
 
+use App\Mcp\Tools\Concerns\DescribesContacts;
 use App\Services\BandApi\BandBookingsService;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
@@ -13,10 +14,12 @@ use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
 #[Name('create_booking')]
 #[Title('Create a booking')]
-#[Description('Creates a booking (and its first event) for the band. The end time is start_time + duration hours. Status defaults to draft. Same rules as the developer API\'s POST /bookings; you become the booking\'s author. Confirm the details with the user before calling. Requires bookings:write.')]
+#[Description('Creates a booking for the band exactly as the TTS app does: the contract (with the band\'s initial terms), the event and its timeline (load in, soundcheck, quiet; ceremony and dances for weddings), the default roster and the event value (= price) are all generated automatically, so don\'t ask the user for them. The end time is start_time + duration hours. Status defaults to draft. Pass the client (e.g. the lead who emailed) as `contact` with their name, email and phone if known; it becomes the primary contact, reusing the band\'s existing contact with that email. Same rules as the developer API\'s POST /bookings; you become the booking\'s author. Confirm the details with the user before calling. Requires bookings:write.')]
 #[IsDestructive(false)]
 class CreateBooking extends BandTool
 {
+    use DescribesContacts;
+
     public function schema(JsonSchema $schema): array
     {
         return [
@@ -32,6 +35,8 @@ class CreateBooking extends BandTool
             'venue_address' => $schema->string()->description('Venue address.'),
             'status' => $schema->string()->enum(['draft', 'pending', 'confirmed', 'cancelled'])->description('Defaults to draft.'),
             'notes' => $schema->string()->description('Notes.'),
+            'contact' => $this->contactSchema($schema)->description('The client to attach, e.g. the lead who asked for the booking.'),
+            'contacts' => $schema->array()->items($this->contactSchema($schema))->max(10)->description('Further contacts to attach (e.g. a planner), besides `contact`.'),
         ];
     }
 

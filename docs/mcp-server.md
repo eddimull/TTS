@@ -64,6 +64,7 @@ the developer-API data is band-wide, and subs may only see their assigned gigs.
 | `create_booking`     | `bookings:write` | owner or `write:bookings`      | `POST /api/bookings`           |
 | `update_booking`     | `bookings:write` | owner or `write:bookings`      | `PATCH /api/bookings/{id}`     |
 | `delete_booking`     | `bookings:write` | owner or `write:bookings`      | `DELETE /api/bookings/{id}` (destructive) |
+| `add_booking_contact`| `bookings:write` | owner or `write:bookings`      | `POST /api/bookings/{id}/contacts` |
 | `estimate_price`     | `pricing:read`   | **owner only**                 | `POST /api/price-estimate`     |
 
 How the tools differ from the REST endpoints:
@@ -74,6 +75,16 @@ How the tools differ from the REST endpoints:
   `null` clears only `notes`, `venue_name` and `venue_address`; other null fields stay unchanged.
 * Bookings created by `create_booking` have the calling user as author. REST uses the band's first
   owner.
+
+Booking creation (`create_booking` and `POST /api/bookings`) goes through the same
+`App\Services\Mobile\BookingService::createBooking()` as the mobile app: it creates the contract
+(pending, seeded with `storage/app/contract/InitialTerms.json`), templates the event's
+`additional_data` from the event type (load in / soundcheck / quiet; ceremony and dances for
+weddings), assigns the band's default roster and sets the event value to the price. Unlike the
+apps, `status` is never derived from `contract_option`: it is the given status, or `draft`.
+`contact` / `contacts` (and `add_booking_contact`) attach client contacts through
+`App\Services\BookingContactService`, reusing the band's contact with the same email. `is_primary`
+defaults to true while the booking has no other primary contact.
 * `estimate_price` returns the same JSON as REST (`JSON_PRESERVE_ZERO_FRACTION`), without escaped
   slashes or unicode.
 
