@@ -25,6 +25,26 @@ vi.mock('@inertiajs/vue3', async () => {
   };
 });
 
+// Mocked at the module level with a render function: name-based stubs and
+// runtime-compiled templates don't apply under the production-mode pipeline.
+vi.mock('@/Components/PriceEstimate/SuggestPriceButton.vue', async () => {
+  const { h } = await import('vue');
+  return {
+    default: {
+      name: 'SuggestPriceButton',
+      props: ['bandId', 'payload'],
+      emits: ['use-price'],
+      setup(_, { emit }) {
+        return () => h('button', {
+          type: 'button',
+          'data-test': 'suggest-price-button',
+          onClick: () => emit('use-price', 3150),
+        }, 'Suggest price');
+      },
+    },
+  };
+});
+
 import BookingCreation from '../../Pages/Bookings/Components/BookingCreation.vue';
 
 const stubs = {
@@ -32,12 +52,6 @@ const stubs = {
   ContractOptions: { template: '<div />', props: ['modelValue'] },
   InputNumber: { template: '<input />', props: ['modelValue'] },
   LocationAutocomplete: { template: '<div />', props: ['modelValue', 'name', 'label', 'placeholder'] },
-  SuggestPriceButton: {
-    name: 'SuggestPriceButton',
-    props: ['bandId', 'payload'],
-    emits: ['use-price'],
-    template: '<button type="button" data-test="suggest-price-button" @click="$emit(\'use-price\', 3150)">Suggest price</button>',
-  },
 };
 
 const DatePickerStub = {

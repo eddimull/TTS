@@ -37,6 +37,26 @@ vi.mock('vuex', () => ({
   }),
 }));
 
+// Mocked at the module level with a render function: name-based stubs and
+// runtime-compiled templates don't apply under the production-mode pipeline.
+vi.mock('@/Components/PriceEstimate/SuggestPriceButton.vue', async () => {
+  const { h } = await import('vue');
+  return {
+    default: {
+      name: 'SuggestPriceButton',
+      props: ['bandId', 'payload'],
+      emits: ['use-price'],
+      setup(_, { emit }) {
+        return () => h('button', {
+          type: 'button',
+          'data-test': 'suggest-price-button',
+          onClick: () => emit('use-price', 4250),
+        }, 'Suggest price');
+      },
+    },
+  };
+});
+
 import BookingForm from '../../Pages/Bookings/Components/BookingForm.vue';
 
 const baseProps = (overrides = {}) => ({
@@ -65,12 +85,6 @@ const globalStubs = {
     TextInput: { template: '<input :value="modelValue" />', props: ['modelValue', 'name', 'label'] },
     EventSubForm: { template: '<div />' },
     Button: { template: '<button><slot /></button>' },
-    SuggestPriceButton: {
-      name: 'SuggestPriceButton',
-      props: ['bandId', 'payload'],
-      emits: ['use-price'],
-      template: '<button data-test="suggest-price-button" @click="$emit(\'use-price\', 4250)">Suggest price</button>',
-    },
   },
 };
 
