@@ -422,6 +422,7 @@ export default {
         'api:write-events': 'Create, update, and delete events',
         'api:read-bookings': 'View bookings and financial information',
         'api:write-bookings': 'Create, update, and delete bookings',
+        'api:read-pricing': 'Get price estimates for prospective bookings (uses your booking history and pricing rules)',
       }
       return descriptions[permissionName] || 'API access permission'
     },

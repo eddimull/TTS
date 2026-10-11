@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\BookedDatesController;
 use App\Http\Controllers\Api\BookingsController;
 use App\Http\Controllers\Api\EventsController;
+use App\Http\Controllers\Api\PriceEstimateController;
 use App\Http\Controllers\ChartsController;
 use App\Http\Controllers\RehearsalController;
 use App\Http\Controllers\ChunkedUploadController;
@@ -547,5 +548,10 @@ Route::middleware(['band.api'])->group(function () {
     Route::delete('/bookings/{id}', [BookingsController::class, 'destroy'])
         ->middleware('api.permission:api:write-bookings')
         ->name('api.bookings.destroy');
+
+    // Pricing - Read (POST because the estimate takes a request body; it never writes)
+    Route::post('/price-estimate', [PriceEstimateController::class, 'store'])
+        ->middleware('api.permission:api:read-pricing')
+        ->name('api.price-estimate');
 });
 // });
