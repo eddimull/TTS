@@ -32,6 +32,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class BandsControllerTest extends TestCase
 {
+    use RefreshDatabase;
+
     private $band;
     private $owner;
     private $member;

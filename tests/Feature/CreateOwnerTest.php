@@ -11,6 +11,8 @@ use Tests\TestCase;
 
 class CreateOwnerTest extends TestCase
 {
+    use RefreshDatabase;
+
     /**
      * A basic feature test example.
      *

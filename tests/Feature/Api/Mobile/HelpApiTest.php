@@ -2,11 +2,14 @@
 
 namespace Tests\Feature\Api\Mobile;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use App\Models\User;
 use Tests\TestCase;
 
 class HelpApiTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_requires_auth(): void
     {
         $this->getJson('/api/mobile/help')->assertUnauthorized();

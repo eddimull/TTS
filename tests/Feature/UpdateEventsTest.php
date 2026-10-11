@@ -16,6 +16,8 @@ use Tests\TestCase;
 
 class UpdateEventsTest extends TestCase
 {
+    use RefreshDatabase;
+
     use WithFaker;
     /**
      * A basic feature test example.

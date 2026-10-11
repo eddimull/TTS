@@ -20,6 +20,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class PaymentsTest extends TestCase
 {
+    use RefreshDatabase;
+
 
 
     /**

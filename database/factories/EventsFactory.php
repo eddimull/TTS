@@ -12,7 +12,6 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 class EventsFactory extends Factory
 {
     protected $model = Events::class;
-    protected $band_id;
 
     public function definition()
     {
@@ -29,7 +28,7 @@ class EventsFactory extends Factory
             },
             'eventable_id' => function ()
             {
-                $bandId = $this->band_id ?? (Bands::inRandomOrder()->first()->id ?? Bands::factory()->create()->id);
+                $bandId = Bands::inRandomOrder()->first()->id ?? Bands::factory()->create()->id;
                 return Bookings::factory()->create(['band_id' => $bandId])->id;
             },
             'eventable_type' => Bookings::class,
@@ -44,9 +43,16 @@ class EventsFactory extends Factory
         ];
     }
 
+    /**
+     * Attach the event to a booking of the given band. This must be a state,
+     * not a property: create([...]) clones the factory, which would drop it
+     * and fall back to a random band.
+     */
     public function forBand(Bands $band)
     {
-        $this->band_id = $band->id;
-        return $this;
+        return $this->state(fn () => [
+            'eventable_id' => fn () => Bookings::factory()->create(['band_id' => $band->id])->id,
+            'eventable_type' => Bookings::class,
+        ]);
     }
 }

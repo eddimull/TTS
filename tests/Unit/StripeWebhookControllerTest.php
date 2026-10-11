@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
 use Stripe\Event;
 use Tests\TestCase;
@@ -21,6 +22,8 @@ use App\Http\Controllers\StripeWebhookController;
 
 class StripeWebhookControllerTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected $controller;
     protected $financeServicesMock;
 

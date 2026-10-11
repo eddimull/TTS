@@ -11,6 +11,8 @@ use Tests\TestCase;
 
 class CreateMemberTest extends TestCase
 {
+    use RefreshDatabase;
+
 
     private $user;
     private $band;
