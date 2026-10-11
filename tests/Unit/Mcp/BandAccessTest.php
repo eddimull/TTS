@@ -15,7 +15,9 @@ class BandAccessTest extends TestCase
 {
     public function test_every_band_tool_on_the_server_has_an_access_rule(): void
     {
-        $tools = (new ReflectionClass(BandmateServer::class))->getDefaultProperties()['tools'];
+        $defaults = (new ReflectionClass(BandmateServer::class))->getDefaultProperties();
+        $this->assertArrayHasKey('tools', $defaults, 'BandmateServer no longer declares a $tools property');
+        $tools = $defaults['tools'];
 
         $bandTools = array_filter($tools, fn (string $class) => is_subclass_of($class, BandTool::class));
         $this->assertNotEmpty($bandTools);
