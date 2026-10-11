@@ -1,5 +1,6 @@
 <?php
 
+use App\Mcp\Servers\BandmateServer;
 use Laravel\Mcp\Facades\Mcp;
 
 /*
@@ -18,3 +19,7 @@ use Laravel\Mcp\Facades\Mcp;
 */
 
 Mcp::oauthRoutes();
+
+Mcp::web('/mcp', BandmateServer::class)
+    ->middleware(['auth.mcp', 'throttle:api'])
+    ->name('mcp.bandmate');
