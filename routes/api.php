@@ -10,11 +10,13 @@ use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\BookedDatesController;
 use App\Http\Controllers\Api\BookingsController;
 use App\Http\Controllers\Api\EventsController;
+use App\Http\Controllers\Api\PriceEstimateController;
 use App\Http\Controllers\ChartsController;
 use App\Http\Controllers\RehearsalController;
 use App\Http\Controllers\ChunkedUploadController;
 use App\Http\Controllers\Api\Mobile\AuthController as MobileAuthController;
 use App\Http\Controllers\Api\Mobile\BandSettingsController;
+use App\Http\Controllers\Api\Mobile\PricingController;
 use App\Http\Controllers\Api\Mobile\RehearsalPlannerController;
 
 /*
@@ -174,6 +176,13 @@ Route::prefix('mobile')->group(function () {
             Route::patch('/bands/{band}/members/{userId}/permissions', [BandSettingsController::class, 'setPermission'])->name('mobile.bands.members.permissions');
             Route::get('/bands/{band}/invitations', [BandSettingsController::class, 'invitations'])->name('mobile.bands.invitations');
             Route::delete('/bands/{band}/invitations/{invitation}', [BandSettingsController::class, 'revokeInvitation'])->name('mobile.bands.invitations.revoke');
+        });
+
+        // ── Price estimator + pricing settings (owner-only) ────────────
+        Route::middleware(['mobile.band', 'owner'])->group(function () {
+            Route::post('/bands/{band}/price-estimate', [PricingController::class, 'estimate'])->name('mobile.price-estimate');
+            Route::get('/bands/{band}/pricing-settings', [PricingController::class, 'showSettings'])->name('mobile.pricing-settings.show');
+            Route::put('/bands/{band}/pricing-settings', [PricingController::class, 'updateSettings'])->name('mobile.pricing-settings.update');
         });
 
         // ── Roster system (owner-only) ─────────────────────────────────
@@ -539,5 +548,10 @@ Route::middleware(['band.api'])->group(function () {
     Route::delete('/bookings/{id}', [BookingsController::class, 'destroy'])
         ->middleware('api.permission:api:write-bookings')
         ->name('api.bookings.destroy');
+
+    // Pricing - Read (POST because the estimate takes a request body; it never writes)
+    Route::post('/price-estimate', [PriceEstimateController::class, 'store'])
+        ->middleware('api.permission:api:read-pricing')
+        ->name('api.price-estimate');
 });
 // });

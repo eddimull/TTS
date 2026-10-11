@@ -68,6 +68,8 @@ class HandleInertiaRequests extends Middleware
                     'navigation' => $webUser->getNav(),
                     'notifications' => $webUser->notifications,
                     'band_ids' => $webUser->allBands()->pluck('id')->values()->all(),
+                    // bandOwner is already loaded by allBands() above — no extra query.
+                    'owned_band_ids' => $webUser->bandOwner->pluck('id')->values()->all(),
                 ] : null,
             ],
             'flash' => [

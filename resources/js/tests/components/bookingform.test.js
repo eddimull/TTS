@@ -3,9 +3,12 @@ import { mount } from '@vue/test-utils';
 
 global.route = vi.fn((name, params) => `/mock-route/${name}`);
 
+const pageProps = vi.hoisted(() => ({ auth: { user: { owned_band_ids: [] } } }));
+
 vi.mock('@inertiajs/vue3', async () => {
   const { reactive } = await import('vue');
   return {
+    usePage: () => ({ props: pageProps }),
     router: {
       get: vi.fn(),
       post: vi.fn(),
@@ -33,6 +36,26 @@ vi.mock('vuex', () => ({
     },
   }),
 }));
+
+// Mocked at the module level with a render function: name-based stubs and
+// runtime-compiled templates don't apply under the production-mode pipeline.
+vi.mock('@/Components/PriceEstimate/SuggestPriceButton.vue', async () => {
+  const { h } = await import('vue');
+  return {
+    default: {
+      name: 'SuggestPriceButton',
+      props: ['bandId', 'payload'],
+      emits: ['use-price'],
+      setup(_, { emit }) {
+        return () => h('button', {
+          type: 'button',
+          'data-test': 'suggest-price-button',
+          onClick: () => emit('use-price', 4250),
+        }, 'Suggest price');
+      },
+    },
+  };
+});
 
 import BookingForm from '../../Pages/Bookings/Components/BookingForm.vue';
 
@@ -64,6 +87,45 @@ const globalStubs = {
     Button: { template: '<button><slot /></button>' },
   },
 };
+
+describe('BookingForm suggest price', () => {
+  it('hides the suggest price button for non-owners', () => {
+    pageProps.auth.user.owned_band_ids = [];
+    const wrapper = mount(BookingForm, { props: baseProps(), global: globalStubs });
+    expect(wrapper.find('[data-test="suggest-price-button"]').exists()).toBe(false);
+  });
+
+  it('shows the button for owners, builds the payload from the earliest event and applies the price', async () => {
+    pageProps.auth.user.owned_band_ids = [1];
+    const wrapper = mount(BookingForm, {
+      props: baseProps({
+        booking: {
+          ...baseProps().booking,
+          events: [
+            { id: 11, date: '2027-05-16', start_time: '12:00', end_time: '14:00', venue_address: 'Later' },
+            { id: 10, date: '2027-05-15', start_time: '19:00', end_time: '23:00', venue_address: '6500 Magazine St' },
+          ],
+        },
+      }),
+      global: globalStubs,
+    });
+
+    const button = wrapper.findComponent({ name: 'SuggestPriceButton' });
+    expect(button.exists()).toBe(true);
+    expect(button.props('payload')).toEqual({
+      event_type_id: 1,
+      date: '2027-05-15',
+      start_time: '19:00',
+      end_time: '23:00',
+      venue_address: '6500 Magazine St',
+      exclude_booking_id: 1,
+    });
+
+    await wrapper.find('[data-test="suggest-price-button"]').trigger('click');
+    expect(wrapper.find('#price').element.value).toBe('4250');
+    pageProps.auth.user.owned_band_ids = [];
+  });
+});
 
 describe('BookingForm deposit', () => {
   it('renders the deposit field with computed counterpart', () => {
