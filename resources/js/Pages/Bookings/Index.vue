@@ -41,6 +41,15 @@
                             >
                                 Create Booking for {{ band.name }}
                             </Link>
+                            <Link
+                                v-for="band in ownedBands"
+                                :key="`estimator-${band.id}`"
+                                :href="`/bands/${band.id}/price-estimator`"
+                                class="border border-blue-500 text-blue-600 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-slate-700 font-bold py-2 px-4 rounded mr-2 mb-2 inline-block"
+                            >
+                                <i class="pi pi-calculator mr-1" />
+                                Price Estimator{{ ownedBands.length > 1 ? ` (${band.name})` : '' }}
+                            </Link>
                         </div>
                     </div>
                     <div class="p-4 flex flex-col xl:flex-row gap-4">
@@ -110,6 +119,12 @@ export default {
         };
     },
     computed: {
+        ownedBands() {
+            const ownedIds = this.$page.props.auth?.user?.owned_band_ids ?? [];
+            return Object.values(this.bands ?? {}).filter((band) =>
+                ownedIds.includes(band.id)
+            );
+        },
         currentDate() {
             return DateTime.now();
         },

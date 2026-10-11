@@ -4,9 +4,12 @@ import { h } from 'vue';
 
 global.route = vi.fn((name) => `/mock-route/${name}`);
 
+const pageProps = vi.hoisted(() => ({ auth: { user: { owned_band_ids: [] } } }));
+
 vi.mock('@inertiajs/vue3', async () => {
   const { reactive } = await import('vue');
   return {
+    usePage: () => ({ props: pageProps }),
     router: {
       get: vi.fn(),
       post: vi.fn(),
@@ -29,6 +32,12 @@ const stubs = {
   ContractOptions: { template: '<div />', props: ['modelValue'] },
   InputNumber: { template: '<input />', props: ['modelValue'] },
   LocationAutocomplete: { template: '<div />', props: ['modelValue', 'name', 'label', 'placeholder'] },
+  SuggestPriceButton: {
+    name: 'SuggestPriceButton',
+    props: ['bandId', 'payload'],
+    emits: ['use-price'],
+    template: '<button type="button" data-test="suggest-price-button" @click="$emit(\'use-price\', 3150)">Suggest price</button>',
+  },
 };
 
 const DatePickerStub = {
@@ -118,5 +127,29 @@ describe('BookingCreation calendar status marks', () => {
     expect(slot.classes()).not.toContain('line-through');
     expect(slot.classes()).not.toContain('text-yellow-500');
     expect(slot.classes()).not.toContain('text-blue-700');
+  });
+});
+
+describe('BookingCreation suggest price', () => {
+  it('hides the suggest price button for non-owners', () => {
+    pageProps.auth.user.owned_band_ids = [];
+    const wrapper = mountForm();
+    expect(wrapper.find('[data-test="suggest-price-button"]').exists()).toBe(false);
+  });
+
+  it('shows the button for owners with a payload built from the form and applies the price', async () => {
+    pageProps.auth.user.owned_band_ids = [1];
+    const wrapper = mountForm();
+
+    const button = wrapper.findComponent({ name: 'SuggestPriceButton' });
+    expect(button.exists()).toBe(true);
+    const payload = button.props('payload');
+    expect(payload.start_time).toBe('19:00');
+    expect(payload.duration_hours).toBe(4);
+    expect(payload.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+
+    await wrapper.find('[data-test="suggest-price-button"]').trigger('click');
+    expect(wrapper.vm.form.price).toBe(3150);
+    pageProps.auth.user.owned_band_ids = [];
   });
 });

@@ -122,10 +122,18 @@
         </div>
 
         <div>
-          <label
-            for="price"
-            class="block text-sm font-medium text-gray-700 dark:text-gray-200"
-          >Price</label>
+          <div class="flex items-center justify-between">
+            <label
+              for="price"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-200"
+            >Price</label>
+            <SuggestPriceButton
+              v-if="isOwner"
+              :band-id="band.id"
+              :payload="estimatePayload"
+              @use-price="applySuggestedPrice"
+            />
+          </div>
           <div class="mt-1 relative rounded-md shadow-sm">
             <div
               class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
@@ -163,12 +171,13 @@
 <script>
 import { ref, computed } from "vue";
 import ContractOptions from "./ContractOptions.vue";
-import { useForm } from "@inertiajs/vue3";
+import { useForm, usePage } from "@inertiajs/vue3";
 import DatePicker from "primevue/datepicker";
 import InputNumber from "primevue/inputnumber";
 import { DateTime } from "luxon";
 import Input from "@/Components/Input.vue";
 import LocationAutocomplete from "@/Components/LocationAutocomplete.vue";
+import SuggestPriceButton from "@/Components/PriceEstimate/SuggestPriceButton.vue";
 
 export default {
     components: {
@@ -177,6 +186,7 @@ export default {
         InputNumber,
         Input,
         LocationAutocomplete,
+        SuggestPriceButton,
     },
     props: {
         band: {
@@ -300,7 +310,29 @@ export default {
             form.venue_address = locationData.result.formatted_address;
         };
 
+        // ── Price estimator (owners only) ──────────────────────────────
+        const page = usePage();
+        const isOwner = computed(() =>
+            (page.props.auth?.user?.owned_band_ids ?? []).includes(props.band.id)
+        );
+
+        const estimatePayload = computed(() => ({
+            event_type_id: form.event_type_id || null,
+            // form.date is only set once the picker changes; fall back to the picker value.
+            date: form.date || (bookingDate.value ? DateTime.fromJSDate(bookingDate.value).toISODate() : null),
+            start_time: form.start_time || null,
+            duration_hours: form.duration ? Number(form.duration) : null,
+            venue_address: form.venue_address || null,
+        }));
+
+        const applySuggestedPrice = (price) => {
+            form.price = price;
+        };
+
         return {
+            isOwner,
+            estimatePayload,
+            applySuggestedPrice,
             form,
             bookingDate,
             selectedDateInfo,

@@ -35,10 +35,18 @@
             </select>
           </div>
           <div>
-            <label
-              for="price"
-              class="block text-sm font-medium text-gray-700 dark:text-gray-50"
-            >Total Price</label>
+            <div class="flex items-center justify-between">
+              <label
+                for="price"
+                class="block text-sm font-medium text-gray-700 dark:text-gray-50"
+              >Total Price</label>
+              <SuggestPriceButton
+                v-if="isOwner"
+                :band-id="props.band.id"
+                :payload="estimatePayload"
+                @use-price="applySuggestedPrice"
+              />
+            </div>
             <input
               id="price"
               v-model="form.price"
@@ -234,11 +242,12 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { useForm, router, usePage } from '@inertiajs/vue3';
 import { useStore } from 'vuex';
 import Container from '@/Components/Container.vue';
 import Button from 'primevue/button';
 import TextInput from '@/Components/TextInput.vue';
+import SuggestPriceButton from '@/Components/PriceEstimate/SuggestPriceButton.vue';
 import EventSubForm from './EventSubForm.vue';
 
 const props = defineProps({
@@ -339,6 +348,32 @@ const eventRows = ref(
 
 // Track which event ids existed at load time so we can issue DELETEs for removed ones.
 const originalEventIds = new Set((props.booking.events ?? []).map((e) => e.id));
+
+// ── Price estimator (owners only) ─────────────────────────────────────────────
+const page = usePage();
+const isOwner = computed(() =>
+  (page.props.auth?.user?.owned_band_ids ?? []).includes(props.band.id),
+);
+
+// The estimator prices a booking off its primary (earliest-dated) event.
+const primaryEventRow = computed(() =>
+  [...eventRows.value]
+    .filter((row) => row.date)
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)))[0] ?? null,
+);
+
+const estimatePayload = computed(() => ({
+  event_type_id:      form.event_type_id || null,
+  date:               primaryEventRow.value ? String(primaryEventRow.value.date).slice(0, 10) : null,
+  start_time:         primaryEventRow.value?.start_time || null,
+  end_time:           primaryEventRow.value?.end_time || null,
+  venue_address:      primaryEventRow.value?.venue_address || null,
+  exclude_booking_id: props.booking.id,
+}));
+
+function applySuggestedPrice(price) {
+  form.price = price;
+}
 
 // ── UI state ──────────────────────────────────────────────────────────────────
 const isSaving     = ref(false);
