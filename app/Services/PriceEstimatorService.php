@@ -251,7 +251,8 @@ class PriceEstimatorService
 
     /**
      * One row per eligible booking (non-cancelled, price > 0, with a dated
-     * primary event). The primary event is the booking's earliest event.
+     * primary event). The primary event is the booking's earliest event by
+     * (date, id), matching Bookings::primaryEvent().
      *
      * @return Collection<int, array{booking_id:int,name:string,event_type_id:int,price:float,date:Carbon,start_time:?string,end_time:?string,venue_name:string}>
      */
@@ -267,7 +268,6 @@ class PriceEstimatorService
             ->where('bookings.price', '>', 0)
             ->whereNotNull('events.date')
             ->orderBy('events.date')
-            ->orderBy('events.start_time')
             ->orderBy('events.id')
             ->get([
                 'bookings.id as booking_id',

@@ -10,7 +10,7 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class PriceEstimateRequest extends FormRequest
 {
-    private const TIME_REGEX = '/^\d{1,2}:\d{2}(:\d{2})?$/';
+    private const TIME_REGEX = '/^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/';
 
     public function authorize(): bool
     {

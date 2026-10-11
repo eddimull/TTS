@@ -205,6 +205,17 @@ class PriceEstimateApiTest extends TestCase
             ])
             ->assertStatus(422)
             ->assertJsonValidationErrors(['event_type_id', 'date', 'start_time', 'duration_hours']);
+
+        // Well-formed but out-of-range clock times are rejected, not silently ignored.
+        $this->withToken($token)
+            ->postJson('/api/price-estimate', [
+                'event_type_id' => $this->wedding->id,
+                'date' => '2027-05-15',
+                'start_time' => '24:00',
+                'end_time' => '99:99',
+            ])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['start_time', 'end_time']);
     }
 
     public function test_without_history_returns_null_estimate(): void
