@@ -17,7 +17,7 @@ info:
     | Permission | Grants access to |
     |---|---|
     | `api:read-bookings` | `GET /booked-dates`, `GET /bookings`, `GET /bookings/{id}` |
-    | `api:write-bookings` | `POST /bookings`, `PUT /bookings/{id}`, `PATCH /bookings/{id}`, `DELETE /bookings/{id}` |
+    | `api:write-bookings` | `POST /bookings`, `PUT /bookings/{id}`, `PATCH /bookings/{id}`, `DELETE /bookings/{id}`, `POST /bookings/{id}/contacts` |
     | `api:read-events` | `GET /events` |
     | `api:read-pricing` | `POST /price-estimate` |
 
@@ -177,6 +177,38 @@ components:
         is_paid:
           type: boolean
           example: false
+
+    # ── Client contact (request body) ─────────────────────────────────────────
+    BookingContactBody:
+      type: object
+      required: [name, email]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          example: "Jane Smith"
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          description: The band's existing contact with this email is reused; otherwise a new contact is created.
+          example: "jane@example.com"
+        phone:
+          type: string
+          maxLength: 255
+          nullable: true
+          example: "337-555-0100"
+        role:
+          type: string
+          maxLength: 255
+          nullable: true
+          description: Role on this booking
+          example: "Bride"
+        is_primary:
+          type: boolean
+          nullable: true
+          description: Defaults to true when the booking has no other primary contact.
+          example: true
 
     # ── Booked-date entry (lighter than full Booking) ─────────────────────────
     BookedDate:
@@ -577,8 +609,18 @@ paths:
       tags: [Bookings]
       summary: Create a booking
       description: |
-        Creates a new booking for the authenticated band. The end time is
-        calculated automatically from `start_time` + `duration` (hours).
+        Creates a new booking for the authenticated band, the same way the TTS
+        web and mobile apps do: the booking gets its contract record (seeded
+        with the band's initial contract terms) and one event whose timeline
+        (load in, soundcheck, quiet; plus ceremony and dances for weddings) and
+        details are generated from the event type, assigned to the band's
+        default roster, with the event value equal to the booking price. The
+        end time is calculated from `start_time` + `duration` (hours).
+        `status` defaults to `draft`.
+
+        Pass the client as `contact` (and/or more in `contacts`): the band's
+        existing contact with that email is reused, otherwise one is created.
+        `is_primary` defaults to true for the first contact.
 
         **Required permission:** `api:write-bookings`
       operationId: createBooking
@@ -647,6 +689,16 @@ paths:
                   type: string
                   nullable: true
                   example: "Cocktail hour 6-7pm, dinner 7-9pm, dancing 9-11pm"
+                contact:
+                  allOf:
+                    - $ref: '#/components/schemas/BookingContactBody'
+                  description: The client to attach to the booking (optional).
+                contacts:
+                  type: array
+                  maxItems: 10
+                  description: Additional contacts to attach (optional).
+                  items:
+                    $ref: '#/components/schemas/BookingContactBody'
       responses:
         "201":
           description: Booking created
@@ -901,6 +953,60 @@ paths:
           $ref: '#/components/responses/Forbidden'
         "404":
           $ref: '#/components/responses/NotFound'
+
+  # ── /bookings/{id}/contacts ────────────────────────────────────────────────
+  /bookings/{id}/contacts:
+    post:
+      tags: [Bookings]
+      summary: Add a contact to a booking
+      description: |
+        Attaches a client contact to the booking. The band's existing contact
+        with this email is reused (its name and phone are left unchanged);
+        otherwise a new contact is created for the band. Re-adding an attached
+        contact updates its `role` and `is_primary`. `is_primary` defaults to
+        true when the booking has no other primary contact. Returns 404 if the
+        booking does not exist or does not belong to the authenticated band.
+
+        **Required permission:** `api:write-bookings`
+      operationId: addBookingContact
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Booking ID
+          example: 42
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingContactBody'
+      responses:
+        "201":
+          description: Contact added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Contact added successfully
+                  booking:
+                    $ref: '#/components/schemas/Booking'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "422":
+          $ref: '#/components/responses/UnprocessableEntity'
 
   # ── /price-estimate ────────────────────────────────────────────────────────
   /price-estimate:

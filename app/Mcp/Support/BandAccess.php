@@ -32,6 +32,7 @@ class BandAccess
         'create_booking' => [McpScopes::BOOKINGS_WRITE, 'write:bookings', false],
         'update_booking' => [McpScopes::BOOKINGS_WRITE, 'write:bookings', false],
         'delete_booking' => [McpScopes::BOOKINGS_WRITE, 'write:bookings', false],
+        'add_booking_contact' => [McpScopes::BOOKINGS_WRITE, 'write:bookings', false],
         'list_events' => [McpScopes::EVENTS_READ, 'read:events', false],
         'estimate_price' => [McpScopes::PRICING_READ, null, true],
     ];

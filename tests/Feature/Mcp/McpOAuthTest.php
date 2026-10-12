@@ -295,11 +295,18 @@ class McpOAuthTest extends TestCase
             ->assertJsonPath('result.serverInfo.name', 'TTS Bandmate')
             ->assertJsonPath('result.protocolVersion', '2025-06-18');
 
-        $tools = collect($this->mcp($tokens['access_token'], 'tools/list', [], 2)->assertOk()->json('result.tools'))->pluck('name');
+        $toolDefs = collect($this->mcp($tokens['access_token'], 'tools/list', [], 2)->assertOk()->json('result.tools'));
+        $tools = $toolDefs->pluck('name');
         $this->assertEqualsCanonicalizing([
             'list_bands', 'list_event_types', 'check_availability', 'list_events', 'list_bookings',
-            'get_booking', 'create_booking', 'update_booking', 'delete_booking', 'estimate_price',
+            'get_booking', 'create_booking', 'update_booking', 'delete_booking', 'add_booking_contact', 'estimate_price',
         ], $tools->all());
+
+        // Optional contact fields accept null, matching the server-side rules.
+        $contactProps = $toolDefs->firstWhere('name', 'add_booking_contact')['inputSchema']['properties'];
+        foreach (['phone', 'role', 'is_primary'] as $field) {
+            $this->assertContains('null', (array) $contactProps[$field]['type'], "{$field} should be nullable");
+        }
 
         $result = $this->mcp($tokens['access_token'], 'tools/call', ['name' => 'list_bands', 'arguments' => (object) []], 3)
             ->assertOk()
@@ -310,7 +317,7 @@ class McpOAuthTest extends TestCase
         $this->assertSame(McpScopes::ids(), $data['granted_scopes']);
         $this->assertSame([['id' => $this->band->id, 'name' => 'Alpha Band', 'role' => 'owner', 'tools' => [
             'check_availability', 'list_bookings', 'get_booking', 'create_booking',
-            'update_booking', 'delete_booking', 'list_events', 'estimate_price',
+            'update_booking', 'delete_booking', 'add_booking_contact', 'list_events', 'estimate_price',
         ]]], $data['bands']);
     }
 

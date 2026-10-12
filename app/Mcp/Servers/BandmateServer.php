@@ -2,6 +2,7 @@
 
 namespace App\Mcp\Servers;
 
+use App\Mcp\Tools\AddBookingContact;
 use App\Mcp\Tools\CheckAvailability;
 use App\Mcp\Tools\CreateBooking;
 use App\Mcp\Tools\DeleteBooking;
@@ -34,7 +35,8 @@ use Laravel\Mcp\Server\Attributes\Version;
     - Dates are YYYY-MM-DD and times are 24-hour HH:MM, in the band's local time.
     - "Is the band free on <date>?" → `check_availability` with `date`; it returns `available`. For a range use `from`/`to` (inclusive) or `after`/`before` (exclusive).
     - `estimate_price` is for band owners only; members get an error. It never saves anything. Present the estimate with its range and the breakdown's main factors, and mention any warnings (e.g. a date conflict).
-    - Before `create_booking`, `update_booking` or `delete_booking`, confirm the details with the user. `delete_booking` is permanent; prefer `update_booking` with status "cancelled" unless the user explicitly wants the booking deleted.
+    - `create_booking` generates the contract, the event timeline (load in, soundcheck, etc.), the roster and the event value itself; only ask the user for the booking details. When the booking comes from a lead or client (e.g. an email), pass them as `contact` (name, email, phone if known) so they are attached as the primary contact. Use `add_booking_contact` to add a contact to an existing booking.
+    - Before `create_booking`, `update_booking`, `delete_booking` or `add_booking_contact`, confirm the details with the user. `delete_booking` is permanent; prefer `update_booking` with status "cancelled" unless the user explicitly wants the booking deleted.
     - An error saying a scope was not granted means the user must reconnect the connector and approve that access; a permission error means a band owner must grant it in TTS Bandmate. Don't retry those.
     MARKDOWN)]
 class BandmateServer extends Server
@@ -49,6 +51,7 @@ class BandmateServer extends Server
         CreateBooking::class,
         UpdateBooking::class,
         DeleteBooking::class,
+        AddBookingContact::class,
         EstimatePrice::class,
     ];
 

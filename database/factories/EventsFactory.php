@@ -48,7 +48,7 @@ class EventsFactory extends Factory
      * not a property: create([...]) clones the factory, which would drop it
      * and fall back to a random band.
      */
-    public function forBand(Bands $band)
+    public function forBand(Bands $band): static
     {
         return $this->state(fn () => [
             'eventable_id' => fn () => Bookings::factory()->create(['band_id' => $band->id])->id,

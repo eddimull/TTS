@@ -2,7 +2,7 @@
     "openapi": "3.0.0",
     "info": {
         "title": "TTS Bandmate API",
-        "description": "The TTS Bandmate Band API allows external integrations to read and manage bookings\nand events for a band. Authentication uses a **Bearer token** issued per band.\n\n## Authentication\n\nAll endpoints require an `Authorization: Bearer <token>` header. Tokens are\nscoped to a single band and carry fine-grained permissions.\n\n## Permissions\n\nEach token is granted one or more permissions at issuance:\n\n| Permission | Grants access to |\n|---|---|\n| `api:read-bookings` | GET /booked-dates, GET /bookings, GET /bookings/{id} |\n| `api:write-bookings` | POST /bookings, PUT /bookings/{id}, PATCH /bookings/{id}, DELETE /bookings/{id} |\n| `api:read-events` | GET /events |\n| `api:read-pricing` | POST /price-estimate |\n\n## Date Filtering\n\n`/booked-dates` and `/events` support the same set of query parameters for filtering\nby date. All dates must be in `YYYY-MM-DD` format. Parameters can be combined\n(e.g. `from` + `to` for a range).",
+        "description": "The TTS Bandmate Band API allows external integrations to read and manage bookings\nand events for a band. Authentication uses a **Bearer token** issued per band.\n\n## Authentication\n\nAll endpoints require an `Authorization: Bearer <token>` header. Tokens are\nscoped to a single band and carry fine-grained permissions.\n\n## Permissions\n\nEach token is granted one or more permissions at issuance:\n\n| Permission | Grants access to |\n|---|---|\n| `api:read-bookings` | GET /booked-dates, GET /bookings, GET /bookings/{id} |\n| `api:write-bookings` | POST /bookings, PUT /bookings/{id}, PATCH /bookings/{id}, DELETE /bookings/{id}, POST /bookings/{id}/contacts |\n| `api:read-events` | GET /events |\n| `api:read-pricing` | POST /price-estimate |\n\n## Date Filtering\n\n`/booked-dates` and `/events` support the same set of query parameters for filtering\nby date. All dates must be in `YYYY-MM-DD` format. Parameters can be combined\n(e.g. `from` + `to` for a range).",
         "contact": {
             "name": "TTS Bandmate"
         },
@@ -208,7 +208,7 @@
                     "Bookings"
                 ],
                 "summary": "Create a booking",
-                "description": "Creates a new booking for the authenticated band. The end time is calculated automatically from `start_time` + `duration` (hours).\n\n**Required permission:** `api:write-bookings`",
+                "description": "Creates a new booking for the authenticated band, the same way the TTS web and mobile apps do: the booking gets its contract record (seeded with the band's initial contract terms) and one event whose timeline (load in, soundcheck, quiet; plus ceremony and dances for weddings) and details are generated from the event type, assigned to the band's default roster, with the event value equal to the booking price. The end time is calculated from `start_time` + `duration` (hours). `status` defaults to `draft`.\n\nPass the client as `contact` (and/or more in `contacts`): the band's existing contact with that email is reused, otherwise one is created. `is_primary` defaults to true for the first contact.\n\n**Required permission:** `api:write-bookings`",
                 "operationId": "createBooking",
                 "requestBody": {
                     "required": true,
@@ -236,6 +236,22 @@
                                                 "example": 5,
                                                 "maximum": 24,
                                                 "minimum": 1
+                                            },
+                                            "contact": {
+                                                "description": "The client to attach to the booking (optional).",
+                                                "allOf": [
+                                                    {
+                                                        "$ref": "#/components/schemas/BookingContactBody"
+                                                    }
+                                                ]
+                                            },
+                                            "contacts": {
+                                                "description": "Additional contacts to attach (optional).",
+                                                "type": "array",
+                                                "items": {
+                                                    "$ref": "#/components/schemas/BookingContactBody"
+                                                },
+                                                "maxItems": 10
                                             }
                                         },
                                         "type": "object"
@@ -604,6 +620,108 @@
                                         "message": {
                                             "type": "string",
                                             "example": "Booking updated successfully"
+                                        },
+                                        "booking": {
+                                            "$ref": "#/components/schemas/Booking"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorUnauthorized"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorForbidden"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorNotFound"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorValidation"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "BearerToken": []
+                    }
+                ]
+            }
+        },
+        "/bookings/{id}/contacts": {
+            "post": {
+                "tags": [
+                    "Bookings"
+                ],
+                "summary": "Add a contact to a booking",
+                "description": "Attaches a client contact to the booking. The band's existing contact with this email is reused (its name and phone are left unchanged); otherwise a new contact is created for the band. Re-adding an attached contact updates its `role` and `is_primary`. `is_primary` defaults to true when the booking has no other primary contact. Returns 404 if the booking does not exist or does not belong to the authenticated band.\n\n**Required permission:** `api:write-bookings`",
+                "operationId": "addBookingContact",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "Booking ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer",
+                            "example": 42
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BookingContactBody"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Contact added",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Contact added successfully"
                                         },
                                         "booking": {
                                             "$ref": "#/components/schemas/Booking"
@@ -1471,6 +1589,46 @@
                     },
                     "notes": {
                         "type": "string",
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "BookingContactBody": {
+                "required": [
+                    "name",
+                    "email"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "example": "Jane Smith",
+                        "maxLength": 255
+                    },
+                    "email": {
+                        "description": "The band's existing contact with this email is reused; otherwise a new contact is created.",
+                        "type": "string",
+                        "format": "email",
+                        "example": "jane@example.com",
+                        "maxLength": 255
+                    },
+                    "phone": {
+                        "type": "string",
+                        "example": "337-555-0100",
+                        "maxLength": 255,
+                        "nullable": true
+                    },
+                    "role": {
+                        "description": "Role on this booking",
+                        "type": "string",
+                        "example": "Bride",
+                        "maxLength": 255,
+                        "nullable": true
+                    },
+                    "is_primary": {
+                        "description": "Defaults to true when the booking has no other primary contact.",
+                        "type": "boolean",
+                        "example": true,
                         "nullable": true
                     }
                 },
