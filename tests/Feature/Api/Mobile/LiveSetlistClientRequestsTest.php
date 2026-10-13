@@ -239,6 +239,22 @@ class LiveSetlistClientRequestsTest extends TestCase
             ->assertJsonPath('message', "Nothing left that fits the client's requests.");
     }
 
+    public function test_fenced_empty_reply_still_means_nothing_fits(): void
+    {
+        Song::factory()->active()->create(['band_id' => $this->band->id, 'genre' => 'Ballad']);
+        $this->submitFreeText(['Anything else?' => 'No slow songs please']);
+        SetlistAgent::fake([
+            json_encode(['requests' => [], 'song_notes' => [], 'rules' => ['No slow songs'], 'crowd' => null]),
+            "```JSON\n[]\n```",
+        ]);
+        $session = $this->startLiveSession();
+
+        $this->api()
+            ->getJson("/api/mobile/setlist/sessions/{$session->id}/suggest")
+            ->assertOk()
+            ->assertJsonPath('suggestion', null);
+    }
+
     public function test_a_request_not_in_the_catalog_can_be_queued_by_title(): void
     {
         $session = $this->startLiveSession();

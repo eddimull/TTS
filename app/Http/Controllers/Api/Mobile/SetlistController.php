@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Mobile;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Mobile\BreakResumeRequest;
 use App\Http\Requests\Mobile\OffSetlistRequest;
+use App\Http\Requests\Mobile\ReorderQueueRequest;
 use App\Http\Requests\Mobile\SetlistCaptainRequest;
 use App\Http\Requests\Mobile\SetlistReactionRequest;
 use App\Models\Bookings;
@@ -16,7 +17,6 @@ use App\Services\ClientRequestNotesService;
 use App\Services\ClientSongRequestsService;
 use App\Services\LiveSetlistSessionService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class SetlistController extends Controller
@@ -178,6 +178,7 @@ class SetlistController extends Controller
         ]);
     }
 
+    /** Drop an upcoming entry (song or set break) from the queue. */
     public function removeUpcoming(int $id, int $entryId): JsonResponse
     {
         $session = $this->captainSession($id);
@@ -193,16 +194,11 @@ class SetlistController extends Controller
         return response()->json(['ok' => true]);
     }
 
-    public function reorderUpcoming(Request $request, int $id): JsonResponse
+    public function reorderUpcoming(ReorderQueueRequest $request, int $id): JsonResponse
     {
         $session = $this->captainSession($id);
 
-        $validated = $request->validate([
-            'entry_ids'   => 'required|array|min:1',
-            'entry_ids.*' => 'integer|distinct',
-        ]);
-
-        $this->sessionService->reorderUpcoming($session, $validated['entry_ids'], Auth::user());
+        $this->sessionService->reorderUpcoming($session, $request->validated('entry_ids'), Auth::user());
 
         return response()->json(['ok' => true]);
     }
