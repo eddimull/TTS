@@ -14,8 +14,6 @@ class SetlistAiService
     /** suggestNext(): the model found no song that fits the client's instructions. */
     public const NO_FIT = 0;
 
-    public function __construct() {}
-
     /**
      * Generate a setlist for an event.
      * Returns ['items' => [...], 'event_context' => string, 'image_context' => string[]].
@@ -207,9 +205,7 @@ PROMPT;
 
     /**
      * Suggest the single best next song for a live dynamic session.
-     * Returns a song ID, or null if nothing suitable.
-     */
-    /**
+     *
      * @param array<int> $mustPlayIds  available songs the client asked for in a questionnaire
      * @param array<array{ref: string, title: string, artist: ?string, kind: string, note: ?string}> $requestCandidates
      *        client requests that aren't in the catalog but the band can play
@@ -292,10 +288,14 @@ PROMPT;
 
         $responseText = $this->callClaude($prompt);
 
-        $clean = preg_replace('/```[a-z]*\n?/', '', $responseText);
+        $clean = preg_replace('/```[a-z]*/i', '', $responseText);
 
-        // An explicit [] means nothing fits the client's instructions.
-        if ($clientGuidance !== '' && preg_match('/^\s*\[\s*\]\s*$/', $clean)) {
+        // An explicit [] means nothing fits the client's instructions. Judge
+        // by the last array in the reply, like parseSongIds(), so code fences
+        // or a stray sentence around it don't turn it into a fallback pick.
+        if ($clientGuidance !== ''
+            && preg_match_all('/\[[^\[\]]*\]/', $clean, $arrays)
+            && trim(end($arrays[0]), "[] \t\n\r") === '') {
             return self::NO_FIT;
         }
 
