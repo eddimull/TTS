@@ -15,6 +15,7 @@ use App\Models\LiveSetlistQueue;
 use App\Models\LiveSetlistSession;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class LiveSetlistSessionService
 {
@@ -198,9 +199,14 @@ class LiveSetlistSessionService
 
     public function react(LiveSetlistSession $session, LiveSetlistQueue $entry, string $reaction, User $user): void
     {
-        $action = $reaction === 'positive' ? 'thumbs_up' : 'thumbs_down';
-        $entry->update(['crowd_reaction' => $reaction]);
-        $this->log($session, $entry, $user, $action);
+        if ($reaction === 'neutral') {
+            // Clearing a reaction (tapped again) — not a thumbs-down.
+            $entry->update(['crowd_reaction' => null]);
+        } else {
+            $action = $reaction === 'positive' ? 'thumbs_up' : 'thumbs_down';
+            $entry->update(['crowd_reaction' => $reaction]);
+            $this->log($session, $entry, $user, $action);
+        }
 
         broadcast(new SetlistQueueUpdated($session, $this->formatQueue($session)));
     }
@@ -283,20 +289,90 @@ class LiveSetlistSessionService
         });
     }
 
-    public function addOffSetlist(LiveSetlistSession $session, int $songId, User $user): LiveSetlistQueue
+    /**
+     * @param string $placement 'next' inserts right after the current song;
+     *                          'end' appends behind everything already queued.
+     */
+    /**
+     * Remove a song from the upcoming queue (not the one playing — use
+     * skipRemove for that).
+     */
+    public function removeUpcoming(LiveSetlistSession $session, LiveSetlistQueue $entry, User $user): void
     {
-        return DB::transaction(function () use ($session, $songId, $user) {
-            // Insert after current position
-            $insertAt = $session->current_position + 1;
+        DB::transaction(function () use ($session, $entry, $user) {
+            $entry->update(['status' => 'removed']);
+            $this->log($session, $entry, $user, 'skip_remove', ['upcoming' => true]);
 
-            // Shift all pending songs after insert point
-            $session->pendingQueue()
-                ->where('position', '>=', $insertAt)
-                ->increment('position');
+            broadcast(new SetlistQueueUpdated($session, $this->formatQueue($session)));
+        });
+    }
+
+    /**
+     * Reorder the upcoming queue (pending entries after the current song,
+     * songs and breaks). $entryIds must be exactly those entries in their new
+     * order; they take over the same set of positions.
+     */
+    public function reorderUpcoming(LiveSetlistSession $session, array $entryIds, User $user): void
+    {
+        DB::transaction(function () use ($session, $entryIds, $user) {
+            $upcoming = $session->pendingQueue()
+                ->where('position', '>', $session->current_position)
+                ->orderBy('position')
+                ->lockForUpdate()
+                ->get();
+
+            $expected = $upcoming->pluck('id')->sort()->values()->all();
+            $given = collect($entryIds)->map(fn ($id) => (int) $id)->sort()->values()->all();
+            if ($expected !== $given) {
+                throw ValidationException::withMessages([
+                    'entry_ids' => 'The upcoming queue changed — refresh and try again.',
+                ]);
+            }
+
+            $positions = $upcoming->pluck('position')->values();
+            $byId = $upcoming->keyBy('id');
+            foreach (array_values($entryIds) as $i => $id) {
+                $entry = $byId[(int) $id];
+                if ($entry->position !== $positions[$i]) {
+                    $entry->update(['position' => $positions[$i]]);
+                }
+            }
+
+            $this->log($session, null, $user, 'reorder', ['entry_ids' => array_values($entryIds)]);
+
+            broadcast(new SetlistQueueUpdated($session, $this->formatQueue($session)));
+        });
+    }
+
+    public function addOffSetlist(
+        LiveSetlistSession $session,
+        ?int $songId,
+        User $user,
+        string $placement = 'next',
+        ?string $customTitle = null,
+        ?string $customArtist = null,
+    ): LiveSetlistQueue {
+        return DB::transaction(function () use ($session, $songId, $user, $placement, $customTitle, $customArtist) {
+            if ($placement === 'end') {
+                $insertAt = max(
+                    ($session->queue()->max('position') ?? 0) + 1,
+                    $session->current_position + 1,
+                );
+            } else {
+                // Insert after current position
+                $insertAt = $session->current_position + 1;
+
+                // Shift all pending songs after insert point
+                $session->pendingQueue()
+                    ->where('position', '>=', $insertAt)
+                    ->increment('position');
+            }
 
             $entry = LiveSetlistQueue::create([
                 'session_id' => $session->id,
                 'song_id' => $songId,
+                'custom_title' => $songId ? null : $customTitle,
+                'custom_artist' => $songId ? null : $customArtist,
                 'position' => $insertAt,
                 'status' => 'pending',
                 'is_off_setlist' => true,

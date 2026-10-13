@@ -501,6 +501,11 @@ Route::prefix('mobile')->group(function () {
             Route::post('/sessions/{id}/skip-remove', [App\Http\Controllers\Api\Mobile\SetlistController::class, 'skipRemove'])->name('skipRemove');
             Route::post('/sessions/{id}/reaction', [App\Http\Controllers\Api\Mobile\SetlistController::class, 'reaction'])->name('reaction');
             Route::post('/sessions/{id}/off-setlist', [App\Http\Controllers\Api\Mobile\SetlistController::class, 'offSetlist'])->name('offSetlist');
+            // AI "what's next" — same controller as the web captain view.
+            Route::get('/sessions/{id}/suggest', [App\Http\Controllers\SetlistSuggestionController::class, 'suggest'])->name('suggest');
+            Route::post('/sessions/{id}/accept-suggestion', [App\Http\Controllers\SetlistSuggestionController::class, 'accept'])->name('acceptSuggestion');
+            Route::put('/sessions/{id}/queue/order', [App\Http\Controllers\Api\Mobile\SetlistController::class, 'reorderUpcoming'])->name('queue.reorder');
+            Route::delete('/sessions/{id}/queue/{entryId}', [App\Http\Controllers\Api\Mobile\SetlistController::class, 'removeUpcoming'])->name('queue.remove');
             Route::post('/sessions/{id}/promote', [App\Http\Controllers\Api\Mobile\SetlistController::class, 'promote'])->name('promote');
             Route::post('/sessions/{id}/demote', [App\Http\Controllers\Api\Mobile\SetlistController::class, 'demote'])->name('demote');
 
