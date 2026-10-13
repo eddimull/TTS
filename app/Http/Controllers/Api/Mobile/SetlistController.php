@@ -178,6 +178,7 @@ class SetlistController extends Controller
         ]);
     }
 
+    /** Drop an upcoming entry (song or set break) from the queue. */
     public function removeUpcoming(int $id, int $entryId): JsonResponse
     {
         $session = $this->captainSession($id);

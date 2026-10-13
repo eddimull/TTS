@@ -127,6 +127,21 @@ class LiveSetlistQueueTest extends TestCase
         $this->assertSame([$a->id, $c->id], $this->pendingOrder());
     }
 
+    public function test_captain_can_remove_an_upcoming_break(): void
+    {
+        $song = Song::factory()->create(['band_id' => $this->band->id]);
+        $this->add($song, 'end');
+        $break = $this->session->queue()->create([
+            'type' => 'break', 'position' => 9, 'status' => 'pending',
+        ]);
+
+        $this->api()
+            ->deleteJson("/api/mobile/setlist/sessions/{$this->session->id}/queue/{$break->id}")
+            ->assertOk();
+
+        $this->assertSame('removed', $break->fresh()->status);
+    }
+
     public function test_cannot_remove_the_song_that_is_playing(): void
     {
         $song = Song::factory()->create(['band_id' => $this->band->id]);
