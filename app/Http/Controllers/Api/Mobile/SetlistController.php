@@ -7,12 +7,16 @@ use App\Http\Requests\Mobile\BreakResumeRequest;
 use App\Http\Requests\Mobile\OffSetlistRequest;
 use App\Http\Requests\Mobile\SetlistCaptainRequest;
 use App\Http\Requests\Mobile\SetlistReactionRequest;
+use App\Models\Bookings;
 use App\Models\Events;
 use App\Models\LiveSetlistQueue;
 use App\Models\LiveSetlistSession;
 use App\Models\User;
+use App\Services\ClientRequestNotesService;
+use App\Services\ClientSongRequestsService;
 use App\Services\LiveSetlistSessionService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class SetlistController extends Controller
@@ -34,6 +38,11 @@ class SetlistController extends Controller
             ->with(['queue.song.leadSinger', 'captains.user', 'startedBy'])
             ->whereIn('status', ['active', 'paused', 'break'])
             ->first();
+
+        // Parse the questionnaire free text on first load (no-op afterwards).
+        if ($session) {
+            app(ClientRequestNotesService::class)->ensureFor($session);
+        }
 
         $songs = $band->songs()
             ->where('active', true)
@@ -57,6 +66,13 @@ class SetlistController extends Controller
             ],
             'session'          => $session ? $this->formatSession($session) : null,
             'songs'            => $songs,
+            // Client must-play / do-not-play picks from submitted questionnaires
+            // on the event's booking; null when there are none.
+            'client_requests'  => $event->eventable instanceof Bookings
+                ? app(ClientSongRequestsService::class)->forBooking($event->eventable)
+                : null,
+            // AI-parsed free-text requests/notes from the questionnaire.
+            'client_notes'     => $session?->client_notes,
             'is_captain'       => $session && $session->isCaptain(Auth::user()),
             'can_write'        => Auth::user()->canWrite('events', $band->id),
             'current_user_id'  => Auth::id(),
@@ -84,6 +100,7 @@ class SetlistController extends Controller
             $session = $this->sessionService->startEmpty($event->id, $band->id, Auth::user());
         }
 
+        app(ClientRequestNotesService::class)->ensureFor($session);
         $session->load(['queue.song.leadSinger', 'captains.user']);
 
         return response()->json($this->formatSession($session));
@@ -145,13 +162,49 @@ class SetlistController extends Controller
 
         $validated = $request->validated();
 
-        $entry = $this->sessionService->addOffSetlist($session, $validated['song_id'], Auth::user());
+        $entry = $this->sessionService->addOffSetlist(
+            $session,
+            $validated['song_id'] ?? null,
+            Auth::user(),
+            $validated['placement'] ?? 'next',
+            $validated['custom_title'] ?? null,
+            $validated['custom_artist'] ?? null,
+        );
 
         return response()->json([
             'id'     => $entry->id,
             'title'  => $entry->display_title,
             'artist' => $entry->display_artist,
         ]);
+    }
+
+    public function removeUpcoming(int $id, int $entryId): JsonResponse
+    {
+        $session = $this->captainSession($id);
+
+        $entry = LiveSetlistQueue::where('id', $entryId)
+            ->where('session_id', $session->id)
+            ->where('status', 'pending')
+            ->where('position', '>', $session->current_position)
+            ->firstOrFail();
+
+        $this->sessionService->removeUpcoming($session, $entry, Auth::user());
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function reorderUpcoming(Request $request, int $id): JsonResponse
+    {
+        $session = $this->captainSession($id);
+
+        $validated = $request->validate([
+            'entry_ids'   => 'required|array|min:1',
+            'entry_ids.*' => 'integer|distinct',
+        ]);
+
+        $this->sessionService->reorderUpcoming($session, $validated['entry_ids'], Auth::user());
+
+        return response()->json(['ok' => true]);
     }
 
     public function promote(SetlistCaptainRequest $request, int $id): JsonResponse
