@@ -290,12 +290,8 @@ class LiveSetlistSessionService
     }
 
     /**
-     * @param string $placement 'next' inserts right after the current song;
-     *                          'end' appends behind everything already queued.
-     */
-    /**
-     * Remove a song from the upcoming queue (not the one playing — use
-     * skipRemove for that).
+     * Remove an upcoming queue entry — a song, or a queued set break the
+     * captain decided to skip. Not the song that's playing (use skipRemove).
      */
     public function removeUpcoming(LiveSetlistSession $session, LiveSetlistQueue $entry, User $user): void
     {
@@ -344,6 +340,10 @@ class LiveSetlistSessionService
         });
     }
 
+    /**
+     * @param string $placement 'next' inserts right after the current song;
+     *                          'end' appends behind everything already queued.
+     */
     public function addOffSetlist(
         LiveSetlistSession $session,
         ?int $songId,
