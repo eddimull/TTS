@@ -18,6 +18,7 @@ class LiveSetlistSession extends Model
         'after_break',
         'break_started_at',
         'rejected_song_ids',
+        'client_notes',
     ];
 
     protected $casts = [
@@ -28,6 +29,7 @@ class LiveSetlistSession extends Model
         'ended_at' => 'datetime',
         'break_started_at' => 'datetime',
         'rejected_song_ids' => 'array',
+        'client_notes' => 'array',
     ];
 
     public function event()

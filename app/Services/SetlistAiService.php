@@ -11,6 +11,9 @@ use Laravel\Ai\Files\Base64Image;
 
 class SetlistAiService
 {
+    /** suggestNext(): the model found no song that fits the client's instructions. */
+    public const NO_FIT = 0;
+
     public function __construct() {}
 
     /**
@@ -206,7 +209,13 @@ PROMPT;
      * Suggest the single best next song for a live dynamic session.
      * Returns a song ID, or null if nothing suitable.
      */
-    public function suggestNext(Events $event, array $availableSongs, array $playedSongs, array $reactionLog, bool $afterBreak = false): ?int
+    /**
+     * @param array<int> $mustPlayIds  available songs the client asked for in a questionnaire
+     * @param array<array{ref: string, title: string, artist: ?string, kind: string, note: ?string}> $requestCandidates
+     *        client requests that aren't in the catalog but the band can play
+     * @return int|string|null  a catalog song ID, a request ref ("R2"), NO_FIT, or null on failure
+     */
+    public function suggestNext(Events $event, array $availableSongs, array $playedSongs, array $reactionLog, bool $afterBreak = false, array $mustPlayIds = [], string $clientGuidance = '', array $requestCandidates = []): int|string|null
     {
         $context = $this->buildEventContext($event);
         $songList = $this->buildSongList($availableSongs);
@@ -230,6 +239,31 @@ PROMPT;
 
         $excludeSection = '';
 
+        $mustPlaySection = $mustPlayIds
+            ? "\nCLIENT MUST-PLAY REQUESTS still unplayed (IDs): " . implode(', ', $mustPlayIds)
+                . "\nThe client specifically asked for these. Prefer one of them whenever it fits the energy flow — they all need to be played before the night ends.\n"
+            : '';
+        $requestSection = '';
+        $returnInstruction = 'Return ONLY a valid JSON array containing the single chosen song ID. Example: [42]';
+        if ($requestCandidates) {
+            $requestSection = "\nCLIENT REQUESTS NOT IN THE CATALOG — the band can still perform these; pick one by its R-reference.\n"
+                . "PRIORITY: unplayed MUST PLAY requests (here or in the catalog) come before anything else — including \"if time permits\" requests — unless the energy flow clearly calls for a different song right now. \"If time permits\" requests are fillers for after the must-plays.\n"
+                . "(format: REF | Title – Artist | priority | note):\n"
+                . collect($requestCandidates)->map(fn ($r) => sprintf(
+                    '%s | %s%s | %s%s',
+                    $r['ref'],
+                    $r['title'],
+                    $r['artist'] ? ' – ' . $r['artist'] : '',
+                    $r['kind'] === 'must_play' ? 'MUST PLAY' : 'if time permits',
+                    $r['note'] ? ' | ' . $r['note'] : '',
+                ))->implode("\n") . "\n";
+            $returnInstruction = 'Return ONLY a valid JSON array containing the single chosen ID — a catalog song ID like [42] or a client request reference like ["R1"].';
+        }
+        if ($clientGuidance !== '') {
+            $mustPlaySection .= "\nCLIENT INSTRUCTIONS (follow strictly):\n{$clientGuidance}\n"
+                . "If NO available song satisfies these instructions, return an empty array [] instead of breaking them.\n";
+        }
+
         $prompt = <<<PROMPT
 You are a professional band manager choosing the next song for a live performance already in progress.
 
@@ -240,10 +274,10 @@ SONGS ALREADY PLAYED THIS SHOW: {$playedText}
 
 CROWD REACTIONS SO FAR:
 {$reactionsText}
-{$afterBreakSection}{$excludeSection}
+{$afterBreakSection}{$excludeSection}{$mustPlaySection}
 AVAILABLE SONGS (format: ID | Title – Artist | Key | Genre | BPM | Energy | Lead singer | Transitions into):
 {$songList}
-
+{$requestSection}
 Choose the single best next song to play right now. Consider:
 1. ENERGY FLOW: Match or build on the current crowd energy based on reactions. After thumbs-down songs, shift genre or tempo. After thumbs-up, stay in a similar vibe or build higher.
 2. VARIETY: Do not repeat genres or lead singers back-to-back unless the crowd reaction strongly warrants it.
@@ -251,12 +285,28 @@ Choose the single best next song to play right now. Consider:
 4. TRANSITIONS: The "Transitions into" field is informational only — transitions are enforced before you are called, so ignore this field when choosing.
 5. EXCLUSIONS: Any artists, songs, or genres mentioned as excluded in the event notes are ABSOLUTE — never suggest them.
 
-Return ONLY a valid JSON array containing the single chosen song ID. Example: [42]
+{$returnInstruction}
 
 Do not include any explanation, reasoning, or markdown. Output the raw JSON array and nothing else.
 PROMPT;
 
         $responseText = $this->callClaude($prompt);
+
+        $clean = preg_replace('/```[a-z]*\n?/', '', $responseText);
+
+        // An explicit [] means nothing fits the client's instructions.
+        if ($clientGuidance !== '' && preg_match('/^\s*\[\s*\]\s*$/', $clean)) {
+            return self::NO_FIT;
+        }
+
+        // A client request outside the catalog, e.g. ["R2"].
+        if ($requestCandidates && preg_match_all('/\bR\d+\b/', $clean, $refs)) {
+            $ref = end($refs[0]);
+            if (in_array($ref, array_column($requestCandidates, 'ref'), true)) {
+                return $ref;
+            }
+        }
+
         $ids = $this->parseSongIds($responseText);
 
         return $ids[0] ?? null;
