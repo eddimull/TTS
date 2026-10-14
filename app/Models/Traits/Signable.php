@@ -7,55 +7,66 @@ use App\Models\Contacts;
 use App\Services\PandaDocService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection;
 
 trait Signable
 {
-    public function sendToPandaDoc(Contacts $signer, ?Collection $ccRecipients = null)
+    /**
+     * Create the PandaDoc document for this contract and send it out.
+     *
+     * Every signer gets its own role (signer1, signer2, ...) matching the
+     * `{signature:signerN}` field tags in the generated PDF; they sign in
+     * parallel (no signing_order). PandaDoc does not allow underscores in role
+     * names on a file with field tags, hence `signer1` and `cc1`, not
+     * `signer_1`/`CC_1`. A contact that is both a signer and a CC is sent
+     * as a signer only.
+     *
+     * @param  Contacts|Collection<int, Contacts>  $signers
+     * @param  Collection<int, Contacts>|null  $ccRecipients
+     */
+    public function sendToPandaDoc(Contacts|Collection $signers, ?Collection $ccRecipients = null)
     {
         $apiKey = config('services.pandadoc.api_key');
         $apiUrl = 'https://api.pandadoc.com/public/v1/documents';
 
-        // Get all potential recipients
-        $recipients = $this->getContractRecipients();
+        $signers = $signers instanceof Contacts ? collect([$signers]) : collect($signers);
+        $signers = $signers->filter()->unique(fn (Contacts $contact) => $contact->getKey())->values();
 
-        // Filter to keep only the signer
-        $signerRecipient = array_values(array_filter($recipients, function ($recipient) use ($signer)
+        if ($signers->isEmpty())
         {
-            return $recipient['email'] === $signer->email;
-        }));
-
-        // If we have CC recipients, add them to the recipients array
-        if ($ccRecipients && $ccRecipients->isNotEmpty())
-        {
-            $ccRecipientsArray = $ccRecipients->map(function ($ccContact, $index) use ($recipients)
-            {
-                // Find matching recipient from original recipients array
-                $matchingRecipient = collect($recipients)->first(function ($recipient) use ($ccContact)
-                {
-                    return $recipient['email'] === $ccContact->email;
-                });
-
-                if ($matchingRecipient)
-                {
-                    return array_merge($matchingRecipient, ['recipient_type' => 'CC', 'role' => 'CC_' . ($index + 1)]);
-                }
-
-                // If no matching recipient found, create a new CC recipient
-                return [
-                    'email' => $ccContact->email,
-                    'recipient_type' => 'CC',
-                    'role' => 'CC_' . ($index + 1),
-                ];
-            })->all();
-
-            // Combine signer and CC recipients
-            $recipients = array_merge($signerRecipient, $ccRecipientsArray);
+            throw new \InvalidArgumentException('At least one signer is required to send a contract.');
         }
-        else
+
+        $signerIds = $signers->map(fn (Contacts $contact) => $contact->getKey())->all();
+        $signerEmails = $signers->map(fn (Contacts $contact) => strtolower((string) $contact->email))->all();
+
+        $ccRecipients = collect($ccRecipients ?? [])
+            ->filter()
+            ->unique(fn (Contacts $contact) => $contact->getKey())
+            ->reject(fn (Contacts $contact) => in_array($contact->getKey(), $signerIds, true)
+                || in_array(strtolower((string) $contact->email), $signerEmails, true))
+            ->values();
+
+        // Potential recipients as the contractable formats them (name split etc.)
+        $knownRecipients = collect($this->getContractRecipients());
+
+        $signerRecipients = $signers->map(function (Contacts $contact, int $index) use ($knownRecipients)
         {
-            $recipients = $signerRecipient;
-        }
+            return array_merge(
+                $this->recipientPayloadFor($contact, $knownRecipients),
+                ['role' => self::signerRole($index)]
+            );
+        })->all();
+
+        $ccRecipientsArray = $ccRecipients->map(function (Contacts $contact, int $index) use ($knownRecipients)
+        {
+            return array_merge(
+                $this->recipientPayloadFor($contact, $knownRecipients),
+                ['recipient_type' => 'CC', 'role' => 'cc' . ($index + 1)]
+            );
+        })->all();
+
+        $recipients = array_merge($signerRecipients, $ccRecipientsArray);
 
         try
         {
@@ -69,7 +80,7 @@ trait Signable
                 ],
                 'url' => $this->getPdfUrl(),
                 'recipients' => $recipients,
-                'fields' => $this->getSignatureFields(),
+                'fields' => $this->getSignatureFields($signerRecipients),
                 'parse_form_fields' => false,
             ]);
 
@@ -94,6 +105,35 @@ trait Signable
             Log::error('Exception while sending document to PandaDoc: ' . $e->getMessage());
             throw $e;
         }
+    }
+
+    /**
+     * PandaDoc role for the signer at the given zero-based position. Must
+     * match the `{signature:<role>}` tag rendered in the contract PDF.
+     */
+    public static function signerRole(int $index): string
+    {
+        return 'signer' . ($index + 1);
+    }
+
+    private function recipientPayloadFor(Contacts $contact, Collection $knownRecipients): array
+    {
+        $known = $knownRecipients->first(
+            fn (array $recipient) => strcasecmp((string) ($recipient['email'] ?? ''), (string) $contact->email) === 0
+        );
+
+        if ($known)
+        {
+            return $known;
+        }
+
+        $nameParts = explode(' ', trim((string) $contact->name));
+
+        return [
+            'email' => $contact->email,
+            'first_name' => $nameParts[0] ?? '',
+            'last_name' => $nameParts[1] ?? '',
+        ];
     }
 
     private function pollDocumentStatus($documentId)
@@ -357,7 +397,7 @@ trait Signable
     }
 
     abstract public function getPdfUrl(): string;
-    abstract public function getSignatureFields(): array;
+    abstract public function getSignatureFields(array $signerRecipients): array;
     abstract public function getContractRecipients(): array;
     abstract public function getContractName(): string;
 }

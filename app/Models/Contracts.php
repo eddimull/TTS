@@ -91,14 +91,24 @@ class Contracts extends Model
         return ltrim($this->asset_url, '/');
     }
 
-    public function getSignatureFields(): array
+    /**
+     * Prefilled fields for PandaDoc, one `name` field per signer role.
+     *
+     * @param  array<int, array{first_name?: string, last_name?: string, role: string}>  $signerRecipients
+     */
+    public function getSignatureFields(array $signerRecipients): array
     {
-        return [
-            "name" => [
-                "value" => "{$this->contractable->getContractRecipients()[0]['first_name']} {$this->contractable->getContractRecipients()[0]['last_name']}",
-                "role" => "user"
-            ]
-        ];
+        $fields = [];
+
+        foreach ($signerRecipients as $recipient)
+        {
+            $fields[$recipient['role'] . '_name'] = [
+                'value' => trim(($recipient['first_name'] ?? '') . ' ' . ($recipient['last_name'] ?? '')),
+                'role' => $recipient['role'],
+            ];
+        }
+
+        return $fields;
     }
 
     public function getContractRecipients(): array

@@ -189,9 +189,9 @@ class ContractsController extends Controller
      */
     public function sendBookingContract(SendBookingContractRequest $request, Bands $band, Bookings $booking,)
     {
-        $contact = $booking->contacts()->find($request->signer);
+        $signers = $request->signerContacts();
 
-        if (!$contact)
+        if ($signers->isEmpty())
         {
             return redirect()->back()
                 ->withErrors(['Contact not found' => 'The specified signer contact was not found for this booking.'])
@@ -199,7 +199,7 @@ class ContractsController extends Controller
         }
 
         try {
-            $contractPdf = $booking->getContractPdf($contact);
+            $contractPdf = $booking->getContractPdf($signers);
             $booking->storeContractPdf($contractPdf);
         } catch (\InvalidArgumentException $e) {
             return redirect()->back()
@@ -224,10 +224,7 @@ class ContractsController extends Controller
 
         try
         {
-            $contract->sendToPandaDoc(
-                $contact,
-                $request->has('cc') ? $booking->contacts()->find($request->cc) : null
-            );
+            $contract->sendToPandaDoc($signers, $request->ccContacts());
 
             $booking->status = 'pending';
             $booking->save();
