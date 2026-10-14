@@ -1,6 +1,88 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
+
+// The popup imports its PrimeVue components locally. VTU's `global.stubs`
+// relies on a dev-only Vue hook that the production build used by
+// `npm run test:pipeline` compiles out, so stub them with vi.mock instead,
+// which works in both builds. Render functions (not template strings) keep
+// the stubs independent of the runtime-only Vue build.
+// vi.mock calls are hoisted above plain declarations, so build the factory
+// in vi.hoisted.
+const { passthrough } = vi.hoisted(() => ({
+    passthrough: (tag = 'div') => async () => {
+        const { h } = await import('vue');
+        return {
+            default: {
+                render() {
+                    return h(tag, this.$slots.default?.());
+                },
+            },
+        };
+    },
+}));
+
+vi.mock('primevue/dialog', passthrough());
+vi.mock('primevue/stepper', passthrough());
+vi.mock('primevue/steplist', passthrough());
+vi.mock('primevue/steppanels', passthrough());
+vi.mock('primevue/stepitem', passthrough());
+vi.mock('primevue/step', passthrough());
+vi.mock('primevue/progressspinner', passthrough('span'));
+
+vi.mock('primevue/steppanel', async () => {
+    const { h } = await import('vue');
+    return {
+        default: {
+            props: ['value'],
+            render() {
+                return h(
+                    'section',
+                    { 'data-step': this.value },
+                    this.$slots.default?.({ activateCallback: () => {} }),
+                );
+            },
+        },
+    };
+});
+
+vi.mock('primevue/button', async () => {
+    const { h } = await import('vue');
+    return {
+        default: {
+            props: ['label', 'disabled'],
+            emits: ['click'],
+            render() {
+                return h(
+                    'button',
+                    { disabled: this.disabled, onClick: () => this.$emit('click') },
+                    this.label,
+                );
+            },
+        },
+    };
+});
+
+// Listbox stub that exposes its options and lets the test pick values.
+vi.mock('primevue/listbox', async () => {
+    const { h } = await import('vue');
+    return {
+        default: {
+            name: 'Listbox',
+            props: ['modelValue', 'options', 'optionValue', 'multiple'],
+            emits: ['update:modelValue'],
+            render() {
+                return h(
+                    'ul',
+                    { 'data-testid': this.$attrs['data-testid'] },
+                    (this.options ?? []).map((o) => h('li', { key: o.id, 'data-id': o.id }, o.name)),
+                );
+            },
+        },
+    };
+});
+
+import ListboxStub from 'primevue/listbox';
 import SendContractPopup from '@/Pages/Bookings/Components/SendContractPopup.vue';
 
 const contacts = [
@@ -9,39 +91,9 @@ const contacts = [
     { id: 3, name: 'Planner Person', email: 'planner@example.com' },
 ];
 
-// Listbox stub that exposes its options and lets the test pick values.
-const ListboxStub = {
-    name: 'Listbox',
-    props: ['modelValue', 'options', 'optionValue', 'multiple'],
-    emits: ['update:modelValue'],
-    template:
-        '<ul :data-testid="$attrs[\'data-testid\']"><li v-for="o in options" :key="o.id" :data-id="o.id">{{ o.name }}</li></ul>',
-};
-
 const mountPopup = (props = {}) =>
     mount(SendContractPopup, {
         props: { show: false, contacts, ...props },
-        global: {
-            stubs: {
-                Dialog: { template: '<div><slot /></div>' },
-                Stepper: { template: '<div><slot /></div>' },
-                StepList: { template: '<div><slot /></div>' },
-                Step: { template: '<div><slot /></div>' },
-                StepPanels: { template: '<div><slot /></div>' },
-                StepPanel: {
-                    props: ['value'],
-                    template: '<section :data-step="value"><slot :activateCallback="() => {}" /></section>',
-                },
-                Button: {
-                    props: ['label', 'disabled'],
-                    emits: ['click'],
-                    template: '<button :disabled="disabled" @click="$emit(\'click\')">{{ label }}</button>',
-                },
-                Listbox: ListboxStub,
-                ProgressSpinner: true,
-                Transition: { template: '<div><slot /></div>' },
-            },
-        },
     });
 
 const signerListbox = (wrapper) =>
@@ -92,14 +144,17 @@ describe('SendContractPopup', () => {
     });
 
     it('emits signers and cc arrays on finish', async () => {
-        const wrapper = mountPopup();
+        // A listener prop, not wrapper.emitted(): VTU's emit tracking uses a
+        // dev-only Vue hook that the pipeline's production build strips out.
+        const onConfirm = vi.fn();
+        const wrapper = mountPopup({ onConfirm });
         await wrapper.setProps({ show: true });
 
         await signerListbox(wrapper).vm.$emit('update:modelValue', [2, 1]);
         await ccListbox(wrapper).vm.$emit('update:modelValue', [3]);
         await wrapper.find('[data-step="3"]').findAll('button').find((b) => b.text() === 'Finish').trigger('click');
 
-        expect(wrapper.emitted('confirm')).toEqual([[{ signers: [2, 1], cc: [3] }]]);
+        expect(onConfirm).toHaveBeenCalledExactlyOnceWith({ signers: [2, 1], cc: [3] });
     });
 
     it('preselects the only contact as signer', async () => {
