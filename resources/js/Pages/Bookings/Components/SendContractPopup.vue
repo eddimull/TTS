@@ -212,7 +212,7 @@
                                 </div>
 
                                 <div
-                                    v-if="selectedCCContactNames.length"
+                                    v-if="selectedCCContacts.length"
                                     class="flex flex-col space-y-2"
                                 >
                                     <div
@@ -222,11 +222,11 @@
                                     </div>
                                     <div class="flex flex-wrap gap-2">
                                         <span
-                                            v-for="contact in selectedCCContactNames"
-                                            :key="contact"
+                                            v-for="contact in selectedCCContacts"
+                                            :key="contact.id"
                                             class="inline-flex items-center px-3 py-1.5 rounded-full bg-primary-50 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300 text-sm font-medium transition-colors duration-200"
                                         >
-                                            {{ contact }}
+                                            {{ contact.name }}
                                         </span>
                                     </div>
                                 </div>
@@ -315,9 +315,12 @@ const selectedSignerNamesText = computed(() =>
     joinNames(selectedSignerIds.value.map(contactName).filter(Boolean))
 );
 
-const selectedCCContactNames = computed(() => {
-    return selectedCCContactIds.value.map(contactName).filter(Boolean);
-});
+// Keyed by id in the template: contact names aren't unique.
+const selectedCCContacts = computed(() =>
+    selectedCCContactIds.value
+        .map((id) => ({ id, name: contactName(id) }))
+        .filter((contact) => contact.name),
+);
 
 watch(
     () => props.show,

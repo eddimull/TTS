@@ -24,7 +24,7 @@ trait Signable
      * @param  Contacts|Collection<int, Contacts>  $signers
      * @param  Collection<int, Contacts>|null  $ccRecipients
      */
-    public function sendToPandaDoc(Contacts|Collection $signers, ?Collection $ccRecipients = null)
+    public function sendToPandaDoc(Contacts|Collection $signers, ?Collection $ccRecipients = null): array
     {
         $apiKey = config('services.pandadoc.api_key');
         $apiUrl = 'https://api.pandadoc.com/public/v1/documents';

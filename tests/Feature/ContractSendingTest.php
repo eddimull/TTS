@@ -146,7 +146,7 @@ class ContractSendingTest extends TestCase
         $this->assertNotEquals('sent', $contract->fresh()->status);
     }
 
-    public function test_multiple_signers_get_unique_roles_and_overlapping_cc_is_dropped()
+    public function test_multiple_signers_get_unique_roles_and_overlapping_cc_is_dropped(): void
     {
         Http::fake([
             'api.pandadoc.com/*' => Http::response([
@@ -190,7 +190,7 @@ class ContractSendingTest extends TestCase
         });
     }
 
-    public function test_sending_without_signers_throws()
+    public function test_sending_without_signers_throws(): void
     {
         Http::fake();
 
