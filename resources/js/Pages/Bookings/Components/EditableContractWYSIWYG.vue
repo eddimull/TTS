@@ -63,11 +63,11 @@
           id="buyer-name-override"
           v-model="buyerNameLocal"
           class="w-full"
-          placeholder="Leave blank to use the signer's name"
+          placeholder="Leave blank to use the signer names"
           @input="emitBuyerNameUpdate"
         />
         <p class="text-xs text-gray-400 mt-1">
-          Use when the Buyer is an organization and the signer signs on its behalf.
+          Use when the Buyer is an organization; every signer signs on its behalf.
         </p>
       </div>
       <div class="mb-4">
@@ -251,6 +251,9 @@
         <div class="mt-4">
           Signature: ___________________________
         </div>
+        <p class="text-xs text-gray-400 mt-2">
+          The sent contract has one signature block like this for each signer you choose when sending.
+        </p>
       </div>
     </div>
   </div>

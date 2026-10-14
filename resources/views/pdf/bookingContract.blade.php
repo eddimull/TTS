@@ -1,8 +1,16 @@
 @extends('layouts.PDF', ['bodyStyle' => 'size: legal; width: 1200px;', 'contentClasses' => ''])
 @section('content')
 @php
+    // `signers` (collection, in PandaDoc role order signer1, signer2, ...) is
+    // what getContractPdf() passes; a lone `signer` is still accepted.
+    $signers = collect($signers ?? (isset($signer) ? [$signer] : []))->filter()->values();
     $hasBuyerOverride = $booking->contract && filled($booking->contract->buyer_name_override);
-    $buyerName = $hasBuyerOverride ? $booking->contract->buyer_name_override : $signer->name;
+    $buyerName = $hasBuyerOverride
+        ? $booking->contract->buyer_name_override
+        : \Illuminate\Support\Arr::join($signers->pluck('name')->all(), ', ', ' and ');
+    // Always render at least one signature block so a preview without
+    // contacts still has a signature line.
+    $signatureBlocks = $signers->isNotEmpty() ? $signers : collect([null]);
 @endphp
 <x-pdf.contractHeader>
     <img
@@ -125,20 +133,24 @@
             Buyer
         </p>
         <p>I Agree to the terms and conditions of this contract</p>
-        <div>
-            <strong class="underline">{{ $buyerName }}</strong> - <strong>{{ date('m/d/Y') }}</strong>
-        </div>
-        @if ($hasBuyerOverride)
-            <div>
-                By: <strong>{{ $signer->name }}</strong>, on behalf of {{ $buyerName }}
+        @foreach ($signatureBlocks as $blockSigner)
+            <div class="{{ $loop->first ? '' : 'mt-8' }}" style="page-break-inside: avoid;">
+                <div>
+                    <strong class="underline">{{ $hasBuyerOverride ? $buyerName : ($blockSigner?->name ?? $buyerName) }}</strong> - <strong>{{ date('m/d/Y') }}</strong>
+                </div>
+                @if ($hasBuyerOverride && $blockSigner)
+                    <div>
+                        By: <strong>{{ $blockSigner->name }}</strong>, on behalf of {{ $buyerName }}
+                    </div>
+                @endif
+                <br />
+                <br />
+                <div>
+                    <span>Signature:</span>
+                    <div> {signature:{{ \App\Models\Contracts::signerRole($loop->index) }}___________________________}</div>
+                </div>
             </div>
-        @endif
-        <br />
-        <br />
-        <div>
-            <span>Signature:</span>
-            <div> {signature:user___________________________}</div>
-        </div>
+        @endforeach
 
     </div>
 </x-pdf.section>

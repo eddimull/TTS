@@ -99,7 +99,43 @@ class ProcessPandadocWebhookJob extends SpatieProcessWebhookJob
             'recipientEmail' => $recipientEmail
         ]);
 
+        // With several signers (who sign in parallel), each one fires
+        // `recipient_completed`. Until the last signer is done the document
+        // can't complete, so don't start the not-ready retry loop for the
+        // earlier ones; the final signer's webhook (and
+        // `document_state_changed` -> document.completed) will finish it.
+        $outstandingSigners = $this->outstandingSigners($payload['data']['recipients'] ?? null);
+        if ($outstandingSigners > 0)
+        {
+            Log::info('PandaDoc webhook: waiting on other signers', [
+                'documentId'         => $documentId,
+                'outstandingSigners' => $outstandingSigners,
+            ]);
+            return;
+        }
+
         $this->completeContractForEnvelope($documentId);
+    }
+
+    /**
+     * Signers in the webhook's recipient list that have not completed yet.
+     * Returns 0 when the payload carries no usable recipient list, so we
+     * fall back to attempting completion (which itself checks PandaDoc for
+     * `document.completed`).
+     */
+    private function outstandingSigners(mixed $recipients): int
+    {
+        if (!is_array($recipients))
+        {
+            return 0;
+        }
+
+        return collect($recipients)
+            ->filter(fn ($recipient) => is_array($recipient)
+                && array_key_exists('has_completed', $recipient)
+                && strtolower((string) ($recipient['recipient_type'] ?? 'signer')) === 'signer')
+            ->reject(fn (array $recipient) => (bool) $recipient['has_completed'])
+            ->count();
     }
 
     private function completeContractForEnvelope(?string $documentId): void
