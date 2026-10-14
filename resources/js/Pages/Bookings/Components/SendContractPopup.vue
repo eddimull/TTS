@@ -21,8 +21,9 @@
                             class="border-2 border-dashed border-surface-200 dark:border-surface-700 rounded bg-surface-50 dark:bg-surface-950 flex-auto flex justify-center items-center font-medium"
                         >
                             <p class="p-4">
-                                You are about to send the contract to a
-                                recipient. Are you sure you want to proceed?
+                                You are about to send the contract to the
+                                recipient(s) you choose next. Are you sure you
+                                want to proceed?
                             </p>
                         </div>
                     </div>
@@ -50,24 +51,41 @@
                         >
                             <!-- Signer Selection -->
                             <div class="mb-6">
-                                <label class="block text-sm font-medium mb-2"
-                                    >Who is the signer:</label
+                                <label
+                                    class="block text-sm font-medium mb-1 text-surface-900 dark:text-surface-100"
+                                    >Who signs:</label
                                 >
-                                <select
-                                    v-model="selectedContactId"
-                                    class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-slate-800 transition-colors"
+                                <p
+                                    class="text-xs text-surface-500 dark:text-surface-400 mb-2"
                                 >
-                                    <option value="" disabled selected>
-                                        Select a signer
-                                    </option>
-                                    <option
-                                        v-for="contact in contacts"
-                                        :key="contact.id"
-                                        :value="contact.id"
-                                    >
-                                        {{ contact.name }} ({{ contact.email }})
-                                    </option>
-                                </select>
+                                    Pick one or more. Every signer gets their
+                                    own signature line and can sign at the same
+                                    time.
+                                </p>
+                                <Listbox
+                                    v-model="selectedSignerIds"
+                                    multiple
+                                    data-testid="signer-listbox"
+                                    class="w-full border rounded-lg border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100"
+                                    :options="contacts"
+                                    optionLabel="name"
+                                    optionValue="id"
+                                >
+                                    <template #option="slotProps">
+                                        <div
+                                            class="flex items-center p-2 hover:bg-surface-100 dark:hover:bg-surface-700"
+                                        >
+                                            <span class="mr-2">{{
+                                                slotProps.option.name
+                                            }}</span>
+                                            <span
+                                                class="text-sm text-surface-500 dark:text-surface-400"
+                                            >
+                                                ({{ slotProps.option.email }})
+                                            </span>
+                                        </div>
+                                    </template>
+                                </Listbox>
                             </div>
 
                             <!-- CC Selection -->
@@ -88,6 +106,7 @@
                                         <Listbox
                                             v-model="selectedCCContactIds"
                                             multiple
+                                            data-testid="cc-listbox"
                                             class="w-full border rounded-lg border-surface-300 dark:border-surface-600 bg-white dark:bg-surface-800 text-surface-900 dark:text-surface-100"
                                             :options="availableCCContacts"
                                             optionLabel="name"
@@ -142,7 +161,7 @@
                                 label="Next"
                                 icon="pi pi-arrow-right"
                                 iconPos="right"
-                                :disabled="!selectedContactId"
+                                :disabled="!hasSigner"
                                 @click="
                                     handleNextFromSelectRecipient(
                                         activateCallback
@@ -167,7 +186,7 @@
                                     class="text-lg font-medium text-gray-700 dark:text-gray-200"
                                 >
                                     Sending contract to
-                                    {{ selectedRecipientName }}...
+                                    {{ selectedSignerNamesText }}...
                                 </div>
                                 <div
                                     class="text-sm text-gray-600 dark:text-gray-400"
@@ -188,12 +207,12 @@
                                     class="text-lg font-medium text-center text-gray-700 dark:text-gray-200"
                                 >
                                     Click finish to send the contract to
-                                    <strong>{{ selectedRecipientName }}</strong
+                                    <strong>{{ selectedSignerNamesText }}</strong
                                     >.
                                 </div>
 
                                 <div
-                                    v-if="selectedCCContactNames.length"
+                                    v-if="selectedCCContacts.length"
                                     class="flex flex-col space-y-2"
                                 >
                                     <div
@@ -203,11 +222,11 @@
                                     </div>
                                     <div class="flex flex-wrap gap-2">
                                         <span
-                                            v-for="contact in selectedCCContactNames"
+                                            v-for="contact in selectedCCContacts"
                                             :key="contact.id"
                                             class="inline-flex items-center px-3 py-1.5 rounded-full bg-primary-50 dark:bg-primary-900/50 text-primary-700 dark:text-primary-300 text-sm font-medium transition-colors duration-200"
                                         >
-                                            {{ contact }}
+                                            {{ contact.name }}
                                         </span>
                                     </div>
                                 </div>
@@ -260,7 +279,7 @@ const props = defineProps({
 const emit = defineEmits(["update:show", "cancel", "confirm"]);
 
 const currentStep = ref("1");
-const selectedContactId = ref(null);
+const selectedSignerIds = ref([]);
 const selectedCCContactIds = ref([]);
 const sending = ref(false);
 
@@ -269,51 +288,59 @@ const isVisible = computed({
     set: (value) => emit("update:show", value),
 });
 
+const hasSigner = computed(() => selectedSignerIds.value.length > 0);
+
+// Someone who signs never also needs a CC copy.
 const availableCCContacts = computed(() => {
     return props.contacts.filter(
-        (contact) => contact.id !== selectedContactId.value
+        (contact) => !selectedSignerIds.value.includes(contact.id)
     );
 });
 
 const showCCSelection = computed(() => {
-    return selectedContactId.value && props.contacts.length > 1;
+    return hasSigner.value && availableCCContacts.value.length > 0;
 });
 
-const selectedRecipientName = computed(() => {
-    const selectedContact = props.contacts.find(
-        (contact) => contact.id === selectedContactId.value
-    );
-    return selectedContact ? selectedContact.name : "";
-});
+const contactName = (id) =>
+    props.contacts.find((contact) => contact.id === id)?.name ?? "";
 
-const selectedCCContactNames = computed(() => {
-    return selectedCCContactIds.value.map((id) => {
-        const contact = props.contacts.find((c) => c.id === id);
-        return contact ? contact.name : "";
-    });
-});
+const joinNames = (names) => {
+    if (names.length <= 1) {
+        return names[0] ?? "";
+    }
+    return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+};
+
+const selectedSignerNamesText = computed(() =>
+    joinNames(selectedSignerIds.value.map(contactName).filter(Boolean))
+);
+
+// Keyed by id in the template: contact names aren't unique.
+const selectedCCContacts = computed(() =>
+    selectedCCContactIds.value
+        .map((id) => ({ id, name: contactName(id) }))
+        .filter((contact) => contact.name),
+);
 
 watch(
     () => props.show,
     (newValue) => {
         if (newValue) {
             currentStep.value = "1";
-            if (props.contacts.length === 1) {
-                selectedContactId.value = props.contacts[0].id;
-            } else {
-                selectedContactId.value = null;
-            }
+            sending.value = false;
+            selectedCCContactIds.value = [];
+            selectedSignerIds.value =
+                props.contacts.length === 1 ? [props.contacts[0].id] : [];
         }
-    }
+    },
+    { immediate: true }
 );
 
-watch(selectedContactId, (newId) => {
-    // Remove the newly selected contact from CC list if present
-    if (newId) {
-        selectedCCContactIds.value = selectedCCContactIds.value.filter(
-            (id) => id !== newId
-        );
-    }
+watch(selectedSignerIds, (signerIds) => {
+    // Drop newly chosen signers from the CC list
+    selectedCCContactIds.value = selectedCCContactIds.value.filter(
+        (id) => !signerIds.includes(id)
+    );
 });
 
 const cancel = () => {
@@ -322,8 +349,8 @@ const cancel = () => {
 };
 
 const handleNextFromSelectRecipient = (activateCallback) => {
-    if (!selectedContactId.value) {
-        alert("Please select a recipient");
+    if (!hasSigner.value) {
+        alert("Please select at least one signer");
         return;
     }
     activateCallback("3");
@@ -332,8 +359,16 @@ const handleNextFromSelectRecipient = (activateCallback) => {
 const sendContract = () => {
     sending.value = true;
     emit("confirm", {
-        signer: selectedContactId.value,
-        cc: selectedCCContactIds.value,
+        signers: [...selectedSignerIds.value],
+        cc: [...selectedCCContactIds.value],
     });
 };
+
+defineExpose({
+    selectedSignerIds,
+    selectedCCContactIds,
+    availableCCContacts,
+    hasSigner,
+    sendContract,
+});
 </script>

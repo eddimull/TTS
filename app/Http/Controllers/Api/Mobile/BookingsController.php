@@ -495,21 +495,15 @@ class BookingsController extends Controller
     public function sendContract(SendBookingContractRequest $request, Bands $band, Bookings $booking): JsonResponse
     {
         $booking->loadMissing(['contacts', 'contract']);
-        $validated = $request->validated();
-        $contact   = $booking->contacts()->find($validated['signer_id']);
+        $signers    = $request->signerContacts();
+        $ccContacts = $request->ccContacts();
 
-        if (!$contact) {
+        if ($signers->isEmpty()) {
             return response()->json(['message' => 'Signer contact not found on this booking.'], 422);
         }
 
-        $ccContacts = null;
-        if (!empty($validated['cc_id'])) {
-            $found = $booking->contacts()->whereKey($validated['cc_id'])->get();
-            $ccContacts = $found->isNotEmpty() ? $found : null;
-        }
-
         try {
-            $contractPdf = $booking->getContractPdf($contact);
+            $contractPdf = $booking->getContractPdf($signers);
             $booking->storeContractPdf($contractPdf);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
@@ -525,7 +519,7 @@ class BookingsController extends Controller
         }
 
         try {
-            $contract->sendToPandaDoc($contact, $ccContacts);
+            $contract->sendToPandaDoc($signers, $ccContacts);
             $booking->update(['status' => 'pending']);
 
             return response()->json([

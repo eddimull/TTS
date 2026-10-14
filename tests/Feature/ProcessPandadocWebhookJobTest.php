@@ -215,4 +215,59 @@ class ProcessPandadocWebhookJobTest extends TestCase
 
         $this->assertGreaterThanOrEqual(8, $job->tries);
     }
+
+    public function test_recipient_completed_waits_while_other_signers_have_not_signed(): void
+    {
+        Storage::fake('s3');
+        Http::fake();
+
+        $contract = $this->makeContract('env-multi-1');
+
+        (new ProcessPandadocWebhookJob($this->makeWebhookCall([
+            [
+                'event' => 'recipient_completed',
+                'data'  => [
+                    'id'         => 'env-multi-1',
+                    'recipient'  => ['email' => 'first@example.com'],
+                    'recipients' => [
+                        ['email' => 'first@example.com', 'recipient_type' => 'signer', 'has_completed' => true],
+                        ['email' => 'second@example.com', 'recipient_type' => 'signer', 'has_completed' => false],
+                        ['email' => 'cc@example.com', 'recipient_type' => 'CC', 'has_completed' => false],
+                    ],
+                ],
+            ],
+        ])))->handle();
+
+        $this->assertSame('sent', $contract->fresh()->status);
+        Http::assertNothingSent();
+    }
+
+    public function test_recipient_completed_completes_once_every_signer_has_signed(): void
+    {
+        Storage::fake('s3');
+        Http::fake([
+            'api.pandadoc.com/public/v1/documents/*/download' => Http::response('PDFBYTES', 200),
+            'api.pandadoc.com/public/v1/documents/*' => Http::response(['status' => 'document.completed'], 200),
+        ]);
+
+        $contract = $this->makeContract('env-multi-2');
+
+        (new ProcessPandadocWebhookJob($this->makeWebhookCall([
+            [
+                'event' => 'recipient_completed',
+                'data'  => [
+                    'id'         => 'env-multi-2',
+                    'recipient'  => ['email' => 'second@example.com'],
+                    'recipients' => [
+                        ['email' => 'first@example.com', 'recipient_type' => 'signer', 'has_completed' => true],
+                        ['email' => 'second@example.com', 'recipient_type' => 'signer', 'has_completed' => true],
+                        // CC recipients never "complete"; they must not block completion.
+                        ['email' => 'cc@example.com', 'recipient_type' => 'CC', 'has_completed' => false],
+                    ],
+                ],
+            ],
+        ])))->handle();
+
+        $this->assertSame('completed', $contract->fresh()->status);
+    }
 }

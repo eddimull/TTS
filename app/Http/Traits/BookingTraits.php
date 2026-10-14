@@ -4,6 +4,7 @@ namespace App\Http\Traits;
 
 use App\Models\Contacts;
 use App\Services\PdfGeneratorService;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -21,26 +22,39 @@ trait BookingTraits
         return $pdfService->generateFromHtml($renderedView, 'Legal');
     }
 
-    public function getContractPdf(Contacts $contact = null): string
+    /**
+     * Render the booking contract PDF.
+     *
+     * @param  Contacts|Collection<int, Contacts>|null  $signers  Everyone who
+     *         signs; each gets a signature block/tag in signing-role order
+     *         (signer1, signer2, ...). Defaults to the first booking contact.
+     */
+    public function getContractPdf(Contacts|Collection|null $signers = null): string
     {
+        $signers = match (true) {
+            $signers instanceof Contacts => collect([$signers]),
+            $signers === null => collect(),
+            default => collect($signers)->filter()->unique(fn (Contacts $contact) => $contact->getKey())->values(),
+        };
+
+        if ($signers->isEmpty() && $this->contacts->first())
+        {
+            $signers = collect([$this->contacts->first()]);
+        }
+
         // Log contract generation attempt
         Log::info('Contract generation started', [
             'booking_id' => $this->id,
             'booking_name' => $this->name,
             'band_id' => $this->band->id,
             'band_name' => $this->band->name,
-            'contact_id' => $contact?->id ?? $this->contacts->first()?->id,
+            'contact_ids' => $signers->pluck('id')->all(),
         ]);
 
         // Validate band has required address fields
         $this->validateBandAddressData();
 
         $logoPath = str_replace('/images/', '', $this->band->logo);
-
-        if (is_null($contact))
-        {
-            $contact = $this->contacts->first();
-        }
 
         // Use Storage facade instead of direct file_get_contents
         $imageContents = Storage::disk('s3')->get($logoPath);
@@ -51,7 +65,7 @@ trait BookingTraits
         $renderedView = view('pdf.bookingContract', [
             'booking' => $this,
             'logoDataUri' => $dataUri,
-            'signer' => $contact
+            'signers' => $signers,
         ])->render();
 
         $pdfService = app(PdfGeneratorService::class);

@@ -145,4 +145,69 @@ class ContractSendingTest extends TestCase
         // Assert that the contract status was not updated
         $this->assertNotEquals('sent', $contract->fresh()->status);
     }
+
+    public function test_multiple_signers_get_unique_roles_and_overlapping_cc_is_dropped(): void
+    {
+        Http::fake([
+            'api.pandadoc.com/*' => Http::response([
+                'id' => 'fake-pandadoc-id',
+                'status' => 'document.draft',
+            ], 201)
+        ]);
+
+        $band = Bands::factory()->create();
+        $booking = Bookings::factory()->forBand($band)->create();
+        $first = Contacts::factory()->create(['name' => 'First Signer']);
+        $second = Contacts::factory()->create(['name' => 'Second Signer']);
+        $cc = Contacts::factory()->create();
+        $booking->contacts()->attach($first, ['role' => 'Primary', 'is_primary' => true]);
+        $booking->contacts()->attach($second, ['role' => 'Partner']);
+        $booking->contacts()->attach($cc, ['role' => 'CC']);
+
+        $contract = Contracts::factory()->for($booking, 'contractable')->create([
+            'asset_url' => 'https://example.com/fake-contract.pdf',
+        ]);
+
+        $contract->sendToPandaDoc(
+            collect([$first, $second, $first]),
+            collect([$second, $cc])
+        );
+
+        Http::assertSent(function ($request) use ($first, $second, $cc)
+        {
+            if ($request->url() !== 'https://api.pandadoc.com/public/v1/documents')
+            {
+                return false;
+            }
+
+            $recipients = collect($request['recipients']);
+
+            return $recipients->count() === 3
+                && $recipients->pluck('role')->all() === ['signer1', 'signer2', 'cc1']
+                && $recipients->pluck('email')->all() === [$first->email, $second->email, $cc->email]
+                && $request['fields']['signer1_name'] === ['value' => 'First Signer', 'role' => 'signer1']
+                && $request['fields']['signer2_name'] === ['value' => 'Second Signer', 'role' => 'signer2'];
+        });
+    }
+
+    public function test_sending_without_signers_throws(): void
+    {
+        Http::fake();
+
+        $booking = Bookings::factory()->forBand(Bands::factory()->create())->create();
+        $contract = Contracts::factory()->for($booking, 'contractable')->create([
+            'asset_url' => 'https://example.com/fake-contract.pdf',
+        ]);
+
+        $this->expectException(\InvalidArgumentException::class);
+
+        try
+        {
+            $contract->sendToPandaDoc(collect());
+        }
+        finally
+        {
+            Http::assertNothingSent();
+        }
+    }
 }
