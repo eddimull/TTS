@@ -555,6 +555,7 @@ class User extends Authenticatable
                 'bookings.band_id',
                 'bookings.name as booking_name',
                 'bookings.id as booking_id',
+                'bookings.status',
                 'events.venue_name',
                 'events.venue_address',
                 \DB::raw("'booking' as event_source"),
