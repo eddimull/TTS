@@ -271,4 +271,96 @@ class QuestionnaireMappingServiceTest extends TestCase
         // Songs should not be jammed onto a single comma-separated line.
         $this->assertStringNotContainsString('Evergreen — Yebba, Mr Brightside', $event->notes);
     }
+
+    private function mappedResponse(QuestionnaireInstances $instance, string $type, string $target, ?string $value, string $label = 'Q'): QuestionnaireResponses
+    {
+        $field = QuestionnaireInstanceFields::factory()->create([
+            'instance_id' => $instance->id,
+            'type' => $type,
+            'label' => $label,
+            'mapping_target' => $target,
+        ]);
+
+        return QuestionnaireResponses::create([
+            'instance_id' => $instance->id,
+            'instance_field_id' => $field->id,
+            'value' => $value,
+        ]);
+    }
+
+    private function eventData(Events $event): array
+    {
+        return json_decode(json_encode($event->fresh()->additional_data), true);
+    }
+
+    public function test_toasts_are_written_as_a_dance_entry_from_long_text(): void
+    {
+        [$instance, $event] = $this->makeInstanceWithEvent();
+        $response = $this->mappedResponse($instance, 'long_text', 'wedding.toasts', "Paul Looney, father of the bride\nMaid of honor");
+
+        $this->service->applyResponse($response, User::factory()->create());
+
+        $dances = data_get($this->eventData($event), 'wedding.dances');
+        $this->assertSame("Paul Looney, father of the bride\nMaid of honor",
+            data_get(collect($dances)->firstWhere('title', 'Toasts'), 'data'));
+        // Existing dance entries are untouched.
+        $this->assertSame('TBD', data_get(collect($dances)->firstWhere('title', 'First Dance'), 'data'));
+        $this->assertArrayNotHasKey('times', $this->eventData($event));
+    }
+
+    public function test_text_set_overwrites_wedding_colors_and_leaves_attire_alone(): void
+    {
+        [$instance, $event] = $this->makeInstanceWithEvent();
+        $event->update(['additional_data' => ['attire' => 'All black', 'wedding' => ['colors' => 'old']]]);
+        $response = $this->mappedResponse($instance, 'long_text', 'wedding.colors', 'Sage and gold');
+
+        $this->service->applyResponse($response, User::factory()->create());
+
+        $data = $this->eventData($event);
+        $this->assertSame('Sage and gold', data_get($data, 'wedding.colors'));
+        $this->assertSame('All black', data_get($data, 'attire'));
+    }
+
+    public function test_text_append_adds_a_line_to_performance_notes_once(): void
+    {
+        [$instance, $event] = $this->makeInstanceWithEvent();
+        $event->update(['additional_data' => ['performance' => ['notes' => 'Bring the fog machine']]]);
+        $response = $this->mappedResponse($instance, 'long_text', 'performance.notes', 'No slow songs');
+
+        $this->service->applyResponse($response, User::factory()->create());
+        $this->service->applyResponse($response->fresh(), User::factory()->create());
+
+        $this->assertSame("Bring the fog machine\nNo slow songs", data_get($this->eventData($event), 'performance.notes'));
+    }
+
+    public function test_text_append_dedups_whole_lines_only(): void
+    {
+        [$instance, $event] = $this->makeInstanceWithEvent();
+        $event->update(['additional_data' => ['performance' => ['notes' => 'No slow songs please']]]);
+        $response = $this->mappedResponse($instance, 'short_text', 'performance.notes', 'No slow songs');
+
+        $this->service->applyResponse($response, User::factory()->create());
+
+        $this->assertSame("No slow songs please\nNo slow songs", data_get($this->eventData($event), 'performance.notes'));
+    }
+
+    public function test_text_append_to_event_notes_prefixes_the_field_label(): void
+    {
+        [$instance, $event] = $this->makeInstanceWithEvent();
+        $event->update(['notes' => 'Load in at 3']);
+        $response = $this->mappedResponse($instance, 'multi_select', 'event.notes', json_encode(['Uplighting', 'Photo booth']), 'Extras');
+
+        $this->service->applyResponse($response, User::factory()->create());
+
+        $this->assertSame("Load in at 3\nExtras: Uplighting, Photo booth", $event->fresh()->notes);
+    }
+
+    public function test_display_value_flattens_arrays_and_yes_no(): void
+    {
+        $this->assertSame('A, B', $this->service->displayValue(json_encode(['A', 'B']), 'checkbox_group'));
+        $this->assertSame('Yes', $this->service->displayValue('yes', 'yes_no'));
+        $this->assertSame('No', $this->service->displayValue('no', 'yes_no'));
+        $this->assertSame('', $this->service->displayValue(null, 'short_text'));
+        $this->assertSame('Il Mercato', $this->service->displayValue('  Il Mercato ', 'short_text'));
+    }
 }
