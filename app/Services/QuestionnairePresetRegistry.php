@@ -52,7 +52,7 @@ class QuestionnairePresetRegistry
                     ['type' => 'header', 'label' => 'Bouquet, Money Dance, and Toasts'],
                     ['type' => 'short_text', 'label' => 'Money Dance song', 'mapping_target' => 'wedding.dance.money'],
                     ['type' => 'short_text', 'label' => 'Bouquet/Garter song', 'mapping_target' => 'wedding.dance.bouquet_garter'],
-                    ['type' => 'long_text', 'label' => 'Names and order of toasts', 'help_text' => 'Who is giving toasts and in what order?'],
+                    ['type' => 'long_text', 'label' => 'Names and order of toasts', 'help_text' => 'Who is giving toasts and in what order?', 'mapping_target' => 'wedding.toasts'],
 
                     ['type' => 'header', 'label' => 'Music Preferences'],
                     ['type' => 'song_picker', 'label' => 'Must-play songs from our list', 'help_text' => 'Pick from our catalog — these are songs you definitely want to hear', 'settings' => ['purpose' => 'must_play']],
@@ -61,10 +61,10 @@ class QuestionnairePresetRegistry
                     ['type' => 'long_text', 'label' => 'Other do-not-play songs / artists not on our list', 'help_text' => 'Free-form: songs or artists to avoid'],
 
                     ['type' => 'header', 'label' => 'Color Scheme'],
-                    ['type' => 'long_text', 'label' => 'Wedding colors', 'help_text' => 'Helpful for the band\'s attire choice'],
+                    ['type' => 'long_text', 'label' => 'Wedding colors', 'help_text' => 'Helpful for the band\'s attire choice', 'mapping_target' => 'wedding.colors'],
 
                     ['type' => 'header', 'label' => 'Production Notes'],
-                    ['type' => 'long_text', 'label' => 'Anything else we should know?'],
+                    ['type' => 'long_text', 'label' => 'Anything else we should know?', 'mapping_target' => 'performance.notes'],
                 ],
             ],
         ];
@@ -89,6 +89,20 @@ class QuestionnairePresetRegistry
                 'required' => $f['required'] ?? false,
             ], $preset['fields']),
         ])->values()->all();
+    }
+
+    /**
+     * Preset fields that carry a mapping target, keyed by exact label, for
+     * backfilling templates and instances created before the mapping existed.
+     *
+     * @return array<string, array{type: string, mapping_target: string}>
+     */
+    public function mappedLabels(string $key): array
+    {
+        return collect($this->get($key)['fields'])
+            ->filter(fn ($f) => !empty($f['mapping_target']))
+            ->mapWithKeys(fn ($f) => [$f['label'] => ['type' => $f['type'], 'mapping_target' => $f['mapping_target']]])
+            ->all();
     }
 
     public function exists(string $key): bool

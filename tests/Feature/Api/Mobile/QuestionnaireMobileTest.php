@@ -99,7 +99,7 @@ class QuestionnaireMobileTest extends TestCase
             ->getJson("/api/mobile/bands/{$this->band->id}/questionnaires/catalog")
             ->assertOk()
             ->assertJsonCount(13, 'field_types')
-            ->assertJsonCount(7, 'mapping_targets');
+            ->assertJsonCount(11, 'mapping_targets');
 
         $presetKeys = array_column($response->json('presets'), 'key');
         $this->assertContains('wedding', $presetKeys);

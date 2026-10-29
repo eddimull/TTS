@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Events;
+use App\Models\QuestionnaireInstanceFields;
 use App\Models\QuestionnaireInstances;
 use App\Models\QuestionnaireResponses;
 use App\Models\User;
@@ -28,19 +29,14 @@ class QuestionnaireMappingService
             throw new RuntimeException("Mapping target '{$key}' is no longer available.");
         }
 
-        $kind = $this->registry->kind($key);
-
-        if ($kind === QuestionnaireMappingRegistry::TYPE_BOOLEAN_PATH) {
-            $this->writeBoolean($event, $this->registry->eventPath($key), $response->value);
-        } elseif ($kind === QuestionnaireMappingRegistry::TYPE_DANCE_ENTRY) {
-            $this->writeDance($event, $this->registry->danceTitle($key), (string) $response->value);
-        }
+        $this->writeTarget($event, $key, $field, $response->value);
 
         $event->save();
 
         $response->update([
             'applied_to_event_at' => now(),
             'applied_by_user_id' => $appliedBy->id,
+            'applied_value_hash' => self::valueHash($response->value),
         ]);
 
         return $event;
@@ -49,13 +45,14 @@ class QuestionnaireMappingService
     public function appendAllToNotes(QuestionnaireInstances $instance, User $appliedBy): Events
     {
         $event = $this->resolveEvent($instance);
-        $event->notes = trim(($event->notes ?? '') . "\n\n" . $this->buildNotesBlock($instance));
+        // events.notes is rendered with v-html; strip client-supplied markup.
+        $event->notes = trim(($event->notes ?? '') . "\n\n" . strip_tags($this->buildNotesBlock($instance)));
         $event->save();
 
         return $event;
     }
 
-    private function resolveEvent(QuestionnaireInstances $instance): Events
+    public function resolveEvent(QuestionnaireInstances $instance): Events
     {
         $event = $instance->booking->events()->orderBy('id')->first();
         if (!$event) {
@@ -64,7 +61,128 @@ class QuestionnaireMappingService
         return $event;
     }
 
-    private function writeBoolean(Events $event, array $path, mixed $value): void
+    /**
+     * Fingerprint of an answer at the moment it was sent, so an edit made
+     * in the same second still reads back as stale.
+     */
+    public static function valueHash(?string $value): string
+    {
+        return hash('sha256', (string) $value);
+    }
+
+    /**
+     * Write one answer to the event for the given target. Mutates $event in
+     * memory; the caller saves. Throws when the target is unknown.
+     */
+    public function writeTarget(Events $event, string $key, QuestionnaireInstanceFields $field, ?string $rawValue): void
+    {
+        if (!$this->registry->targetExists($key)) {
+            throw new RuntimeException("Mapping target '{$key}' is no longer available.");
+        }
+
+        $path = $this->registry->eventPath($key);
+
+        match ($this->registry->kind($key)) {
+            QuestionnaireMappingRegistry::TYPE_BOOLEAN_PATH => $this->writeBoolean($event, $path, $rawValue),
+            QuestionnaireMappingRegistry::TYPE_DANCE_ENTRY => $this->writeDance(
+                $event,
+                $this->registry->danceTitle($key),
+                $this->displayValue($rawValue, $field->type),
+            ),
+            QuestionnaireMappingRegistry::TYPE_TEXT_SET => $this->writeTextSet(
+                $event,
+                $path,
+                $this->displayValue($rawValue, $field->type),
+            ),
+            QuestionnaireMappingRegistry::TYPE_TEXT_APPEND => $this->writeTextAppend(
+                $event,
+                $path,
+                $this->registry->prefixesLabel($key)
+                    ? "{$field->label}: {$this->displayValue($rawValue, $field->type)}"
+                    : $this->displayValue($rawValue, $field->type),
+            ),
+            default => throw new RuntimeException("Mapping target '{$key}' has an unsupported kind."),
+        };
+    }
+
+    /**
+     * An answer as plain text: multi-value answers joined with ", ", yes/no
+     * as "Yes"/"No", everything else trimmed.
+     */
+    public function displayValue(?string $rawValue, ?string $fieldType = null): string
+    {
+        if ($rawValue === null) {
+            return '';
+        }
+        if ($fieldType === 'yes_no') {
+            $lower = strtolower(trim($rawValue));
+            if (in_array($lower, ['yes', 'true', '1', 'on'], true)) {
+                return 'Yes';
+            }
+            if (in_array($lower, ['no', 'false', '0', 'off'], true)) {
+                return 'No';
+            }
+        }
+        $decoded = json_decode($rawValue, true);
+        if (is_array($decoded)) {
+            return implode(', ', array_map(fn ($v) => is_scalar($v) ? (string) $v : json_encode($v), $decoded));
+        }
+        return trim($rawValue);
+    }
+
+    /**
+     * Overwrite a string at $path. Paths starting with 'additional_data'
+     * write inside the JSON column; any other single segment is a column.
+     */
+    public function writeTextSet(Events $event, array $path, string $value): void
+    {
+        $this->setPath($event, $path, $value);
+    }
+
+    /**
+     * Append $value as a new line at $path, unless that exact text is
+     * already there as its own line(s).
+     */
+    public function writeTextAppend(Events $event, array $path, string $value): void
+    {
+        // Both append targets (events.notes, performance.notes) are rendered
+        // with v-html on the web; strip markup so a client answer can't
+        // inject tags or event handlers.
+        $value = trim(str_replace("\r\n", "\n", strip_tags($value)));
+        if ($value === '') {
+            return;
+        }
+
+        $existing = (string) ($this->getPath($event, $path) ?? '');
+        $normalized = str_replace("\r\n", "\n", $existing);
+        if (preg_match('/(^|\n)' . preg_quote($value, '/') . '[ \t]*(\n|$)/', $normalized) === 1) {
+            return;
+        }
+
+        $this->setPath($event, $path, trim($existing) === '' ? $value : rtrim($existing) . "\n" . $value);
+    }
+
+    private function getPath(Events $event, array $path): mixed
+    {
+        if (($path[0] ?? null) !== 'additional_data') {
+            return $event->getAttribute($path[0]);
+        }
+        $data = json_decode(json_encode($event->additional_data ?? []), true);
+        return data_get($data, implode('.', array_slice($path, 1)));
+    }
+
+    private function setPath(Events $event, array $path, mixed $value): void
+    {
+        if (($path[0] ?? null) !== 'additional_data') {
+            $event->setAttribute($path[0], $value);
+            return;
+        }
+        $data = json_decode(json_encode($event->additional_data ?? []), true);
+        data_set($data, implode('.', array_slice($path, 1)), $value);
+        $event->additional_data = $data;
+    }
+
+    public function writeBoolean(Events $event, array $path, mixed $value): void
     {
         $bool = in_array(strtolower((string) $value), ['yes', 'true', '1', 'on'], true);
         // additional_data is cast as object; convert to array for data_set/data_get
@@ -76,7 +194,7 @@ class QuestionnaireMappingService
         $event->additional_data = $data;
     }
 
-    private function writeDance(Events $event, string $title, string $value): void
+    public function writeDance(Events $event, string $title, string $value): void
     {
         // additional_data is cast as object; convert to array for data_set/data_get
         $data = json_decode(json_encode($event->additional_data ?? []), true);

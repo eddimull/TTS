@@ -15,11 +15,15 @@ class QuestionnaireMappingRegistryTest extends TestCase
         $this->registry = new QuestionnaireMappingRegistry();
     }
 
-    public function test_keys_returns_all_seven_curated_targets(): void
+    public function test_keys_returns_all_curated_targets(): void
     {
         $keys = $this->registry->keys();
 
-        $this->assertCount(7, $keys);
+        $this->assertCount(11, $keys);
+        $this->assertContains('wedding.toasts', $keys);
+        $this->assertContains('wedding.colors', $keys);
+        $this->assertContains('performance.notes', $keys);
+        $this->assertContains('event.notes', $keys);
         $this->assertContains('wedding.onsite', $keys);
         $this->assertContains('wedding.outside', $keys);
         $this->assertContains('wedding.dance.first', $keys);
@@ -47,7 +51,60 @@ class QuestionnaireMappingRegistryTest extends TestCase
 
     public function test_compatible_field_types_for_dance_targets(): void
     {
-        $this->assertSame(['short_text'], $this->registry->compatibleFieldTypes('wedding.dance.first'));
+        $this->assertSame(['short_text', 'long_text'], $this->registry->compatibleFieldTypes('wedding.dance.first'));
+        $this->assertSame(['short_text', 'long_text'], $this->registry->compatibleFieldTypes('wedding.toasts'));
+    }
+
+    public function test_preset_long_text_fields_are_compatible_with_their_targets(): void
+    {
+        // "Names and order of toasts", "Wedding colors" and "Anything else
+        // we should know?" are long_text in the wedding preset.
+        $this->assertTrue($this->registry->isCompatible('wedding.toasts', 'long_text'));
+        $this->assertTrue($this->registry->isCompatible('wedding.colors', 'long_text'));
+        $this->assertTrue($this->registry->isCompatible('performance.notes', 'long_text'));
+    }
+
+    public function test_notes_targets_accept_text_and_choice_types_but_not_song_picker(): void
+    {
+        foreach (['performance.notes', 'event.notes'] as $key) {
+            foreach (['short_text', 'long_text', 'dropdown', 'multi_select', 'checkbox_group', 'yes_no', 'email', 'phone', 'date', 'time'] as $type) {
+                $this->assertTrue($this->registry->isCompatible($key, $type), "{$key} should accept {$type}");
+            }
+            $this->assertFalse($this->registry->isCompatible($key, 'song_picker'));
+        }
+    }
+
+    public function test_new_kinds_are_registered(): void
+    {
+        $this->assertSame(QuestionnaireMappingRegistry::TYPE_DANCE_ENTRY, $this->registry->kind('wedding.toasts'));
+        $this->assertSame('Toasts', $this->registry->danceTitle('wedding.toasts'));
+        $this->assertSame(QuestionnaireMappingRegistry::TYPE_TEXT_SET, $this->registry->kind('wedding.colors'));
+        $this->assertSame(['additional_data', 'wedding', 'colors'], $this->registry->eventPath('wedding.colors'));
+        $this->assertSame(QuestionnaireMappingRegistry::TYPE_TEXT_APPEND, $this->registry->kind('performance.notes'));
+        $this->assertSame(['additional_data', 'performance', 'notes'], $this->registry->eventPath('performance.notes'));
+        $this->assertSame(QuestionnaireMappingRegistry::TYPE_TEXT_APPEND, $this->registry->kind('event.notes'));
+        $this->assertSame(['notes'], $this->registry->eventPath('event.notes'));
+        $this->assertTrue($this->registry->prefixesLabel('event.notes'));
+        $this->assertFalse($this->registry->prefixesLabel('performance.notes'));
+    }
+
+    public function test_every_target_has_a_known_group_and_short_label(): void
+    {
+        foreach ($this->registry->keys() as $key) {
+            $this->assertArrayHasKey($this->registry->group($key), QuestionnaireMappingRegistry::GROUPS, $key);
+            $this->assertNotSame('', $this->registry->shortLabel($key));
+        }
+        $this->assertSame('timeline', $this->registry->group('wedding.dance.first'));
+        $this->assertSame('First dance', $this->registry->shortLabel('wedding.dance.first'));
+        $this->assertSame('performance', $this->registry->group('performance.notes'));
+        $this->assertSame('notes', $this->registry->group('event.notes'));
+    }
+
+    public function test_compatible_targets_for_field_type(): void
+    {
+        $this->assertSame(['wedding.onsite', 'wedding.outside', 'performance.notes', 'event.notes'], $this->registry->compatibleTargetsFor('yes_no'));
+        $this->assertSame([], $this->registry->compatibleTargetsFor('song_picker'));
+        $this->assertSame([], $this->registry->compatibleTargetsFor(null));
     }
 
     public function test_compatible_field_types_throws_for_unknown_key(): void

@@ -46,7 +46,9 @@ class UpdateEventRequest extends FormRequest
             'wedding.onsite'         => 'sometimes|nullable|boolean',
             'wedding.dances'         => 'sometimes|array',
             'wedding.dances.*.title' => 'required_with:wedding.dances|string|max:100',
-            'wedding.dances.*.data'  => 'nullable|string|max:255',
+            // Toasts arrive as a dance entry from a long_text answer.
+            'wedding.dances.*.data'  => 'nullable|string|max:5000',
+            'wedding.colors'         => 'sometimes|nullable|string|max:1000',
         ];
     }
 }
