@@ -77,7 +77,7 @@ class QuestionnaireRoutingService
                     'field_label' => $field->label,
                     'field_type' => $field->type,
                     'value_display' => $display,
-                    'compatible_targets' => $this->registry->compatibleTargetsFor($field->type),
+                    'compatible_targets' => $this->compatibleTargets($field->type),
                 ];
                 continue;
             }
@@ -92,7 +92,7 @@ class QuestionnaireRoutingService
                 'target_label' => $this->registry->shortLabel($target),
                 'status' => $status,
                 'default_checked' => !$this->isPlaceholder($display) && $status !== 'applied',
-                'compatible_targets' => $this->registry->compatibleTargetsFor($field->type),
+                'compatible_targets' => $this->compatibleTargets($field->type),
             ];
         }
 
@@ -304,6 +304,15 @@ class QuestionnaireRoutingService
         } catch (RuntimeException $e) {
             throw new QuestionnaireRoutingException($e->getMessage());
         }
+    }
+
+    /** @return array<int, array{key: string, label: string}> */
+    private function compatibleTargets(?string $fieldType): array
+    {
+        return array_map(
+            fn ($key) => ['key' => $key, 'label' => $this->registry->shortLabel($key)],
+            $this->registry->compatibleTargetsFor($fieldType),
+        );
     }
 
     private function effectiveTarget(QuestionnaireResponses $response, QuestionnaireInstanceFields $field): ?string

@@ -115,6 +115,7 @@ class QuestionnaireRoutingServiceTest extends TestCase
         $this->assertSame('First dance', $timeline['target_label']);
         $this->assertSame('pending', $timeline['status']);
         $this->assertTrue($timeline['default_checked']);
+        $this->assertContains(['key' => 'wedding.toasts', 'label' => 'Toasts'], $timeline['compatible_targets']);
 
         $details = collect($preview['groups'][2]['items'])->pluck('response_id')->all();
         $this->assertSame([$colors->id, $onsite->id], $details);
@@ -237,9 +238,10 @@ class QuestionnaireRoutingServiceTest extends TestCase
         $this->assertSame($bride->id, $preview['unrouted'][0]['response_id']);
         $this->assertSame("Bride's Full Name", $preview['unrouted'][0]['field_label']);
         $this->assertSame('Jane Doe', $preview['unrouted'][0]['value_display']);
-        $this->assertContains('performance.notes', $preview['unrouted'][0]['compatible_targets']);
-        $this->assertContains('wedding.toasts', $preview['unrouted'][0]['compatible_targets']);
-        $this->assertNotContains('wedding.onsite', $preview['unrouted'][0]['compatible_targets']);
+        $targets = collect($preview['unrouted'][0]['compatible_targets']);
+        $this->assertContains(['key' => 'performance.notes', 'label' => 'Performance notes'], $targets->all());
+        $this->assertContains(['key' => 'wedding.toasts', 'label' => 'Toasts'], $targets->all());
+        $this->assertNotContains('wedding.onsite', $targets->pluck('key')->all());
     }
 
     public function test_route_applies_batch_snapshots_and_stamps(): void

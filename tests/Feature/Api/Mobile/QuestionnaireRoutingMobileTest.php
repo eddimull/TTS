@@ -94,11 +94,12 @@ class QuestionnaireRoutingMobileTest extends TestCase
                 'event_id',
                 'groups' => [['key', 'label', 'items' => [[
                     'response_id', 'field_label', 'value_display', 'target', 'target_label', 'status', 'default_checked',
+                    'compatible_targets' => [['key', 'label']],
                 ]]]],
                 'conflicts' => [['kind', 'booking_value', 'form_value', 'resolution']],
                 'song_requests' => ['must_play', 'do_not_play', 'write_ins'],
                 'contacts',
-                'unrouted' => [['response_id', 'field_label', 'value_display', 'compatible_targets']],
+                'unrouted' => [['response_id', 'field_label', 'value_display', 'compatible_targets' => [['key', 'label']]]],
                 'targets' => [['key', 'label', 'group']],
             ])
             ->assertJsonPath('groups.0.key', 'timeline')
@@ -123,6 +124,7 @@ class QuestionnaireRoutingMobileTest extends TestCase
             ->assertOk()
             ->assertJsonPath('applied', 1)
             ->assertJsonPath('event.id', $this->event->id)
+            ->assertJsonPath('event.key', $this->event->key)
             ->assertJsonPath('event.additional_data.wedding.dances.0.title', 'First Dance')
             ->assertJsonPath('event.additional_data.wedding.dances.0.data', 'Evergreen');
 
@@ -246,5 +248,46 @@ class QuestionnaireRoutingMobileTest extends TestCase
             ->assertOk();
 
         $this->assertNotNull($first->fresh()->applied_to_event_at);
+    }
+
+    public function test_route_tolerates_absent_resolutions_and_remember_writes_the_template(): void
+    {
+        $template = $this->instance->questionnaire;
+        $source = $template->fields()->create([
+            'type' => 'long_text', 'label' => 'Anything else we should know?', 'position' => 10,
+            'required' => false,
+        ]);
+        $field = $this->instance->fields()->create([
+            'type' => 'long_text', 'label' => 'Anything else we should know?', 'position' => 10,
+            'required' => false, 'source_field_id' => $source->id,
+        ]);
+        $response = $this->instance->responses()->create(['instance_field_id' => $field->id, 'value' => 'No slow songs']);
+        $headers = $this->headers();
+
+        foreach ([[], ['resolutions' => []], ['resolutions' => ['songs' => []]], ['resolutions' => ['venue' => null]]] as $extra) {
+            $this->withHeaders($headers)
+                ->postJson("{$this->base()}/questionnaire-instances/{$this->instance->id}/route", ['items' => []] + $extra)
+                ->assertOk()
+                ->assertJsonPath('applied', 0);
+        }
+
+        // Incompatible "remember" is rejected before anything is written.
+        $this->withHeaders($headers)
+            ->postJson("{$this->base()}/questionnaire-instances/{$this->instance->id}/route", [
+                'items' => [['response_id' => $response->id, 'target' => 'wedding.onsite', 'remember' => true]],
+            ])
+            ->assertStatus(422);
+        $this->assertNull($source->fresh()->mapping_target);
+
+        $this->withHeaders($headers)
+            ->postJson("{$this->base()}/questionnaire-instances/{$this->instance->id}/route", [
+                'items' => [['response_id' => $response->id, 'target' => 'performance.notes', 'remember' => true]],
+            ])
+            ->assertOk()
+            ->assertJsonPath('applied', 1)
+            ->assertJsonPath('event.key', $this->event->key);
+
+        $this->assertSame('performance.notes', $source->fresh()->mapping_target);
+        $this->assertSame('performance.notes', $response->fresh()->routed_target);
     }
 }

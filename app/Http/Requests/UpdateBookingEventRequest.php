@@ -64,6 +64,8 @@ class UpdateBookingEventRequest extends FormRequest
             'additional_data.wedding.dances' => 'nullable|array',
             'additional_data.wedding.dances.*.title' => 'required|string',
             'additional_data.wedding.dances.*.data' => 'nullable|string',
+            // Without a rule validated() drops it, so an editor save would wipe it.
+            'additional_data.wedding.colors' => 'nullable|string',
             'additional_data.performance' => 'nullable|array',
             'additional_data.performance.notes' => 'nullable|string',
             'additional_data.performance.songs' => 'nullable|array',

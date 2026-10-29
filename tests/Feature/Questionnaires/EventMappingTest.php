@@ -200,4 +200,26 @@ class EventMappingTest extends TestCase
             ->postJson(route('events.questionnaires.route', [$this->event->id, $this->instance->id]), ['items' => []])
             ->assertStatus(403);
     }
+
+    public function test_saving_the_event_from_the_editor_keeps_wedding_colors(): void
+    {
+        $this->actingAs($this->owner)->put(
+            route('Update Booking Event', [$this->band->id, $this->booking->id, $this->event->id]),
+            [
+                'date' => now()->addMonth()->toDateString(),
+                'title' => 'Wedding',
+                'additional_data' => [
+                    'wedding' => [
+                        'onsite' => true,
+                        'colors' => 'Sage and gold',
+                        'dances' => [['title' => 'Toasts', 'data' => 'Best man']],
+                    ],
+                ],
+            ],
+        )->assertSessionHasNoErrors();
+
+        $data = json_decode(json_encode($this->event->fresh()->additional_data), true);
+        $this->assertSame('Sage and gold', data_get($data, 'wedding.colors'));
+        $this->assertSame('Toasts', data_get($data, 'wedding.dances.0.title'));
+    }
 }
