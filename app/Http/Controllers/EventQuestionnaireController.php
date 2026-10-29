@@ -2,17 +2,26 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\QuestionnaireRoutingException;
+use App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController;
+use App\Http\Requests\RouteQuestionnaireRequest;
 use App\Models\Events;
+use App\Models\QuestionnaireApplications;
 use App\Models\QuestionnaireInstances;
 use App\Models\QuestionnaireResponses;
 use App\Services\QuestionnaireMappingService;
+use App\Services\QuestionnaireRoutingService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
+use RuntimeException;
 
 class EventQuestionnaireController extends Controller
 {
-    public function __construct(private QuestionnaireMappingService $mappingService)
-    {
+    public function __construct(
+        private QuestionnaireMappingService $mappingService,
+        private QuestionnaireRoutingService $routingService,
+    ) {
     }
 
     public function applyResponse(Events $event, QuestionnaireInstances $instance, QuestionnaireResponses $response): RedirectResponse
@@ -44,6 +53,57 @@ class EventQuestionnaireController extends Controller
         $this->mappingService->appendAllToNotes($instance, Auth::user());
 
         return back()->with('success', 'Answers appended to event notes.');
+    }
+
+    /**
+     * JSON preview for the event editor's "Send to Event" review. Same
+     * payload as the mobile routing endpoint.
+     */
+    public function routing(Events $event, QuestionnaireInstances $instance): JsonResponse
+    {
+        $this->authorizeAccess($event, $instance);
+
+        try {
+            return response()->json($this->routingService->preview($instance, $event));
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function routeAnswers(RouteQuestionnaireRequest $request, Events $event, QuestionnaireInstances $instance): JsonResponse
+    {
+        $this->authorizeAccess($event, $instance);
+
+        try {
+            $result = $this->routingService->route($instance, $request->items(), $request->resolutions(), Auth::user(), $event);
+        } catch (QuestionnaireRoutingException $e) {
+            return response()->json(['message' => $e->getMessage()], $e->status);
+        }
+
+        return response()->json([
+            'application_id' => $result['application']->id,
+            'applied' => $result['applied'],
+            'event' => QuestionnaireInstancesController::routedEvent($result['event']),
+        ]);
+    }
+
+    public function undo(Events $event, QuestionnaireApplications $application): JsonResponse
+    {
+        $instance = $application->instance()->withTrashed()->first();
+        abort_if(!$instance || (int) $application->event_id !== (int) $event->id, 404);
+        $this->authorizeAccess($event, $instance);
+
+        try {
+            $restored = $this->routingService->undo($application);
+        } catch (QuestionnaireRoutingException $e) {
+            return response()->json(['message' => $e->getMessage()], $e->status);
+        }
+
+        return response()->json([
+            'application_id' => $application->id,
+            'undone' => true,
+            'event' => QuestionnaireInstancesController::routedEvent($restored),
+        ]);
     }
 
     private function authorizeAccess(Events $event, QuestionnaireInstances $instance): void

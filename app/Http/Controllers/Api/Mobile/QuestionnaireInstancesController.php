@@ -3,10 +3,14 @@
 namespace App\Http\Controllers\Api\Mobile;
 
 use App\Http\Controllers\Controller;
+use App\Exceptions\QuestionnaireRoutingException;
+use App\Http\Requests\RouteQuestionnaireRequest;
 use App\Http\Requests\SendQuestionnaireRequest;
 use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\Contacts;
+use App\Models\Events;
+use App\Models\QuestionnaireApplications;
 use App\Models\QuestionnaireInstances;
 use App\Models\QuestionnaireResponses;
 use App\Models\Questionnaires;
@@ -14,6 +18,7 @@ use App\Notifications\QuestionnaireSent;
 use App\Services\QuestionnaireMappingRegistry;
 use App\Services\QuestionnaireMappingService;
 use App\Services\QuestionnaireResponsePresenter;
+use App\Services\QuestionnaireRoutingService;
 use App\Services\QuestionnaireSnapshotService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -31,6 +36,7 @@ class QuestionnaireInstancesController extends Controller
         private QuestionnaireSnapshotService $snapshotService,
         private QuestionnaireMappingRegistry $mappingRegistry,
         private QuestionnaireMappingService $mappingService,
+        private QuestionnaireRoutingService $routingService,
     ) {
     }
 
@@ -232,6 +238,78 @@ class QuestionnaireInstancesController extends Controller
         }
 
         return response()->json(['message' => 'Answers appended to event notes.']);
+    }
+
+    /**
+     * "Send to Event" review: answers grouped by event section, conflicts,
+     * song-request summary, contacts and unrouted answers.
+     */
+    public function routing(Bands $band, QuestionnaireInstances $instance): JsonResponse
+    {
+        $this->ensureBelongsToBand($band, $instance);
+        $this->authorizeQuestionnaireRead($band);
+
+        try {
+            return response()->json($this->routingService->preview($instance));
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+    }
+
+    public function routeAnswers(RouteQuestionnaireRequest $request, Bands $band, QuestionnaireInstances $instance): JsonResponse
+    {
+        $this->ensureBelongsToBand($band, $instance);
+        $this->authorizeQuestionnaireRead($band);
+
+        try {
+            $result = $this->routingService->route($instance, $request->items(), $request->resolutions(), Auth::user());
+        } catch (QuestionnaireRoutingException $e) {
+            return response()->json(['message' => $e->getMessage()], $e->status);
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json([
+            'application_id' => $result['application']->id,
+            'applied' => $result['applied'],
+            'event' => self::routedEvent($result['event']),
+        ]);
+    }
+
+    public function undoApplication(Bands $band, QuestionnaireApplications $application): JsonResponse
+    {
+        $instance = $application->instance()->withTrashed()->first();
+        abort_if(!$instance, 404);
+        $this->ensureBelongsToBand($band, $instance);
+        $this->authorizeQuestionnaireRead($band);
+
+        try {
+            $event = $this->routingService->undo($application);
+        } catch (QuestionnaireRoutingException $e) {
+            return response()->json(['message' => $e->getMessage()], $e->status);
+        }
+
+        return response()->json([
+            'application_id' => $application->id,
+            'undone' => true,
+            'event' => self::routedEvent($event),
+        ]);
+    }
+
+    /**
+     * The event fields a routing batch can touch. Shared with the web JSON
+     * routes so both clients get the same shape.
+     */
+    public static function routedEvent(Events $event): array
+    {
+        return [
+            'id' => $event->id,
+            'key' => (string) ($event->key ?? ''),
+            'venue_name' => (string) ($event->venue_name ?? ''),
+            'notes' => (string) ($event->notes ?? ''),
+            'additional_data' => $event->additional_data ?? new \stdClass(),
+            'updated_at' => $event->updated_at?->toIso8601String(),
+        ];
     }
 
     /**

@@ -38,7 +38,16 @@ class ClientSongRequestsService
 
         // Per-instance picks, most recently submitted first.
         $picks = [];
+        // Band resolutions for songs a client put on both lists
+        // ({song_id: must_play|do_not_play}); the most recent instance wins.
+        $overrides = [];
         foreach ($instances as $instance) {
+            foreach ((array) ($instance->song_overrides ?? []) as $songId => $choice) {
+                if (in_array($choice, ['must_play', 'do_not_play'], true) && !isset($overrides[(int) $songId])) {
+                    $overrides[(int) $songId] = $choice;
+                }
+            }
+
             $responses = $instance->responses->keyBy('instance_field_id');
             $must = collect();
             $skip = collect();
@@ -80,10 +89,15 @@ class ClientSongRequestsService
             ->pluck('id')
             ->map(fn ($id) => (int) $id);
 
-        $doNotPlay = $doNotPlay->unique()->filter(fn ($id) => $valid->contains($id))->values();
-        // A song the client flagged both ways is treated as do-not-play.
+        // A song the client flagged both ways is treated as do-not-play,
+        // unless the band resolved it to must-play.
+        $doNotPlay = $doNotPlay->unique()
+            ->filter(fn ($id) => $valid->contains($id) && ($overrides[$id] ?? null) !== 'must_play')
+            ->values();
         $mustPlay = $mustPlay->unique()
-            ->filter(fn ($id) => $valid->contains($id) && !$doNotPlay->contains($id))
+            ->filter(fn ($id) => $valid->contains($id)
+                && !$doNotPlay->contains($id)
+                && ($overrides[$id] ?? null) !== 'do_not_play')
             ->values();
 
         if ($mustPlay->isEmpty() && $doNotPlay->isEmpty()) {

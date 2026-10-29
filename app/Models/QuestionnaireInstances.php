@@ -38,6 +38,7 @@ class QuestionnaireInstances extends Model
         'submitted_at',
         'locked_at',
         'locked_by_user_id',
+        'song_overrides',
     ];
 
     protected $casts = [
@@ -45,6 +46,7 @@ class QuestionnaireInstances extends Model
         'first_opened_at' => 'datetime',
         'submitted_at' => 'datetime',
         'locked_at' => 'datetime',
+        'song_overrides' => 'array',
     ];
 
     public function questionnaire(): BelongsTo
@@ -80,6 +82,11 @@ class QuestionnaireInstances extends Model
     public function responses(): HasMany
     {
         return $this->hasMany(QuestionnaireResponses::class, 'instance_id');
+    }
+
+    public function applications(): HasMany
+    {
+        return $this->hasMany(QuestionnaireApplications::class, 'instance_id');
     }
 
     public function isLocked(): bool

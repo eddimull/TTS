@@ -487,6 +487,10 @@ Route::prefix('mobile')->group(function () {
             Route::post('/bands/{band}/questionnaire-instances/{instance}/responses/{response}/apply', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'applyResponse'])->name('mobile.questionnaire-instances.apply-response');
             Route::post('/bands/{band}/questionnaire-instances/{instance}/apply-all', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'applyAll'])->name('mobile.questionnaire-instances.apply-all');
             Route::post('/bands/{band}/questionnaire-instances/{instance}/append-to-notes', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'appendToNotes'])->name('mobile.questionnaire-instances.append-to-notes');
+            // "Send to Event" review: preview, batch apply, undo.
+            Route::get('/bands/{band}/questionnaire-instances/{instance}/routing', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'routing'])->name('mobile.questionnaire-instances.routing');
+            Route::post('/bands/{band}/questionnaire-instances/{instance}/route', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'routeAnswers'])->name('mobile.questionnaire-instances.route');
+            Route::post('/bands/{band}/questionnaire-applications/{application}/undo', [App\Http\Controllers\Api\Mobile\QuestionnaireInstancesController::class, 'undoApplication'])->name('mobile.questionnaire-applications.undo');
         });
 
         // Setlist / live session

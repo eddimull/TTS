@@ -55,5 +55,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('events.questionnaires.apply_all');
         Route::post('/{event}/questionnaires/{instance}/append_to_notes', [EventQuestionnaireController::class, 'appendToNotes'])
             ->name('events.questionnaires.append_to_notes');
+        // "Send to Event" review (JSON, for the event editor)
+        Route::get('/{event}/questionnaires/{instance}/routing', [EventQuestionnaireController::class, 'routing'])
+            ->name('events.questionnaires.routing');
+        Route::post('/{event}/questionnaires/{instance}/route', [EventQuestionnaireController::class, 'routeAnswers'])
+            ->name('events.questionnaires.route');
+        Route::post('/{event}/questionnaire-applications/{application}/undo', [EventQuestionnaireController::class, 'undo'])
+            ->name('events.questionnaires.undo');
     });
 });
