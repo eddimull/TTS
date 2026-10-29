@@ -159,6 +159,21 @@ class QuestionnaireRoutingService
             $appliedIds = [];
             $now = now();
 
+            // Several answers sent to the same dance or text field are
+            // combined rather than each overwriting the last: the answer
+            // that maps there first, then the others in form order
+            // ("Forever and Ever, Amen · Grace Terreson · Todd Terreson").
+            $items = collect($items)
+                ->sortBy(function ($item) use ($responses) {
+                    $field = $responses->get((int) $item['response_id'])?->instanceField;
+                    $own = $field && $field->mapping_target === (string) $item['target'];
+
+                    return [$own ? 0 : 1, $field?->position ?? PHP_INT_MAX];
+                })
+                ->values()
+                ->all();
+            $combined = [];
+
             foreach ($items as $item) {
                 $responseId = (int) $item['response_id'];
                 $target = (string) $item['target'];
@@ -176,7 +191,18 @@ class QuestionnaireRoutingService
                 }
 
                 $this->rememberStamp($before, $response);
-                $this->mappingService->writeTarget($event, $target, $field, $response->value);
+                $text = null;
+                if (in_array($this->registry->kind($target), [
+                    QuestionnaireMappingRegistry::TYPE_DANCE_ENTRY,
+                    QuestionnaireMappingRegistry::TYPE_TEXT_SET,
+                ], true)) {
+                    $value = $this->mappingService->displayValue($response->value, $field->type);
+                    if ($value !== '') {
+                        $combined[$target][] = $value;
+                    }
+                    $text = implode(' · ', $combined[$target] ?? []);
+                }
+                $this->mappingService->writeTarget($event, $target, $field, $response->value, $text);
 
                 $response->routed_target = $target === $field->mapping_target ? null : $target;
                 $this->stampApplied($response, $user, $now);
