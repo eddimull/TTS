@@ -450,8 +450,10 @@ class QuestionnaireRoutingServiceTest extends TestCase
         }
         $this->assertSame('must_play', $this->instance->fresh()->song_overrides[$both->id]);
 
-        // Undoing newest-first works.
+        // Undoing newest-first works, even across a second boundary.
+        $this->travel(2)->seconds();
         $this->service->undo($newer['application']);
+        $this->travel(2)->seconds();
         $this->service->undo($older['application']->fresh());
         $this->assertNull($first->fresh()->applied_to_event_at);
     }
@@ -486,5 +488,60 @@ class QuestionnaireRoutingServiceTest extends TestCase
         $this->assertCount(2, $contacts);
         $this->assertSame(['stranger@example.com', '', false], [$contacts[0]['email'], $contacts[0]['phone'], $contacts[0]['on_booking']]);
         $this->assertSame(['', '504-555-1234', true], [$contacts[1]['email'], $contacts[1]['phone'], $contacts[1]['on_booking']]);
+    }
+
+    public function test_undoing_a_resend_keeps_the_earlier_send_applied(): void
+    {
+        $first = $this->answer('short_text', 'First Dance', 'Evergreen', 'wedding.dance.first');
+        $this->answer('short_text', 'Venue Name', 'II Mercato');
+        // Batch A: send the dance, keep the booking's venue spelling.
+        $this->service->route($this->instance, [['response_id' => $first->id, 'target' => 'wedding.dance.first']], ['venue' => 'booking'], $this->user);
+        $stampA = $first->fresh()->applied_to_event_at;
+
+        // Client edits the answer; batch B re-sends it and re-resolves the venue.
+        $this->travel(2)->seconds();
+        $first->fresh()->update(['value' => 'At Last']);
+        $b = $this->service->route($this->instance, [['response_id' => $first->id, 'target' => 'wedding.dance.first']], ['venue' => 'booking'], $this->user);
+
+        $this->service->undo($b['application']);
+
+        $first->refresh();
+        $this->assertTrue($first->applied_to_event_at->equalTo($stampA));
+        $this->assertSame($this->user->id, $first->applied_by_user_id);
+        $preview = $this->service->preview($this->instance->fresh());
+        // The event holds A's value, but the answer has changed since: stale, not pending.
+        $this->assertSame('stale', $this->items($preview)[$first->id]['status']);
+        // A's venue resolution survives.
+        $this->assertSame('booking', collect($preview['conflicts'])->firstWhere('kind', 'venue_mismatch')['resolution']);
+    }
+
+    public function test_undoing_a_resend_of_an_unchanged_answer_leaves_it_applied(): void
+    {
+        $first = $this->answer('short_text', 'First Dance', 'Evergreen', 'wedding.dance.first');
+        $this->service->route($this->instance, [['response_id' => $first->id, 'target' => 'wedding.dance.first']], [], $this->user);
+        $this->travel(2)->seconds();
+        $b = $this->service->route($this->instance, [['response_id' => $first->id, 'target' => 'wedding.dance.first']], [], $this->user);
+
+        $this->service->undo($b['application']);
+
+        $this->assertSame('applied', $this->items($this->service->preview($this->instance->fresh()))[$first->id]['status']);
+    }
+
+    public function test_undoing_two_event_edits_newest_first_across_seconds(): void
+    {
+        $first = $this->answer('short_text', 'First Dance', 'Evergreen', 'wedding.dance.first');
+        $colors = $this->answer('long_text', 'Wedding colors', 'Sage', 'wedding.colors');
+        $original = $this->eventData();
+
+        $a = $this->service->route($this->instance, [['response_id' => $first->id, 'target' => 'wedding.dance.first']], [], $this->user);
+        $this->travel(2)->seconds();
+        $b = $this->service->route($this->instance, [['response_id' => $colors->id, 'target' => 'wedding.colors']], [], $this->user);
+        $this->travel(2)->seconds();
+
+        $this->service->undo($b['application']);
+        $this->travel(2)->seconds();
+        $this->service->undo($a['application']->fresh());
+
+        $this->assertSame($original, $this->eventData());
     }
 }

@@ -175,6 +175,7 @@ class QuestionnaireRoutingService
                     );
                 }
 
+                $this->rememberStamp($before, $response);
                 $this->mappingService->writeTarget($event, $target, $field, $response->value);
 
                 $response->routed_target = $target === $field->mapping_target ? null : $target;
@@ -203,6 +204,7 @@ class QuestionnaireRoutingService
                 if (!$venueResponse) {
                     throw new QuestionnaireRoutingException('This questionnaire has no venue answer to resolve.');
                 }
+                $this->rememberStamp($before, $venueResponse);
                 if ($venue === 'form') {
                     $event->venue_name = $this->mappingService->displayValue($venueResponse->value, $venueField->type);
                 }
@@ -263,10 +265,30 @@ class QuestionnaireRoutingService
             }
 
             $before = $application->before ?? [];
-            $event->additional_data = $before['additional_data'] ?? null;
-            $event->notes = $before['notes'] ?? null;
-            $event->venue_name = $before['venue_name'] ?? null;
+            // Only assign what actually differs; re-encoding an identical
+            // additional_data would dirty the row and bump updated_at.
+            $restoredData = $before['additional_data'] ?? null;
+            if (json_decode(json_encode($event->additional_data), true) !== $restoredData) {
+                $event->additional_data = $restoredData;
+            }
+            if ($event->notes !== ($before['notes'] ?? null)) {
+                $event->notes = $before['notes'] ?? null;
+            }
+            if ($event->venue_name !== ($before['venue_name'] ?? null)) {
+                $event->venue_name = $before['venue_name'] ?? null;
+            }
             $event->save();
+            $event->refresh();
+
+            // The event is now exactly as an earlier, still-applied batch
+            // left it; re-arm that batch's undo guard so it can be undone next.
+            $fingerprint = $this->fingerprint($event);
+            QuestionnaireApplications::query()
+                ->where('event_id', $event->id)
+                ->where('id', '<', $application->id)
+                ->whereNull('undone_at')
+                ->where('event_fingerprint', $fingerprint)
+                ->update(['event_updated_at' => $event->updated_at]);
 
             $instance = QuestionnaireInstances::withTrashed()->find($application->instance_id);
             if ($instance) {
@@ -274,20 +296,42 @@ class QuestionnaireRoutingService
                 $instance->save();
             }
 
+            // Put each answer back the way this batch found it: an answer an
+            // earlier batch had already sent stays applied (and a kept venue
+            // stays resolved) rather than reverting to pending.
+            $previous = $before['responses'] ?? [];
             QuestionnaireResponses::query()
                 ->where('instance_id', $application->instance_id)
                 ->whereIn('id', $application->applied_response_ids ?? [])
                 ->get()
-                ->each(fn (QuestionnaireResponses $r) => $r->update([
-                    'applied_to_event_at' => null,
-                    'applied_by_user_id' => null,
-                    'applied_value_hash' => null,
-                ]));
+                ->each(function (QuestionnaireResponses $r) use ($previous) {
+                    $prior = $previous[$r->id] ?? $previous[(string) $r->id] ?? [];
+                    $r->update([
+                        'applied_to_event_at' => $prior['applied_to_event_at'] ?? null,
+                        'applied_by_user_id' => $prior['applied_by_user_id'] ?? null,
+                        'applied_value_hash' => $prior['applied_value_hash'] ?? null,
+                        'routed_target' => array_key_exists('routed_target', $prior) ? $prior['routed_target'] : $r->routed_target,
+                    ]);
+                });
 
             $application->update(['undone_at' => now()]);
 
             return $event->fresh();
         });
+    }
+
+    /** Record an answer's applied stamp before this batch overwrites it. */
+    private function rememberStamp(array &$before, QuestionnaireResponses $response): void
+    {
+        if (isset($before['responses'][$response->id])) {
+            return;
+        }
+        $before['responses'][$response->id] = [
+            'applied_to_event_at' => $response->applied_to_event_at?->toDateTimeString(),
+            'applied_by_user_id' => $response->applied_by_user_id,
+            'applied_value_hash' => $response->applied_value_hash,
+            'routed_target' => $response->routed_target,
+        ];
     }
 
     /** Hash of the event fields a batch writes. */
@@ -352,9 +396,14 @@ class QuestionnaireRoutingService
         if (!$response->applied_to_event_at) {
             return 'pending';
         }
-        if ($response->applied_value_hash !== null
-            && $response->applied_value_hash !== QuestionnaireMappingService::valueHash($response->value)) {
-            return 'stale';
+        // The hash of the value that was sent is authoritative: it catches
+        // same-second edits, and it survives an undo that restores an earlier
+        // stamp (and so bumps updated_at). Rows sent before the hash existed
+        // fall back to comparing timestamps.
+        if ($response->applied_value_hash !== null) {
+            return $response->applied_value_hash === QuestionnaireMappingService::valueHash($response->value)
+                ? 'applied'
+                : 'stale';
         }
         return $response->updated_at && $response->updated_at->greaterThan($response->applied_to_event_at)
             ? 'stale'
