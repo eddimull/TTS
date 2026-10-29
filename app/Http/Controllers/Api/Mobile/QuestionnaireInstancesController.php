@@ -261,6 +261,13 @@ class QuestionnaireInstancesController extends Controller
         $this->ensureBelongsToBand($band, $instance);
         $this->authorizeQuestionnaireRead($band);
 
+        // "Remember for this questionnaire" edits the template, which needs
+        // questionnaire write on both the token and the band permission.
+        if ($request->remembersAny()) {
+            abort_unless(Auth::user()->tokenCan('write:questionnaires'), 403);
+            abort_unless(Auth::user()->canWrite('questionnaires', $band->id), 403);
+        }
+
         try {
             $result = $this->routingService->route($instance, $request->items(), $request->resolutions(), Auth::user());
         } catch (QuestionnaireRoutingException $e) {

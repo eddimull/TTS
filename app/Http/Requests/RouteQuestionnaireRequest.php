@@ -53,6 +53,12 @@ class RouteQuestionnaireRequest extends FormRequest
         return array_values($this->validated('items', []));
     }
 
+    /** Whether any item asks to remember its target on the template. */
+    public function remembersAny(): bool
+    {
+        return collect($this->items())->contains(fn ($item) => !empty($item['remember']));
+    }
+
     /** @return array{songs?: array<int|string, string>, venue?: string|null} */
     public function resolutions(): array
     {

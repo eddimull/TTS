@@ -420,4 +420,71 @@ class QuestionnaireRoutingServiceTest extends TestCase
         $this->expectException(QuestionnaireRoutingException::class);
         $this->service->undo($result['application']);
     }
+
+    public function test_an_answer_edited_in_the_same_second_it_was_sent_reads_stale(): void
+    {
+        $this->freezeSecond();
+        $first = $this->answer('short_text', 'First Dance', 'Evergreen', 'wedding.dance.first');
+        $this->service->route($this->instance, [['response_id' => $first->id, 'target' => 'wedding.dance.first']], [], $this->user);
+
+        $first->fresh()->update(['value' => 'At Last']);
+
+        $item = $this->items($this->service->preview($this->instance->fresh()))[$first->id];
+        $this->assertSame('stale', $item['status']);
+        $this->assertTrue($item['default_checked']);
+    }
+
+    public function test_undo_is_refused_while_a_later_send_is_still_applied(): void
+    {
+        $both = Song::factory()->create(['band_id' => $this->band->id]);
+        $first = $this->answer('short_text', 'First Dance', 'Evergreen', 'wedding.dance.first');
+        $older = $this->service->route($this->instance, [['response_id' => $first->id, 'target' => 'wedding.dance.first']], [], $this->user);
+        // Songs-only send: doesn't touch the event row.
+        $newer = $this->service->route($this->instance, [], ['songs' => [(string) $both->id => 'must_play']], $this->user);
+
+        try {
+            $this->service->undo($older['application']);
+            $this->fail('Expected a 409.');
+        } catch (QuestionnaireRoutingException $e) {
+            $this->assertSame(409, $e->status);
+        }
+        $this->assertSame('must_play', $this->instance->fresh()->song_overrides[$both->id]);
+
+        // Undoing newest-first works.
+        $this->service->undo($newer['application']);
+        $this->service->undo($older['application']->fresh());
+        $this->assertNull($first->fresh()->applied_to_event_at);
+    }
+
+    public function test_a_song_override_is_ignored_once_the_song_is_on_only_one_list(): void
+    {
+        $song = Song::factory()->create(['band_id' => $this->band->id, 'active' => true]);
+        $other = Song::factory()->create(['band_id' => $this->band->id, 'active' => true]);
+        $must = $this->answer('song_picker', 'Must', json_encode([$song->id, $other->id]), null, ['purpose' => 'must_play']);
+        $this->answer('song_picker', 'Skip', json_encode([$song->id]), null, ['purpose' => 'do_not_play']);
+        $this->instance->update(['song_overrides' => [(string) $song->id => 'must_play']]);
+
+        // Client later drops it from must-play, leaving only do-not-play.
+        $must->update(['value' => json_encode([$other->id])]);
+
+        $requests = app(ClientSongRequestsService::class)->forBooking($this->booking->fresh());
+        $this->assertSame([$other->id], $requests['must_play']);
+        $this->assertSame([$song->id], $requests['do_not_play']);
+    }
+
+    public function test_contacts_pair_emails_and_phones_by_position_even_when_one_is_blank(): void
+    {
+        $grace = Contacts::factory()->create(['band_id' => $this->band->id, 'email' => 'grace@example.com', 'phone' => '5045551234']);
+        $this->booking->contacts()->attach($grace, ['is_primary' => true]);
+        $this->answer('email', 'Email 1', 'stranger@example.com');
+        $this->answer('phone', 'Phone 1', '');
+        $this->answer('email', 'Email 2', '');
+        $this->answer('phone', 'Phone 2', '504-555-1234');
+
+        $contacts = $this->service->preview($this->instance)['contacts'];
+
+        $this->assertCount(2, $contacts);
+        $this->assertSame(['stranger@example.com', '', false], [$contacts[0]['email'], $contacts[0]['phone'], $contacts[0]['on_booking']]);
+        $this->assertSame(['', '504-555-1234', true], [$contacts[1]['email'], $contacts[1]['phone'], $contacts[1]['on_booking']]);
+    }
 }

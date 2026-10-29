@@ -140,7 +140,13 @@ class QuestionnaireRoutingService
         return DB::transaction(function () use ($instance, $items, $resolutions, $user, $event) {
             $event = Events::query()->lockForUpdate()->findOrFail($event->id);
             $instance = QuestionnaireInstances::query()->lockForUpdate()->findOrFail($instance->id);
-            $instance->load(['fields', 'responses.instanceField']);
+            $instance->load('fields');
+            // Lock the answers too, so a portal edit can't land between
+            // reading a value and stamping it applied.
+            $instance->setRelation('responses', $instance->responses()
+                ->lockForUpdate()
+                ->with('instanceField')
+                ->get());
 
             $before = [
                 'additional_data' => json_decode(json_encode($event->additional_data), true),
@@ -233,6 +239,19 @@ class QuestionnaireRoutingService
                 throw QuestionnaireRoutingException::conflict('This send was already undone.');
             }
 
+            // Undo is a stack: a later send (even a songs-only one that left
+            // the event untouched) snapshotted state this one would clobber.
+            QuestionnaireInstances::withTrashed()->lockForUpdate()->find($application->instance_id);
+            $newer = QuestionnaireApplications::query()
+                ->where('id', '>', $application->id)
+                ->whereNull('undone_at')
+                ->where(fn ($q) => $q->where('instance_id', $application->instance_id)
+                    ->orWhere('event_id', $application->event_id))
+                ->exists();
+            if ($newer) {
+                throw QuestionnaireRoutingException::conflict('A later send must be undone first.');
+            }
+
             $event = Events::query()->lockForUpdate()->find($application->event_id);
             if (!$event) {
                 throw QuestionnaireRoutingException::conflict('The event no longer exists.');
@@ -249,7 +268,7 @@ class QuestionnaireRoutingService
             $event->venue_name = $before['venue_name'] ?? null;
             $event->save();
 
-            $instance = $application->instance()->withTrashed()->first();
+            $instance = QuestionnaireInstances::withTrashed()->find($application->instance_id);
             if ($instance) {
                 $instance->song_overrides = $before['song_overrides'] ?? null;
                 $instance->save();
@@ -262,6 +281,7 @@ class QuestionnaireRoutingService
                 ->each(fn (QuestionnaireResponses $r) => $r->update([
                     'applied_to_event_at' => null,
                     'applied_by_user_id' => null,
+                    'applied_value_hash' => null,
                 ]));
 
             $application->update(['undone_at' => now()]);
@@ -288,6 +308,7 @@ class QuestionnaireRoutingService
     {
         $response->applied_to_event_at = $now;
         $response->applied_by_user_id = $user->id;
+        $response->applied_value_hash = QuestionnaireMappingService::valueHash($response->value);
         $response->updated_at = $now;
         $response->save();
     }
@@ -330,6 +351,10 @@ class QuestionnaireRoutingService
     {
         if (!$response->applied_to_event_at) {
             return 'pending';
+        }
+        if ($response->applied_value_hash !== null
+            && $response->applied_value_hash !== QuestionnaireMappingService::valueHash($response->value)) {
+            return 'stale';
         }
         return $response->updated_at && $response->updated_at->greaterThan($response->applied_to_event_at)
             ? 'stale'
@@ -485,9 +510,10 @@ class QuestionnaireRoutingService
     private function contacts(QuestionnaireInstances $instance, Collection $fields, Collection $responses): array
     {
         $answer = fn ($f) => trim((string) ($responses->get($f->id)?->value ?? ''));
-        $emails = $fields->where('type', 'email')->map($answer)->filter()->values();
-        $phones = $fields->where('type', 'phone')->map($answer)->filter()->values();
-        if ($emails->isEmpty() && $phones->isEmpty()) {
+        // Keep empty slots so the Nth email still pairs with the Nth phone.
+        $emails = $fields->where('type', 'email')->map($answer)->values();
+        $phones = $fields->where('type', 'phone')->map($answer)->values();
+        if ($emails->filter()->isEmpty() && $phones->filter()->isEmpty()) {
             return [];
         }
 
@@ -505,6 +531,9 @@ class QuestionnaireRoutingService
         for ($i = 0; $i < $count; $i++) {
             $email = (string) ($emails->get($i) ?? '');
             $phone = (string) ($phones->get($i) ?? '');
+            if ($email === '' && $phone === '') {
+                continue;
+            }
             $match = $bookingContacts->first(function ($c) use ($email, $phone, $digits) {
                 if ($email !== '' && strcasecmp(trim((string) $c->email), $email) === 0) {
                     return true;

@@ -36,6 +36,7 @@ class QuestionnaireMappingService
         $response->update([
             'applied_to_event_at' => now(),
             'applied_by_user_id' => $appliedBy->id,
+            'applied_value_hash' => self::valueHash($response->value),
         ]);
 
         return $event;
@@ -44,7 +45,8 @@ class QuestionnaireMappingService
     public function appendAllToNotes(QuestionnaireInstances $instance, User $appliedBy): Events
     {
         $event = $this->resolveEvent($instance);
-        $event->notes = trim(($event->notes ?? '') . "\n\n" . $this->buildNotesBlock($instance));
+        // events.notes is rendered with v-html; strip client-supplied markup.
+        $event->notes = trim(($event->notes ?? '') . "\n\n" . strip_tags($this->buildNotesBlock($instance)));
         $event->save();
 
         return $event;
@@ -57,6 +59,15 @@ class QuestionnaireMappingService
             throw new RuntimeException('Booking has no event yet.');
         }
         return $event;
+    }
+
+    /**
+     * Fingerprint of an answer at the moment it was sent, so an edit made
+     * in the same second still reads back as stale.
+     */
+    public static function valueHash(?string $value): string
+    {
+        return hash('sha256', (string) $value);
     }
 
     /**
@@ -134,7 +145,10 @@ class QuestionnaireMappingService
      */
     public function writeTextAppend(Events $event, array $path, string $value): void
     {
-        $value = trim(str_replace("\r\n", "\n", $value));
+        // Both append targets (events.notes, performance.notes) are rendered
+        // with v-html on the web; strip markup so a client answer can't
+        // inject tags or event handlers.
+        $value = trim(str_replace("\r\n", "\n", strip_tags($value)));
         if ($value === '') {
             return;
         }

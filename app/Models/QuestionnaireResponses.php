@@ -24,6 +24,7 @@ class QuestionnaireResponses extends Model
         'routed_target',
         'applied_to_event_at',
         'applied_by_user_id',
+        'applied_value_hash',
     ];
 
     protected $casts = [

@@ -363,4 +363,35 @@ class QuestionnaireMappingServiceTest extends TestCase
         $this->assertSame('', $this->service->displayValue(null, 'short_text'));
         $this->assertSame('Il Mercato', $this->service->displayValue('  Il Mercato ', 'short_text'));
     }
+
+    public function test_text_append_strips_markup_from_answers(): void
+    {
+        [$instance, $event] = $this->makeInstanceWithEvent();
+        $event->update(['notes' => '<p>Load in at 3</p>']);
+        $response = $this->mappedResponse($instance, 'long_text', 'event.notes', 'Hi <img src=x onerror="alert(1)">there', 'Note <b>x</b>');
+        $perf = $this->mappedResponse($instance, 'long_text', 'performance.notes', '<script>alert(1)</script>No slow songs');
+
+        $this->service->applyResponse($response, User::factory()->create());
+        $this->service->applyResponse($perf, User::factory()->create());
+
+        $this->assertSame("<p>Load in at 3</p>\nNote x: Hi there", $event->fresh()->notes);
+        $this->assertSame('alert(1)No slow songs', data_get($this->eventData($event), 'performance.notes'));
+    }
+
+    public function test_append_all_to_notes_strips_markup_from_answers(): void
+    {
+        [$instance, $event] = $this->makeInstanceWithEvent();
+        $field = QuestionnaireInstanceFields::factory()->create([
+            'instance_id' => $instance->id, 'type' => 'short_text', 'label' => 'Bride', 'position' => 10,
+        ]);
+        QuestionnaireResponses::create([
+            'instance_id' => $instance->id, 'instance_field_id' => $field->id,
+            'value' => 'Jane<img src=x onerror=alert(1)>',
+        ]);
+
+        $this->service->appendAllToNotes($instance, User::factory()->create());
+
+        $this->assertStringContainsString('Bride: Jane', $event->fresh()->notes);
+        $this->assertStringNotContainsString('onerror', $event->fresh()->notes);
+    }
 }

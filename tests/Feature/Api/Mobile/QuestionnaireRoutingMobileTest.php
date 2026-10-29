@@ -290,4 +290,21 @@ class QuestionnaireRoutingMobileTest extends TestCase
         $this->assertSame('performance.notes', $source->fresh()->mapping_target);
         $this->assertSame('performance.notes', $response->fresh()->routed_target);
     }
+
+    public function test_remember_requires_write_questionnaires(): void
+    {
+        $first = $this->answer('short_text', 'First Dance', 'Evergreen', 'wedding.dance.first');
+        $headers = $this->headers(['mobile', 'read:questionnaires', 'write:events']);
+        $url = "{$this->base()}/questionnaire-instances/{$this->instance->id}/route";
+
+        $this->withHeaders($headers)
+            ->postJson($url, ['items' => [['response_id' => $first->id, 'target' => 'wedding.dance.first', 'remember' => true]]])
+            ->assertStatus(403);
+        $this->assertNull($first->fresh()->applied_to_event_at);
+
+        // Without remember, the same token can send.
+        $this->withHeaders($headers)
+            ->postJson($url, ['items' => [['response_id' => $first->id, 'target' => 'wedding.dance.first']]])
+            ->assertOk();
+    }
 }

@@ -42,12 +42,6 @@ class ClientSongRequestsService
         // ({song_id: must_play|do_not_play}); the most recent instance wins.
         $overrides = [];
         foreach ($instances as $instance) {
-            foreach ((array) ($instance->song_overrides ?? []) as $songId => $choice) {
-                if (in_array($choice, ['must_play', 'do_not_play'], true) && !isset($overrides[(int) $songId])) {
-                    $overrides[(int) $songId] = $choice;
-                }
-            }
-
             $responses = $instance->responses->keyBy('instance_field_id');
             $must = collect();
             $skip = collect();
@@ -66,6 +60,18 @@ class ClientSongRequestsService
                     $must = $must->merge($ids);
                 } else {
                     $skip = $skip->merge($ids);
+                }
+            }
+
+            // Band resolutions only count while the client still has the song
+            // on both lists; if they since edited it onto one list, honor that.
+            $both = $must->intersect($skip);
+            foreach ((array) ($instance->song_overrides ?? []) as $songId => $choice) {
+                $songId = (int) $songId;
+                if (in_array($choice, ['must_play', 'do_not_play'], true)
+                    && $both->contains($songId)
+                    && !isset($overrides[$songId])) {
+                    $overrides[$songId] = $choice;
                 }
             }
 

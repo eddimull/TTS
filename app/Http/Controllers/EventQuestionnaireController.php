@@ -74,6 +74,11 @@ class EventQuestionnaireController extends Controller
     {
         $this->authorizeAccess($event, $instance);
 
+        // "Remember for this questionnaire" edits the template.
+        if ($request->remembersAny()) {
+            abort_unless(Auth::user()->canWrite('questionnaires', $instance->booking->band_id), 403);
+        }
+
         try {
             $result = $this->routingService->route($instance, $request->items(), $request->resolutions(), Auth::user(), $event);
         } catch (QuestionnaireRoutingException $e) {
