@@ -332,6 +332,21 @@ class QuestionnaireRoutingServiceTest extends TestCase
         $this->assertSame('Pink, green, and white · Peonies', data_get($data, 'wedding.colors'));
     }
 
+    public function test_route_keeps_sent_order_for_yes_no_targets(): void
+    {
+        $onsite = $this->answer('yes_no', 'Will the ceremony be onsite?', 'yes', 'wedding.onsite');
+        $outdoors = $this->answer('yes_no', 'Is any portion of the event outdoors?', 'no', 'wedding.outside');
+
+        // A remapped "no" sent before the target's own "yes": the last one
+        // sent still wins, as before answers were combined.
+        $this->service->route($this->instance, [
+            ['response_id' => $outdoors->id, 'target' => 'wedding.onsite'],
+            ['response_id' => $onsite->id, 'target' => 'wedding.onsite'],
+        ], [], $this->user);
+
+        $this->assertTrue(data_get($this->eventData(), 'wedding.onsite'));
+    }
+
     public function test_route_rolls_back_every_write_on_a_bad_target(): void
     {
         $first = $this->answer('short_text', 'First Dance', 'Evergreen', 'wedding.dance.first');

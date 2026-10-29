@@ -159,20 +159,7 @@ class QuestionnaireRoutingService
             $appliedIds = [];
             $now = now();
 
-            // Several answers sent to the same dance or text field are
-            // combined rather than each overwriting the last: the answer
-            // that maps there first, then the others in form order
-            // ("Forever and Ever, Amen · Grace Terreson · Todd Terreson").
-            $items = collect($items)
-                ->sortBy(function ($item) use ($responses) {
-                    $field = $responses->get((int) $item['response_id'])?->instanceField;
-                    $own = $field && $field->mapping_target === (string) $item['target'];
-
-                    return [$own ? 0 : 1, $field?->position ?? PHP_INT_MAX];
-                })
-                ->values()
-                ->all();
-            $combined = [];
+            $combined = $this->combinedTexts($items, $responses);
 
             foreach ($items as $item) {
                 $responseId = (int) $item['response_id'];
@@ -191,18 +178,7 @@ class QuestionnaireRoutingService
                 }
 
                 $this->rememberStamp($before, $response);
-                $text = null;
-                if (in_array($this->registry->kind($target), [
-                    QuestionnaireMappingRegistry::TYPE_DANCE_ENTRY,
-                    QuestionnaireMappingRegistry::TYPE_TEXT_SET,
-                ], true)) {
-                    $value = $this->mappingService->displayValue($response->value, $field->type);
-                    if ($value !== '') {
-                        $combined[$target][] = $value;
-                    }
-                    $text = implode(' · ', $combined[$target] ?? []);
-                }
-                $this->mappingService->writeTarget($event, $target, $field, $response->value, $text);
+                $this->mappingService->writeTarget($event, $target, $field, $response->value, $combined[$target] ?? null);
 
                 $response->routed_target = $target === $field->mapping_target ? null : $target;
                 $this->stampApplied($response, $user, $now);
@@ -344,6 +320,46 @@ class QuestionnaireRoutingService
 
             return $event->fresh();
         });
+    }
+
+    /**
+     * Several answers sent to the same dance or text-set field are combined
+     * rather than each overwriting the last: the answer that maps there
+     * first, then the others in form order ("Forever and Ever, Amen ·
+     * Grace Terreson · Todd Terreson"). Only the joined text is ordered;
+     * the batch itself still writes in the order it was sent, so yes/no
+     * and notes targets behave as before.
+     *
+     * @param  array<int, array{response_id: int, target: string}>  $items
+     * @return array<string, string>  target key => joined text
+     */
+    private function combinedTexts(array $items, Collection $responses): array
+    {
+        $kinds = [QuestionnaireMappingRegistry::TYPE_DANCE_ENTRY, QuestionnaireMappingRegistry::TYPE_TEXT_SET];
+
+        return collect($items)
+            ->map(function ($item) use ($responses) {
+                $target = (string) $item['target'];
+                $response = $responses->get((int) $item['response_id']);
+                $field = $response?->instanceField;
+
+                return $field ? [
+                    'target' => $target,
+                    'own' => $field->mapping_target === $target ? 0 : 1,
+                    'position' => $field->position ?? PHP_INT_MAX,
+                    'text' => $this->mappingService->displayValue($response->value, $field->type),
+                ] : null;
+            })
+            ->filter(fn ($e) => $e
+                && $e['text'] !== ''
+                && $this->registry->targetExists($e['target'])
+                && in_array($this->registry->kind($e['target']), $kinds, true))
+            ->groupBy('target')
+            ->map(fn ($group) => $group
+                ->sortBy([['own', 'asc'], ['position', 'asc']])
+                ->pluck('text')
+                ->implode(' · '))
+            ->all();
     }
 
     /** Record an answer's applied stamp before this batch overwrites it. */
