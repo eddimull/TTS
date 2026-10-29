@@ -28,6 +28,7 @@ window.scrollTo = vi.fn();
 
 import EventEditor from '../../Pages/Bookings/Components/EventEditor.vue';
 import BasicInfo from '../../Pages/Bookings/Components/EventEditor/BasicInfo.vue';
+import QuestionnaireSection from '../../Pages/Bookings/Components/EventEditor/QuestionnaireSection.vue';
 
 const AUTOSAVE_MS = 3000;
 
@@ -151,5 +152,37 @@ describe('EventEditor notes ↔ server prop sync', () => {
     expect(localEvent(wrapper).venue_name).toBe('II Mercato');
     await letAutosaveFire();
     expect(wrapper.onSave).not.toHaveBeenCalled();
+  });
+
+  it('the questionnaire review flushes pending edits before it sends', async () => {
+    const onSave = vi.fn();
+    const wrapper = shallowMount(EventEditor, {
+      props: {
+        initialEvent: { ...baseEvent('Load in at'), questionnaire_instances: [{ id: 3, status: 'submitted' }] },
+        onSave,
+      },
+      global: { renderStubDefaultSlot: true },
+    });
+    await nextTick();
+    await nextTick();
+
+    localEvent(wrapper).notes = 'Load in at 4pm';
+    await nextTick();
+
+    const beforeSend = wrapper.findComponent(QuestionnaireSection).props('beforeSend');
+    let flushed = false;
+    const pending = beforeSend().then(() => { flushed = true; });
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onSave.mock.calls[0][0].notes).toBe('Load in at 4pm');
+    await Promise.resolve();
+    expect(flushed).toBe(false);
+
+    onSave.mock.calls[0][1].onFinish();
+    await pending;
+    expect(flushed).toBe(true);
+
+    // The autosave timer was cancelled: nothing is saved twice.
+    await letAutosaveFire();
+    expect(onSave).toHaveBeenCalledTimes(1);
   });
 });

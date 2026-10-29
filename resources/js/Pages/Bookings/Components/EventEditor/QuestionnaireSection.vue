@@ -382,11 +382,11 @@
               @click="send(instance)"
             />
             <span
-              v-if="unresolvedCount(instance) > 0"
+              v-if="selection(instance).unresolved > 0"
               class="text-xs text-amber-700 dark:text-amber-400"
               data-testid="unresolved-note"
             >
-              Resolve {{ unresolvedCount(instance) }} {{ unresolvedCount(instance) === 1 ? 'item' : 'items' }} first, or {{ unresolvedCount(instance) === 1 ? "it's" : "they're" }} skipped
+              Resolve {{ selection(instance).unresolved }} {{ selection(instance).unresolved === 1 ? 'item' : 'items' }} first, or {{ selection(instance).unresolved === 1 ? "it's" : "they're" }} skipped
             </span>
           </div>
         </template>
@@ -476,6 +476,9 @@ import Menu from 'primevue/menu'
 const props = defineProps({
   eventId: { type: Number, required: true },
   instances: { type: Array, default: () => [] },
+  // Async hook the editor provides to save pending edits before a send or
+  // undo writes to the event.
+  beforeSend: { type: Function, default: null },
 })
 
 const songOptions = [
@@ -504,6 +507,7 @@ function emptyReview() {
     venue: null,
     sending: false,
     sendError: null,
+    seq: 0,
   }
 }
 
@@ -550,17 +554,20 @@ function errorMessage(error, fallback) {
 
 async function loadPreview(instance) {
   const state = reviews[instance.id] ?? (reviews[instance.id] = emptyReview())
+  // Only the latest request may write: overlapping loads (retry, reload,
+  // post-send refresh) can resolve out of order.
+  const seq = ++state.seq
   state.loading = true
   state.loadError = null
   try {
     const { data } = await axios.get(
       route('events.questionnaires.routing', { event: props.eventId, instance: instance.id })
     )
-    resetSelection(state, data)
+    if (seq === state.seq) resetSelection(state, data)
   } catch (error) {
-    state.loadError = errorMessage(error, "Couldn't load the answers to send.")
+    if (seq === state.seq) state.loadError = errorMessage(error, "Couldn't load the answers to send.")
   } finally {
-    state.loading = false
+    if (seq === state.seq) state.loading = false
   }
 }
 
@@ -596,16 +603,29 @@ function resetSelection(state, preview) {
   }
 }
 
-// Fetch a preview for every reviewable instance not loaded yet, including
-// one that becomes submitted/locked after mount.
+// What the preview depends on: the instance's answers and their applied
+// stamps. A props refresh that changes them (another user's send, the
+// mobile app, append-to-notes) re-fetches that instance's preview.
+function instanceSignature(instance) {
+  const responses = Object.values(instance.responses ?? {})
+    .map((r) => `${r?.response_id}:${r?.updated_at ?? ''}:${r?.applied_to_event_at ?? ''}`)
+    .sort()
+    .join(',')
+  return `${instance.id}|${instance.status}|${responses}`
+}
+
+const loadedSignatures = {}
+
 watch(
-  () => props.instances.filter(isReviewable).map((i) => i.id).join(','),
+  () => props.instances.filter(isReviewable).map(instanceSignature).join(';'),
   () => {
     for (const instance of props.instances) {
       if (!isReviewable(instance)) continue
       if (!reviews[instance.id]) reviews[instance.id] = emptyReview()
-      const state = reviews[instance.id]
-      if (!state.preview && !state.loading) loadPreview(instance)
+      const signature = instanceSignature(instance)
+      if (loadedSignatures[instance.id] === signature) continue
+      loadedSignatures[instance.id] = signature
+      loadPreview(instance)
     }
   },
   { immediate: true }
@@ -672,7 +692,10 @@ function selectedItems(instance) {
   return items
 }
 
-/** The `resolutions` body: only conflicts that have a choice. */
+/**
+ * The `resolutions` body: only choices that differ from what the server
+ * already has, so an earlier resolution isn't re-sent on every send.
+ */
 function selectedResolutions(instance) {
   const state = reviews[instance.id]
   if (!state?.preview) return {}
@@ -680,22 +703,44 @@ function selectedResolutions(instance) {
   const songs = {}
   for (const conflict of songConflicts(instance)) {
     const value = state.songs[conflict.song_id]
-    if (value) songs[String(conflict.song_id)] = value
+    if (value && value !== conflict.resolution) songs[String(conflict.song_id)] = value
   }
   if (Object.keys(songs).length) resolutions.songs = songs
-  if (venueConflicts(instance).length && state.venue) resolutions.venue = state.venue
+  const venue = venueConflicts(instance)[0]
+  if (venue && state.venue && state.venue !== venue.resolution) resolutions.venue = state.venue
   return resolutions
+}
+
+// One pass per instance per change, instead of re-walking the selection
+// from every template binding.
+const selections = computed(() => {
+  const out = {}
+  for (const instance of props.instances) {
+    if (!reviews[instance.id]?.preview) continue
+    out[instance.id] = {
+      items: selectedItems(instance),
+      resolutions: selectedResolutions(instance),
+      unresolved: unresolvedCount(instance),
+    }
+  }
+  return out
+})
+
+function selection(instance) {
+  return selections.value[instance.id] ?? { items: [], resolutions: {}, unresolved: 0 }
 }
 
 function canSend(instance) {
   const state = reviews[instance.id]
   if (!state?.preview || state.sending) return false
-  return selectedItems(instance).length > 0 || Object.keys(selectedResolutions(instance)).length > 0
+  const { items, resolutions } = selection(instance)
+  return items.length > 0 || Object.keys(resolutions).length > 0
 }
 
 function sendLabel(instance) {
-  const n = selectedItems(instance).length
-  if (n === 0 && Object.keys(selectedResolutions(instance)).length) return 'Save choices'
+  const { items, resolutions } = selection(instance)
+  const n = items.length
+  if (n === 0 && Object.keys(resolutions).length) return 'Save choices'
   return `Send ${n} ${n === 1 ? 'item' : 'items'} to event`
 }
 
@@ -756,16 +801,23 @@ function dismissToast() {
 
 onUnmounted(() => clearTimeout(toastTimer))
 
+let sentRemember = false
+
 async function send(instance) {
   const state = reviews[instance.id]
   if (!canSend(instance)) return
   state.sending = true
   state.sendError = null
-  const body = { items: selectedItems(instance) }
-  const resolutions = selectedResolutions(instance)
-  if (Object.keys(resolutions).length) body.resolutions = resolutions
 
   try {
+    // Save the user's pending edits first so the routed values are written
+    // on top of them, not overwritten by a later autosave.
+    if (props.beforeSend) await props.beforeSend()
+    const body = { items: selectedItems(instance) }
+    const resolutions = selectedResolutions(instance)
+    if (Object.keys(resolutions).length) body.resolutions = resolutions
+    sentRemember = body.items.some((item) => item.remember)
+
     const { data } = await axios.post(
       route('events.questionnaires.route', { event: props.eventId, instance: instance.id }),
       body
@@ -773,6 +825,7 @@ async function send(instance) {
     const n = data.applied ?? body.items.length
     showToast({
       applicationId: data.application_id,
+      eventId: props.eventId,
       instanceId: instance.id,
       message: n > 0 ? `Sent ${n} ${n === 1 ? 'item' : 'items'} to the event.` : 'Choices saved.',
       busy: false,
@@ -780,7 +833,9 @@ async function send(instance) {
     refreshEditor()
     await loadPreview(instance)
   } catch (error) {
-    state.sendError = errorMessage(error, "Couldn't send the answers. Try again.")
+    state.sendError = error?.response?.status === 403 && sentRemember
+      ? "You can't change this questionnaire's template, so nothing was sent. Untick \"Remember for this questionnaire\" and send again."
+      : errorMessage(error, "Couldn't send the answers. Try again.")
   } finally {
     state.sending = false
   }
@@ -791,8 +846,9 @@ async function undo() {
   if (!toast?.applicationId || toast.busy) return
   toast.busy = true
   try {
+    if (props.beforeSend) await props.beforeSend()
     await axios.post(
-      route('events.questionnaires.undo', { event: props.eventId, application: toast.applicationId })
+      route('events.questionnaires.undo', { event: toast.eventId, application: toast.applicationId })
     )
     showToast({ applicationId: null, message: 'Send undone.', busy: false })
     refreshEditor()

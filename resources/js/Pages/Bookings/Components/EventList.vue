@@ -185,7 +185,7 @@ const cancelView = () => {
     viewingEvent.value = null;
 };
 
-const saveEvent = (updatedEvent, { silent = false } = {}) => {
+const saveEvent = (updatedEvent, { silent = false, onFinish } = {}) => {
     if (updatedEvent.id) {
         // Updating an existing event
         router.put(
@@ -198,6 +198,7 @@ const saveEvent = (updatedEvent, { silent = false } = {}) => {
             {
                 preserveState: true,
                 preserveScroll: true,
+                onFinish: () => onFinish?.(),
             }
         );
     } else {

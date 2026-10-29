@@ -229,6 +229,7 @@
         <QuestionnaireSection
           :event-id="event.id"
           :instances="event.questionnaire_instances"
+          :before-send="flushPendingSave"
         />
       </SectionCard>
     </div>
@@ -501,6 +502,25 @@ const autoSave = () => {
         isSaving.value = false;
     }
 };
+
+// Save pending edits now and resolve once the server has them. The
+// questionnaire review calls this before it writes to the event, so the
+// routed notes/additional_data land on top of the user's edits instead of
+// being overwritten by a later autosave of the older local copy.
+const flushPendingSave = () => new Promise((resolve) => {
+    if (autosaveTimer.value) {
+        clearTimeout(autosaveTimer.value);
+        autosaveTimer.value = null;
+    }
+    if (!hasUnsavedChanges.value) {
+        resolve();
+        return;
+    }
+    lastSyncedNotes = event.value.notes ?? '';
+    hasUnsavedChanges.value = false;
+    lastSaved.value = Date.now();
+    emit("save", event.value, { silent: true, onFinish: resolve });
+});
 
 // Scroll to the editor on mount
 onMounted(() => {

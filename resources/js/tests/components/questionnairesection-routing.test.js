@@ -143,9 +143,9 @@ const preview = () => ({
   targets: [],
 });
 
-const mountSection = async (inst = instance()) => {
+const mountSection = async (inst = instance(), extraProps = {}) => {
   const wrapper = mount(QuestionnaireSection, {
-    props: { eventId: 7, instances: [inst] },
+    props: { eventId: 7, instances: [inst], ...extraProps },
     attachTo: document.body,
   });
   await flushPromises();
@@ -298,5 +298,59 @@ describe('QuestionnaireSection routing review', () => {
     await item.trigger('click');
     expect(routerPost).toHaveBeenCalledTimes(1);
     expect(routerPost.mock.calls[0][0]).toContain('events.questionnaires.append_to_notes');
+  });
+
+  it('saves pending editor edits before sending', async () => {
+    const order = [];
+    const beforeSend = vi.fn(() => { order.push('flush'); return Promise.resolve(); });
+    axiosPost.mockImplementation(() => { order.push('route'); return Promise.resolve({ data: { application_id: 1, applied: 1 } }); });
+    const wrapper = await mountSection(instance(), { beforeSend });
+    await sendButton(wrapper).trigger('click');
+    await flushPromises();
+    expect(order).toEqual(['flush', 'route']);
+  });
+
+  it('does not re-send resolutions the server already has', async () => {
+    const p = preview();
+    p.groups.forEach((g) => g.items.forEach((i) => { i.default_checked = false; }));
+    p.conflicts[0].resolution = 'must_play';
+    p.conflicts[2].resolution = 'booking';
+    axiosGet.mockResolvedValue({ data: p });
+    const wrapper = await mountSection();
+
+    expect(wrapper.find('[data-testid="unresolved-note"]').text()).toContain('Resolve 1 item first');
+    expect(sendButton(wrapper).attributes('disabled')).toBeDefined();
+
+    await wrapper.find('[data-testid="song-13-must_play"]').trigger('click');
+    expect(sendButton(wrapper).text()).toBe('Save choices');
+    axiosPost.mockResolvedValue({ data: { application_id: 2, applied: 0 } });
+    await sendButton(wrapper).trigger('click');
+    await flushPromises();
+    expect(axiosPost.mock.calls[0][1]).toEqual({ items: [], resolutions: { songs: { 13: 'must_play' } } });
+  });
+
+  it('explains a 403 caused by "Remember for this questionnaire"', async () => {
+    axiosPost.mockRejectedValue({ response: { status: 403, data: { message: 'This action is unauthorized.' } } });
+    const wrapper = await mountSection();
+    await wrapper.find('[data-testid="unrouted-target-9"]').setValue('performance.notes');
+    await wrapper.find('[data-testid="remember-9"]').setValue(true);
+    await sendButton(wrapper).trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('Untick "Remember for this questionnaire"');
+  });
+
+  it('re-fetches the preview when a props refresh changes the answers', async () => {
+    const wrapper = await mountSection();
+    expect(axiosGet).toHaveBeenCalledTimes(1);
+
+    await wrapper.setProps({ instances: [instance()] });
+    await flushPromises();
+    expect(axiosGet).toHaveBeenCalledTimes(1);
+
+    await wrapper.setProps({
+      instances: [instance({ responses: { 11: { response_id: 1, value: 'x', applied_to_event_at: '2026-10-29T10:00:00Z' } } })],
+    });
+    await flushPromises();
+    expect(axiosGet).toHaveBeenCalledTimes(2);
   });
 });
