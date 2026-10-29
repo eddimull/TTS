@@ -133,4 +133,23 @@ describe('EventEditor notes ↔ server prop sync', () => {
 
     expect(localEvent(wrapper).notes).toBe('Load in at 4pm\n\nParking: rear lot');
   });
+
+  it('a routed questionnaire send (notes, additional_data, venue) reaches the editor without an autosave', async () => {
+    const wrapper = await mountEditor('Load in at 4pm');
+
+    await wrapper.setProps({
+      initialEvent: {
+        ...baseEvent('Load in at 4pm\n\nOnly upbeat songs'),
+        venue_name: 'II Mercato',
+        additional_data: { times: [], wedding: { colors: 'Sage and ivory' } },
+      },
+    });
+    await nextTick();
+
+    expect(localEvent(wrapper).notes).toBe('Load in at 4pm\n\nOnly upbeat songs');
+    expect(localEvent(wrapper).additional_data.wedding.colors).toBe('Sage and ivory');
+    expect(localEvent(wrapper).venue_name).toBe('II Mercato');
+    await letAutosaveFire();
+    expect(wrapper.onSave).not.toHaveBeenCalled();
+  });
 });
