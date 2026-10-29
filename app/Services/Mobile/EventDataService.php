@@ -299,6 +299,8 @@ class EventDataService
             $wedding = [
                 'onsite' => isset($w->onsite) ? (bool) $w->onsite : null,
                 'dances' => $dances,
+                // The couple's colors (from the questionnaire); not attire.
+                'colors' => isset($w->colors) && is_scalar($w->colors) ? (string) $w->colors : '',
             ];
         }
 
@@ -532,6 +534,9 @@ class EventDataService
             $w = $request->input('wedding');
             if (array_key_exists('onsite', $w)) {
                 $ad->wedding->onsite = isset($w['onsite']) ? (bool) $w['onsite'] : null;
+            }
+            if (array_key_exists('colors', $w)) {
+                $ad->wedding->colors = (string) ($w['colors'] ?? '');
             }
             if (array_key_exists('dances', $w)) {
                 $ad->wedding->dances = array_map(

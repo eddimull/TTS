@@ -146,4 +146,80 @@ class EventMappingTest extends TestCase
             ])
         )->assertStatus(403);
     }
+
+    public function test_routing_preview_route_and_undo_json(): void
+    {
+        $field = QuestionnaireInstanceFields::factory()->create([
+            'instance_id' => $this->instance->id,
+            'type' => 'long_text',
+            'label' => 'Names and order of toasts',
+            'mapping_target' => 'wedding.toasts',
+        ]);
+        $response = QuestionnaireResponses::create([
+            'instance_id' => $this->instance->id,
+            'instance_field_id' => $field->id,
+            'value' => 'Best man, then maid of honor',
+        ]);
+
+        $this->actingAs($this->owner)
+            ->getJson(route('events.questionnaires.routing', [$this->event->id, $this->instance->id]))
+            ->assertOk()
+            ->assertJsonPath('groups.0.key', 'timeline')
+            ->assertJsonPath('groups.0.items.0.target', 'wedding.toasts')
+            ->assertJsonPath('groups.0.items.0.target_label', 'Toasts');
+
+        $applicationId = $this->actingAs($this->owner)
+            ->postJson(route('events.questionnaires.route', [$this->event->id, $this->instance->id]), [
+                'items' => [['response_id' => $response->id, 'target' => 'wedding.toasts']],
+            ])
+            ->assertOk()
+            ->assertJsonPath('applied', 1)
+            ->json('application_id');
+
+        $dances = collect(data_get($this->event->fresh()->additional_data, 'wedding.dances'));
+        $this->assertSame('Best man, then maid of honor', data_get($dances->firstWhere('title', 'Toasts'), 'data'));
+
+        $this->actingAs($this->owner)
+            ->postJson(route('events.questionnaires.undo', [$this->event->id, $applicationId]))
+            ->assertOk()
+            ->assertJsonPath('undone', true);
+
+        $dances = collect(data_get($this->event->fresh()->additional_data, 'wedding.dances'));
+        $this->assertNull($dances->firstWhere('title', 'Toasts'));
+        $this->assertNull($response->fresh()->applied_to_event_at);
+    }
+
+    public function test_routing_json_requires_questionnaires_permission(): void
+    {
+        $stranger = User::factory()->create();
+
+        $this->actingAs($stranger)
+            ->getJson(route('events.questionnaires.routing', [$this->event->id, $this->instance->id]))
+            ->assertStatus(403);
+        $this->actingAs($stranger)
+            ->postJson(route('events.questionnaires.route', [$this->event->id, $this->instance->id]), ['items' => []])
+            ->assertStatus(403);
+    }
+
+    public function test_saving_the_event_from_the_editor_keeps_wedding_colors(): void
+    {
+        $this->actingAs($this->owner)->put(
+            route('Update Booking Event', [$this->band->id, $this->booking->id, $this->event->id]),
+            [
+                'date' => now()->addMonth()->toDateString(),
+                'title' => 'Wedding',
+                'additional_data' => [
+                    'wedding' => [
+                        'onsite' => true,
+                        'colors' => 'Sage and gold',
+                        'dances' => [['title' => 'Toasts', 'data' => 'Best man']],
+                    ],
+                ],
+            ],
+        )->assertSessionHasNoErrors();
+
+        $data = json_decode(json_encode($this->event->fresh()->additional_data), true);
+        $this->assertSame('Sage and gold', data_get($data, 'wedding.colors'));
+        $this->assertSame('Toasts', data_get($data, 'wedding.dances.0.title'));
+    }
 }
