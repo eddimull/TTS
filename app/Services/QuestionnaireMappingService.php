@@ -73,8 +73,11 @@ class QuestionnaireMappingService
     /**
      * Write one answer to the event for the given target. Mutates $event in
      * memory; the caller saves. Throws when the target is unknown.
+     *
+     * $text replaces the answer's display value for dance and text-set
+     * targets — the batch route passes several answers joined into one.
      */
-    public function writeTarget(Events $event, string $key, QuestionnaireInstanceFields $field, ?string $rawValue): void
+    public function writeTarget(Events $event, string $key, QuestionnaireInstanceFields $field, ?string $rawValue, ?string $text = null): void
     {
         if (!$this->registry->targetExists($key)) {
             throw new RuntimeException("Mapping target '{$key}' is no longer available.");
@@ -87,12 +90,12 @@ class QuestionnaireMappingService
             QuestionnaireMappingRegistry::TYPE_DANCE_ENTRY => $this->writeDance(
                 $event,
                 $this->registry->danceTitle($key),
-                $this->displayValue($rawValue, $field->type),
+                $text ?? $this->displayValue($rawValue, $field->type),
             ),
             QuestionnaireMappingRegistry::TYPE_TEXT_SET => $this->writeTextSet(
                 $event,
                 $path,
-                $this->displayValue($rawValue, $field->type),
+                $text ?? $this->displayValue($rawValue, $field->type),
             ),
             QuestionnaireMappingRegistry::TYPE_TEXT_APPEND => $this->writeTextAppend(
                 $event,
