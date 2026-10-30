@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BroadcastsBandChanges;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class AttireChip extends Model
 {
-    use HasFactory;
+    use HasFactory, BroadcastsBandChanges;
 
     protected $table = 'attire_chips';
 

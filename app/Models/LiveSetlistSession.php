@@ -2,10 +2,39 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BroadcastsBandChanges;
 use Illuminate\Database\Eloquent\Model;
 
 class LiveSetlistSession extends Model
 {
+    use BroadcastsBandChanges;
+
+    /**
+     * The event page only shows whether a live session exists / is running
+     * (live_session_id), so only lifecycle columns broadcast. Per-song
+     * updates (current_position, after_break, rejected_song_ids, ...) have
+     * their own live-session channel and must not spam the band channel.
+     */
+    protected function broadcastHasMeaningfulChanges(): bool
+    {
+        return $this->wasChanged(['status', 'started_at', 'ended_at']);
+    }
+
+    protected function broadcastBandId(): ?int
+    {
+        if (isset($this->band_id) && $this->band_id) {
+            return (int) $this->band_id;
+        }
+
+        return $this->event?->resolveBandId();
+    }
+
+    protected function broadcastParent(): ?array
+    {
+        return $this->event_id
+            ? ['model' => 'events', 'id' => (int) $this->event_id]
+            : null;
+    }
     protected $fillable = [
         'event_id',
         'band_id',

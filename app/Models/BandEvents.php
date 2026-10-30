@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BroadcastsBandChanges;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -11,6 +12,7 @@ class BandEvents extends Model
 {
     use HasFactory;
     use SoftDeletes;
+    use BroadcastsBandChanges;
 
     protected $table = 'band_events';
     protected $fillable = [

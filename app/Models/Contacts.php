@@ -127,4 +127,24 @@ class Contacts extends Authenticatable
             ->useLogName('contacts')
             ->setDescriptionForEvent(fn(string $eventName) => "Contact has been {$eventName}");
     }
+
+    /**
+     * Realtime: contact fields shown on a booking (name/email/phone/portal
+     * access) re-signal every booking the contact is attached to as
+     * `bookings`, so clients need no separate contacts mapping.
+     */
+    protected static function booted(): void
+    {
+        static::updated(function (self $contact) {
+            if (! $contact->wasChanged(['name', 'email', 'phone', 'can_login'])) {
+                return;
+            }
+
+            try {
+                $contact->bookings()->get()->each->broadcastRefresh();
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        });
+    }
 }

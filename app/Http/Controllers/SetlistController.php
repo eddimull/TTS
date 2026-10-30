@@ -137,7 +137,7 @@ class SetlistController extends Controller
         $songMap    = $songs->keyBy('id');
         $finalItems = $this->filterValidItems($result['items'], $songMap);
 
-        DB::transaction(function () use ($event, $band, $finalItems, $songsArray, $result) {
+        EventSetlist::withoutBandBroadcasts(fn () => DB::transaction(function () use ($event, $band, $finalItems, $songsArray, $result) {
             $setlist = EventSetlist::updateOrCreate(
                 ['event_id' => $event->id],
                 [
@@ -155,9 +155,11 @@ class SetlistController extends Controller
 
             $setlist->songs()->delete();
             $this->saveSetlistItems($setlist, $finalItems);
-        });
+        }));
 
         $setlist = $event->setlist()->with('songs.song.leadSinger')->first();
+        // One `event_setlist` signal per request, not one per song row.
+        $setlist?->broadcastRefresh();
         $formatted = $this->formatSetlist($setlist);
         \Illuminate\Support\Facades\Log::info('SetlistController: final order returned to frontend', [
             'songs' => collect($formatted['songs'])->map(fn($s) => $s['position'] . '. ' . $s['title'] . ' (' . ($s['lead_singer'] ?? 'none') . ')')->values()->all()
@@ -231,13 +233,15 @@ class SetlistController extends Controller
         $songMap    = $songs->keyBy('id');
         $finalItems = $this->filterValidItems($result['setlist'], $songMap);
 
-        DB::transaction(function () use ($event, $finalItems) {
+        EventSetlist::withoutBandBroadcasts(fn () => DB::transaction(function () use ($event, $finalItems) {
             $setlist = $event->setlist()->firstOrFail();
             $setlist->songs()->delete();
             $this->saveSetlistItems($setlist, $finalItems);
-        });
+        }));
 
         $updatedSetlist = $event->setlist()->with('songs.song.leadSinger')->first();
+        // One `event_setlist` signal per request, not one per song row.
+        $updatedSetlist?->broadcastRefresh();
 
         return response()->json([
             'setlist' => $this->formatSetlist($updatedSetlist),
@@ -265,7 +269,7 @@ class SetlistController extends Controller
             'status' => 'sometimes|nullable|in:draft,ready',
         ]);
 
-        DB::transaction(function () use ($validated, $event, $band) {
+        EventSetlist::withoutBandBroadcasts(fn () => DB::transaction(function () use ($validated, $event, $band) {
             $setlist = EventSetlist::firstOrCreate(
                 ['event_id' => $event->id],
                 ['band_id' => $band->id, 'status' => 'draft']
@@ -289,9 +293,11 @@ class SetlistController extends Controller
                     'notes' => $entry['notes'] ?? null,
                 ]);
             }
-        });
+        }));
 
         $setlist = $event->setlist()->with('songs.song.leadSinger')->first();
+        // One `event_setlist` signal per request, not one per song row.
+        $setlist?->broadcastRefresh();
 
         return response()->json($this->formatSetlist($setlist));
     }

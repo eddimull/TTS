@@ -62,11 +62,21 @@ class RosterReconcileService
             return 0;
         }
 
-        return DB::transaction(function () use ($member, $eventIds) {
+        $affected = $this->matchMemberOnEvents($member, $eventIds)
+            ->withTrashed()
+            ->get(['id', 'event_id', 'band_id']);
+
+        $deleted = DB::transaction(function () use ($member, $eventIds) {
             return $this->matchMemberOnEvents($member, $eventIds)
                 ->withTrashed()
                 ->forceDelete();
         });
+
+        // The query-builder forceDelete skips model events: emit one
+        // `event_member` signal per affected event instead.
+        EventMember::broadcastDeletedPerEvent($affected);
+
+        return $deleted;
     }
 
     /**

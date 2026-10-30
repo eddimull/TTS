@@ -106,6 +106,7 @@ class StripeWebhookController extends Controller
                             
                             // Attach contact to booking if newly created or found
                             $booking->contacts()->syncWithoutDetaching([$contact->id => ['is_primary' => false]]);
+                            $booking->broadcastRefresh();
                         }
                     }
                 }
