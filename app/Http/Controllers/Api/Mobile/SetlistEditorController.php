@@ -125,7 +125,7 @@ class SetlistEditorController extends Controller
             'status'                => 'sometimes|nullable|in:draft,ready',
         ]);
 
-        DB::transaction(function () use ($validated, $event, $band) {
+        EventSetlist::withoutBandBroadcasts(fn () => DB::transaction(function () use ($validated, $event, $band) {
             $setlist = EventSetlist::firstOrCreate(
                 ['event_id' => $event->id],
                 ['band_id' => $band->id, 'status' => 'draft'],
@@ -149,9 +149,11 @@ class SetlistEditorController extends Controller
                     'notes'         => $entry['notes'] ?? null,
                 ]);
             }
-        });
+        }));
 
         $setlist = $event->setlist()->with('songs.song.leadSinger')->first();
+        // One `event_setlist` signal per request, not one per song row.
+        $setlist?->broadcastRefresh();
         abort_unless($setlist, 500, 'Setlist not found after write');
 
         return response()->json($this->formatSetlist($setlist));
@@ -205,7 +207,7 @@ class SetlistEditorController extends Controller
         $songMap    = $songs->keyBy('id');
         $finalItems = $this->filterValidItems($result['items'], $songMap);
 
-        DB::transaction(function () use ($event, $band, $finalItems, $songsArray, $result) {
+        EventSetlist::withoutBandBroadcasts(fn () => DB::transaction(function () use ($event, $band, $finalItems, $songsArray, $result) {
             $setlist = EventSetlist::updateOrCreate(
                 ['event_id' => $event->id],
                 [
@@ -223,9 +225,11 @@ class SetlistEditorController extends Controller
 
             $setlist->songs()->delete();
             $this->saveSetlistItems($setlist, $finalItems);
-        });
+        }));
 
         $setlist = $event->setlist()->with('songs.song.leadSinger')->first();
+        // One `event_setlist` signal per request, not one per song row.
+        $setlist?->broadcastRefresh();
         abort_unless($setlist, 500, 'Setlist not found after generate');
 
         return response()->json($this->formatSetlist($setlist));
@@ -392,12 +396,14 @@ class SetlistEditorController extends Controller
         $songMap    = $songs->keyBy('id');
         $finalItems = $this->filterValidItems($result['setlist'], $songMap);
 
-        DB::transaction(function () use ($setlist, $finalItems) {
+        EventSetlist::withoutBandBroadcasts(fn () => DB::transaction(function () use ($setlist, $finalItems) {
             $setlist->songs()->delete();
             $this->saveSetlistItems($setlist, $finalItems);
-        });
+        }));
 
         $updatedSetlist = $event->setlist()->with('songs.song.leadSinger')->first();
+        // One `event_setlist` signal per request, not one per song row.
+        $updatedSetlist?->broadcastRefresh();
         abort_unless($updatedSetlist, 500, 'Setlist not found after refine');
 
         return response()->json([

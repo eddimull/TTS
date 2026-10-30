@@ -57,4 +57,24 @@ class BookingContacts extends Model
             ->useLogName('booking_contacts')
             ->setDescriptionForEvent(fn(string $eventName) => "Booking contact has been {$eventName}");
     }
+
+    /**
+     * Realtime: a booking-contact row change is a change to the booking as
+     * the clients render it, so it re-signals the owning booking
+     * (`bookings`) rather than introducing a new wire model.
+     */
+    protected static function booted(): void
+    {
+        $signal = function (self $bookingContact) {
+            try {
+                Bookings::find($bookingContact->booking_id)?->broadcastRefresh();
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        };
+
+        static::created($signal);
+        static::updated($signal);
+        static::deleted($signal);
+    }
 }

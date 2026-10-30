@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BroadcastsBandChanges;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -9,7 +10,25 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class RosterSlot extends Model
 {
-    use HasFactory;
+    use HasFactory, BroadcastsBandChanges;
+
+    protected function broadcastBandId(): ?int
+    {
+        if (! $this->roster_id) {
+            return null;
+        }
+
+        $bandId = Roster::withTrashed()->whereKey($this->roster_id)->value('band_id');
+
+        return $bandId ? (int) $bandId : null;
+    }
+
+    protected function broadcastParent(): ?array
+    {
+        return $this->roster_id
+            ? ['model' => 'roster', 'id' => (int) $this->roster_id]
+            : null;
+    }
 
     protected $fillable = [
         'roster_id',

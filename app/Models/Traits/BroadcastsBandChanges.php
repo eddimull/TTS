@@ -23,6 +23,12 @@ use Illuminate\Support\Str;
  */
 trait BroadcastsBandChanges
 {
+    /**
+     * When true, model-event signals for this class are suppressed (see
+     * withoutBandBroadcasts()). Static trait properties are per using class.
+     */
+    protected static bool $bandBroadcastsMuted = false;
+
     public static function bootBroadcastsBandChanges(): void
     {
         static::created(fn ($model) => $model->broadcastBandChange('created'));
@@ -30,13 +36,55 @@ trait BroadcastsBandChanges
         static::deleted(fn ($model) => $model->broadcastBandChange('deleted'));
     }
 
+    /**
+     * Run $callback with this class's model-event signals suppressed, so a
+     * multi-row write can emit a single broadcastRefresh() afterwards
+     * instead of one signal per row.
+     *
+     * @template T
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    public static function withoutBandBroadcasts(callable $callback): mixed
+    {
+        $previous = static::$bandBroadcastsMuted;
+        static::$bandBroadcastsMuted = true;
+
+        try {
+            return $callback();
+        } finally {
+            static::$bandBroadcastsMuted = $previous;
+        }
+    }
+
     protected function broadcastBandChange(string $action): void
     {
+        if (static::$bandBroadcastsMuted) {
+            return;
+        }
+
         try {
             if ($action === 'updated' && ! $this->broadcastHasMeaningfulChanges()) {
                 return;
             }
+        } catch (\Throwable $e) {
+            report($e);
 
+            return;
+        }
+
+        $this->broadcastRefresh($action);
+    }
+
+    /**
+     * Emit this model's signal unconditionally (no dirty check, ignores
+     * withoutBandBroadcasts()). For writes that bypass Eloquent model events
+     * — child-row rewrites, pivot syncs, query-builder bulk deletes — call
+     * this once after the write so clients refetch.
+     */
+    public function broadcastRefresh(string $action = 'updated'): void
+    {
+        try {
             $bandId = $this->broadcastBandId();
             if (! $bandId) {
                 return;

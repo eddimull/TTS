@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Interfaces\GoogleCalenderable;
 use App\Models\Traits\GoogleCalendarWritable;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\Traits\BroadcastsBandChanges;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -21,7 +23,26 @@ class Events extends Model implements GoogleCalenderable
 
     protected function broadcastBandId(): ?int
     {
+        return $this->resolveBandId();
+    }
+
+    /**
+     * The owning band, via the eventable. Falls back to a trashed eventable
+     * (soft-deleted Rehearsal / BandEvents) so their events still resolve a
+     * band; MorphTo alone returns null for those. Used by event-child models
+     * (setlist, attachments, live session) to route their realtime signals.
+     */
+    public function resolveBandId(): ?int
+    {
         $bandId = $this->eventable?->band_id;
+
+        if (! $bandId && $this->eventable_type && $this->eventable_id) {
+            $class = Relation::getMorphedModel($this->eventable_type) ?? $this->eventable_type;
+
+            if (class_exists($class) && in_array(SoftDeletes::class, class_uses_recursive($class), true)) {
+                $bandId = $class::withTrashed()->whereKey($this->eventable_id)->value('band_id');
+            }
+        }
 
         return $bandId ? (int) $bandId : null;
     }

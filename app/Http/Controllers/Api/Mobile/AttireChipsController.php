@@ -63,7 +63,8 @@ class AttireChipsController extends Controller
     {
         $label = $request->validated()['label'];
 
-        $chip = DB::transaction(function () use ($band, $label) {
+        // First save seeds several rows; mute per-row signals and emit one.
+        $chip = AttireChip::withoutBandBroadcasts(fn () => DB::transaction(function () use ($band, $label) {
             // First-time seeding check.
             $existingCount = AttireChip::where('band_id', $band->id)->count();
             $isFirstSave   = $existingCount === 0;
@@ -110,7 +111,11 @@ class AttireChipsController extends Controller
             $chip->save();
 
             return $chip;
-        });
+        }));
+
+        if ($chip->wasRecentlyCreated) {
+            $chip->broadcastRefresh('created');
+        }
 
         return response()->json([
             'data' => [
