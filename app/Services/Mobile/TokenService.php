@@ -108,6 +108,11 @@ class TokenService
             'is_owner'    => $user->ownsBand($b->id),
             'is_personal' => (bool) $b->is_personal,
             'logo_url'    => self::resolveLogoUrl($b->logo),
+            // The band's address, e.g. for the app's "gear pickup" start point.
+            'address'     => $b->address,
+            'city'        => $b->city,
+            'state'       => $b->state,
+            'zip'         => $b->zip,
         ])->values()->all();
     }
 

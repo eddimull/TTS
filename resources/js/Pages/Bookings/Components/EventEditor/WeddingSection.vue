@@ -103,6 +103,18 @@
           class="form-checkbox h-5 w-5 text-blue-600"
           @change="updateOnsite($event.target.checked)"
         >
+        <label
+          for="wedding-colors"
+          class="block mt-4 mb-2 text-sm font-medium text-gray-700 dark:text-gray-300"
+        >Colors</label>
+        <input
+          id="wedding-colors"
+          :value="modelValue.additional_data.wedding.colors ?? ''"
+          type="text"
+          placeholder="e.g. Sage green and ivory"
+          class="w-full p-2 border dark:bg-slate-700 dark:text-gray-50 rounded"
+          @input="updateWedding('colors', $event.target.value)"
+        >
       </div>
     </div>
   </div>
@@ -189,18 +201,20 @@ const removeDance = (index) => {
     }
 };
 
-const updateOnsite = (value) => {
+const updateWedding = (key, value) => {
     emit('update:modelValue', {
         ...props.modelValue,
         additional_data: {
             ...props.modelValue.additional_data,
             wedding: {
                 ...props.modelValue.additional_data.wedding,
-                onsite: value
+                [key]: value
             }
         }
     });
 };
+
+const updateOnsite = (value) => updateWedding('onsite', value);
 </script>
 
 <style>

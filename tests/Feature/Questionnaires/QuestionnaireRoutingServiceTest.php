@@ -303,6 +303,50 @@ class QuestionnaireRoutingServiceTest extends TestCase
         $this->assertSame('applied', $items[$first->id]['status']);
     }
 
+    public function test_route_combines_answers_sent_to_the_same_dance_own_answer_first(): void
+    {
+        $bride = $this->answer('short_text', "Bride's Full Name", 'Grace Terreson');
+        $groom = $this->answer('short_text', "Groom's Full Name", 'Todd Terreson');
+        $first = $this->answer('short_text', 'First Dance', 'Forever and Ever, Amen', 'wedding.dance.first');
+        $blank = $this->answer('short_text', 'Officiant', '');
+        $colors = $this->answer('long_text', 'Wedding colors', 'Pink, green, and white', 'wedding.colors');
+        $flowers = $this->answer('long_text', 'Flowers', 'Peonies');
+
+        // Sent out of form order, the way the review screen lists them.
+        $this->service->route($this->instance, [
+            ['response_id' => $first->id, 'target' => 'wedding.dance.first'],
+            ['response_id' => $colors->id, 'target' => 'wedding.colors'],
+            ['response_id' => $groom->id, 'target' => 'wedding.dance.first'],
+            ['response_id' => $bride->id, 'target' => 'wedding.dance.first'],
+            ['response_id' => $blank->id, 'target' => 'wedding.dance.first'],
+            ['response_id' => $flowers->id, 'target' => 'wedding.colors'],
+        ], [], $this->user);
+
+        $data = $this->eventData();
+        $dances = collect(data_get($data, 'wedding.dances'));
+        $this->assertCount(1, $dances);
+        $this->assertSame(
+            'Forever and Ever, Amen · Grace Terreson · Todd Terreson',
+            $dances->firstWhere('title', 'First Dance')['data'],
+        );
+        $this->assertSame('Pink, green, and white · Peonies', data_get($data, 'wedding.colors'));
+    }
+
+    public function test_route_keeps_sent_order_for_yes_no_targets(): void
+    {
+        $onsite = $this->answer('yes_no', 'Will the ceremony be onsite?', 'yes', 'wedding.onsite');
+        $outdoors = $this->answer('yes_no', 'Is any portion of the event outdoors?', 'no', 'wedding.outside');
+
+        // A remapped "no" sent before the target's own "yes": the last one
+        // sent still wins, as before answers were combined.
+        $this->service->route($this->instance, [
+            ['response_id' => $outdoors->id, 'target' => 'wedding.onsite'],
+            ['response_id' => $onsite->id, 'target' => 'wedding.onsite'],
+        ], [], $this->user);
+
+        $this->assertTrue(data_get($this->eventData(), 'wedding.onsite'));
+    }
+
     public function test_route_rolls_back_every_write_on_a_bad_target(): void
     {
         $first = $this->answer('short_text', 'First Dance', 'Evergreen', 'wedding.dance.first');

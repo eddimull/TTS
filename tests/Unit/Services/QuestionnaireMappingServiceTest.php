@@ -139,6 +139,87 @@ class QuestionnaireMappingServiceTest extends TestCase
         );
     }
 
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function existingDanceTitles(): array
+    {
+        return [
+            'web editor default' => ['wedding.dance.father_daughter', 'Father/Daughter Dance'],
+            'mobile booking default' => ['wedding.dance.father_daughter', 'father_daughter'],
+            'web money default' => ['wedding.dance.money', 'Money'],
+            'mobile money default' => ['wedding.dance.money', 'money_dance'],
+            'mobile first dance default' => ['wedding.dance.first', 'first_dance'],
+            'mobile bouquet default' => ['wedding.dance.bouquet_garter', 'bouquet_garter'],
+        ];
+    }
+
+    /**
+     * @dataProvider existingDanceTitles
+     */
+    public function test_apply_response_updates_differently_spelled_dance_instead_of_duplicating(string $target, string $existingTitle): void
+    {
+        $booking = Bookings::factory()->create();
+        $event = Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking->id,
+            'additional_data' => ['wedding' => ['dances' => [
+                ['title' => $existingTitle, 'data' => 'TBD'],
+            ]]],
+        ]);
+        $instance = QuestionnaireInstances::factory()->create(['booking_id' => $booking->id]);
+        $field = QuestionnaireInstanceFields::factory()->create([
+            'instance_id' => $instance->id,
+            'type' => 'short_text',
+            'mapping_target' => $target,
+        ]);
+        $response = QuestionnaireResponses::create([
+            'instance_id' => $instance->id,
+            'instance_field_id' => $field->id,
+            'value' => "Isn't She Lovely",
+        ]);
+
+        $this->service->applyResponse($response, User::factory()->create());
+
+        $event->refresh();
+        $dances = data_get($this->eventData($event), 'wedding.dances');
+        $this->assertCount(1, $dances);
+        $this->assertSame($existingTitle, $dances[0]['title']);
+        $this->assertSame("Isn't She Lovely", $dances[0]['data']);
+    }
+
+    public function test_apply_response_does_not_confuse_father_daughter_with_mother_son(): void
+    {
+        $booking = Bookings::factory()->create();
+        $event = Events::factory()->create([
+            'eventable_type' => Bookings::class,
+            'eventable_id' => $booking->id,
+            'additional_data' => ['wedding' => ['dances' => [
+                ['title' => 'Father/Daughter Dance', 'data' => 'TBD'],
+                ['title' => 'Mother/Son Dance', 'data' => 'TBD'],
+            ]]],
+        ]);
+        $instance = QuestionnaireInstances::factory()->create(['booking_id' => $booking->id]);
+        $field = QuestionnaireInstanceFields::factory()->create([
+            'instance_id' => $instance->id,
+            'type' => 'short_text',
+            'mapping_target' => 'wedding.dance.mother_son',
+        ]);
+        $response = QuestionnaireResponses::create([
+            'instance_id' => $instance->id,
+            'instance_field_id' => $field->id,
+            'value' => 'Have I Told You Lately',
+        ]);
+
+        $this->service->applyResponse($response, User::factory()->create());
+
+        $event->refresh();
+        $dances = collect(data_get($this->eventData($event), 'wedding.dances'));
+        $this->assertCount(2, $dances);
+        $this->assertSame('TBD', $dances->firstWhere('title', 'Father/Daughter Dance')['data']);
+        $this->assertSame('Have I Told You Lately', $dances->firstWhere('title', 'Mother/Son Dance')['data']);
+    }
+
     public function test_apply_response_throws_when_field_has_no_mapping_target(): void
     {
         [$instance] = $this->makeInstanceWithEvent();

@@ -73,8 +73,11 @@ class QuestionnaireMappingService
     /**
      * Write one answer to the event for the given target. Mutates $event in
      * memory; the caller saves. Throws when the target is unknown.
+     *
+     * $text replaces the answer's display value for dance and text-set
+     * targets — the batch route passes several answers joined into one.
      */
-    public function writeTarget(Events $event, string $key, QuestionnaireInstanceFields $field, ?string $rawValue): void
+    public function writeTarget(Events $event, string $key, QuestionnaireInstanceFields $field, ?string $rawValue, ?string $text = null): void
     {
         if (!$this->registry->targetExists($key)) {
             throw new RuntimeException("Mapping target '{$key}' is no longer available.");
@@ -87,12 +90,12 @@ class QuestionnaireMappingService
             QuestionnaireMappingRegistry::TYPE_DANCE_ENTRY => $this->writeDance(
                 $event,
                 $this->registry->danceTitle($key),
-                $this->displayValue($rawValue, $field->type),
+                $text ?? $this->displayValue($rawValue, $field->type),
             ),
             QuestionnaireMappingRegistry::TYPE_TEXT_SET => $this->writeTextSet(
                 $event,
                 $path,
-                $this->displayValue($rawValue, $field->type),
+                $text ?? $this->displayValue($rawValue, $field->type),
             ),
             QuestionnaireMappingRegistry::TYPE_TEXT_APPEND => $this->writeTextAppend(
                 $event,
@@ -201,9 +204,14 @@ class QuestionnaireMappingService
         $dances = data_get($data, 'wedding.dances', []);
         $dances = is_array($dances) ? $dances : [];
 
+        // Dance titles are spelled differently depending on where the event
+        // was created ("Father/Daughter Dance" on web, "father_daughter" on
+        // mobile, "Father Daughter" here), so match loosely and keep the
+        // event's own title rather than adding a duplicate entry.
+        $wanted = self::danceTitleKey($title);
         $found = false;
         foreach ($dances as &$dance) {
-            if (($dance['title'] ?? null) === $title) {
+            if (self::danceTitleKey((string) ($dance['title'] ?? '')) === $wanted) {
                 $dance['data'] = $value;
                 $found = true;
                 break;
@@ -217,6 +225,19 @@ class QuestionnaireMappingService
 
         data_set($data, 'wedding.dances', $dances);
         $event->additional_data = $data;
+    }
+
+    /**
+     * "Father/Daughter Dance", "father_daughter" and "Father Daughter" all
+     * become "fatherdaughter"; "Money", "money_dance" and "Money Dance" all
+     * become "money".
+     */
+    private static function danceTitleKey(string $title): string
+    {
+        $key = preg_replace('/[^a-z]/', '', strtolower($title)) ?? '';
+        $stripped = preg_replace('/dance$/', '', $key) ?? '';
+
+        return $stripped !== '' ? $stripped : $key;
     }
 
     private function buildNotesBlock(QuestionnaireInstances $instance): string
