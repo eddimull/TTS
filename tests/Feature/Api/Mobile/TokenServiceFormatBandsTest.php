@@ -88,4 +88,25 @@ class TokenServiceFormatBandsTest extends TestCase
             TokenService::resolveLogoUrl('logos/real.png')
         );
     }
+
+    public function test_format_bands_includes_the_band_address(): void
+    {
+        $user = User::factory()->create();
+        $band = Bands::create([
+            'name' => 'Address Band',
+            'site_name' => 'address-band',
+            'address' => '200 Saint Michael Street',
+            'city' => 'Lafayette',
+            'state' => 'LA',
+            'zip' => '70506',
+        ]);
+        BandOwners::create(['user_id' => $user->id, 'band_id' => $band->id]);
+
+        $row = collect(app(TokenService::class)->formatBands($user))->firstWhere('id', $band->id);
+
+        $this->assertSame('200 Saint Michael Street', $row['address']);
+        $this->assertSame('Lafayette', $row['city']);
+        $this->assertSame('LA', $row['state']);
+        $this->assertSame('70506', $row['zip']);
+    }
 }
