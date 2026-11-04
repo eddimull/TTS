@@ -350,6 +350,8 @@ class BookingsController extends Controller
         $booking->contacts()->syncWithoutDetaching([
             $contact->id => $request->only(['role', 'is_primary', 'notes', 'additional_info'])
         ]);
+        // Pivot syncs skip model events; signal the booking explicitly.
+        $booking->broadcastRefresh();
         return redirect()->back()->with('successMessage', "{$request->name} has been added.");
     }
 

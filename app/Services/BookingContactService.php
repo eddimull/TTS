@@ -41,6 +41,9 @@ class BookingContactService
             ],
         ]);
 
+        // Pivot syncs skip model events; signal the booking explicitly.
+        $booking->broadcastRefresh();
+
         return $contact;
     }
 }

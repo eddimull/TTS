@@ -99,10 +99,17 @@ class BandMemberRemovalService
      */
     private function removeFromFutureEvents(Bands $band, User $user): void
     {
-        EventMember::where('band_id', $band->id)
+        $query = EventMember::where('band_id', $band->id)
             ->where('user_id', $user->id)
-            ->whereHas('event', fn($q) => $q->where('date', '>=', now()))
-            ->delete();
+            ->whereHas('event', fn($q) => $q->where('date', '>=', now()));
+
+        // The bulk delete skips model events, so capture the rows first and
+        // emit one `event_member` signal per affected event afterwards.
+        $affected = (clone $query)->get(['id', 'event_id', 'band_id']);
+
+        $query->delete();
+
+        EventMember::broadcastDeletedPerEvent($affected);
     }
 
     /**
@@ -111,9 +118,15 @@ class BandMemberRemovalService
      */
     private function removeFromRosters(Bands $band, User $user): void
     {
-        RosterMember::whereHas('roster', fn($q) => $q->where('band_id', $band->id))
-            ->where('user_id', $user->id)
-            ->update(['user_id' => null, 'is_active' => false]);
+        $query = RosterMember::whereHas('roster', fn($q) => $q->where('band_id', $band->id))
+            ->where('user_id', $user->id);
+
+        // Bulk update skips model events; signal each affected roster member.
+        $affected = (clone $query)->get(['id', 'roster_id']);
+
+        $query->update(['user_id' => null, 'is_active' => false]);
+
+        $affected->each->broadcastRefresh();
     }
 
     /**

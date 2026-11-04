@@ -2,13 +2,26 @@
 
 namespace App\Models;
 
+use App\Models\Traits\BroadcastsBandChanges;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 
 class EventAttachment extends Model
 {
-    use HasFactory;
+    use HasFactory, BroadcastsBandChanges;
+
+    protected function broadcastBandId(): ?int
+    {
+        return $this->event?->resolveBandId();
+    }
+
+    protected function broadcastParent(): ?array
+    {
+        return $this->event_id
+            ? ['model' => 'events', 'id' => (int) $this->event_id]
+            : null;
+    }
 
     protected $fillable = [
         'event_id',
