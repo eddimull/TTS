@@ -42,7 +42,7 @@ class PaymentReminderNotificationsTest extends TestCase
         $booking->contract()->create([
             'status' => 'completed',
             'author_id' => $this->user->id,
-            'updated_at' => $signedDate,
+            'updated_at' => $signedDate, 'signed_at' => $signedDate,
         ]);
 
         $booking->payments()->create([
@@ -147,7 +147,7 @@ class PaymentReminderNotificationsTest extends TestCase
         $booking->contract()->create([
             'status' => 'completed',
             'author_id' => $this->user->id,
-            'updated_at' => $signedDate,
+            'updated_at' => $signedDate, 'signed_at' => $signedDate,
         ]);
 
         $contact1 = Contacts::factory()->create(['band_id' => $this->band->id]);
@@ -230,7 +230,7 @@ class PaymentReminderNotificationsTest extends TestCase
         $booking->contract()->create([
             'status' => 'completed',
             'author_id' => $this->user->id,
-            'updated_at' => $signedDate,
+            'updated_at' => $signedDate, 'signed_at' => $signedDate,
         ]);
 
         $contact = Contacts::factory()->create([
@@ -367,7 +367,7 @@ class PaymentReminderNotificationsTest extends TestCase
             'status' => 'completed',
             'author_id' => $this->user->id,
         ]);
-        $contract->forceFill(['updated_at' => now()->subWeeks(3)])->saveQuietly();
+        $contract->forceFill(['updated_at' => now()->subWeeks(3), 'signed_at' => now()->subWeeks(3)])->saveQuietly();
 
         $contact = Contacts::factory()->create(['band_id' => $this->band->id]);
         $booking->contacts()->attach($contact->id, ['role' => 'primary']);

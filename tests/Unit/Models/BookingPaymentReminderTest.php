@@ -130,7 +130,7 @@ class BookingPaymentReminderTest extends TestCase
             ->where('id', $contract->id)
             ->update([
                 'status' => 'completed',
-                'updated_at' => Carbon::parse('2025-01-01 10:00:00'),
+                'updated_at' => Carbon::parse('2025-01-01 10:00:00'), 'signed_at' => Carbon::parse('2025-01-01 10:00:00'),
             ]);
 
         $booking = $booking->fresh();
@@ -153,7 +153,7 @@ class BookingPaymentReminderTest extends TestCase
         // Use DB update to set specific timestamp
         \DB::table('contracts')
             ->where('id', $contract->id)
-            ->update(['updated_at' => $signedDate]);
+            ->update(['updated_at' => $signedDate, 'signed_at' => $signedDate]);
 
         $expectedDueDate = $signedDate->copy()->addWeeks(3);
         $this->assertEquals($expectedDueDate->format('Y-m-d'), $booking->fresh()->deposit_due_date->format('Y-m-d'));
@@ -180,7 +180,7 @@ class BookingPaymentReminderTest extends TestCase
 
         \DB::table('contracts')
             ->where('id', $contract->id)
-            ->update(['updated_at' => $signedDate]);
+            ->update(['updated_at' => $signedDate, 'signed_at' => $signedDate]);
 
         $this->assertTrue($booking->fresh()->needs_deposit_reminder);
     }
@@ -205,7 +205,7 @@ class BookingPaymentReminderTest extends TestCase
 
         \DB::table('contracts')
             ->where('id', $contract->id)
-            ->update(['updated_at' => $signedDate]);
+            ->update(['updated_at' => $signedDate, 'signed_at' => $signedDate]);
 
         // Pay deposit
         $booking->payments()->create([
@@ -240,7 +240,7 @@ class BookingPaymentReminderTest extends TestCase
 
         \DB::table('contracts')
             ->where('id', $contract->id)
-            ->update(['updated_at' => $signedDate]);
+            ->update(['updated_at' => $signedDate, 'signed_at' => $signedDate]);
 
         $this->assertFalse($booking->fresh()->needs_deposit_reminder);
     }

@@ -124,6 +124,12 @@ watch(
                 editingEvent.value.additional_data = JSON.parse(
                     JSON.stringify(fresh.additional_data ?? {})
                 );
+                // "Use form's venue" in the questionnaire review writes the
+                // event's venue_name; the editor would otherwise send the
+                // stale copy back on its next autosave.
+                if ('venue_name' in fresh) {
+                    editingEvent.value.venue_name = fresh.venue_name;
+                }
             }
         }
     }
@@ -179,7 +185,7 @@ const cancelView = () => {
     viewingEvent.value = null;
 };
 
-const saveEvent = (updatedEvent, { silent = false } = {}) => {
+const saveEvent = (updatedEvent, { silent = false, onFinish } = {}) => {
     if (updatedEvent.id) {
         // Updating an existing event
         router.put(
@@ -192,6 +198,7 @@ const saveEvent = (updatedEvent, { silent = false } = {}) => {
             {
                 preserveState: true,
                 preserveScroll: true,
+                onFinish: () => onFinish?.(),
             }
         );
     } else {

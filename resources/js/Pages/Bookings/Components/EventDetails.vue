@@ -323,6 +323,14 @@
             <span class="text-gray-900 dark:text-gray-50">Onsite Wedding</span>
           </div>
 
+          <!-- Colors -->
+          <div
+            v-if="event.additional_data.wedding?.colors"
+            class="text-gray-900 dark:text-gray-50"
+          >
+            <span class="font-medium">Colors:</span> {{ event.additional_data.wedding.colors }}
+          </div>
+
           <!-- Dances -->
           <div v-if="hasDances">
             <h4 class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-3">
@@ -473,7 +481,7 @@ const hasCharts = computed(() => {
 
 const hasWeddingData = computed(() => {
     const wedding = props.event.additional_data?.wedding;
-    return wedding?.onsite !== undefined || wedding?.dances?.length > 0;
+    return wedding?.onsite !== undefined || wedding?.dances?.length > 0 || !!wedding?.colors;
 });
 
 const hasDances = computed(() => {

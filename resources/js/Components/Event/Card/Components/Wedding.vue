@@ -13,6 +13,13 @@
                 />
             </li>
 
+            <li v-if="wedding?.colors" class="flex items-center p-4">
+                <div class="ml-1 flex-grow">
+                    <p class="text-sm font-medium text-gray-900 dark:text-white">Colors</p>
+                </div>
+                <Tag :value="wedding.colors" severity="secondary" rounded />
+            </li>
+
             <template v-if="wedding?.dances && wedding.dances.length > 0">
                 <li v-for="dance in wedding.dances" :key="dance.name" class="flex flex-col p-4">
                     <p class="text-sm font-medium text-gray-900 dark:text-white">{{ dance.title }}</p>

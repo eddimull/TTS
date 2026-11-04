@@ -343,6 +343,11 @@ Route::prefix('mobile')->group(function () {
             Route::get('/bands/{band}/finances/trends', [App\Http\Controllers\Api\Mobile\FinancesController::class, 'trends'])->name('mobile.finances.trends');
         });
 
+        // ── Payments due (owner-only) ──────────────────────────────────
+        Route::middleware(['mobile.band', 'owner'])->group(function () {
+            Route::get('/bands/{band}/finances/due', [App\Http\Controllers\Api\Mobile\FinancesController::class, 'due'])->name('mobile.finances.due');
+        });
+
         // ── Payout flow editor: reads + preview (band member) ──────────
         Route::middleware('mobile.band:read:bookings')->group(function () {
             Route::get('/bands/{band}/payout-flow/templates', [App\Http\Controllers\Api\Mobile\PayoutFlowController::class, 'templates'])->name('mobile.payout-flow.templates');

@@ -2,6 +2,7 @@
 
 namespace App\Services\Mobile;
 
+use App\Services\PaymentDueService;
 use App\Models\Bookings;
 use App\Models\Events;
 use App\Models\Payments;
@@ -51,6 +52,7 @@ class BookingFormatter
                 ? $booking->events->map(fn ($e) => $this->formatEvent($e))->values()->all()
                 : [],
             'contract' => null,
+            'payment_due' => null,
             'payments'  => [],
             // Only populated when the caller eager-loads `lodgings` (the detail
             // endpoint does). format() is shared with the booking *list*
@@ -61,7 +63,11 @@ class BookingFormatter
                 : [],
         ];
 
+        // Only when the caller eager-loads the contract: format() also serves
+        // the list endpoints, where reading it unconditionally would be an N+1.
         if ($booking->relationLoaded('contract') && $booking->contract) {
+            $base['payment_due'] = app(PaymentDueService::class)->stateFor($booking);
+
             $c = $booking->contract;
             $base['contract'] = [
                 'id'           => $c->id,

@@ -113,4 +113,15 @@ class BookingDepositTest extends TestCase
             ->assertJsonPath('booking.deposit_value', '30.00')
             ->assertJsonPath('booking.expected_deposit_amount', '300.00');
     }
+
+    public function test_mobile_show_has_no_payment_state_until_contract_is_signed(): void
+    {
+        ['band' => $band, 'booking' => $booking, 'token' => $token] = $this->makeOwnedBooking();
+
+        $this->withToken($token)
+            ->withHeaders(['X-Band-ID' => $band->id])
+            ->getJson("/api/mobile/bands/{$band->id}/bookings/{$booking->id}")
+            ->assertOk()
+            ->assertJsonPath('booking.payment_due', null);
+    }
 }

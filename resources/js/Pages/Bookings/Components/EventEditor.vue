@@ -229,6 +229,7 @@
         <QuestionnaireSection
           :event-id="event.id"
           :instances="event.questionnaire_instances"
+          :before-send="flushPendingSave"
         />
       </SectionCard>
     </div>
@@ -334,6 +335,18 @@ watch(
         nextTick(() => { isSyncingFromProps.value = false; });
     },
     { deep: true }
+);
+// The editor has no venue input, so a server-side venue change (the
+// questionnaire review's "Use form's" venue, or its undo) always wins;
+// otherwise the next autosave would send the stale name back.
+watch(
+    () => props.initialEvent.venue_name,
+    (val) => {
+        if (val === event.value.venue_name) return;
+        isSyncingFromProps.value = true;
+        event.value.venue_name = val;
+        nextTick(() => { isSyncingFromProps.value = false; });
+    }
 );
 const editorContainer = ref(null);
 const showHistoryModal = ref(false);
@@ -489,6 +502,25 @@ const autoSave = () => {
         isSaving.value = false;
     }
 };
+
+// Save pending edits now and resolve once the server has them. The
+// questionnaire review calls this before it writes to the event, so the
+// routed notes/additional_data land on top of the user's edits instead of
+// being overwritten by a later autosave of the older local copy.
+const flushPendingSave = () => new Promise((resolve) => {
+    if (autosaveTimer.value) {
+        clearTimeout(autosaveTimer.value);
+        autosaveTimer.value = null;
+    }
+    if (!hasUnsavedChanges.value) {
+        resolve();
+        return;
+    }
+    lastSyncedNotes = event.value.notes ?? '';
+    hasUnsavedChanges.value = false;
+    lastSaved.value = Date.now();
+    emit("save", event.value, { silent: true, onFinish: resolve });
+});
 
 // Scroll to the editor on mount
 onMounted(() => {

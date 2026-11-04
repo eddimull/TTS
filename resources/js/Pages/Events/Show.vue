@@ -395,6 +395,13 @@
               <span class="text-gray-900 dark:text-gray-50">Ceremony Onsite</span>
             </div>
 
+            <div
+              v-if="event.additional_data.wedding?.colors"
+              class="text-sm text-gray-900 dark:text-gray-50"
+            >
+              <span class="font-medium">Colors:</span> {{ event.additional_data.wedding.colors }}
+            </div>
+
             <div v-if="hasDances">
               <h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
                 Special Dances
@@ -565,7 +572,7 @@ const hasSongs = computed(() => props.event.additional_data?.performance?.songs?
 const hasCharts = computed(() => props.event.additional_data?.performance?.charts?.length > 0);
 const hasWeddingData = computed(() => {
   const wedding = props.event.additional_data?.wedding;
-  return wedding?.onsite !== undefined || wedding?.dances?.length > 0;
+  return wedding?.onsite !== undefined || wedding?.dances?.length > 0 || !!wedding?.colors;
 });
 const hasDances = computed(() => props.event.additional_data?.wedding?.dances?.length > 0);
 const hasContacts = computed(() => props.event.eventable?.contacts?.length > 0);

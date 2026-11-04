@@ -18,6 +18,20 @@ class EventMember extends Model
             : null;
     }
 
+    /**
+     * Emit one `event_member` "deleted" signal per distinct event for rows
+     * removed by a query-builder bulk delete (which skips model events).
+     *
+     * @param  iterable<self>  $deletedMembers  rows captured before the delete
+     *                                          (need id, event_id, band_id)
+     */
+    public static function broadcastDeletedPerEvent(iterable $deletedMembers): void
+    {
+        collect($deletedMembers)
+            ->unique('event_id')
+            ->each(fn (self $member) => $member->broadcastRefresh('deleted'));
+    }
+
     protected static function booted(): void
     {
         $ensureBandSub = function (self $member) {
