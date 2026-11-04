@@ -402,7 +402,7 @@ class PaymentsDueTest extends TestCase
 
     public function test_storing_a_generated_pdf_does_not_mark_the_contract_signed(): void
     {
-        \Illuminate\Support\Facades\Storage::fake(config('filesystems.default'));
+        \Illuminate\Support\Facades\Storage::fake('s3');
         $booking = Bookings::factory()->for($this->band, 'band')->create();
         $contract = Contracts::factory()->create([
             'contractable_type' => Bookings::class,
