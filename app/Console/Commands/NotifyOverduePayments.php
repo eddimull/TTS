@@ -9,6 +9,7 @@ use App\Notifications\PaymentOverdue;
 use App\Services\PaymentDueService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
 class NotifyOverduePayments extends Command
@@ -37,17 +38,29 @@ class NotifyOverduePayments extends Command
                     continue;
                 }
 
-                $notice = PaymentOverdueNotice::firstOrCreate([
-                    'booking_id' => $row['booking_id'],
-                    'type' => $row['type'],
-                ]);
-                if (!$notice->wasRecentlyCreated) {
+                $owners ??= User::whereIn('id', $band->owners()->pluck('user_id'))->get();
+
+                // One transaction, so a failed dispatch leaves no notice behind
+                // and the next run retries it while it's still recent.
+                try {
+                    $notified = DB::transaction(function () use ($row, $owners) {
+                        $notice = PaymentOverdueNotice::firstOrCreate([
+                            'booking_id' => $row['booking_id'],
+                            'type' => $row['type'],
+                        ]);
+                        if (!$notice->wasRecentlyCreated) {
+                            return false;
+                        }
+                        Notification::send($owners, new PaymentOverdue($row));
+
+                        return true;
+                    });
+                } catch (\Throwable $e) {
+                    report($e);
                     continue;
                 }
 
-                $owners ??= User::whereIn('id', $band->owners()->pluck('user_id'))->get();
-                Notification::send($owners, new PaymentOverdue($row));
-                $sent++;
+                $sent += $notified ? 1 : 0;
             }
         });
 

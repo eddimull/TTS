@@ -101,7 +101,7 @@ const balanceStatus = computed(() => {
   if (!state || parseFloat(state.owed) <= 0) return null;
   if (state.status === 'overdue') return `Overdue since the ${formatDueDate(state.overdue_since)} show`;
   if (state.status === 'due_now') return `Due now, show is ${formatDueDate(due.value.event_date)}`;
-  const depositOwed = parseFloat(depositState.value.owed) > 0;
+  const depositOwed = parseFloat(depositState.value.owed) > 0 && !due.value.merged;
   return `${depositOwed ? 'Rest due' : 'Due'} by ${formatDueDate(state.due_date)}`;
 });
 

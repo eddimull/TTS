@@ -189,6 +189,38 @@ class PaymentsDueTest extends TestCase
         $this->assertSame('2026-11-13', $rows[0]['due_date']);
     }
 
+    public function test_merged_state_gives_the_balance_everything_owed_even_with_a_full_deposit(): void
+    {
+        $booking = $this->booking('2026-11-10', signedAt: '2026-11-01', attrs: [
+            'deposit_type' => 'percent',
+            'deposit_value' => '100.00',
+        ]);
+
+        $state = app(PaymentDueService::class)->stateFor($booking);
+
+        $this->assertTrue($state['merged']);
+        $this->assertSame('1000.00', $state['deposit']['owed']);
+        $this->assertSame('1000.00', $state['balance']['owed']);
+        $this->assertSame('due_now', $state['balance']['status']);
+    }
+
+    public function test_paid_off_bookings_are_not_loaded(): void
+    {
+        $this->booking('2027-06-01', paid: 1000);
+        $open = $this->booking('2027-06-01', paid: 400);
+
+        \Illuminate\Support\Facades\DB::enableQueryLog();
+        $due = $this->due();
+        $paymentsQuery = collect(\Illuminate\Support\Facades\DB::getQueryLog())
+            ->pluck('query')
+            ->first(fn ($q) => str_starts_with($q, 'select * from `payments`'));
+        \Illuminate\Support\Facades\DB::disableQueryLog();
+
+        // Eager loading only asked for the open booking's payments.
+        $this->assertStringContainsString("in ({$open->id})", $paymentsQuery);
+        $this->assertSame('100.00', $this->row($due, 'overdue', 'deposit')['amount']);
+    }
+
     public function test_shows_over_ninety_days_ago_go_to_older(): void
     {
         $this->booking('2026-07-01');
@@ -296,6 +328,19 @@ class PaymentsDueTest extends TestCase
         $this->artisan('payments:notify-overdue')->assertSuccessful();
 
         Notification::assertSentToTimes($this->owner, PaymentOverdue::class, 1);
+        $this->assertSame(1, PaymentOverdueNotice::count());
+    }
+
+    public function test_a_failed_dispatch_is_retried_on_the_next_run(): void
+    {
+        $this->booking('2026-11-03', paid: 500);
+
+        Notification::shouldReceive('send')->once()->andThrow(new \RuntimeException('queue down'));
+        $this->artisan('payments:notify-overdue')->assertSuccessful();
+        $this->assertSame(0, PaymentOverdueNotice::count());
+
+        Notification::shouldReceive('send')->once();
+        $this->artisan('payments:notify-overdue')->assertSuccessful();
         $this->assertSame(1, PaymentOverdueNotice::count());
     }
 

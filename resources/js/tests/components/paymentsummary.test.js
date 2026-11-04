@@ -104,6 +104,12 @@ describe('PaymentSummary balance', () => {
     expect(balance(signed({ owed: '0.00' })).text()).toBe('Due by Feb 27, 2027');
   });
 
+  it('says due, not rest due, when deposit and balance share a deadline', () => {
+    const props = signed({}, { owed: '1000.00' });
+    props.payment_due.merged = true;
+    expect(balance(props).text()).toBe('Due by Feb 27, 2027');
+  });
+
   it('reads due now inside the last 7 days', () => {
     expect(balance(signed({ owed: '0.00' }, { status: 'due_now' })).text()).toBe('Due now, show is Mar 6, 2027');
   });

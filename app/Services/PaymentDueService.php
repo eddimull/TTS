@@ -36,6 +36,12 @@ class PaymentDueService
             ->where('band_id', $band->id)
             ->where('status', 'confirmed')
             ->whereHas('contract', fn ($q) => $q->where('status', 'completed')->whereNotNull('signed_at'))
+            // Paid-off bookings owe nothing: leave them out so this grows with
+            // what's outstanding, not the band's whole history.
+            ->whereRaw(
+                "(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id AND status = 'paid') < bookings.price",
+                [Bookings::class],
+            )
             ->with(['contract', 'payments', 'events'])
             ->get();
 
@@ -84,14 +90,15 @@ class PaymentDueService
         $owedCents = max(0, $priceCents - $paidCents);
         $depositOwedCents = min($owedCents, max(0, $this->toCents($booking->expected_deposit_amount) - $paidCents));
 
-        $balance = $this->balanceState($owedCents - $depositOwedCents, $balanceDue, $eventDate, $today);
-
         // Signed so close to the show that the deposit lands on or after the
-        // balance's date: there's only one deadline, the balance's.
+        // balance's date: there's only one deadline, the balance's, and the
+        // balance carries everything owed. The deposit keeps its own share so
+        // finance screens can still say whether it's been met.
         $merged = $depositDue->gte($balanceDue);
         $deposit = $merged
             ? $this->balanceState($depositOwedCents, $balanceDue, $eventDate, $today)
             : $this->depositState($depositOwedCents, $depositDue, $today);
+        $balance = $this->balanceState($merged ? $owedCents : $owedCents - $depositOwedCents, $balanceDue, $eventDate, $today);
 
         return [
             'event_date' => $eventDate->toDateString(),
@@ -112,14 +119,9 @@ class PaymentDueService
         $eventDate = Carbon::parse($state['event_date']);
         $isOlder = $eventDate->lt($today->copy()->subDays(self::OLDER_AFTER_DAYS));
 
-        $rows = [];
-        if ($state['merged']) {
-            $cents = $this->toCents($state['deposit']['owed']) + $this->toCents($state['balance']['owed']);
-            $rows[] = ['balance', [...$state['balance'], 'owed' => $this->toDollars($cents)]];
-        } else {
-            $rows[] = ['deposit', $state['deposit']];
-            $rows[] = ['balance', $state['balance']];
-        }
+        $rows = $state['merged']
+            ? [['balance', $state['balance']]]
+            : [['deposit', $state['deposit']], ['balance', $state['balance']]];
 
         $out = [];
         foreach ($rows as [$type, $payment]) {
