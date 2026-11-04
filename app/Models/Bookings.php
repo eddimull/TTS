@@ -436,7 +436,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         if (!$this->contract || $this->contract->status !== 'completed') {
             return null;
         }
-        return $this->contract->updated_at;
+        return $this->contract->signed_at;
     }
 
     /**

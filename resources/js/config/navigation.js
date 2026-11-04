@@ -50,6 +50,11 @@ export const navigationGroups = [
         activeMatch: (route) => route === 'Paid/Unpaid'
       },
       {
+        label: 'Payments Due',
+        routeName: 'Payments Due',
+        activeMatch: (route) => route === 'Payments Due'
+      },
+      {
         label: 'Unpaid Services',
         routeName: 'Unpaid Services',
         activeMatch: (route) => route === 'Unpaid Services'

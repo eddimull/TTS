@@ -441,6 +441,24 @@ class BookingsControllerTest extends TestCase
         );
     }
 
+    public function test_booking_finances_includes_deposit_details()
+    {
+        $this->booking->update([
+            'price'         => '1000.00',
+            'deposit_type'  => 'amount',
+            'deposit_value' => '300.00',
+        ]);
+        $response = $this->actingAs($this->owner)->get(route('Booking Finances', [$this->band, $this->booking]));
+
+        $response->assertInertia(
+            fn($assert) => $assert
+                ->component('Bookings/Finances')
+                ->where('booking.deposit_type', 'amount')
+                ->where('booking.expected_deposit_amount', '300.00')
+                ->where('booking.payment_due', null)
+        );
+    }
+
     public function test_owner_can_add_booking_payment()
     {
         $paymentType = PaymentType::CreditCard;

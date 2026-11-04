@@ -52,6 +52,10 @@ class Kernel extends ConsoleKernel
         $schedule->command('payments:send-final-reminders')
             ->dailyAt('10:00');
 
+        // Tell band owners when a payment has just gone overdue
+        $schedule->command('payments:notify-overdue')
+            ->dailyAt('10:00');
+
         // Sync all Google Drive folders every 6 hours
         $schedule->job(new \App\Jobs\SyncAllGoogleDriveFolders())
             ->everySixHours()
