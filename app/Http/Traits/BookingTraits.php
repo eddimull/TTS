@@ -122,7 +122,13 @@ trait BookingTraits
         }
     }
 
-    public function storeContractPdf(string $contractPdf)
+    /**
+     * @param bool $signed True only for a manually uploaded contract, which is
+     *                     already signed. A PDF generated for sending must not
+     *                     complete the contract: if the send then fails, nobody
+     *                     has signed it.
+     */
+    public function storeContractPdf(string $contractPdf, bool $signed = false)
     {
         $contractPath = $this->band->site_name . '/contracts/' . $this->name . '_contract_' . time() . '.pdf';
 
@@ -139,7 +145,7 @@ trait BookingTraits
             [
                 'asset_url' => '/' . ltrim($contractPath, '/'),
                 'author_id' => auth()->id(),
-                'status' => 'completed', // Mark as completed since manually uploaded contracts are already signed
+                ...($signed ? ['status' => 'completed'] : []),
             ]
         );
     }

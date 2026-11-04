@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BandPayoutConfig;
 use App\Services\FinanceServices;
+use App\Services\PaymentDueService;
 use App\Services\PaymentGroupService;
 use App\Services\PaymentGroupMemberService;
 use App\Services\PayoutFlowService;
@@ -42,6 +43,17 @@ class FinancesController extends Controller
         $financialData = $this->financeServices->getBandRevenueByYear($bands);
 
         return Inertia::render('Finances/Revenue', ['revenue' => $financialData]);
+    }
+
+    public function paymentsDue(PaymentDueService $payments)
+    {
+        $bands = $this->getUserBands()->map(fn ($band) => [
+            'id' => $band->id,
+            'name' => $band->name,
+            ...$payments->forBand($band),
+        ])->values();
+
+        return Inertia::render('Finances/Due', ['bands' => $bands]);
     }
 
     public function unpaidServices()

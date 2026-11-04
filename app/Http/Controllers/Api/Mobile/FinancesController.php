@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Mobile\FinanceYearRequest;
 use App\Models\Bands;
 use App\Services\FinanceServices;
+use App\Services\PaymentDueService;
 use App\Services\Mobile\BookingFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,6 +42,17 @@ class FinancesController extends Controller
             'unpaid' => $unpaid->map(fn ($b) => $this->formatter->formatForFinance($b))->values(),
             'paid'   => $paid->map(fn ($b) => $this->formatter->formatForFinance($b))->values(),
         ]);
+    }
+
+    /**
+     * GET /api/mobile/bands/{band}/finances/due
+     *
+     * Owner-only: every payment still owed on confirmed, contracted bookings,
+     * grouped overdue / next_30 / later / older, with per-group totals.
+     */
+    public function due(Request $request, PaymentDueService $payments): JsonResponse
+    {
+        return response()->json($payments->forBand($request->input('mobile_band')));
     }
 
     /**

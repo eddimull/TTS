@@ -373,6 +373,7 @@ class BookingsController extends Controller
     {
         $booking->load(['contacts', 'payments.invoice', 'payments.payer', 'payments.user', 'contract']);
         $booking->append(['amountPaid', 'amountLeft']);
+        $booking->setAttribute('payment_due', app(\App\Services\PaymentDueService::class)->stateFor($booking));
 
         return Inertia::render('Bookings/Finances', [
             'unreadCommentCount' => $this->unreadCommentCount($booking),
@@ -500,7 +501,7 @@ class BookingsController extends Controller
 
     public function uploadContract(UploadBookingContractRequest $request, Bands $band, Bookings $booking)
     {
-        $booking->storeContractPdf($request->file('pdf')->get());
+        $booking->storeContractPdf($request->file('pdf')->get(), signed: true);
         $booking->status = 'confirmed';
         $booking->save();
         return redirect()->back()->with('successMessage', 'Contract has been uploaded.');

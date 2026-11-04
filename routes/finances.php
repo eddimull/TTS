@@ -9,6 +9,7 @@ Route::middleware(['auth', 'verified'])->prefix('finances')->group(function () {
     Route::get('/', [FinancesController::class, 'index'])->name('finances');
     Route::get('/revenue', [FinancesController::class, 'revenue'])->name('Revenue');
     Route::get('/paidUnpaid', [FinancesController::class, 'paidUnpaid'])->name('Paid/Unpaid');
+    Route::get('/due', [FinancesController::class, 'paymentsDue'])->name('Payments Due');
     Route::get('/unpaidServices', [FinancesController::class, 'unpaidServices'])->name('Unpaid Services');
     Route::get('/paidContracts', [FinancesController::class, 'paidServices'])->name('Paid Services');
     Route::get('/payments', [FinancesController::class, 'payments'])->name('Payments');

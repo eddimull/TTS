@@ -28,7 +28,21 @@ class Contracts extends Model
     protected $casts = [
         'custom_terms' => 'array',
         'updated_at' => 'date:Y-m-d h:i a',
+        'signed_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        // signed_at follows status on every path that completes a contract, so
+        // later edits to a signed contract can't move its deposit due date.
+        static::saving(function (Contracts $contract) {
+            if ($contract->isDirty('status')) {
+                $contract->signed_at = $contract->status === 'completed'
+                    ? ($contract->signed_at ?? now())
+                    : null;
+            }
+        });
+    }
 
     public function contractable(): MorphTo
     {

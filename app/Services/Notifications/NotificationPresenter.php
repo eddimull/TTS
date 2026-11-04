@@ -75,6 +75,8 @@ final class NotificationPresenter
         switch ($route) {
             case 'Booking Details':
                 return $this->booking((int) ($params['booking'] ?? 0), (int) ($params['band'] ?? 0));
+            case 'Booking Finances':
+                return $this->bookingFinances((int) ($params['booking'] ?? 0), (int) ($params['band'] ?? 0));
             case 'events.show':
             case 'events.advance':
                 return $this->eventByKey($params['key'] ?? $params[0] ?? null);
@@ -142,6 +144,15 @@ final class NotificationPresenter
         $bandId = (int) ($booking->band_id ?: $bandId);
 
         return ['booking', "/bookings/{$bandId}/{$booking->id}", "/bands/{$bandId}/booking/{$booking->id}"];
+    }
+
+    private function bookingFinances(int $bookingId, int $bandId): array
+    {
+        [$kind, $deeplink, $webUrl] = $this->booking($bookingId, $bandId);
+
+        return $kind === 'booking'
+            ? [$kind, "{$deeplink}/payments", "{$webUrl}/finances"]
+            : [$kind, $deeplink, $webUrl];
     }
 
     private function eventByKey(mixed $key): array
