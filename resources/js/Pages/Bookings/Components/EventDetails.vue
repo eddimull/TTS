@@ -331,6 +331,15 @@
             <span class="font-medium">Colors:</span> {{ event.additional_data.wedding.colors }}
           </div>
 
+          <!-- Answers mapped from questionnaire questions -->
+          <div
+            v-for="(detail, index) in event.additional_data.wedding?.details?.filter(d => d.data) ?? []"
+            :key="`detail-${index}`"
+            class="text-gray-900 dark:text-gray-50"
+          >
+            <span class="font-medium">{{ detail.title }}:</span> {{ detail.data }}
+          </div>
+
           <!-- Dances -->
           <div v-if="hasDances">
             <h4 class="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-3">
@@ -481,7 +490,7 @@ const hasCharts = computed(() => {
 
 const hasWeddingData = computed(() => {
     const wedding = props.event.additional_data?.wedding;
-    return wedding?.onsite !== undefined || wedding?.dances?.length > 0 || !!wedding?.colors;
+    return wedding?.onsite !== undefined || wedding?.dances?.length > 0 || !!wedding?.colors || wedding?.details?.length > 0;
 });
 
 const hasDances = computed(() => {

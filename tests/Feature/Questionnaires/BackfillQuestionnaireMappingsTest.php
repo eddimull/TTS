@@ -44,6 +44,15 @@ class BackfillQuestionnaireMappingsTest extends TestCase
         $this->assertNull($field->fresh()->mapping_target);
     }
 
+    public function test_maps_the_couple_names_to_wedding_details(): void
+    {
+        $bride = $this->templateField(['label' => "Bride's Full Name"]);
+
+        $this->artisan('questionnaires:backfill-mappings')->assertSuccessful();
+
+        $this->assertSame('wedding.details', $bride->fresh()->mapping_target);
+    }
+
     public function test_real_run_only_touches_null_targets_with_exact_preset_labels(): void
     {
         $toasts = $this->templateField(['label' => 'Names and order of toasts']);

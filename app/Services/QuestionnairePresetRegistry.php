@@ -33,8 +33,8 @@ class QuestionnairePresetRegistry
                 'fields' => [
                     ['type' => 'header', 'label' => 'Bride and Groom Information'],
 
-                    ['type' => 'short_text', 'label' => "Bride's Full Name", 'help_text' => 'Including spelling for the MC', 'required' => true],
-                    ['type' => 'short_text', 'label' => "Groom's Full Name", 'help_text' => 'Including spelling for the MC', 'required' => true],
+                    ['type' => 'short_text', 'label' => "Bride's Full Name", 'help_text' => 'Including spelling for the MC', 'required' => true, 'mapping_target' => 'wedding.details'],
+                    ['type' => 'short_text', 'label' => "Groom's Full Name", 'help_text' => 'Including spelling for the MC', 'required' => true, 'mapping_target' => 'wedding.details'],
                     ['type' => 'date', 'label' => 'Wedding Date', 'required' => true],
                     ['type' => 'short_text', 'label' => 'Venue Name', 'required' => true],
                     ['type' => 'long_text', 'label' => 'Venue Address (street, city, state, zip)', 'required' => true],

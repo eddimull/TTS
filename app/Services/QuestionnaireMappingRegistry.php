@@ -12,6 +12,8 @@ class QuestionnaireMappingRegistry
     public const TYPE_TEXT_APPEND = 'text_append';
     /** Overwrite a string path with the answer. */
     public const TYPE_TEXT_SET = 'text_set';
+    /** One labelled row per question in the wedding section; the question text is the label. */
+    public const TYPE_WEDDING_DETAIL = 'wedding_detail';
 
     /** Review-screen sections, in display order. */
     public const GROUPS = [
@@ -117,6 +119,13 @@ class QuestionnaireMappingRegistry
                 'compatible_field_types' => [...self::TEXT_TYPES, 'dropdown', 'multi_select', 'checkbox_group'],
                 'kind' => self::TYPE_TEXT_SET,
                 'event_path' => ['additional_data', 'wedding', 'colors'],
+            ],
+            'wedding.details' => [
+                'label' => 'Wedding · Details',
+                'short_label' => 'Wedding details',
+                'group' => 'details',
+                'compatible_field_types' => self::TEXT_AND_CHOICE_TYPES,
+                'kind' => self::TYPE_WEDDING_DETAIL,
             ],
             'performance.notes' => [
                 'label' => 'Performance · Notes',

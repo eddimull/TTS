@@ -83,6 +83,43 @@ class EventWeddingColorsTest extends TestCase
         $this->assertSame($toasts, data_get($data, 'wedding.dances.0.data'));
     }
 
+    public function test_show_exposes_wedding_details(): void
+    {
+        $this->event->update(['additional_data' => ['wedding' => [
+            'onsite' => true,
+            'details' => [['title' => "Groom's mother's name", 'data' => 'Linda Smith']],
+        ]]]);
+
+        $response = $this->client()->getJson("/api/mobile/events/{$this->event->key}")->assertOk();
+
+        $details = data_get($response->json(), 'event.wedding.details') ?? data_get($response->json(), 'wedding.details');
+        $this->assertEquals([['title' => "Groom's mother's name", 'data' => 'Linda Smith']], $details);
+    }
+
+    public function test_details_can_be_edited_and_removed_from_mobile(): void
+    {
+        $this->client()->patchJson("/api/mobile/events/{$this->event->key}", [
+            'wedding' => ['details' => [['title' => 'Introduced as', 'data' => 'The Smiths']]],
+        ])->assertOk();
+
+        $data = json_decode(json_encode($this->event->fresh()->additional_data), true);
+        $this->assertEquals([['title' => 'Introduced as', 'data' => 'The Smiths']], data_get($data, 'wedding.details'));
+        $this->assertSame('Sage and gold', data_get($data, 'wedding.colors'));
+
+        // An app that doesn't send details leaves them alone.
+        $this->client()->patchJson("/api/mobile/events/{$this->event->key}", [
+            'wedding' => ['onsite' => false, 'dances' => []],
+        ])->assertOk();
+        $data = json_decode(json_encode($this->event->fresh()->additional_data), true);
+        $this->assertCount(1, data_get($data, 'wedding.details'));
+
+        $this->client()->patchJson("/api/mobile/events/{$this->event->key}", [
+            'wedding' => ['details' => []],
+        ])->assertOk();
+        $data = json_decode(json_encode($this->event->fresh()->additional_data), true);
+        $this->assertSame([], data_get($data, 'wedding.details'));
+    }
+
     public function test_colors_can_be_edited_from_mobile(): void
     {
         $this->client()->patchJson("/api/mobile/events/{$this->event->key}", [
