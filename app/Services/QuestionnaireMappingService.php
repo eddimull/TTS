@@ -92,6 +92,11 @@ class QuestionnaireMappingService
                 $this->registry->danceTitle($key),
                 $text ?? $this->displayValue($rawValue, $field->type),
             ),
+            QuestionnaireMappingRegistry::TYPE_WEDDING_DETAIL => $this->writeWeddingDetail(
+                $event,
+                (string) $field->label,
+                $this->displayValue($rawValue, $field->type),
+            ),
             QuestionnaireMappingRegistry::TYPE_TEXT_SET => $this->writeTextSet(
                 $event,
                 $path,
@@ -194,6 +199,48 @@ class QuestionnaireMappingService
         // since we are already operating within additional_data
         $dotPath = implode('.', array_slice($path, 1));
         data_set($data, $dotPath, $bool);
+        $event->additional_data = $data;
+    }
+
+    /**
+     * Set the row for one question in the wedding section. Sending the same
+     * question again updates its row; sending it blank removes the row.
+     */
+    public function writeWeddingDetail(Events $event, string $title, string $value): void
+    {
+        $title = trim($title);
+        $value = trim($value);
+        if ($title === '') {
+            return;
+        }
+
+        // additional_data is cast as object; convert to array for data_set/data_get
+        $data = json_decode(json_encode($event->additional_data ?? []), true);
+        $details = data_get($data, 'wedding.details', []);
+        $details = is_array($details) ? $details : [];
+
+        $wanted = mb_strtolower($title);
+        $index = null;
+        foreach ($details as $i => $detail) {
+            if (mb_strtolower(trim((string) ($detail['title'] ?? ''))) === $wanted) {
+                $index = $i;
+                break;
+            }
+        }
+
+        if ($value === '') {
+            if ($index === null) {
+                return;
+            }
+            unset($details[$index]);
+            $details = array_values($details);
+        } elseif ($index === null) {
+            $details[] = ['title' => $title, 'data' => $value];
+        } else {
+            $details[$index]['data'] = $value;
+        }
+
+        data_set($data, 'wedding.details', $details);
         $event->additional_data = $data;
     }
 

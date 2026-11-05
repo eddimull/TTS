@@ -303,6 +303,28 @@ class QuestionnaireRoutingServiceTest extends TestCase
         $this->assertSame('applied', $items[$first->id]['status']);
     }
 
+    public function test_route_keeps_a_row_per_question_for_wedding_details_and_undo_removes_them(): void
+    {
+        $intro = $this->answer('short_text', 'How would you like to be introduced?', 'Mr. and Mrs. Smith', 'wedding.details');
+        $mother = $this->answer('short_text', "Groom's mother's name", 'Linda Smith', 'wedding.details');
+
+        $result = $this->service->route($this->instance, [
+            ['response_id' => $intro->id, 'target' => 'wedding.details'],
+            ['response_id' => $mother->id, 'target' => 'wedding.details'],
+        ], [], $this->user);
+
+        $data = json_decode(json_encode($this->event->fresh()->additional_data), true);
+        $this->assertEquals([
+            ['title' => 'How would you like to be introduced?', 'data' => 'Mr. and Mrs. Smith'],
+            ['title' => "Groom's mother's name", 'data' => 'Linda Smith'],
+        ], data_get($data, 'wedding.details'));
+
+        $this->service->undo($result['application']);
+
+        $data = json_decode(json_encode($this->event->fresh()->additional_data), true);
+        $this->assertNull(data_get($data, 'wedding.details'));
+    }
+
     public function test_route_combines_answers_sent_to_the_same_dance_own_answer_first(): void
     {
         $bride = $this->answer('short_text', "Bride's Full Name", 'Grace Terreson');

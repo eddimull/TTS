@@ -49,6 +49,9 @@ class UpdateEventRequest extends FormRequest
             // Toasts arrive as a dance entry from a long_text answer.
             'wedding.dances.*.data'  => 'nullable|string|max:5000',
             'wedding.colors'         => 'sometimes|nullable|string|max:1000',
+            'wedding.details'        => 'sometimes|array',
+            'wedding.details.*.title' => 'required_with:wedding.details|string|max:1000',
+            'wedding.details.*.data' => 'nullable|string|max:5000',
         ];
     }
 }
