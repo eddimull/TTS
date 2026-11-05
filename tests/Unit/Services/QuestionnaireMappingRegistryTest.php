@@ -19,7 +19,8 @@ class QuestionnaireMappingRegistryTest extends TestCase
     {
         $keys = $this->registry->keys();
 
-        $this->assertCount(11, $keys);
+        $this->assertCount(12, $keys);
+        $this->assertContains('wedding.details', $keys);
         $this->assertContains('wedding.toasts', $keys);
         $this->assertContains('wedding.colors', $keys);
         $this->assertContains('performance.notes', $keys);
@@ -102,7 +103,7 @@ class QuestionnaireMappingRegistryTest extends TestCase
 
     public function test_compatible_targets_for_field_type(): void
     {
-        $this->assertSame(['wedding.onsite', 'wedding.outside', 'performance.notes', 'event.notes'], $this->registry->compatibleTargetsFor('yes_no'));
+        $this->assertSame(['wedding.onsite', 'wedding.outside', 'wedding.details', 'performance.notes', 'event.notes'], $this->registry->compatibleTargetsFor('yes_no'));
         $this->assertSame([], $this->registry->compatibleTargetsFor('song_picker'));
         $this->assertSame([], $this->registry->compatibleTargetsFor(null));
     }

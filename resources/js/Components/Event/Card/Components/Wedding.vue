@@ -20,6 +20,11 @@
                 <Tag :value="wedding.colors" severity="secondary" rounded />
             </li>
 
+            <li v-for="(detail, index) in wedding?.details?.filter(d => d.data) ?? []" :key="`detail-${index}`" class="flex flex-col p-4">
+                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ detail.title }}</p>
+                <p class="mt-1 text-sm text-gray-700 dark:text-gray-200">{{ detail.data }}</p>
+            </li>
+
             <template v-if="wedding?.dances && wedding.dances.length > 0">
                 <li v-for="dance in wedding.dances" :key="dance.name" class="flex flex-col p-4">
                     <p class="text-sm font-medium text-gray-900 dark:text-white">{{ dance.title }}</p>

@@ -402,6 +402,53 @@ class QuestionnaireMappingServiceTest extends TestCase
         $this->assertSame('All black', data_get($data, 'attire'));
     }
 
+    public function test_wedding_detail_uses_the_question_as_its_label(): void
+    {
+        [$instance, $event] = $this->makeInstanceWithEvent();
+        $event->update(['additional_data' => ['wedding' => ['colors' => 'Sage', 'dances' => [['title' => 'First Dance', 'data' => 'At Last']]]]]);
+        $intro = $this->mappedResponse($instance, 'short_text', 'wedding.details', 'Mr. and Mrs. Smith', 'How would you like to be introduced?');
+        $mother = $this->mappedResponse($instance, 'short_text', 'wedding.details', 'Linda Smith', "Groom's mother's name");
+
+        $user = User::factory()->create();
+        $this->service->applyResponse($intro, $user);
+        $this->service->applyResponse($mother, $user);
+
+        $data = $this->eventData($event);
+        $this->assertEquals([
+            ['title' => 'How would you like to be introduced?', 'data' => 'Mr. and Mrs. Smith'],
+            ['title' => "Groom's mother's name", 'data' => 'Linda Smith'],
+        ], data_get($data, 'wedding.details'));
+        $this->assertSame('Sage', data_get($data, 'wedding.colors'));
+        $this->assertCount(1, data_get($data, 'wedding.dances'));
+    }
+
+    public function test_wedding_detail_updates_its_row_when_sent_again(): void
+    {
+        [$instance, $event] = $this->makeInstanceWithEvent();
+        $event->update(['additional_data' => ['wedding' => ['details' => [['title' => "Groom's mother's name", 'data' => 'Old']]]]]);
+        $response = $this->mappedResponse($instance, 'short_text', 'wedding.details', 'Linda Smith', "Groom's Mother's Name");
+
+        $this->service->applyResponse($response, User::factory()->create());
+
+        $data = $this->eventData($event);
+        $this->assertEquals([['title' => "Groom's mother's name", 'data' => 'Linda Smith']], data_get($data, 'wedding.details'));
+    }
+
+    public function test_wedding_detail_removes_its_row_when_sent_blank(): void
+    {
+        [$instance, $event] = $this->makeInstanceWithEvent();
+        $event->update(['additional_data' => ['wedding' => ['details' => [
+            ['title' => 'Introduced as', 'data' => 'Old'],
+            ['title' => 'Other', 'data' => 'Keep'],
+        ]]]]);
+        $response = $this->mappedResponse($instance, 'short_text', 'wedding.details', '  ', 'Introduced as');
+
+        $this->service->applyResponse($response, User::factory()->create());
+
+        $data = $this->eventData($event);
+        $this->assertEquals([['title' => 'Other', 'data' => 'Keep']], data_get($data, 'wedding.details'));
+    }
+
     public function test_text_append_adds_a_line_to_performance_notes_once(): void
     {
         [$instance, $event] = $this->makeInstanceWithEvent();

@@ -119,6 +119,26 @@ class BookingSubresourceEventsTest extends TestCase
         ]);
     }
 
+    public function test_editor_save_keeps_edited_wedding_details(): void
+    {
+        $event = $this->booking->events()->first();
+        $payload = $this->eventPayload();
+        $payload['additional_data']['wedding'] = [
+            'onsite' => true,
+            'details' => [['title' => "Groom's mother's name", 'data' => 'Linda Smith']],
+        ];
+
+        $this->actingAs($this->owner)
+            ->put(route('Update Booking Event', [$this->band->id, $this->booking->id, $event->id]), $payload)
+            ->assertSessionHasNoErrors();
+
+        $data = json_decode(json_encode($event->fresh()->additional_data), true);
+        $this->assertEquals(
+            [['title' => "Groom's mother's name", 'data' => 'Linda Smith']],
+            data_get($data, 'wedding.details'),
+        );
+    }
+
     public function test_owner_can_update_event_end_time_via_subresource_endpoint(): void
     {
         // Backs the End Time field in the event editor's BasicInfo section.

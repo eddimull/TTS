@@ -301,6 +301,12 @@ class EventDataService
                 'dances' => $dances,
                 // The couple's colors (from the questionnaire); not attire.
                 'colors' => isset($w->colors) && is_scalar($w->colors) ? (string) $w->colors : '',
+                // Answers mapped from custom questions; the title is the question.
+                'details' => collect(isset($w->details) && is_array($w->details) ? $w->details : [])
+                    ->filter(fn ($detail) => trim((string) ($detail->data ?? '')) !== '')
+                    ->map(fn ($detail) => ['title' => (string) ($detail->title ?? ''), 'data' => $detail->data ?? null])
+                    ->values()
+                    ->all(),
             ];
         }
 
@@ -542,6 +548,12 @@ class EventDataService
                 $ad->wedding->dances = array_map(
                     fn ($dance) => ['title' => $dance['title'], 'data' => $dance['data'] ?? null],
                     $w['dances']
+                );
+            }
+            if (array_key_exists('details', $w)) {
+                $ad->wedding->details = array_map(
+                    fn ($detail) => ['title' => $detail['title'], 'data' => $detail['data'] ?? null],
+                    $w['details']
                 );
             }
         }
