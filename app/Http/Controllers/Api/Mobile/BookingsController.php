@@ -21,7 +21,6 @@ use App\Models\Contacts;
 use App\Models\Contracts;
 use App\Models\EventMember;
 use App\Models\Events;
-use App\Models\Invoices;
 use App\Models\Payments;
 use App\Notifications\BalanceSettled;
 use App\Services\BookingActivityService;
@@ -379,12 +378,6 @@ class BookingsController extends Controller
             $dueCents = max(0, $locked->priceCents() - $locked->settledCents());
             if ($dueCents <= 0) {
                 return ['amount_due', 'Nothing is owed on this booking.'];
-            }
-
-            // An open Stripe invoice stays payable in the contact portal, so
-            // writing off now would let the client pay a waived balance.
-            if (Invoices::where('booking_id', $locked->id)->outstanding()->exists()) {
-                return ['invoice', 'This booking has an open invoice. Void the open invoice first.'];
             }
 
             // forceFill: the write-off columns are deliberately not mass-assignable.

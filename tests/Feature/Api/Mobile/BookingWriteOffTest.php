@@ -489,22 +489,63 @@ class BookingWriteOffTest extends TestCase
 
     // ── Review follow-ups (#647) ──────────────────────────────────────
 
-    public function test_write_off_is_rejected_while_an_invoice_is_outstanding(): void
+    public function test_write_off_succeeds_and_hides_a_stale_open_invoice_in_the_portal(): void
     {
-        $booking = $this->shortBooking();
-        $invoice = Invoices::factory()->create(['booking_id' => $booking->id, 'amount' => 5000, 'status' => 'open']);
+        // Like booking 394: a few cents owed, with an old Stripe invoice still 'open'.
+        $booking = $this->shortBooking(eventDate: '2026-10-01');
+        $invoice = Invoices::factory()->create([
+            'booking_id' => $booking->id,
+            'amount' => 5000,
+            'status' => 'open',
+            'stripe_url' => 'https://invoice.stripe.com/i/stale',
+        ]);
 
-        $this->api()->postJson($this->writeOffUrl($booking))
-            ->assertStatus(422)
-            ->assertJsonPath('message', 'This booking has an open invoice. Void the open invoice first.')
-            ->assertJsonValidationErrors('invoice');
-        $this->assertSame(0, $booking->fresh()->written_off_amount);
+        $this->api()->postJson($this->writeOffUrl($booking))->assertOk()
+            ->assertJsonPath('amount_due', '0.00');
 
-        // Same definition as the portal's "View & Pay Invoice" list.
-        $this->assertTrue(Invoices::where('booking_id', $booking->id)->outstanding()->exists());
+        $this->actingAs($this->contact, 'contact')
+            ->get(route('portal.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Contact/Dashboard')
+                ->has('outstandingInvoices', 0)
+                ->where('bookings.0.has_balance', false)
+            );
 
-        $invoice->update(['status' => 'paid']);
-        $this->api()->postJson($this->writeOffUrl($booking))->assertOk();
+        $this->actingAs($this->contact, 'contact')
+            ->get(route('portal.invoices'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('invoices.0.id', $invoice->id)
+                ->where('invoices.0.stripe_url', null)
+            );
+    }
+
+    public function test_unpaid_booking_still_shows_its_open_invoice_in_the_portal(): void
+    {
+        $booking = $this->shortBooking(eventDate: '2026-10-01');
+        $invoice = Invoices::factory()->create([
+            'booking_id' => $booking->id,
+            'amount' => 5000,
+            'status' => 'open',
+            'stripe_url' => 'https://invoice.stripe.com/i/live',
+        ]);
+
+        $this->actingAs($this->contact, 'contact')
+            ->get(route('portal.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('outstandingInvoices', 1)
+                ->where('outstandingInvoices.0.id', $invoice->id)
+                ->where('outstandingInvoices.0.stripe_url', 'https://invoice.stripe.com/i/live')
+            );
+
+        $this->actingAs($this->contact, 'contact')
+            ->get(route('portal.invoices'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('invoices.0.stripe_url', 'https://invoice.stripe.com/i/live')
+            );
     }
 
     public function test_balance_settled_is_not_sent_once_the_write_off_is_undone(): void
