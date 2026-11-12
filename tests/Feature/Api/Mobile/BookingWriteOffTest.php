@@ -8,6 +8,7 @@ use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\Contracts;
 use App\Models\Events;
+use App\Models\Invoices;
 use App\Models\Payments;
 use App\Models\User;
 use App\Notifications\BalanceSettled;
@@ -15,6 +16,7 @@ use App\Notifications\DepositPaymentReminder;
 use App\Notifications\FinalPaymentReminder;
 use App\Services\PaymentDueService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Activitylog\Models\Activity;
@@ -483,5 +485,113 @@ class BookingWriteOffTest extends TestCase
             ->postJson(route('portal.booking.checkout', $booking->id), ['amount' => 50])
             ->assertStatus(422)
             ->assertJsonValidationErrors('amount');
+    }
+
+    // ── Review follow-ups (#647) ──────────────────────────────────────
+
+    public function test_write_off_succeeds_and_hides_a_stale_open_invoice_in_the_portal(): void
+    {
+        // Like booking 394: a few cents owed, with an old Stripe invoice still 'open'.
+        $booking = $this->shortBooking(eventDate: '2026-10-01');
+        $invoice = Invoices::factory()->create([
+            'booking_id' => $booking->id,
+            'amount' => 5000,
+            'status' => 'open',
+            'stripe_url' => 'https://invoice.stripe.com/i/stale',
+        ]);
+
+        $this->api()->postJson($this->writeOffUrl($booking))->assertOk()
+            ->assertJsonPath('amount_due', '0.00');
+
+        $this->actingAs($this->contact, 'contact')
+            ->get(route('portal.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Contact/Dashboard')
+                ->has('outstandingInvoices', 0)
+                ->where('bookings.0.has_balance', false)
+            );
+
+        $this->actingAs($this->contact, 'contact')
+            ->get(route('portal.invoices'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('invoices.0.id', $invoice->id)
+                ->where('invoices.0.stripe_url', null)
+            );
+    }
+
+    public function test_unpaid_booking_still_shows_its_open_invoice_in_the_portal(): void
+    {
+        $booking = $this->shortBooking(eventDate: '2026-10-01');
+        $invoice = Invoices::factory()->create([
+            'booking_id' => $booking->id,
+            'amount' => 5000,
+            'status' => 'open',
+            'stripe_url' => 'https://invoice.stripe.com/i/live',
+        ]);
+
+        $this->actingAs($this->contact, 'contact')
+            ->get(route('portal.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('outstandingInvoices', 1)
+                ->where('outstandingInvoices.0.id', $invoice->id)
+                ->where('outstandingInvoices.0.stripe_url', 'https://invoice.stripe.com/i/live')
+            );
+
+        $this->actingAs($this->contact, 'contact')
+            ->get(route('portal.invoices'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('invoices.0.stripe_url', 'https://invoice.stripe.com/i/live')
+            );
+    }
+
+    public function test_balance_settled_is_not_sent_once_the_write_off_is_undone(): void
+    {
+        Notification::fake();
+        $booking = $this->shortBooking();
+
+        $this->api()->postJson($this->writeOffUrl($booking), ['notify_client' => true])->assertOk();
+        $queued = new BalanceSettled($booking->fresh());
+        $this->assertTrue($queued->shouldSend($this->contact, 'mail'));
+
+        // Undo lands before the queue worker delivers the mail.
+        $this->api()->deleteJson($this->writeOffUrl($booking))->assertOk();
+        $this->assertFalse($queued->shouldSend($this->contact, 'mail'));
+    }
+
+    public function test_list_and_finance_endpoints_do_not_query_per_write_off(): void
+    {
+        $writeOffs = function (int $count): void {
+            for ($i = 0; $i < $count; $i++) {
+                $booking = $this->shortBooking();
+                $this->api()->postJson($this->writeOffUrl($booking))->assertOk();
+            }
+        };
+        $endpoints = [
+            "/api/mobile/bands/{$this->band->id}/bookings",
+            '/api/mobile/me/bookings',
+            "/api/mobile/bands/{$this->band->id}/finances",
+            "/api/mobile/bands/{$this->band->id}/finances/paid",
+        ];
+        $count = function (string $url): int {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->api()->getJson($url)->assertOk();
+            DB::disableQueryLog();
+
+            return collect(DB::getQueryLog())
+                ->filter(fn ($q) => str_contains($q['query'], 'from `users`'))
+                ->count();
+        };
+
+        $writeOffs(1);
+        $baseline = array_map($count, $endpoints);
+        $writeOffs(3);
+        $after = array_map($count, $endpoints);
+
+        $this->assertSame($baseline, $after, 'user lookups must not grow with the number of write-offs');
     }
 }

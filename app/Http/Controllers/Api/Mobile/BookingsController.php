@@ -51,7 +51,7 @@ class BookingsController extends Controller
     public function index(BookingIndexRequest $request, Bands $band): JsonResponse
     {
         $query = $band->bookings()
-            ->with(['contacts', 'band', 'events'])
+            ->with(['contacts', 'band', 'events', 'writeOffUser:id,name'])
             ->withSum(['payments as payment_total_cents' => fn ($q) => $q->where('status', 'paid')], 'amount');
 
         if ($request->filled('status')) {
@@ -105,7 +105,7 @@ class BookingsController extends Controller
         $bandIds = $user->bands()->pluck('id');
 
         $query = Bookings::query()
-            ->with(['band', 'contacts', 'events'])
+            ->with(['band', 'contacts', 'events', 'writeOffUser:id,name'])
             // Aggregate paid payments into payment_total_cents (raw cents) so the
             // amount_paid accessor uses its fast-path instead of one sum() query
             // per booking (N+1), without serializing the full payments relation
@@ -372,12 +372,12 @@ class BookingsController extends Controller
             $locked = Bookings::whereKey($booking->id)->lockForUpdate()->first();
 
             if ($locked->isWrittenOff()) {
-                return 'This booking\'s balance has already been written off.';
+                return ['amount_due', 'This booking\'s balance has already been written off.'];
             }
 
             $dueCents = max(0, $locked->priceCents() - $locked->settledCents());
             if ($dueCents <= 0) {
-                return 'Nothing is owed on this booking.';
+                return ['amount_due', 'Nothing is owed on this booking.'];
             }
 
             // forceFill: the write-off columns are deliberately not mass-assignable.
@@ -393,10 +393,12 @@ class BookingsController extends Controller
         });
 
         if ($error) {
+            [$field, $message] = $error;
+
             return response()->json([
-                'message' => $error,
-                'error'   => $error,
-                'errors'  => ['amount_due' => [$error]],
+                'message' => $message,
+                'error'   => $message,
+                'errors'  => [$field => [$message]],
             ], 422);
         }
 

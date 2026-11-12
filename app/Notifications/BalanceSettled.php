@@ -28,6 +28,16 @@ class BalanceSettled extends Notification implements ShouldQueue
         return ['mail'];
     }
 
+    /**
+     * Checked when the queued notification is delivered: if the write-off was
+     * undone (or the booking deleted) in the meantime, the client still owes
+     * money, so don't tell them nothing further is owed.
+     */
+    public function shouldSend(object $notifiable, string $channel): bool
+    {
+        return (bool) Bookings::find($this->booking->id)?->isWrittenOff();
+    }
+
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)

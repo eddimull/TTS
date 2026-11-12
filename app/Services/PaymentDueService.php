@@ -42,7 +42,7 @@ class PaymentDueService
                 "(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id AND status = 'paid') + bookings.written_off_amount < bookings.price",
                 [Bookings::class],
             )
-            ->with(['contract', 'payments', 'events', 'writtenOffBy'])
+            ->with(['contract', 'payments', 'events', 'writeOffUser:id,name'])
             ->get();
 
         $groups = array_fill_keys(self::GROUPS, []);

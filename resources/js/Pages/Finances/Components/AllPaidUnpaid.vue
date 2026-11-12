@@ -225,6 +225,7 @@ import { ref, computed, onMounted, watch, nextTick, shallowRef } from "vue";
 import Chart from "primevue/chart";
 import DatePicker from "primevue/datepicker";
 import Checkbox from "primevue/checkbox";
+import { unpaidAmount } from "@/utils/bookingFinance";
 import Slider from "primevue/slider";
 import { router } from '@inertiajs/vue3';
 
@@ -394,7 +395,7 @@ const processDataByMonth = (bookings, year) => {
 
         dataByMonth[yearMonth].forecast += price;
         dataByMonth[yearMonth].paid += amountPaid;
-        dataByMonth[yearMonth].unpaid += Math.max(0, price - amountPaid);
+        dataByMonth[yearMonth].unpaid += unpaidAmount(booking);
         dataByMonth[yearMonth].net += netAmount;
         dataByMonth[yearMonth].bookings += 1;
     });

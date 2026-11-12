@@ -184,6 +184,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import { router } from "@inertiajs/vue3";
+import { sumAmountDue } from "@/utils/bookingFinance";
 import DataTable from "primevue/datatable";
 import Column from "primevue/column";
 import InputText from "primevue/inputtext";
@@ -255,11 +256,7 @@ const stats = computed(() => {
         return [];
     }
 
-    const totalDue = bookings.reduce((total, booking) => {
-        const price = parseFloat(booking.price) || 0;
-        const amountPaid = parseFloat(booking.amount_paid) || 0;
-        return total + (price - amountPaid);
-    }, 0);
+    const totalDue = sumAmountDue(bookings);
 
     const totalPaid = bookings.reduce((total, booking) => {
         const amountPaid = parseFloat(booking.amount_paid) || 0;
