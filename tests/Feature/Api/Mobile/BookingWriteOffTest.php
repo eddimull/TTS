@@ -380,6 +380,21 @@ class BookingWriteOffTest extends TestCase
         $this->assertSame(0, $booking->fresh()->written_off_amount);
     }
 
+    public function test_overpaid_booking_without_write_off_keeps_a_negative_amount_due(): void
+    {
+        $booking = $this->shortBooking(price: 1000, paid: 1200);
+
+        $this->assertSame('-200.00', $booking->amount_due);
+        $this->assertTrue($booking->is_paid);
+        $this->assertNull($booking->writeOffSummary());
+
+        $this->api()->getJson("/api/mobile/bands/{$this->band->id}/bookings/{$booking->id}")
+            ->assertOk()
+            ->assertJsonPath('booking.amount_due', '-200.00');
+
+        $this->api()->postJson($this->writeOffUrl($booking))->assertStatus(422);
+    }
+
     public function test_write_off_returns_422_when_already_written_off(): void
     {
         $booking = $this->shortBooking();

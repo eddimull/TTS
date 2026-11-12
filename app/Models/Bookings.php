@@ -379,7 +379,10 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
 
     public function getAmountDueAttribute()
     {
-        $dueCents = max(0, $this->priceCents() - $this->settledCents());
+        // Unclamped: an overpaid booking reports a negative balance, as the web
+        // finance screens expect. A write-off stores exactly what was owed, so
+        // it never pushes this below zero on its own.
+        $dueCents = $this->priceCents() - $this->settledCents();
         return number_format($dueCents / 100, 2, '.', '');
     }
 

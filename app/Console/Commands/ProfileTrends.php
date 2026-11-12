@@ -85,7 +85,7 @@ class ProfileTrends extends Command
                 $rows[$m]['forecast'] += $price;
                 $rows[$m]['paid'] += $paid;
                 // amount_due nets out any written-off balance (settled, not paid).
-                $rows[$m]['unpaid'] += (float) $booking->amount_due;
+                $rows[$m]['unpaid'] += max(0, (float) $booking->amount_due);
                 $rows[$m]['net'] += $net;
                 $rows[$m]['count'] += 1;
             }
