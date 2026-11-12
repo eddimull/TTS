@@ -36,13 +36,13 @@ class PaymentDueService
             ->where('band_id', $band->id)
             ->where('status', 'confirmed')
             ->whereHas('contract', fn ($q) => $q->where('status', 'completed')->whereNotNull('signed_at'))
-            // Paid-off bookings owe nothing: leave them out so this grows with
-            // what's outstanding, not the band's whole history.
+            // Paid-off (or written-off) bookings owe nothing: leave them out so
+            // this grows with what's outstanding, not the band's whole history.
             ->whereRaw(
-                "(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id AND status = 'paid') < bookings.price",
+                "(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id AND status = 'paid') + bookings.written_off_amount < bookings.price",
                 [Bookings::class],
             )
-            ->with(['contract', 'payments', 'events'])
+            ->with(['contract', 'payments', 'events', 'writtenOffBy'])
             ->get();
 
         $groups = array_fill_keys(self::GROUPS, []);
@@ -85,10 +85,12 @@ class PaymentDueService
         $balanceDue = $eventDate->copy()->subDays(self::BALANCE_DUE_DAYS_BEFORE_EVENT);
         $depositDue = $signedAt->copy()->startOfDay()->addWeeks(self::DEPOSIT_DUE_WEEKS);
 
+        // A written-off balance settles the booking like a payment would, so it
+        // counts here (deposit first, like payments) though not in amount_paid.
         $priceCents = $this->toCents($booking->price);
-        $paidCents = $this->toCents($booking->amount_paid);
-        $owedCents = max(0, $priceCents - $paidCents);
-        $depositOwedCents = min($owedCents, max(0, $this->toCents($booking->expected_deposit_amount) - $paidCents));
+        $settledCents = $this->toCents($booking->amount_paid) + $booking->writtenOffCents();
+        $owedCents = max(0, $priceCents - $settledCents);
+        $depositOwedCents = min($owedCents, max(0, $this->toCents($booking->expected_deposit_amount) - $settledCents));
 
         // Signed so close to the show that the deposit lands on or after the
         // balance's date: there's only one deadline, the balance's, and the
@@ -105,6 +107,7 @@ class PaymentDueService
             'merged' => $merged,
             'deposit' => $deposit,
             'balance' => $balance,
+            'write_off' => $booking->writeOffSummary(),
         ];
     }
 
@@ -144,6 +147,7 @@ class PaymentDueService
                 'deposit_value' => (string) $booking->deposit_value,
                 'deposit_amount' => (string) $booking->expected_deposit_amount,
                 'amount_paid' => (string) $booking->amount_paid,
+                'write_off' => $state['write_off'],
             ];
         }
 

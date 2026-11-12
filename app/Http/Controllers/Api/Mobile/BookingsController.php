@@ -13,6 +13,7 @@ use App\Http\Requests\Mobile\UpdateBookingContactRequest;
 use App\Http\Requests\Mobile\UpdateBookingContractTermsRequest;
 use App\Http\Requests\Mobile\UpdateBookingRequest;
 use App\Http\Requests\Mobile\UploadBookingContractRequest;
+use App\Http\Requests\Mobile\WriteOffBookingBalanceRequest;
 use App\Models\Bands;
 use App\Models\BookingContacts;
 use App\Models\Bookings;
@@ -21,6 +22,7 @@ use App\Models\Contracts;
 use App\Models\EventMember;
 use App\Models\Events;
 use App\Models\Payments;
+use App\Notifications\BalanceSettled;
 use App\Services\BookingActivityService;
 use App\Services\BookingContactService;
 use App\Services\ContractAmendmentService;
@@ -29,6 +31,7 @@ use App\Services\Mobile\BookingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
@@ -349,6 +352,137 @@ class BookingsController extends Controller
             'amount_due'  => (string) $booking->amount_due,
             'is_paid'     => (bool) $booking->is_paid,
         ]);
+    }
+
+    /**
+     * POST /api/mobile/bands/{band}/bookings/{booking}/write-off
+     *
+     * Settles the booking's remaining balance without recording a payment:
+     * amount_due drops to 0 and is_paid turns true, while amount_paid (real
+     * money) is unchanged. The client is only told when notify_client is true,
+     * and then only that the balance is settled.
+     */
+    public function writeOff(WriteOffBookingBalanceRequest $request, Bands $band, Bookings $booking): JsonResponse
+    {
+        $notify = $request->boolean('notify_client');
+        $note = $request->validated('note');
+        $user = $request->user();
+
+        $error = DB::transaction(function () use ($booking, $note, $user) {
+            $locked = Bookings::whereKey($booking->id)->lockForUpdate()->first();
+
+            if ($locked->isWrittenOff()) {
+                return 'This booking\'s balance has already been written off.';
+            }
+
+            $dueCents = max(0, $locked->priceCents() - $locked->settledCents());
+            if ($dueCents <= 0) {
+                return 'Nothing is owed on this booking.';
+            }
+
+            // forceFill: the write-off columns are deliberately not mass-assignable.
+            // The save fires BroadcastsBandChanges so band clients refresh.
+            $locked->forceFill([
+                'written_off_amount' => $dueCents,
+                'written_off_at'     => now(),
+                'written_off_by'     => $user->id,
+                'write_off_note'     => $note,
+            ])->save();
+
+            return null;
+        });
+
+        if ($error) {
+            return response()->json([
+                'message' => $error,
+                'error'   => $error,
+                'errors'  => ['amount_due' => [$error]],
+            ], 422);
+        }
+
+        $booking->refresh();
+
+        if ($notify) {
+            $booking->contacts
+                ->filter(fn ($contact) => filled($contact->email))
+                ->each(fn ($contact) => $contact->notify(new BalanceSettled($booking)));
+        }
+
+        activity()
+            ->performedOn($booking)
+            ->causedBy($user)
+            ->withProperties([
+                'amount'          => number_format($booking->writtenOffCents() / 100, 2, '.', ''),
+                'client_notified' => $notify,
+                'note'            => $note,
+            ])
+            ->log('balance_written_off');
+
+        return response()->json($this->paymentStateResponse($booking));
+    }
+
+    /**
+     * DELETE /api/mobile/bands/{band}/bookings/{booking}/write-off
+     *
+     * Undoes a write-off so the balance is owed again. Never notifies the client.
+     */
+    public function undoWriteOff(Request $request, Bands $band, Bookings $booking): JsonResponse
+    {
+        $user = $request->user();
+
+        $amountCents = DB::transaction(function () use ($booking) {
+            $locked = Bookings::whereKey($booking->id)->lockForUpdate()->first();
+
+            if (!$locked->isWrittenOff()) {
+                return null;
+            }
+
+            $amountCents = $locked->writtenOffCents();
+            $locked->forceFill([
+                'written_off_amount' => 0,
+                'written_off_at'     => null,
+                'written_off_by'     => null,
+                'write_off_note'     => null,
+            ])->save();
+
+            return $amountCents;
+        });
+
+        if ($amountCents === null) {
+            $error = 'This booking has no write-off to undo.';
+
+            return response()->json([
+                'message' => $error,
+                'error'   => $error,
+                'errors'  => ['write_off' => [$error]],
+            ], 422);
+        }
+
+        $booking->refresh();
+
+        activity()
+            ->performedOn($booking)
+            ->causedBy($user)
+            ->withProperties([
+                'amount'          => number_format($amountCents / 100, 2, '.', ''),
+                'client_notified' => false,
+            ])
+            ->log('balance_write_off_undone');
+
+        return response()->json($this->paymentStateResponse($booking));
+    }
+
+    /**
+     * Same money fields storePayment returns, plus the write-off.
+     */
+    private function paymentStateResponse(Bookings $booking): array
+    {
+        return [
+            'amount_paid' => (string) $booking->amount_paid,
+            'amount_due'  => (string) $booking->amount_due,
+            'is_paid'     => (bool) $booking->is_paid,
+            'write_off'   => $booking->writeOffSummary(),
+        ];
     }
 
     public function showContract(Request $request, Bands $band, Bookings $booking): JsonResponse

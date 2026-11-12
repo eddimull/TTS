@@ -35,6 +35,7 @@ class BookingFormatter
             'deposit_value'            => (string) $booking->deposit_value,
             'expected_deposit_amount'  => (string) $booking->expected_deposit_amount,
             'is_paid'         => (bool) $booking->is_paid,
+            'write_off'       => $booking->writeOffSummary(),
             'contract_option' => $booking->contract_option,
             'band'            => $booking->band ? [
                 'id'          => $booking->band->id,
@@ -119,6 +120,7 @@ class BookingFormatter
             'amount_paid'   => (string) $booking->amount_paid,
             'amount_due'    => (string) $booking->amount_due,
             'is_paid'       => (bool) $booking->is_paid,
+            'write_off'     => $booking->writeOffSummary(),
         ];
     }
 
