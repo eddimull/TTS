@@ -8,6 +8,7 @@ use App\Models\Bookings;
 use App\Models\Contacts;
 use App\Models\Contracts;
 use App\Models\Events;
+use App\Models\Invoices;
 use App\Models\Payments;
 use App\Models\User;
 use App\Notifications\BalanceSettled;
@@ -15,6 +16,7 @@ use App\Notifications\DepositPaymentReminder;
 use App\Notifications\FinalPaymentReminder;
 use App\Services\PaymentDueService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Notification;
 use Spatie\Activitylog\Models\Activity;
@@ -483,5 +485,72 @@ class BookingWriteOffTest extends TestCase
             ->postJson(route('portal.booking.checkout', $booking->id), ['amount' => 50])
             ->assertStatus(422)
             ->assertJsonValidationErrors('amount');
+    }
+
+    // ── Review follow-ups (#647) ──────────────────────────────────────
+
+    public function test_write_off_is_rejected_while_an_invoice_is_outstanding(): void
+    {
+        $booking = $this->shortBooking();
+        $invoice = Invoices::factory()->create(['booking_id' => $booking->id, 'amount' => 5000, 'status' => 'open']);
+
+        $this->api()->postJson($this->writeOffUrl($booking))
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'This booking has an open invoice. Void the open invoice first.')
+            ->assertJsonValidationErrors('invoice');
+        $this->assertSame(0, $booking->fresh()->written_off_amount);
+
+        // Same definition as the portal's "View & Pay Invoice" list.
+        $this->assertTrue(Invoices::where('booking_id', $booking->id)->outstanding()->exists());
+
+        $invoice->update(['status' => 'paid']);
+        $this->api()->postJson($this->writeOffUrl($booking))->assertOk();
+    }
+
+    public function test_balance_settled_is_not_sent_once_the_write_off_is_undone(): void
+    {
+        Notification::fake();
+        $booking = $this->shortBooking();
+
+        $this->api()->postJson($this->writeOffUrl($booking), ['notify_client' => true])->assertOk();
+        $queued = new BalanceSettled($booking->fresh());
+        $this->assertTrue($queued->shouldSend($this->contact, 'mail'));
+
+        // Undo lands before the queue worker delivers the mail.
+        $this->api()->deleteJson($this->writeOffUrl($booking))->assertOk();
+        $this->assertFalse($queued->shouldSend($this->contact, 'mail'));
+    }
+
+    public function test_list_and_finance_endpoints_do_not_query_per_write_off(): void
+    {
+        $writeOffs = function (int $count): void {
+            for ($i = 0; $i < $count; $i++) {
+                $booking = $this->shortBooking();
+                $this->api()->postJson($this->writeOffUrl($booking))->assertOk();
+            }
+        };
+        $endpoints = [
+            "/api/mobile/bands/{$this->band->id}/bookings",
+            '/api/mobile/me/bookings',
+            "/api/mobile/bands/{$this->band->id}/finances",
+            "/api/mobile/bands/{$this->band->id}/finances/paid",
+        ];
+        $count = function (string $url): int {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->api()->getJson($url)->assertOk();
+            DB::disableQueryLog();
+
+            return collect(DB::getQueryLog())
+                ->filter(fn ($q) => str_contains($q['query'], 'from `users`'))
+                ->count();
+        };
+
+        $writeOffs(1);
+        $baseline = array_map($count, $endpoints);
+        $writeOffs(3);
+        $after = array_map($count, $endpoints);
+
+        $this->assertSame($baseline, $after, 'user lookups must not grow with the number of write-offs');
     }
 }

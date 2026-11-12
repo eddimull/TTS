@@ -40,7 +40,7 @@ class ContactPortalController extends Controller
             ->with(['booking.band', 'booking.payments' => function($query) {
                 $query->where('status', '!=', 'void');
             }])
-            ->where('status', '!=', 'paid')
+            ->outstanding()
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($invoice) {

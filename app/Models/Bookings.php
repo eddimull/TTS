@@ -174,7 +174,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         return $this->belongsTo(User::class, 'author_id');
     }
 
-    public function writtenOffBy()
+    public function writeOffUser()
     {
         return $this->belongsTo(User::class, 'written_off_by');
     }
@@ -231,7 +231,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         return [
             'amount' => number_format($this->writtenOffCents() / 100, 2, '.', ''),
             'at' => $this->written_off_at?->toIso8601String(),
-            'by' => $this->written_off_by ? $this->writtenOffBy?->name : null,
+            'by' => $this->written_off_by ? $this->writeOffUser?->name : null,
             'note' => $this->write_off_note,
         ];
     }
@@ -580,7 +580,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
             ->addSelect(['start_date' => static::primaryEventDateSubquery()])
             // A written-off balance counts as settled (but never as paid money).
             ->whereRaw('COALESCE(payments_sum.total_paid, 0) + bookings.written_off_amount < bookings.price')
-            ->with(['payout', 'events' => fn ($q) => $q->select(static::EVENT_FINANCE_COLUMNS)->orderBy('date')->orderBy('id')])
+            ->with(['payout', 'writeOffUser:id,name', 'events' => fn ($q) => $q->select(static::EVENT_FINANCE_COLUMNS)->orderBy('date')->orderBy('id')])
             ->get();
     }
 
@@ -590,7 +590,7 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
             ->selectRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id AND status = "paid") as amount_paid', [Bookings::class])
             ->addSelect(['start_date' => static::primaryEventDateSubquery()])
             ->whereRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id AND status = "paid") + bookings.written_off_amount >= bookings.price', [Bookings::class])
-            ->with(['payout', 'events' => fn ($q) => $q->select(static::EVENT_FINANCE_COLUMNS)->orderBy('date')->orderBy('id')])
+            ->with(['payout', 'writeOffUser:id,name', 'events' => fn ($q) => $q->select(static::EVENT_FINANCE_COLUMNS)->orderBy('date')->orderBy('id')])
             ->get();
     }
 
