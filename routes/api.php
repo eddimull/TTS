@@ -306,6 +306,10 @@ Route::prefix('mobile')->group(function () {
             Route::post('/bands/{band}/bookings/{booking}/payments', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'storePayment'])->name('mobile.bookings.payments.store');
             Route::delete('/bands/{band}/bookings/{booking}/payments/{payment}', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'destroyPayment'])->name('mobile.bookings.payments.destroy');
 
+            // Booking balance write-off (settle without a payment)
+            Route::post('/bands/{band}/bookings/{booking}/write-off', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'writeOff'])->name('mobile.bookings.write-off.store');
+            Route::delete('/bands/{band}/bookings/{booking}/write-off', [App\Http\Controllers\Api\Mobile\BookingsController::class, 'undoWriteOff'])->name('mobile.bookings.write-off.destroy');
+
             // Booking events (subresource)
             Route::post('/bands/{band}/bookings/{booking}/events',
                 [App\Http\Controllers\Api\Mobile\BookingsController::class, 'storeEvent'])
