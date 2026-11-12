@@ -562,6 +562,22 @@ class BookingWriteOffTest extends TestCase
         $this->assertFalse($queued->shouldSend($this->contact, 'mail'));
     }
 
+    public function test_queued_settled_mail_is_dropped_when_price_rises_before_delivery(): void
+    {
+        $booking = $this->shortBooking();
+
+        $this->api()->postJson($this->writeOffUrl($booking), ['notify_client' => true])->assertOk();
+        $queued = new BalanceSettled($booking->fresh());
+
+        // The price goes up before the worker delivers: a balance is owed again.
+        $fresh = $booking->fresh();
+        $fresh->price = (float) $fresh->price + 100;
+        $fresh->save();
+
+        $this->assertTrue($fresh->fresh()->isWrittenOff());
+        $this->assertFalse($queued->shouldSend($this->contact, 'mail'));
+    }
+
     public function test_list_and_finance_endpoints_do_not_query_per_write_off(): void
     {
         $writeOffs = function (int $count): void {
