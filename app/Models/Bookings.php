@@ -50,6 +50,8 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         'price' => Price::class,
         'deposit_value' => 'decimal:2',
         'enable_portal_media_access' => 'boolean',
+        'written_off_amount' => 'integer',
+        'written_off_at' => 'datetime',
     ];
 
     protected $attributes = [
@@ -172,12 +174,66 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         return $this->belongsTo(User::class, 'author_id');
     }
 
+    public function writeOffUser()
+    {
+        return $this->belongsTo(User::class, 'written_off_by');
+    }
+
+    /**
+     * Settled: what the client paid plus any balance the band wrote off covers
+     * the price. amount_paid stays real money only.
+     */
     public function getIsPaidAttribute()
     {
-        // Use the amount_paid accessor which handles both SQL aggregation and lazy loading
-        $amountPaid = is_string($this->amount_paid) ? floatval($this->amount_paid) : $this->amount_paid;
-        $price = is_string($this->price) ? floatval($this->price) : $this->price;
-        return $amountPaid >= $price;
+        return $this->settledCents() >= $this->priceCents();
+    }
+
+    /** Booking price in cents. */
+    public function priceCents(): int
+    {
+        return (int) round((float) $this->price * 100);
+    }
+
+    /** Real money received (status = paid), in cents. */
+    public function paidCents(): int
+    {
+        return (int) round((float) $this->amount_paid * 100);
+    }
+
+    /** Balance the band wrote off without a payment, in cents. */
+    public function writtenOffCents(): int
+    {
+        return (int) ($this->attributes['written_off_amount'] ?? 0);
+    }
+
+    /** Paid plus written off, in cents: what counts toward settling the booking. */
+    public function settledCents(): int
+    {
+        return $this->paidCents() + $this->writtenOffCents();
+    }
+
+    public function isWrittenOff(): bool
+    {
+        return $this->writtenOffCents() > 0;
+    }
+
+    /**
+     * The write-off as shown to the band (never to the client), or null.
+     *
+     * @return array{amount: string, at: ?string, by: ?string, note: ?string}|null
+     */
+    public function writeOffSummary(): ?array
+    {
+        if (!$this->isWrittenOff()) {
+            return null;
+        }
+
+        return [
+            'amount' => number_format($this->writtenOffCents() / 100, 2, '.', ''),
+            'at' => $this->written_off_at?->toIso8601String(),
+            'by' => $this->written_off_by ? $this->writeOffUser?->name : null,
+            'note' => $this->write_off_note,
+        ];
     }
 
     public function eventType()
@@ -323,9 +379,11 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
 
     public function getAmountDueAttribute()
     {
-        $price = is_string($this->price) ? floatval($this->price) : $this->price;
-        $amountPaid = is_string($this->amount_paid) ? floatval($this->amount_paid) : $this->amount_paid;
-        return number_format($price - $amountPaid, 2, '.', '');
+        // Unclamped: an overpaid booking reports a negative balance, as the web
+        // finance screens expect. A write-off stores exactly what was owed, so
+        // it never pushes this below zero on its own.
+        $dueCents = $this->priceCents() - $this->settledCents();
+        return number_format($dueCents / 100, 2, '.', '');
     }
 
     public function getAmountLeftAttribute()
@@ -411,9 +469,9 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
      */
     public function getIsDepositPaidAttribute(): bool
     {
-        $expectedDeposit = floatval($this->expected_deposit_amount);
-        $amountPaid = floatval($this->amount_paid);
-        return $amountPaid >= $expectedDeposit;
+        // A written-off balance settles the deposit too: nothing is owed.
+        $expectedDepositCents = (int) round(floatval($this->expected_deposit_amount) * 100);
+        return $this->settledCents() >= $expectedDepositCents;
     }
 
     /**
@@ -422,10 +480,9 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
      */
     public function getDepositDueAttribute(): string
     {
-        $expectedDeposit = floatval($this->expected_deposit_amount);
-        $amountPaid = floatval($this->amount_paid);
-        $amountDue = max(0, $expectedDeposit - $amountPaid);
-        return number_format($amountDue, 2, '.', '');
+        $expectedDepositCents = (int) round(floatval($this->expected_deposit_amount) * 100);
+        $dueCents = max(0, $expectedDepositCents - $this->settledCents());
+        return number_format($dueCents / 100, 2, '.', '');
     }
 
     /**
@@ -521,8 +578,9 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
 
             ])
             ->addSelect(['start_date' => static::primaryEventDateSubquery()])
-            ->whereRaw('COALESCE(payments_sum.total_paid, 0) < bookings.price')
-            ->with(['payout', 'events' => fn ($q) => $q->select(static::EVENT_FINANCE_COLUMNS)->orderBy('date')->orderBy('id')])
+            // A written-off balance counts as settled (but never as paid money).
+            ->whereRaw('COALESCE(payments_sum.total_paid, 0) + bookings.written_off_amount < bookings.price')
+            ->with(['payout', 'writeOffUser:id,name', 'events' => fn ($q) => $q->select(static::EVENT_FINANCE_COLUMNS)->orderBy('date')->orderBy('id')])
             ->get();
     }
 
@@ -531,8 +589,8 @@ class Bookings extends Model implements Contractable, GoogleCalenderable
         return $query->reorder()->select('bookings.*')
             ->selectRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id AND status = "paid") as amount_paid', [Bookings::class])
             ->addSelect(['start_date' => static::primaryEventDateSubquery()])
-            ->whereRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id AND status = "paid") >= bookings.price', [Bookings::class])
-            ->with(['payout', 'events' => fn ($q) => $q->select(static::EVENT_FINANCE_COLUMNS)->orderBy('date')->orderBy('id')])
+            ->whereRaw('(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payable_type = ? AND payable_id = bookings.id AND status = "paid") + bookings.written_off_amount >= bookings.price', [Bookings::class])
+            ->with(['payout', 'writeOffUser:id,name', 'events' => fn ($q) => $q->select(static::EVENT_FINANCE_COLUMNS)->orderBy('date')->orderBy('id')])
             ->get();
     }
 

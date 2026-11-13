@@ -40,9 +40,13 @@ class ContactPortalController extends Controller
             ->with(['booking.band', 'booking.payments' => function($query) {
                 $query->where('status', '!=', 'void');
             }])
-            ->where('status', '!=', 'paid')
+            ->outstanding()
             ->orderBy('created_at', 'desc')
             ->get()
+            // Stale open invoices on settled (paid or written-off) bookings
+            // must not be offered as "View & Pay Invoice".
+            ->filter(fn ($invoice) => $invoice->isPayable())
+            ->values()
             ->map(function ($invoice) {
                 // Get the payment amount (what band receives) - need raw value in cents
                 $payment = $invoice->booking->payments()->where('invoices_id', $invoice->id)->first();
@@ -376,7 +380,9 @@ class ContactPortalController extends Controller
                 return [
                     'id' => $invoice->id,
                     'stripe_id' => $invoice->stripe_id,
-                    'stripe_url' => $invoice->stripe_url,
+                    // Paid invoices keep their receipt link; an unpaid one is
+                    // only linked (and so payable) while its booking owes money.
+                    'stripe_url' => ($invoice->status === 'paid' || $invoice->isPayable()) ? $invoice->stripe_url : null,
                     'base_amount' => $baseAmount,
                     'fee_amount' => $feeAmount,
                     'total_amount' => $invoice->amount,

@@ -180,7 +180,8 @@ class FinancesController extends Controller
             $net = (float) ($booking->net_amount ?? 0);
             $rows[$m]['forecast'] += $price;
             $rows[$m]['paid'] += $paid;
-            $rows[$m]['unpaid'] += max(0, $price - $paid);
+            // amount_due nets out any written-off balance (settled, not paid).
+            $rows[$m]['unpaid'] += max(0, (float) $booking->amount_due);
             $rows[$m]['net'] += $net;
             $rows[$m]['count'] += 1;
         }
