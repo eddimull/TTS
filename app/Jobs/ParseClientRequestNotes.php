@@ -19,8 +19,12 @@ class ParseClientRequestNotes implements ShouldQueue, ShouldBeUniqueUntilProcess
 {
     use Dispatchable, InteractsWithQueue, Queueable;
 
-    /** Longer than the AI call's 120s timeout. */
-    public int $timeout = 130;
+    /**
+     * Longer than the AI call (ClientRequestNotesService::AI_TIMEOUT_SECONDS)
+     * but under the queue's 90s retry_after, so a slow run is never reserved
+     * by a second worker while it's still going.
+     */
+    public int $timeout = 85;
 
     public int $tries = 3;
 

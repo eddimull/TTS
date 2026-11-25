@@ -13,7 +13,9 @@ use App\Models\LiveSetlistSession;
 use App\Models\QuestionnaireInstanceFields;
 use App\Models\QuestionnaireInstances;
 use App\Models\QuestionnaireResponses;
+use App\Models\Song;
 use App\Models\User;
+use App\Services\ClientRequestNotesService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
@@ -192,9 +194,10 @@ class SetlistEditorClientNotesTest extends TestCase
 
     public function test_a_live_session_reuses_the_stored_notes(): void
     {
-        Event::fake(); // no broadcasting
         SetlistAgent::fake([$this->aiReply('Atomic Dog')])->preventStrayPrompts();
         $this->answer('Atomic Dog - George Clinton');
+        $this->assertDatabaseHas('booking_client_notes', ['booking_id' => $this->booking->id]);
+        Event::fake(); // no broadcasting (after the answer, so its observer ran)
 
         $id = $this->api()
             ->postJson("/api/mobile/setlist/events/{$this->event->key}/session")
@@ -227,5 +230,48 @@ class SetlistEditorClientNotesTest extends TestCase
         $this->artisan('client-notes:backfill')->assertSuccessful();
 
         Queue::assertPushed(ParseClientRequestNotes::class, fn ($job) => $job->bookingId === $this->booking->id);
+    }
+
+    public function test_resubmitting_a_submitted_questionnaire_queues_a_parse(): void
+    {
+        Queue::fake();
+        $response = $this->answer('Atomic Dog');
+        Queue::fake();
+
+        $response->instance->update(['submitted_at' => now()->addMinute()]);
+
+        Queue::assertPushed(ParseClientRequestNotes::class);
+    }
+
+    public function test_stored_requests_pick_up_songs_added_to_the_catalog_since(): void
+    {
+        SetlistAgent::fake([json_encode([
+            'requests' => [
+                ['title' => 'Wagon Wheel', 'artist' => null, 'song_id' => null, 'kind' => 'do_not_play', 'note' => null],
+            ],
+            'song_notes' => [], 'rules' => [], 'crowd' => null,
+        ])])->preventStrayPrompts();
+        $this->answer('Do not play Wagon Wheel');
+
+        $song = Song::factory()->active()->create(['band_id' => $this->band->id, 'title' => 'Wagon wheel']);
+
+        $this->show()->assertJsonPath('client_notes.requests.0.song_id', $song->id);
+
+        // A live session started now blocks it by id, without another parse.
+        Event::fake(); // no broadcasting
+        $id = $this->api()
+            ->postJson("/api/mobile/setlist/events/{$this->event->key}/session")
+            ->assertOk()
+            ->json('id');
+        $this->assertSame($song->id, LiveSetlistSession::findOrFail($id)->client_notes['requests'][0]['song_id']);
+    }
+
+    public function test_job_timeout_stays_under_the_queue_retry_after(): void
+    {
+        $job = new ParseClientRequestNotes($this->booking->id);
+
+        $this->assertLessThan(config('queue.connections.database.retry_after'), $job->timeout);
+        $this->assertLessThan(config('queue.connections.redis.retry_after'), $job->timeout);
+        $this->assertLessThan($job->timeout, ClientRequestNotesService::AI_TIMEOUT_SECONDS);
     }
 }

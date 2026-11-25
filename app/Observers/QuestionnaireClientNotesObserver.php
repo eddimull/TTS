@@ -9,7 +9,8 @@ use App\Models\QuestionnaireResponses;
 /**
  * Queues a re-read of the booking's questionnaire free text whenever the
  * submitted answers can have changed: an answer saved on a submitted or
- * locked questionnaire, a questionnaire submitted, reopened or deleted.
+ * locked questionnaire, a questionnaire submitted, re-submitted, reopened
+ * or deleted.
  * The job itself skips the AI when the text is unchanged.
  */
 class QuestionnaireClientNotesObserver
@@ -32,9 +33,14 @@ class QuestionnaireClientNotesObserver
         }
 
         $counted = fn ($status) => in_array($status, self::COUNTED, true);
-        if ($model->wasRecentlyCreated
+        $queue = $model->wasRecentlyCreated
             ? $counted($model->status)
-            : $model->wasChanged('status') && $counted($model->status) !== $counted($model->getOriginal('status'))) {
+            // Submitted or reopened.
+            : ($model->wasChanged('status') && $counted($model->status) !== $counted($model->getOriginal('status')))
+            // Re-submitted: the portal bulk-deletes hidden answers (no response
+            // events) and only bumps submitted_at.
+            || ($model->wasChanged('submitted_at') && $counted($model->status));
+        if ($queue) {
             ParseClientRequestNotes::queueFor($model->booking_id);
         }
     }
