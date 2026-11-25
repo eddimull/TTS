@@ -3,6 +3,9 @@
 namespace App\Providers;
 
 use App\Models\Bookings;
+use App\Models\QuestionnaireInstances;
+use App\Models\QuestionnaireResponses;
+use App\Observers\QuestionnaireClientNotesObserver;
 
 use App\Observers\EventObserver;
 use App\Events\PaymentWasReceived;
@@ -43,5 +46,7 @@ class EventServiceProvider extends ServiceProvider
     {
         Bookings::observe(BookingObserver::class);
         Events::observe(EventObserver::class);
+        QuestionnaireInstances::observe(QuestionnaireClientNotesObserver::class);
+        QuestionnaireResponses::observe(QuestionnaireClientNotesObserver::class);
     }
 }

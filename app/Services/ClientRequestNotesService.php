@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Ai\Agents\SetlistAgent;
+use App\Jobs\ParseClientRequestNotes;
+use App\Models\BookingClientNotes;
 use App\Models\Bookings;
 use App\Models\LiveSetlistSession;
 use App\Models\QuestionnaireInstances;
@@ -14,9 +16,11 @@ use Illuminate\Support\Facades\Log;
 /**
  * Turns a booking's questionnaire free text ("Other must-play songs…",
  * "Anything else we should know?", first-dance fields…) into structured
- * song requests for the live session, matched against the band's catalog.
+ * song requests, matched against the band's catalog. Stored per booking in
+ * `booking_client_notes` (refreshed by ParseClientRequestNotes when the
+ * submitted answers change) and copied onto a live session when it starts.
  *
- * Shape stored on the session's `client_notes`:
+ * Shape of the notes:
  *   requests:   [{title, artist, song_id|null, kind, note|null}]
  *               kind: must_play | if_time | do_not_play | intermission | special_moment
  *   song_notes: [{title, song_id|null, note}]   performance notes (lyric changes…)
@@ -49,7 +53,7 @@ class ClientRequestNotesService
 
         try {
             $notes = $booking instanceof Bookings
-                ? $this->extract($booking)
+                ? $this->refresh($booking)
                 : $this->empty();
             $session->update(['client_notes' => $notes]);
         } catch (\Throwable $e) {
@@ -61,22 +65,121 @@ class ClientRequestNotesService
         }
     }
 
-    public function extract(Bookings $booking): array
+    /**
+     * The booking's stored notes, for screens outside a live session (the
+     * event's Music tab). Never waits on the AI. When the stored notes are
+     * missing or were read from older answers (e.g. a questionnaire submitted
+     * before this existed), a refresh is queued and whatever is stored is
+     * returned meanwhile.
+     */
+    public function forBooking(Bookings $booking): ?array
     {
         $text = $this->questionnaireText($booking);
         if ($text === '') {
             return $this->empty();
         }
 
-        $songs = Song::query()
+        $stored = BookingClientNotes::where('booking_id', $booking->id)->first();
+        if ($stored?->source_hash !== sha1($text)) {
+            ParseClientRequestNotes::queueFor($booking->id, now: true);
+        }
+
+        return $stored ? $this->rematch($stored->notes, $this->catalog($booking)) : null;
+    }
+
+    /**
+     * Reads the booking's current answers into notes and stores them, unless
+     * the stored notes already came from the same answers. Serialized per
+     * booking (queued job and live-session start alike), with the answers read
+     * inside the lock, so an older parse can never overwrite a newer one.
+     * Throws when the AI call fails or the lock can't be had in time.
+     */
+    public function refresh(Bookings $booking): array
+    {
+        return Cache::lock("client-notes:booking:{$booking->id}", self::LOCK_SECONDS)
+            ->block(self::LOCK_SECONDS, function () use ($booking) {
+                $text = $this->questionnaireText($booking);
+                $hash = sha1($text);
+                $songs = $this->catalog($booking);
+
+                $stored = BookingClientNotes::where('booking_id', $booking->id)->first();
+                if ($stored?->source_hash === $hash) {
+                    return $this->rematch($stored->notes, $songs);
+                }
+
+                $notes = $text === '' ? $this->empty() : $this->parse($text, $songs);
+
+                BookingClientNotes::updateOrCreate(
+                    ['booking_id' => $booking->id],
+                    ['notes' => $notes, 'source_hash' => $hash, 'parsed_at' => now()],
+                );
+
+                return $notes;
+            });
+    }
+
+    /** Longer than a parse (AI_TIMEOUT_SECONDS) plus the queries around it. */
+    private const LOCK_SECONDS = 90;
+
+    /**
+     * Seconds the AI gets to read the answers. Kept, with the job timeout,
+     * under the queue's 90s retry_after so a slow parse isn't handed to a
+     * second worker mid-run.
+     */
+    public const AI_TIMEOUT_SECONDS = 70;
+
+    private function parse(string $text, Collection $songs): array
+    {
+        $prompt = $this->prompt($text, $songs);
+        $raw = (string) (new SetlistAgent())->prompt($prompt, timeout: self::AI_TIMEOUT_SECONDS);
+
+        return $this->normalize($this->decode($raw), $songs);
+    }
+
+    private function catalog(Bookings $booking): Collection
+    {
+        return Song::query()
             ->where('band_id', $booking->band_id)
             ->where('active', true)
             ->get(['id', 'title', 'artist']);
+    }
 
-        $prompt = $this->prompt($text, $songs);
-        $raw = (string) (new SetlistAgent())->prompt($prompt, timeout: 120);
+    /**
+     * Brings stored catalog matches up to date: IDs of songs no longer in the
+     * catalog are dropped, and unmatched titles pick up a catalog song with
+     * the same title (ignoring case and punctuation), e.g. a do-not-play song
+     * the band has learned since.
+     */
+    private function rematch(array $notes, Collection $songs): array
+    {
+        $byTitle = $songs->keyBy(fn ($s) => $this->titleKey((string) $s->title));
+        $valid = $songs->pluck('id')->map(fn ($id) => (int) $id)->all();
 
-        return $this->normalize($this->decode($raw), $songs);
+        $fix = function (array $entry) use ($byTitle, $valid) {
+            $id = $entry['song_id'] ?? null;
+            if ($id !== null && !in_array((int) $id, $valid, true)) {
+                $id = null;
+            }
+            if ($id === null) {
+                $id = $byTitle->get($this->titleKey((string) ($entry['title'] ?? '')))?->id;
+            }
+            $entry['song_id'] = $id !== null ? (int) $id : null;
+
+            return $entry;
+        };
+
+        foreach (['requests', 'song_notes'] as $key) {
+            $notes[$key] = array_map($fix, $notes[$key] ?? []);
+        }
+
+        return $notes;
+    }
+
+    private function titleKey(string $title): string
+    {
+        $t = preg_replace("/['’]/u", '', mb_strtolower($title));
+
+        return trim(preg_replace('/[^a-z0-9]+/', ' ', $t));
     }
 
     public function empty(): array
