@@ -8,6 +8,7 @@ use App\Models\Bookings;
 use App\Models\Events;
 use App\Models\EventSetlist;
 use App\Models\SetlistSong;
+use App\Services\ClientRequestNotesService;
 use App\Services\ClientSongRequestsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -42,6 +43,10 @@ class SetlistEditorController extends Controller
                 'lead_singer' => $s->leadSinger?->display_name,
             ]);
 
+        $clientNotes = $event->eventable instanceof Bookings
+            ? app(ClientRequestNotesService::class)->forBooking($event->eventable)
+            : null;
+
         return response()->json([
             'event' => [
                 'id'    => $event->id,
@@ -56,6 +61,9 @@ class SetlistEditorController extends Controller
             'client_requests' => $event->eventable instanceof Bookings
                 ? app(ClientSongRequestsService::class)->forBooking($event->eventable)
                 : null,
+            // AI-parsed free-text requests from the questionnaire (same shape
+            // as the live session's); null until the booking's first parse.
+            'client_notes' => $clientNotes,
         ]);
     }
 

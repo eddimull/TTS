@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Ai\Agents\SetlistAgent;
+use App\Jobs\ParseClientRequestNotes;
+use App\Models\BookingClientNotes;
 use App\Models\Bookings;
 use App\Models\LiveSetlistSession;
 use App\Models\QuestionnaireInstances;
@@ -14,9 +16,11 @@ use Illuminate\Support\Facades\Log;
 /**
  * Turns a booking's questionnaire free text ("Other must-play songs…",
  * "Anything else we should know?", first-dance fields…) into structured
- * song requests for the live session, matched against the band's catalog.
+ * song requests, matched against the band's catalog. Stored per booking in
+ * `booking_client_notes` (refreshed by ParseClientRequestNotes when the
+ * submitted answers change) and copied onto a live session when it starts.
  *
- * Shape stored on the session's `client_notes`:
+ * Shape of the notes:
  *   requests:   [{title, artist, song_id|null, kind, note|null}]
  *               kind: must_play | if_time | do_not_play | intermission | special_moment
  *   song_notes: [{title, song_id|null, note}]   performance notes (lyric changes…)
@@ -49,7 +53,7 @@ class ClientRequestNotesService
 
         try {
             $notes = $booking instanceof Bookings
-                ? $this->extract($booking)
+                ? $this->refresh($booking)
                 : $this->empty();
             $session->update(['client_notes' => $notes]);
         } catch (\Throwable $e) {
@@ -61,13 +65,55 @@ class ClientRequestNotesService
         }
     }
 
-    public function extract(Bookings $booking): array
+    /**
+     * The booking's stored notes, for screens outside a live session (the
+     * event's Music tab). Never waits on the AI. When the stored notes are
+     * missing or were read from older answers (e.g. a questionnaire submitted
+     * before this existed), a refresh is queued and whatever is stored is
+     * returned meanwhile.
+     */
+    public function forBooking(Bookings $booking): ?array
     {
         $text = $this->questionnaireText($booking);
         if ($text === '') {
             return $this->empty();
         }
 
+        $stored = BookingClientNotes::where('booking_id', $booking->id)->first();
+        if ($stored?->source_hash !== sha1($text)) {
+            ParseClientRequestNotes::queueFor($booking->id, now: true);
+        }
+
+        return $stored?->notes;
+    }
+
+    /**
+     * Reads the booking's current answers into notes and stores them, unless
+     * the stored notes already came from the same answers. Throws when the
+     * AI call fails.
+     */
+    public function refresh(Bookings $booking): array
+    {
+        $text = $this->questionnaireText($booking);
+        $hash = sha1($text);
+
+        $stored = BookingClientNotes::where('booking_id', $booking->id)->first();
+        if ($stored?->source_hash === $hash) {
+            return $stored->notes;
+        }
+
+        $notes = $text === '' ? $this->empty() : $this->parse($text, $booking);
+
+        BookingClientNotes::updateOrCreate(
+            ['booking_id' => $booking->id],
+            ['notes' => $notes, 'source_hash' => $hash, 'parsed_at' => now()],
+        );
+
+        return $notes;
+    }
+
+    private function parse(string $text, Bookings $booking): array
+    {
         $songs = Song::query()
             ->where('band_id', $booking->band_id)
             ->where('active', true)
