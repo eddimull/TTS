@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api\Mobile;
 
 use App\Ai\Agents\SetlistAgent;
+use App\Jobs\ParseClientRequestNotes;
 use App\Models\Bands;
 use App\Models\Bookings;
 use App\Models\Events;
@@ -15,6 +16,7 @@ use App\Models\Song;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 /**
@@ -35,6 +37,9 @@ class LiveSetlistClientRequestsTest extends TestCase
     {
         parent::setUp();
         Event::fake(); // no broadcasting
+        // These tests drive the parse from the live session; keep the
+        // answer-saved job out of the way.
+        Queue::fake([ParseClientRequestNotes::class]);
         config(['services.anthropic.key' => 'test-key']);
 
         $user = User::factory()->create();
